@@ -1,0 +1,283 @@
+{
+  "player": {
+    "current_room": "forest hut",
+    "inventory": {
+      "golden ring": 1
+    },
+    "state": {},
+    "stats": {
+      "gold": 8,
+      "health": 100
+    }
+  },
+  "rooms": {
+    "clearing": {
+      "items": {
+        "bronze coin": 1,
+        "gold coin": 1
+      }
+    },
+    "village": {
+      "items": {}
+    },
+    "pond": {
+      "items": {
+        "old coin": 1
+      }
+    },
+    "forest hut": {
+      "items": {}
+    },
+    "1000": {
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      }
+    },
+    "1001": {
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      }
+    },
+    "1002": {
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      }
+    },
+    "1003": {
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      }
+    },
+    "1004": {
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      }
+    },
+    "1005": {
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      }
+    },
+    "1006": {
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      }
+    },
+    "1007": {
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      }
+    },
+    "1008": {
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      }
+    },
+    "example_inn": {
+      "items": {
+        "ale": 5,
+        "bread": 3,
+        "bed": 2,
+        "torch": 1
+      }
+    },
+    "example_town_square": {
+      "items": {
+        "fountain": 1
+      }
+    },
+    "example_tavern_1": {
+      "items": {
+        "chair": 4,
+        "table": 2,
+        "mug": 3,
+        "torch": 1
+      }
+    },
+    "example_tavern_2": {
+      "items": {
+        "chair": 4,
+        "table": 2,
+        "mug": 3,
+        "torch": 1
+      }
+    },
+    "example_forest_north": {
+      "items": {
+        "mushroom": 2,
+        "stick": 1,
+        "berry": 3
+      }
+    },
+    "example_forest_east": {
+      "items": {
+        "mushroom": 2,
+        "stick": 1,
+        "berry": 3
+      }
+    },
+    "example_forest_south": {
+      "items": {
+        "mushroom": 2,
+        "stick": 1,
+        "berry": 3
+      }
+    },
+    "4000": {
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5,
+        "crystal": 1
+      }
+    },
+    "4001": {
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5,
+        "crystal": 1
+      }
+    },
+    "4002": {
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5,
+        "crystal": 1
+      }
+    },
+    "4003": {
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      }
+    },
+    "4004": {
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      }
+    },
+    "4005": {
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      }
+    },
+    "4006": {
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      }
+    },
+    "4007": {
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      }
+    },
+    "4008": {
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      }
+    },
+    "example_tavern_copy": {
+      "items": {
+        "chair": 4,
+        "table": 2,
+        "mug": 3,
+        "torch": 1
+      }
+    },
+    "example_apothecary": {
+      "items": {
+        "potion": 5,
+        "scroll": 3,
+        "gem": 2,
+        "torch": 1
+      }
+    },
+    "example_market_square": {
+      "items": {
+        "basket": 3,
+        "apple": 10
+      }
+    },
+    "example_shop_1": {
+      "items": {
+        "potion": 5,
+        "scroll": 3,
+        "gem": 2,
+        "torch": 1
+      }
+    },
+    "example_shop_2": {
+      "items": {
+        "potion": 5,
+        "scroll": 3,
+        "gem": 2,
+        "torch": 1
+      }
+    },
+    "example_shop_3": {
+      "items": {
+        "potion": 5,
+        "scroll": 3,
+        "gem": 2,
+        "torch": 1
+      }
+    }
+  },
+  "item_worth": {
+    "gold coin": 2,
+    "old coin": 3,
+    "rusty key": 5,
+    "silver ring": 10,
+    "bronze coin": 1,
+    "golden ring": 40
+  }
+}

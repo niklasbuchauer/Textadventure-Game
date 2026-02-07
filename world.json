@@ -1,0 +1,1077 @@
+{
+  "start_room": "clearing",
+  "rooms": {
+    "clearing": {
+      "description": "You are in a small clearing surrounded by tall trees. A path leads east to a village.",
+      "exits": {
+        "east": {
+          "target": "village",
+          "type": "direction"
+        },
+        "north": {
+          "target": "pond",
+          "type": "direction"
+        }
+      },
+      "items": {
+        "bronze coin": 1,
+        "gold coin": 1
+      },
+      "actions": {
+        "sit": {
+          "response": "You sit on the soft grass and rest for a moment."
+        }
+      },
+      "location_type": "wilderness",
+      "npcs": []
+    },
+    "village": {
+      "description": "A tiny village with a single cottage. The cottage might contain something useful.",
+      "exits": {
+        "west": {
+          "target": "clearing",
+          "type": "direction"
+        }
+      },
+      "items": {},
+      "actions": {
+        "enter cottage": {
+          "response": "You peek inside the cottage and see a rusty key on a table. You take the rusty key.",
+          "add_item": [
+            "rusty key"
+          ],
+          "add_target": "player"
+        }
+      },
+      "location_type": "wilderness",
+      "npcs": []
+    },
+    "pond": {
+      "description": "A peaceful pond. There's a small wooden chest tucked near the reeds.",
+      "exits": {
+        "south": {
+          "target": "clearing",
+          "type": "direction"
+        },
+        "east": {
+          "target": "forest hut",
+          "type": "direction"
+        }
+      },
+      "items": {
+        "old coin": 1
+      },
+      "actions": {
+        "open chest": {
+          "response": "The chest is locked. Maybe a key would help.",
+          "remove_item": [],
+          "add_item": []
+        },
+        "unlock chest": {
+          "response": "You use the rusty key to unlock the chest. Inside you find a silver ring and take it.",
+          "remove_item": [
+            "rusty key"
+          ],
+          "remove_target": "player",
+          "add_item": [
+            "silver ring"
+          ],
+          "add_target": "player"
+        }
+      },
+      "location_type": "wilderness",
+      "npcs": []
+    },
+    "forest hut": {
+      "description": "U see a small wooden hut in the middle of the forest. It looks spooky and u are not sure if u want to enter it",
+      "exits": {
+        "south": {
+          "target": "pond",
+          "type": "direction"
+        }
+      },
+      "items": {
+        "golden ring": 1
+      },
+      "actions": {
+        "enter hut": {
+          "text": "u take a look inside the hut. U see a golden ring on the table in the middle of the room and it has a big glowing stone on it. U wonder what it could be for ?"
+        }
+      },
+      "location_type": "wilderness",
+      "npcs": []
+    },
+    "1000": {
+      "name": "Dungeon Cell 1",
+      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
+      "location_type": "building",
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      },
+      "npcs": [],
+      "actions": {
+        "examine bars": {
+          "text": "The bars are rusted but still solid. They won't be easy to break."
+        }
+      },
+      "exits": {
+        "south": {
+          "target": "1003",
+          "type": "direction"
+        },
+        "east": {
+          "target": "1001",
+          "type": "direction"
+        }
+      }
+    },
+    "1001": {
+      "name": "Dungeon Cell 2",
+      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
+      "location_type": "building",
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      },
+      "npcs": [],
+      "actions": {
+        "examine bars": {
+          "text": "The bars are rusted but still solid. They won't be easy to break."
+        }
+      },
+      "exits": {
+        "south": {
+          "target": "1004",
+          "type": "direction"
+        },
+        "east": {
+          "target": "1002",
+          "type": "direction"
+        },
+        "west": {
+          "target": "1000",
+          "type": "direction"
+        }
+      }
+    },
+    "1002": {
+      "name": "Dungeon Cell 3",
+      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
+      "location_type": "building",
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      },
+      "npcs": [],
+      "actions": {
+        "examine bars": {
+          "text": "The bars are rusted but still solid. They won't be easy to break."
+        }
+      },
+      "exits": {
+        "south": {
+          "target": "1005",
+          "type": "direction"
+        },
+        "west": {
+          "target": "1001",
+          "type": "direction"
+        }
+      }
+    },
+    "1003": {
+      "name": "Dungeon Cell 4",
+      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
+      "location_type": "building",
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      },
+      "npcs": [],
+      "actions": {
+        "examine bars": {
+          "text": "The bars are rusted but still solid. They won't be easy to break."
+        }
+      },
+      "exits": {
+        "north": {
+          "target": "1000",
+          "type": "direction"
+        },
+        "south": {
+          "target": "1006",
+          "type": "direction"
+        },
+        "east": {
+          "target": "1004",
+          "type": "direction"
+        }
+      }
+    },
+    "1004": {
+      "name": "Dungeon Cell 5",
+      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
+      "location_type": "building",
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      },
+      "npcs": [],
+      "actions": {
+        "examine bars": {
+          "text": "The bars are rusted but still solid. They won't be easy to break."
+        }
+      },
+      "exits": {
+        "north": {
+          "target": "1001",
+          "type": "direction"
+        },
+        "south": {
+          "target": "1007",
+          "type": "direction"
+        },
+        "east": {
+          "target": "1005",
+          "type": "direction"
+        },
+        "west": {
+          "target": "1003",
+          "type": "direction"
+        }
+      }
+    },
+    "1005": {
+      "name": "Dungeon Cell 6",
+      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
+      "location_type": "building",
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      },
+      "npcs": [],
+      "actions": {
+        "examine bars": {
+          "text": "The bars are rusted but still solid. They won't be easy to break."
+        }
+      },
+      "exits": {
+        "north": {
+          "target": "1002",
+          "type": "direction"
+        },
+        "south": {
+          "target": "1008",
+          "type": "direction"
+        },
+        "west": {
+          "target": "1004",
+          "type": "direction"
+        }
+      }
+    },
+    "1006": {
+      "name": "Dungeon Cell 7",
+      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
+      "location_type": "building",
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      },
+      "npcs": [],
+      "actions": {
+        "examine bars": {
+          "text": "The bars are rusted but still solid. They won't be easy to break."
+        }
+      },
+      "exits": {
+        "north": {
+          "target": "1003",
+          "type": "direction"
+        },
+        "east": {
+          "target": "1007",
+          "type": "direction"
+        }
+      }
+    },
+    "1007": {
+      "name": "Dungeon Cell 8",
+      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
+      "location_type": "building",
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      },
+      "npcs": [],
+      "actions": {
+        "examine bars": {
+          "text": "The bars are rusted but still solid. They won't be easy to break."
+        }
+      },
+      "exits": {
+        "north": {
+          "target": "1004",
+          "type": "direction"
+        },
+        "east": {
+          "target": "1008",
+          "type": "direction"
+        },
+        "west": {
+          "target": "1006",
+          "type": "direction"
+        }
+      }
+    },
+    "1008": {
+      "name": "Dungeon Cell 9",
+      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
+      "location_type": "building",
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      },
+      "npcs": [],
+      "actions": {
+        "examine bars": {
+          "text": "The bars are rusted but still solid. They won't be easy to break."
+        }
+      },
+      "exits": {
+        "north": {
+          "target": "1005",
+          "type": "direction"
+        },
+        "west": {
+          "target": "1007",
+          "type": "direction"
+        }
+      }
+    },
+    "example_inn": {
+      "name": "The Weary Traveler Inn",
+      "description": "A cozy inn with a warm hearth and the smell of stew.",
+      "location_type": "building",
+      "items": {
+        "ale": 5,
+        "bread": 3,
+        "bed": 2,
+        "torch": 1
+      },
+      "npcs": [
+        "innkeeper"
+      ],
+      "actions": {
+        "order food": {
+          "text": "The innkeeper brings you hearty stew."
+        },
+        "sleep": {
+          "text": "You rest on a comfortable bed."
+        }
+      },
+      "exits": {
+        "outside": {
+          "target": "example_town_square",
+          "type": "named",
+          "display": "Back to Town Square"
+        }
+      }
+    },
+    "example_town_square": {
+      "name": "Town Square",
+      "description": "The bustling heart of the town. Merchants and townspeople mingle.",
+      "location_type": "settlement",
+      "items": {
+        "fountain": 1
+      },
+      "npcs": [
+        "guard",
+        "merchant"
+      ],
+      "actions": {
+        "drink fountain": {
+          "text": "Cool, refreshing water."
+        }
+      },
+      "exits": {
+        "inn": {
+          "target": "example_inn",
+          "type": "named",
+          "display": "The Weary Traveler Inn",
+          "transition_text": "You walk toward the inn on the north side of the square."
+        }
+      }
+    },
+    "example_tavern_1": {
+      "name": "The The Golden Dragon",
+      "description": "A cozy tavern with wooden tables, flickering candles, and the warm aroma of roasted meat and ale. A roaring fireplace dominates one wall.",
+      "location_type": "building",
+      "items": {
+        "chair": 4,
+        "table": 2,
+        "mug": 3,
+        "torch": 1
+      },
+      "npcs": [
+        "bartender",
+        "patron"
+      ],
+      "actions": {
+        "order_drink": {
+          "text": "You order a drink from the barkeep."
+        },
+        "sit": {
+          "text": "You take a seat at a wooden table."
+        }
+      },
+      "exits": {}
+    },
+    "example_tavern_2": {
+      "name": "The The Silver Stag",
+      "description": "A cozy tavern with wooden tables, flickering candles, and the warm aroma of roasted meat and ale. A roaring fireplace dominates one wall.",
+      "location_type": "building",
+      "items": {
+        "chair": 4,
+        "table": 2,
+        "mug": 3,
+        "torch": 1
+      },
+      "npcs": [
+        "bartender",
+        "patron"
+      ],
+      "actions": {
+        "order_drink": {
+          "text": "You order a drink from the barkeep."
+        },
+        "sit": {
+          "text": "You take a seat at a wooden table."
+        }
+      },
+      "exits": {}
+    },
+    "example_forest_north": {
+      "name": "Deep Forest - North",
+      "description": "Tall trees surround you, their branches forming a dense canopy above. Sunlight filters through in scattered beams. The air smells of pine and damp earth. Birds call from unseen perches.",
+      "location_type": "wilderness",
+      "items": {
+        "mushroom": 2,
+        "stick": 1,
+        "berry": 3
+      },
+      "npcs": [],
+      "actions": {
+        "examine plants": {
+          "text": "You examine the various plants and fungi around you. Many look edible, some dangerous."
+        }
+      },
+      "exits": {}
+    },
+    "example_forest_east": {
+      "name": "Deep Forest - East",
+      "description": "Tall trees surround you, their branches forming a dense canopy above. Sunlight filters through in scattered beams. The air smells of pine and damp earth. Birds call from unseen perches.",
+      "location_type": "wilderness",
+      "items": {
+        "mushroom": 2,
+        "stick": 1,
+        "berry": 3
+      },
+      "npcs": [],
+      "actions": {
+        "examine plants": {
+          "text": "You examine the various plants and fungi around you. Many look edible, some dangerous."
+        }
+      },
+      "exits": {}
+    },
+    "example_forest_south": {
+      "name": "Deep Forest - South",
+      "description": "Tall trees surround you, their branches forming a dense canopy above. Sunlight filters through in scattered beams. The air smells of pine and damp earth. Birds call from unseen perches.",
+      "location_type": "wilderness",
+      "items": {
+        "mushroom": 2,
+        "stick": 1,
+        "berry": 3
+      },
+      "npcs": [],
+      "actions": {
+        "examine plants": {
+          "text": "You examine the various plants and fungi around you. Many look edible, some dangerous."
+        }
+      },
+      "exits": {}
+    },
+    "4000": {
+      "name": "Dungeon Cell 1",
+      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
+      "location_type": "building",
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5,
+        "crystal": 1
+      },
+      "npcs": [],
+      "actions": {
+        "examine bars": {
+          "text": "The bars are rusted but still solid. They won't be easy to break."
+        }
+      },
+      "exits": {
+        "south": {
+          "target": "4003",
+          "type": "direction"
+        },
+        "east": {
+          "target": "4001",
+          "type": "direction"
+        }
+      }
+    },
+    "4001": {
+      "name": "Dungeon Cell 2",
+      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
+      "location_type": "building",
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5,
+        "crystal": 1
+      },
+      "npcs": [],
+      "actions": {
+        "examine bars": {
+          "text": "The bars are rusted but still solid. They won't be easy to break."
+        }
+      },
+      "exits": {
+        "south": {
+          "target": "4004",
+          "type": "direction"
+        },
+        "east": {
+          "target": "4002",
+          "type": "direction"
+        },
+        "west": {
+          "target": "4000",
+          "type": "direction"
+        }
+      }
+    },
+    "4002": {
+      "name": "Dungeon Cell 3",
+      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
+      "location_type": "building",
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5,
+        "crystal": 1
+      },
+      "npcs": [],
+      "actions": {
+        "examine bars": {
+          "text": "The bars are rusted but still solid. They won't be easy to break."
+        }
+      },
+      "exits": {
+        "south": {
+          "target": "4005",
+          "type": "direction"
+        },
+        "west": {
+          "target": "4001",
+          "type": "direction"
+        }
+      }
+    },
+    "4003": {
+      "name": "Dungeon Cell 4",
+      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
+      "location_type": "building",
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      },
+      "npcs": [],
+      "actions": {
+        "examine bars": {
+          "text": "The bars are rusted but still solid. They won't be easy to break."
+        }
+      },
+      "exits": {
+        "north": {
+          "target": "4000",
+          "type": "direction"
+        },
+        "south": {
+          "target": "4006",
+          "type": "direction"
+        },
+        "east": {
+          "target": "4004",
+          "type": "direction"
+        }
+      }
+    },
+    "4004": {
+      "name": "Dungeon Cell 5",
+      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
+      "location_type": "building",
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      },
+      "npcs": [],
+      "actions": {
+        "examine bars": {
+          "text": "The bars are rusted but still solid. They won't be easy to break."
+        }
+      },
+      "exits": {
+        "north": {
+          "target": "4001",
+          "type": "direction"
+        },
+        "south": {
+          "target": "4007",
+          "type": "direction"
+        },
+        "east": {
+          "target": "4005",
+          "type": "direction"
+        },
+        "west": {
+          "target": "4003",
+          "type": "direction"
+        }
+      }
+    },
+    "4005": {
+      "name": "Dungeon Cell 6",
+      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
+      "location_type": "building",
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      },
+      "npcs": [],
+      "actions": {
+        "examine bars": {
+          "text": "The bars are rusted but still solid. They won't be easy to break."
+        }
+      },
+      "exits": {
+        "north": {
+          "target": "4002",
+          "type": "direction"
+        },
+        "south": {
+          "target": "4008",
+          "type": "direction"
+        },
+        "west": {
+          "target": "4004",
+          "type": "direction"
+        }
+      }
+    },
+    "4006": {
+      "name": "Dungeon Cell 7",
+      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
+      "location_type": "building",
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      },
+      "npcs": [],
+      "actions": {
+        "examine bars": {
+          "text": "The bars are rusted but still solid. They won't be easy to break."
+        }
+      },
+      "exits": {
+        "north": {
+          "target": "4003",
+          "type": "direction"
+        },
+        "east": {
+          "target": "4007",
+          "type": "direction"
+        }
+      }
+    },
+    "4007": {
+      "name": "Dungeon Cell 8",
+      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
+      "location_type": "building",
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      },
+      "npcs": [],
+      "actions": {
+        "examine bars": {
+          "text": "The bars are rusted but still solid. They won't be easy to break."
+        }
+      },
+      "exits": {
+        "north": {
+          "target": "4004",
+          "type": "direction"
+        },
+        "east": {
+          "target": "4008",
+          "type": "direction"
+        },
+        "west": {
+          "target": "4006",
+          "type": "direction"
+        }
+      }
+    },
+    "4008": {
+      "name": "Dungeon Cell 9",
+      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
+      "location_type": "building",
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1,
+        "gold coin": 5
+      },
+      "npcs": [],
+      "actions": {
+        "examine bars": {
+          "text": "The bars are rusted but still solid. They won't be easy to break."
+        }
+      },
+      "exits": {
+        "north": {
+          "target": "4005",
+          "type": "direction"
+        },
+        "west": {
+          "target": "4007",
+          "type": "direction"
+        }
+      }
+    },
+    "example_tavern_copy": {
+      "name": "The The Golden Dragon",
+      "description": "A cozy tavern with wooden tables, flickering candles, and the warm aroma of roasted meat and ale. A roaring fireplace dominates one wall.",
+      "location_type": "building",
+      "items": {
+        "chair": 4,
+        "table": 2,
+        "mug": 3,
+        "torch": 1
+      },
+      "npcs": [
+        "bartender",
+        "patron"
+      ],
+      "actions": {
+        "order_drink": {
+          "text": "You order a drink from the barkeep."
+        },
+        "sit": {
+          "text": "You take a seat at a wooden table."
+        }
+      },
+      "exits": {}
+    },
+    "example_apothecary": {
+      "name": "The Apothecary",
+      "description": "A well-stocked shop with shelves of wares.",
+      "location_type": "building",
+      "items": {
+        "potion": 5,
+        "scroll": 3,
+        "gem": 2,
+        "torch": 1
+      },
+      "npcs": [
+        "shopkeeper"
+      ],
+      "actions": {
+        "browse": {
+          "text": "Fine goods at reasonable prices."
+        },
+        "buy potion": {
+          "text": "You purchase a potion."
+        }
+      },
+      "exits": {}
+    },
+    "example_market_square": {
+      "name": "Market Square",
+      "description": "A bustling marketplace with colorful stalls and merchants hawking wares.",
+      "location_type": "settlement",
+      "items": {
+        "basket": 3,
+        "apple": 10
+      },
+      "npcs": [
+        "merchant",
+        "customer"
+      ],
+      "actions": {
+        "browse stalls": {
+          "text": "You browse the many goods on offer."
+        }
+      },
+      "exits": {
+        "apothecary": {
+          "target": "example_shop_1",
+          "type": "named",
+          "display": "The Apothecary"
+        },
+        "armory": {
+          "target": "example_shop_2",
+          "type": "named",
+          "display": "The Armory"
+        },
+        "store": {
+          "target": "example_shop_3",
+          "type": "named",
+          "display": "General Store"
+        },
+        "forest": {
+          "target": "example_forest_north",
+          "type": "direction",
+          "transition_text": "You leave the market and enter the forest."
+        }
+      }
+    },
+    "example_shop_1": {
+      "name": "The Apothecary",
+      "description": "A well-stocked shop with shelves of wares.",
+      "location_type": "building",
+      "items": {
+        "potion": 5,
+        "scroll": 3,
+        "gem": 2,
+        "torch": 1
+      },
+      "npcs": [
+        "shopkeeper"
+      ],
+      "actions": {
+        "browse": {
+          "text": "Fine goods at reasonable prices."
+        },
+        "buy potion": {
+          "text": "You purchase a potion."
+        }
+      },
+      "exits": {
+        "market": {
+          "target": "example_market_square",
+          "type": "named",
+          "display": "Back to Market Square"
+        }
+      }
+    },
+    "example_shop_2": {
+      "name": "The Armory",
+      "description": "A well-stocked shop with shelves of wares.",
+      "location_type": "building",
+      "items": {
+        "potion": 5,
+        "scroll": 3,
+        "gem": 2,
+        "torch": 1
+      },
+      "npcs": [
+        "shopkeeper"
+      ],
+      "actions": {
+        "browse": {
+          "text": "Fine goods at reasonable prices."
+        },
+        "buy potion": {
+          "text": "You purchase a potion."
+        }
+      },
+      "exits": {
+        "market": {
+          "target": "example_market_square",
+          "type": "named",
+          "display": "Back to Market Square"
+        }
+      }
+    },
+    "example_shop_3": {
+      "name": "The General Store",
+      "description": "A well-stocked shop with shelves of wares.",
+      "location_type": "building",
+      "items": {
+        "potion": 5,
+        "scroll": 3,
+        "gem": 2,
+        "torch": 1
+      },
+      "npcs": [
+        "shopkeeper"
+      ],
+      "actions": {
+        "browse": {
+          "text": "Fine goods at reasonable prices."
+        },
+        "buy potion": {
+          "text": "You purchase a potion."
+        }
+      },
+      "exits": {
+        "market": {
+          "target": "example_market_square",
+          "type": "named",
+          "display": "Back to Market Square"
+        }
+      }
+    }
+  },
+  "global_commands": {
+    "sit": {
+      "text": "You sit down to rest.",
+      "effects": {
+        "state": {
+          "sitting": true
+        }
+      }
+    },
+    "stand up": {
+      "text": "You stand back up.",
+      "effects": {
+        "state": {
+          "sitting": false
+        }
+      }
+    }
+  },
+  "default_stats": {
+    "gold": 0,
+    "health": 100
+  },
+  "item_worth": {
+    "gold coin": 2,
+    "old coin": 3,
+    "rusty key": 5,
+    "silver ring": 10,
+    "bronze coin": 1,
+    "golden ring": 40
+  },
+  "default_inventory": {},
+  "room_templates": {
+    "tavern": {
+      "name": "The {tavern_name}",
+      "description": "A cozy tavern with wooden tables, flickering candles, and the warm aroma of roasted meat and ale. A roaring fireplace dominates one wall.",
+      "location_type": "building",
+      "items": {
+        "chair": 4,
+        "table": 2,
+        "mug": 3
+      },
+      "npcs": [
+        "bartender",
+        "patron"
+      ],
+      "actions": {
+        "order_drink": {
+          "text": "You order a drink from the barkeep."
+        },
+        "sit": {
+          "text": "You take a seat at a wooden table."
+        }
+      }
+    },
+    "forest": {
+      "name": "Deep Forest - {direction}",
+      "description": "Tall trees surround you, their branches forming a dense canopy above. Sunlight filters through in scattered beams. The air smells of pine and damp earth. Birds call from unseen perches.",
+      "location_type": "wilderness",
+      "items": {
+        "mushroom": 2,
+        "stick": 1,
+        "berry": 3
+      },
+      "npcs": [],
+      "actions": {
+        "examine plants": {
+          "text": "You examine the various plants and fungi around you. Many look edible, some dangerous."
+        }
+      }
+    },
+    "dungeon_cell": {
+      "name": "Dungeon Cell {number}",
+      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
+      "location_type": "building",
+      "items": {
+        "chain": 1,
+        "bones": 2,
+        "torch": 1
+      },
+      "npcs": [],
+      "actions": {
+        "examine bars": {
+          "text": "The bars are rusted but still solid. They won't be easy to break."
+        }
+      }
+    },
+    "example_shop": {
+      "name": "The {shop_name}",
+      "description": "A well-stocked shop with shelves of wares.",
+      "location_type": "building",
+      "items": {
+        "potion": 5,
+        "scroll": 3,
+        "gem": 2
+      },
+      "npcs": [
+        "shopkeeper"
+      ],
+      "actions": {
+        "browse": {
+          "text": "Fine goods at reasonable prices."
+        },
+        "buy potion": {
+          "text": "You purchase a potion."
+        }
+      }
+    }
+  }
+}
