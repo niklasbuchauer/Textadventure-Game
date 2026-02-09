@@ -4,6 +4,27 @@ import sys
 import tkinter as tk
 from tkinter import simpledialog, messagebox, font
 
+# Dungeon system imports
+try:
+	from dungeon_scheduler import DungeonScheduler, get_scheduler
+	from dungeon_instance import get_current_dungeon, DungeonInstance
+	DUNGEON_AVAILABLE = True
+except ImportError:
+	DUNGEON_AVAILABLE = False
+
+# Map and debug system imports
+try:
+	from live_map_window import LiveMapWindow
+	MAP_AVAILABLE = True
+except ImportError:
+	MAP_AVAILABLE = False
+
+try:
+	from debug_commands import handle_debug_commands, show_player_commands
+	DEBUG_AVAILABLE = True
+except ImportError:
+	DEBUG_AVAILABLE = False
+
 WORLD_FILE = os.path.join(os.path.dirname(__file__), "world.json")
 SAVE_FILE = os.path.join(os.path.dirname(__file__), "savegame.json")
 
@@ -18,6 +39,8 @@ class Room:
 		# actions: dict mapping exact command string -> effect dict
 		# effect dict can contain: response/text, add_item (list), remove_item (list), move_to (room name), effects, conditions
 		self.actions = data.get("actions", {})
+		self.coordinates = data.get("coordinates", [0, 0])
+		self.location_type = data.get("location_type", "wilderness")
 
 	def describe(self):
 		"""Return room description with aggregated item counts (e.g. '3 bronze coins')."""
@@ -51,6 +74,8 @@ class Player:
 		self.state = {}
 		# stats holds numeric values like gold, health, score
 		self.stats = {}
+		# visited_rooms tracks rooms the player has visited (for fog of war)
+		self.visited_rooms = set([start_room])
 
 	def to_dict(self):
 		# Always serialize inventory as dict of string->int
@@ -58,7 +83,8 @@ class Player:
 			"current_room": self.current_room,
 			"inventory": {str(k): int(v) for k, v in (self.inventory or {}).items()},
 			"state": self.state,
-			"stats": self.stats
+			"stats": self.stats,
+			"visited_rooms": list(self.visited_rooms) if self.visited_rooms else []
 		}
 
 	@classmethod
@@ -81,6 +107,9 @@ class Player:
 			p.inventory = {}
 		p.state = dict(data.get("state", {}))
 		p.stats = dict(data.get("stats", {}))
+		# Load visited_rooms from save, or use current room as fallback
+		visited = data.get("visited_rooms", [])
+		p.visited_rooms = set(visited) if visited else {p.current_room}
 		return p
 
 
@@ -109,6 +138,12 @@ class CommandHandler:
 		cmd = (raw or "").strip()
 		if not cmd:
 			return ""
+		
+		# CRITICAL: Check if we're waiting for yes/no response to dungeon entry
+		if self.engine.pending_dungeon_entry is not None:
+			# Player is answering yes/no question
+			return self.confirm_dungeon_entry(cmd)
+		
 		parts = cmd.split()
 		verb = parts[0].lower()
 		args = parts[1:]
@@ -140,7 +175,16 @@ class CommandHandler:
 		if verb in ("go", "walk", "move"):
 			if not args:
 				return "Go where?"
-			return self._go(args[0].lower())
+			direction = args[0].lower()
+			# Special case: "go enter" still works for compatibility
+			if direction == "enter":
+				return self.handle_enter_command()
+			return self._go(direction)
+		
+		# NEW: Standalone ENTER command
+		if verb == "enter":
+			return self.handle_enter_command()
+		
 		if verb in ("look", "l"):
 			return self._look()
 		# Support new collect command and keep old aliases
@@ -173,6 +217,22 @@ class CommandHandler:
 			if not args:
 				return "Sell what?"
 			return self._sell(" ".join(args))
+		# Map commands
+		if verb == "open":
+			if args and args[0].lower() == "map":
+				return self._open_map()
+			return "Open what?"
+		if verb == "close":
+			if args and args[0].lower() == "map":
+				return self._close_map()
+			return "Close what?"
+		# Commands and debug
+		if verb == "commands":
+			return self._show_commands()
+		if verb == "debug":
+			if args and args[0].lower() == "commands":
+				return self._show_debug_menu()
+			return self._handle_debug_command(args)
 
 		return "I don't understand that."
 
@@ -319,6 +379,13 @@ class CommandHandler:
 				target_room_id = exit_data.get("target")
 				exit_info = exit_data
 		
+		# Handle time-gated dungeon entrance
+		if exit_info and isinstance(exit_info, dict) and exit_info.get("type") == "time_gated_dungeon":
+			if DUNGEON_AVAILABLE:
+				return self._handle_dungeon_entrance(exit_info)
+			else:
+				return "The dungeon system is not available."
+		
 		if not target_room_id or target_room_id not in self.engine.rooms:
 			# Show available exits based on location type
 			location_type = room.__dict__.get('location_type', 'wilderness')
@@ -334,9 +401,242 @@ class CommandHandler:
 			if transition_text:
 				result = f"{transition_text}\n\n"
 				result += dest_room.describe()
+				self._update_map_on_move(target_room_id)
 				return result
 		
+		self._update_map_on_move(target_room_id)
 		return dest_room.describe()
+	
+	def _update_map_on_move(self, new_room_id):
+		"""Update the live map when player moves."""
+		try:
+			# Mark room as visited
+			if hasattr(self.engine.player, 'visited_rooms'):
+				self.engine.player.visited_rooms.add(new_room_id)
+			
+			# Update map if it's open
+			if hasattr(self.engine, 'map_window') and self.engine.map_window:
+				if self.engine.map_window.is_open():
+					self.engine.map_window.update_location(
+						new_room_id,
+						getattr(self.engine.player, 'visited_rooms', set())
+					)
+		except Exception:
+			pass  # Silently fail if map update fails
+	
+	def confirm_dungeon_entry(self, response):
+		"""
+		Handles the yes/no response to dungeon entry.
+		
+		Args:
+			response: User's yes/no answer
+		"""
+		if self.engine.pending_dungeon_entry is None:
+			# User typed yes/no but we're not asking
+			return "I don't understand that command. Type 'help' for available commands."
+		
+		response = response.lower().strip()
+		
+		if response in ["yes", "y"]:
+			result = "\n" + "=" * 60 + "\n"
+			result += "  ENTERING DUNGEON\n"
+			result += "=" * 60 + "\n"
+			result += "\nYou steel your nerves and step into the entrance.\n"
+			result += "The air grows cold as you descend the ancient stairs...\n\n"
+			result += "[Generating dungeon layout, please wait...]\n"
+			
+			# Actually enter the dungeon
+			dungeon_exit_data = self.engine.pending_dungeon_entry.get("dungeon_data")
+			dungeon_result = self._enter_dungeon(dungeon_exit_data)
+			result += dungeon_result
+			
+			# Clear pending flag
+			self.engine.pending_dungeon_entry = None
+			return result
+			
+		elif response in ["no", "n"]:
+			result = "\n" + "-" * 60 + "\n"
+			result += "You step back from the entrance.\n"
+			result += "The dungeon remains open, patiently waiting...\n"
+			result += "-" * 60 + "\n"
+			
+			# Clear pending flag
+			self.engine.pending_dungeon_entry = None
+			return result
+			
+		else:
+			# Invalid response - keep the pending flag so they can answer again
+			return f"\nInvalid response: '{response}'\nPlease type 'yes' to enter or 'no' to decline.\n"
+
+	def handle_enter_command(self):
+		"""
+		Smart ENTER command that handles:
+		- Dungeon entrances (time-gated)
+		- Building entrances
+		
+		Automatically detects what kind of entrance based on current room.
+		"""
+		if self.engine.player.state.get("sitting"):
+			return "You need to stand up first."
+		
+		current_room = self.engine.rooms[self.engine.player.current_room]
+		
+		# Check for dungeon entrance (time-gated)
+		for exit_name, exit_data in current_room.exits.items():
+			if isinstance(exit_data, dict) and exit_data.get("type") == "time_gated_dungeon":
+				# This is a dungeon entrance room
+				return self._handle_dungeon_entrance(exit_data)
+		
+		# Check for explicit "enter" exit
+		if "enter" in current_room.exits:
+			exit_data = current_room.exits["enter"]
+			target_room_id = None
+			
+			if isinstance(exit_data, str):
+				target_room_id = exit_data
+			elif isinstance(exit_data, dict):
+				target_room_id = exit_data.get("target")
+			
+			if target_room_id and target_room_id in self.engine.rooms:
+				self.engine.player.current_room = target_room_id
+				dest_room = self.engine.rooms[target_room_id]
+				self._update_map_on_move(target_room_id)
+				return dest_room.describe()
+			else:
+				return "There's nothing to enter here."
+		
+		# No entrance found
+		return "There's nothing to enter here.\nTry: 'look' to see available exits."
+
+	def _handle_dungeon_entrance(self, exit_info):
+		"""
+		Handle time-gated dungeon entrance interaction.
+		Sets up pending state and asks for confirmation.
+		"""
+		try:
+			if not DUNGEON_AVAILABLE:
+				return "The dungeon system is not available."
+			
+			scheduler = get_scheduler()
+			
+			# Visual separator
+			result = "\n" + "-" * 60 + "\n"
+			result += "╔════════════════════════════════════════════════════════╗\n"
+			result += "║              DUNGEON ENTRANCE DETECTED                 ║\n"
+			result += "╚════════════════════════════════════════════════════════╝\n"
+			
+			if not scheduler.is_dungeon_open():
+				# CLOSED
+				_, time_until_str = scheduler.get_time_until_next_opening()
+				result += f"""
+Status: CLOSED (sealed by magic)
+
+The entrance is sealed by powerful magic. Ancient runes
+pulse with a faint red glow, barring your passage.
+
+A mystical inscription reads:
+  "The depths shift with the tides of time.
+   Return when the stars align."
+
+Next Opening: {time_until_str}
+
+Schedule: Opens every 3 hours for 1 hour
+  Opening times: 00:00, 03:00, 06:00, 09:00, 12:00, 
+                 15:00, 18:00, 21:00 (Germany time)
+"""
+				result += "-" * 60 + "\n"
+				
+			else:
+				# OPEN
+				_, time_remaining_str = scheduler.get_time_until_closing()
+				result += f"""
+Status: OPEN
+
+The magical barrier has faded! The entrance yawns before you,
+revealing ancient stone steps descending into darkness. A
+cold wind blows up from the depths.
+
+Time Remaining: {time_remaining_str}
+
+WARNINGS:
+  * The dungeon will close in {time_remaining_str}
+  * If inside when it closes, you'll be teleported out
+  * Your loot and progress will be saved
+  * The dungeon layout regenerates each opening
+
+This dungeon contains:
+  * Randomly generated rooms and layouts
+  * Valuable treasure and rare items
+  * Dangerous traps
+  * Multiple floors of increasing difficulty
+
+---
+
+Do you wish to enter? (yes/no)
+"""
+				# Set pending flag so we wait for yes/no response
+				self.engine.pending_dungeon_entry = {
+					"dungeon_data": exit_info
+				}
+				result += "-" * 60 + "\n"
+			
+			return result
+		
+		except Exception as e:
+			return f"Error accessing dungeon system: {str(e)}"
+
+	def _enter_dungeon(self, dungeon_exit_data):
+		"""
+		Actually enters the dungeon (after yes confirmation).
+		
+		Args:
+			dungeon_exit_data: The exit data containing dungeon info
+		"""
+		try:
+			if not DUNGEON_AVAILABLE:
+				return "The dungeon system is not available."
+			
+			dungeon_id = dungeon_exit_data.get("dungeon_id")
+			transition_text = dungeon_exit_data.get("transition_text", "You enter the dungeon...")
+			
+			result = f"\n{transition_text}\n"
+			
+			# Get the active dungeon instance
+			active_dungeon = get_current_dungeon()
+			
+			if active_dungeon:
+				result += "\n✓ Dungeon generated!\n"
+				
+				# Get entrance room of dungeon
+				entrance_room_id = active_dungeon.get("floor_1", {}).get("entrance_room")
+				
+				if entrance_room_id:
+					# Move player to entrance
+					self.engine.player.current_room = entrance_room_id
+					self._update_map_on_move(entrance_room_id)
+					
+					result += "\n╔════════════════════════════════════════════════════════╗\n"
+					result += "║  You have entered the dungeon!                         ║\n"
+					result += "╚════════════════════════════════════════════════════════╝\n"
+					
+					# Get the room description
+					if entrance_room_id in self.engine.rooms:
+						room = self.engine.rooms[entrance_room_id]
+						result += "\n" + room.describe()
+					else:
+						result += "\n[Dungeon entrance room not found]"
+				else:
+					result += "\n[Error: No entrance room in dungeon]"
+			else:
+				result += "\n[Error: Could not load dungeon instance]"
+			
+			return result
+		
+		except Exception as e:
+			return f"Error entering dungeon: {str(e)}"
+	
+	def _handle_dungeon_entrance_old(self, exit_info):
+		"""OLD BROKEN VERSION - DO NOT USE"""
 	
 	def _describe_exits(self, room, location_type="wilderness"):
 		"""Format exit description based on location type."""
@@ -548,13 +848,87 @@ class CommandHandler:
 			pass
 		return f"You sold 1 {item_name} for {price} gold."
 
+	def _open_map(self):
+		"""Open the live map window."""
+		if not MAP_AVAILABLE:
+			return "Map feature not available. Missing live_map_window module."
+		
+		try:
+			# Create or focus the map window
+			if not self.engine.map_window:
+				root = tk.Tk()
+				# Try to get the tkinter root from GUI if it exists
+				try:
+					# If AdventureGUI has been instantiated, use its root
+					for obj in self.engine.__dict__.values():
+						if hasattr(obj, 'root'):
+							root = obj.root
+							break
+				except:
+					pass
+				
+				self.engine.map_window = LiveMapWindow(root, self.engine.rooms)
+			
+			self.engine.map_window.create_window()
+			
+			# Update map with current player info
+			if self.engine.player and hasattr(self.engine.player, 'visited_rooms'):
+				self.engine.map_window.update_location(
+					self.engine.player.current_room,
+					self.engine.player.visited_rooms
+				)
+			
+			return "Map opened!"
+		except Exception as e:
+			return f"Failed to open map: {e}"
+
+	def _close_map(self):
+		"""Close the live map window."""
+		if self.engine.map_window:
+			self.engine.map_window.close_window()
+			self.engine.map_window = None
+			return "Map closed."
+		return "Map is not open."
+
+	def _show_commands(self):
+		"""Display available player commands."""
+		if DEBUG_AVAILABLE:
+			return show_player_commands()
+		return """Available commands:
+go [direction]     - Move around
+look              - Examine the current room
+take [item]       - Pick up an item
+drop [item]       - Drop an item
+inventory         - Check your inventory
+save              - Save your game
+open map          - Open interactive map
+help              - Show this help
+quit              - Exit the game"""
+
+	def _show_debug_menu(self):
+		"""Display the debug commands menu."""
+		if DEBUG_AVAILABLE:
+			return handle_debug_commands(self.engine, [])
+		return "Debug commands not available."
+
+	def _handle_debug_command(self, args):
+		"""Handle a debug command."""
+		if not DEBUG_AVAILABLE:
+			return "Debug commands not available. Missing debug_commands module."
+		
+		try:
+			return handle_debug_commands(self.engine, args)
+		except Exception as e:
+			return f"Debug command error: {e}"
+
 
 class GameEngine:
 	"""Main engine: loads world, manages game state, save/load functionality.
 	All public methods return strings to be displayed by the UI.
 	"""
-	def __init__(self, world_file=WORLD_FILE):
+	def __init__(self, world_file=WORLD_FILE, root=None):
 		self.world_file = world_file
+		self.root = root
 		self.rooms = {}  # name -> Room
 		self.player = None
 		self.cmd = None
@@ -569,7 +943,14 @@ class GameEngine:
 		self._inventory_changed = False
 		# item worth mapping (item_name -> int gold)
 		self.item_worth = {}
+		# map window for live display
+		self.map_window = None
+		# Track pending dungeon entry confirmation
+		self.pending_dungeon_entry = None
 		self.load_world()
+		# Set up graceful shutdown handler if root provided
+		if self.root:
+			self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
 	def load_world(self):
 		# If world file does not exist, create a sample (so users can edit it without touching code)
@@ -726,6 +1107,37 @@ class GameEngine:
 		# ensure item_worth exists even if not in file
 		self.item_worth = getattr(self, "item_worth", {}) or {}
 
+	def on_closing(self):
+		"""
+		Called when user clicks X button on window.
+		Saves game and shuts down gracefully.
+		"""
+		print("\n╔════════════════════════════════════════╗")
+		print("║  Closing game. Saving progress...    ║")
+		print("╚════════════════════════════════════════╝")
+		
+		# Save game
+		try:
+			self.save_game()
+			print("Game saved successfully.")
+		except Exception as e:
+			print(f"Could not save game: {e}")
+		
+		# Close map window if open
+		if self.map_window:
+			try:
+				if self.map_window.is_open():
+					self.map_window.close_window()
+			except Exception:
+				pass
+		
+		# Destroy window
+		if self.root:
+			self.root.destroy()
+		
+		print("\nGoodbye!\n")
+		sys.exit(0)
+
 	def new_game(self):
 		if not self.start_room:
 			return "No start room defined."
@@ -745,6 +1157,9 @@ class GameEngine:
 		self.should_quit = False
 		# reset inventory-changed flag
 		self._inventory_changed = True
+		# Initialize map window if available
+		if MAP_AVAILABLE and not self.map_window:
+			pass  # Map will be created when 'open map' command is used
 		out = []
 		out.append("Starting new game...")
 		out.append(self.rooms[self.player.current_room].describe())
@@ -994,7 +1409,7 @@ class AdventureGUI:
 	def _init_engine(self):
 		"""Initialize GameEngine after the GUI has been drawn to avoid startup delay."""
 		try:
-			self.engine = GameEngine()
+			self.engine = GameEngine(root=self.root)
 		except Exception as e:
 			messagebox.showerror("Error", str(e))
 			self.root.destroy()
@@ -1494,10 +1909,46 @@ class AdventureGUI:
 
 
 def main():
-	# Start GUI directly (no console interaction)
-	root = tk.Tk()
-	app = AdventureGUI(root)
-	root.mainloop()
+	"""
+	Main game loop with proper exception handling.
+	"""
+	try:
+		# Start GUI
+		root = tk.Tk()
+		app = AdventureGUI(root)
+		root.mainloop()
+		
+	except KeyboardInterrupt:
+		print("\n\n╔════════════════════════════════════════╗")
+		print("║ Game interrupted. Saving progress...  ║")
+		print("╚════════════════════════════════════════╝")
+		
+		# Try to save game state
+		try:
+			if hasattr(app, 'engine') and app.engine:
+				app.engine.save_game()
+				print("Game saved successfully.")
+		except Exception:
+			print("Could not save game.")
+		
+		print("\nGoodbye!\n")
+		sys.exit(0)
+		
+	except Exception as e:
+		print(f"\nCRITICAL ERROR: {e}")
+		print("The game has encountered an unexpected error.")
+		
+		# Try to save
+		try:
+			if 'app' in locals() and hasattr(app, 'engine') and app.engine:
+				app.engine.save_game()
+				print("Game state saved before exit.")
+		except Exception:
+			pass
+		
+		import traceback
+		traceback.print_exc()
+		sys.exit(1)
 
 
 if __name__ == "__main__":
