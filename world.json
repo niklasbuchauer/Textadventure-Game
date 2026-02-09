@@ -2,966 +2,408 @@
   "start_room": "clearing",
   "rooms": {
     "clearing": {
-      "description": "You are in a small clearing surrounded by tall trees. A path leads east to a village.",
-      "exits": {
-        "east": {
-          "target": "village",
-          "type": "direction"
-        },
-        "north": {
-          "target": "pond",
-          "type": "direction"
-        }
-      },
-      "items": {
-        "bronze coin": 1,
-        "gold coin": 1
-      },
-      "actions": {
-        "sit": {
-          "response": "You sit on the soft grass and rest for a moment."
-        }
-      },
+      "id": "clearing",
+      "name": "Forest Clearing",
+      "description": "You stand in a peaceful clearing surrounded by tall trees. Sunlight filters through the canopy above. Well-worn paths lead in several directions.",
       "location_type": "wilderness",
-      "npcs": []
-    },
-    "village": {
-      "description": "A tiny village with a single cottage. The cottage might contain something useful.",
-      "exits": {
-        "west": {
-          "target": "clearing",
-          "type": "direction"
-        }
-      },
+      "coordinates": [0, 0],
       "items": {},
-      "actions": {
-        "enter cottage": {
-          "response": "You peek inside the cottage and see a rusty key on a table. You take the rusty key.",
-          "add_item": [
-            "rusty key"
-          ],
-          "add_target": "player"
-        }
-      },
+      "exits": {
+        "north": {"target": "forest_path", "type": "direction"},
+        "east": {"target": "village_road", "type": "direction"},
+        "south": {"target": "river_path", "type": "direction"},
+        "west": {"target": "swamp_trail", "type": "direction"}
+      }
+    },
+    "forest_path": {
+      "id": "forest_path",
+      "name": "Forest Path",
+      "description": "A narrow dirt path winds through dense forest. Birds chirp overhead and small animals rustle in the undergrowth.",
       "location_type": "wilderness",
-      "npcs": []
-    },
-    "pond": {
-      "description": "A peaceful pond. There's a small wooden chest tucked near the reeds.",
-      "exits": {
-        "south": {
-          "target": "clearing",
-          "type": "direction"
-        },
-        "east": {
-          "target": "forest hut",
-          "type": "direction"
-        }
-      },
+      "coordinates": [0, 1],
       "items": {
-        "old coin": 1
+        "stick": {"quantity": 2, "value": 1}
       },
-      "actions": {
-        "open chest": {
-          "response": "The chest is locked. Maybe a key would help.",
-          "remove_item": [],
-          "add_item": []
-        },
-        "unlock chest": {
-          "response": "You use the rusty key to unlock the chest. Inside you find a silver ring and take it.",
-          "remove_item": [
-            "rusty key"
-          ],
-          "remove_target": "player",
-          "add_item": [
-            "silver ring"
-          ],
-          "add_target": "player"
-        }
-      },
+      "exits": {
+        "south": {"target": "clearing", "type": "direction"},
+        "north": {"target": "deep_forest", "type": "direction"},
+        "east": {"target": "forest_grove", "type": "direction"}
+      }
+    },
+    "deep_forest": {
+      "id": "deep_forest",
+      "name": "Deep Forest",
+      "description": "The forest grows darker here. Ancient trees tower above you, their branches blocking most of the sunlight. The air is cool and damp.",
       "location_type": "wilderness",
-      "npcs": []
-    },
-    "forest hut": {
-      "description": "U see a small wooden hut in the middle of the forest. It looks spooky and u are not sure if u want to enter it",
-      "exits": {
-        "south": {
-          "target": "pond",
-          "type": "direction"
-        }
-      },
+      "coordinates": [0, 2],
       "items": {
-        "golden ring": 1
+        "mushroom": {"quantity": 3, "value": 5}
       },
-      "actions": {
-        "enter hut": {
-          "text": "u take a look inside the hut. U see a golden ring on the table in the middle of the room and it has a big glowing stone on it. U wonder what it could be for ?"
-        }
-      },
+      "exits": {
+        "south": {"target": "forest_path", "type": "direction"},
+        "north": {"target": "ancient_grove", "type": "direction"},
+        "west": {"target": "dungeon_forest_entrance", "type": "direction"}
+      }
+    },
+    "dungeon_forest_entrance": {
+      "id": "dungeon_forest_entrance",
+      "name": "Dark Cave Entrance",
+      "description": "A foreboding cave mouth opens in the side of a moss-covered hill. Strange energy pulses from within. Ancient runes are carved into the stone archway.",
       "location_type": "wilderness",
-      "npcs": []
-    },
-    "1000": {
-      "name": "Dungeon Cell 1",
-      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
-      "location_type": "building",
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
-      },
-      "npcs": [],
-      "actions": {
-        "examine bars": {
-          "text": "The bars are rusted but still solid. They won't be easy to break."
-        }
-      },
+      "coordinates": [-1, 2],
+      "items": {},
       "exits": {
-        "south": {
-          "target": "1003",
-          "type": "direction"
-        },
-        "east": {
-          "target": "1001",
-          "type": "direction"
+        "east": {"target": "deep_forest", "type": "direction"},
+        "enter": {
+          "target": "DYNAMIC",
+          "type": "time_gated_dungeon",
+          "dungeon_id": "shifting_depths",
+          "schedule": "every_3h_for_1h",
+          "transition_text": "You descend into the dark depths of the dungeon..."
         }
       }
     },
-    "1001": {
-      "name": "Dungeon Cell 2",
-      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
-      "location_type": "building",
+    "ancient_grove": {
+      "id": "ancient_grove",
+      "name": "Ancient Grove",
+      "description": "Massive, impossibly old trees form a natural cathedral. Shafts of golden light pierce the canopy. This place feels sacred and timeless.",
+      "location_type": "wilderness",
+      "coordinates": [0, 3],
       "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
-      },
-      "npcs": [],
-      "actions": {
-        "examine bars": {
-          "text": "The bars are rusted but still solid. They won't be easy to break."
-        }
+        "ancient_acorn": {"quantity": 1, "value": 50}
       },
       "exits": {
-        "south": {
-          "target": "1004",
-          "type": "direction"
-        },
-        "east": {
-          "target": "1002",
-          "type": "direction"
-        },
-        "west": {
-          "target": "1000",
-          "type": "direction"
-        }
+        "south": {"target": "deep_forest", "type": "direction"}
       }
     },
-    "1002": {
-      "name": "Dungeon Cell 3",
-      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
-      "location_type": "building",
+    "forest_grove": {
+      "id": "forest_grove",
+      "name": "Sunny Grove",
+      "description": "A pleasant grove where wildflowers grow in abundance. Butterflies flit between blossoms. This is a peaceful spot.",
+      "location_type": "wilderness",
+      "coordinates": [1, 1],
       "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
-      },
-      "npcs": [],
-      "actions": {
-        "examine bars": {
-          "text": "The bars are rusted but still solid. They won't be easy to break."
-        }
+        "wildflower": {"quantity": 5, "value": 2}
       },
       "exits": {
-        "south": {
-          "target": "1005",
-          "type": "direction"
-        },
-        "west": {
-          "target": "1001",
-          "type": "direction"
-        }
+        "west": {"target": "forest_path", "type": "direction"},
+        "east": {"target": "village_outskirts", "type": "direction"}
       }
     },
-    "1003": {
-      "name": "Dungeon Cell 4",
-      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
-      "location_type": "building",
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
-      },
-      "npcs": [],
-      "actions": {
-        "examine bars": {
-          "text": "The bars are rusted but still solid. They won't be easy to break."
-        }
-      },
+    "village_road": {
+      "id": "village_road",
+      "name": "Village Road",
+      "description": "A well-maintained road of packed earth leads toward a small village. You can see smoke rising from chimneys in the distance.",
+      "location_type": "transition",
+      "coordinates": [1, 0],
+      "items": {},
       "exits": {
-        "north": {
-          "target": "1000",
-          "type": "direction"
-        },
-        "south": {
-          "target": "1006",
-          "type": "direction"
-        },
-        "east": {
-          "target": "1004",
-          "type": "direction"
-        }
+        "west": {"target": "clearing", "type": "direction"},
+        "east": {"target": "village_square", "type": "direction"}
       }
     },
-    "1004": {
-      "name": "Dungeon Cell 5",
-      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
-      "location_type": "building",
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
-      },
-      "npcs": [],
-      "actions": {
-        "examine bars": {
-          "text": "The bars are rusted but still solid. They won't be easy to break."
-        }
-      },
-      "exits": {
-        "north": {
-          "target": "1001",
-          "type": "direction"
-        },
-        "south": {
-          "target": "1007",
-          "type": "direction"
-        },
-        "east": {
-          "target": "1005",
-          "type": "direction"
-        },
-        "west": {
-          "target": "1003",
-          "type": "direction"
-        }
-      }
-    },
-    "1005": {
-      "name": "Dungeon Cell 6",
-      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
-      "location_type": "building",
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
-      },
-      "npcs": [],
-      "actions": {
-        "examine bars": {
-          "text": "The bars are rusted but still solid. They won't be easy to break."
-        }
-      },
-      "exits": {
-        "north": {
-          "target": "1002",
-          "type": "direction"
-        },
-        "south": {
-          "target": "1008",
-          "type": "direction"
-        },
-        "west": {
-          "target": "1004",
-          "type": "direction"
-        }
-      }
-    },
-    "1006": {
-      "name": "Dungeon Cell 7",
-      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
-      "location_type": "building",
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
-      },
-      "npcs": [],
-      "actions": {
-        "examine bars": {
-          "text": "The bars are rusted but still solid. They won't be easy to break."
-        }
-      },
-      "exits": {
-        "north": {
-          "target": "1003",
-          "type": "direction"
-        },
-        "east": {
-          "target": "1007",
-          "type": "direction"
-        }
-      }
-    },
-    "1007": {
-      "name": "Dungeon Cell 8",
-      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
-      "location_type": "building",
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
-      },
-      "npcs": [],
-      "actions": {
-        "examine bars": {
-          "text": "The bars are rusted but still solid. They won't be easy to break."
-        }
-      },
-      "exits": {
-        "north": {
-          "target": "1004",
-          "type": "direction"
-        },
-        "east": {
-          "target": "1008",
-          "type": "direction"
-        },
-        "west": {
-          "target": "1006",
-          "type": "direction"
-        }
-      }
-    },
-    "1008": {
-      "name": "Dungeon Cell 9",
-      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
-      "location_type": "building",
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
-      },
-      "npcs": [],
-      "actions": {
-        "examine bars": {
-          "text": "The bars are rusted but still solid. They won't be easy to break."
-        }
-      },
-      "exits": {
-        "north": {
-          "target": "1005",
-          "type": "direction"
-        },
-        "west": {
-          "target": "1007",
-          "type": "direction"
-        }
-      }
-    },
-    "example_inn": {
-      "name": "The Weary Traveler Inn",
-      "description": "A cozy inn with a warm hearth and the smell of stew.",
-      "location_type": "building",
-      "items": {
-        "ale": 5,
-        "bread": 3,
-        "bed": 2,
-        "torch": 1
-      },
-      "npcs": [
-        "innkeeper"
-      ],
-      "actions": {
-        "order food": {
-          "text": "The innkeeper brings you hearty stew."
-        },
-        "sleep": {
-          "text": "You rest on a comfortable bed."
-        }
-      },
-      "exits": {
-        "outside": {
-          "target": "example_town_square",
-          "type": "named",
-          "display": "Back to Town Square"
-        }
-      }
-    },
-    "example_town_square": {
-      "name": "Town Square",
-      "description": "The bustling heart of the town. Merchants and townspeople mingle.",
+    "village_square": {
+      "id": "village_square",
+      "name": "Village Square",
+      "description": "The heart of the village. A stone well sits in the center of the square. Villagers go about their daily business. Cobblestone paths lead to various buildings.",
       "location_type": "settlement",
-      "items": {
-        "fountain": 1
-      },
-      "npcs": [
-        "guard",
-        "merchant"
-      ],
-      "actions": {
-        "drink fountain": {
-          "text": "Cool, refreshing water."
-        }
-      },
+      "coordinates": [2, 0],
+      "items": {},
+      "npcs": ["town_crier", "merchant"],
       "exits": {
-        "inn": {
-          "target": "example_inn",
+        "west": {"target": "village_road", "type": "direction"},
+        "north": {"target": "village_outskirts", "type": "direction"},
+        "tavern": {
+          "target": "village_tavern",
           "type": "named",
-          "display": "The Weary Traveler Inn",
-          "transition_text": "You walk toward the inn on the north side of the square."
-        }
-      }
-    },
-    "example_tavern_1": {
-      "name": "The The Golden Dragon",
-      "description": "A cozy tavern with wooden tables, flickering candles, and the warm aroma of roasted meat and ale. A roaring fireplace dominates one wall.",
-      "location_type": "building",
-      "items": {
-        "chair": 4,
-        "table": 2,
-        "mug": 3,
-        "torch": 1
-      },
-      "npcs": [
-        "bartender",
-        "patron"
-      ],
-      "actions": {
-        "order_drink": {
-          "text": "You order a drink from the barkeep."
+          "display": "The Golden Tankard Tavern"
         },
-        "sit": {
-          "text": "You take a seat at a wooden table."
-        }
-      },
-      "exits": {}
-    },
-    "example_tavern_2": {
-      "name": "The The Silver Stag",
-      "description": "A cozy tavern with wooden tables, flickering candles, and the warm aroma of roasted meat and ale. A roaring fireplace dominates one wall.",
-      "location_type": "building",
-      "items": {
-        "chair": 4,
-        "table": 2,
-        "mug": 3,
-        "torch": 1
-      },
-      "npcs": [
-        "bartender",
-        "patron"
-      ],
-      "actions": {
-        "order_drink": {
-          "text": "You order a drink from the barkeep."
-        },
-        "sit": {
-          "text": "You take a seat at a wooden table."
-        }
-      },
-      "exits": {}
-    },
-    "example_forest_north": {
-      "name": "Deep Forest - North",
-      "description": "Tall trees surround you, their branches forming a dense canopy above. Sunlight filters through in scattered beams. The air smells of pine and damp earth. Birds call from unseen perches.",
-      "location_type": "wilderness",
-      "items": {
-        "mushroom": 2,
-        "stick": 1,
-        "berry": 3
-      },
-      "npcs": [],
-      "actions": {
-        "examine plants": {
-          "text": "You examine the various plants and fungi around you. Many look edible, some dangerous."
-        }
-      },
-      "exits": {}
-    },
-    "example_forest_east": {
-      "name": "Deep Forest - East",
-      "description": "Tall trees surround you, their branches forming a dense canopy above. Sunlight filters through in scattered beams. The air smells of pine and damp earth. Birds call from unseen perches.",
-      "location_type": "wilderness",
-      "items": {
-        "mushroom": 2,
-        "stick": 1,
-        "berry": 3
-      },
-      "npcs": [],
-      "actions": {
-        "examine plants": {
-          "text": "You examine the various plants and fungi around you. Many look edible, some dangerous."
-        }
-      },
-      "exits": {}
-    },
-    "example_forest_south": {
-      "name": "Deep Forest - South",
-      "description": "Tall trees surround you, their branches forming a dense canopy above. Sunlight filters through in scattered beams. The air smells of pine and damp earth. Birds call from unseen perches.",
-      "location_type": "wilderness",
-      "items": {
-        "mushroom": 2,
-        "stick": 1,
-        "berry": 3
-      },
-      "npcs": [],
-      "actions": {
-        "examine plants": {
-          "text": "You examine the various plants and fungi around you. Many look edible, some dangerous."
-        }
-      },
-      "exits": {}
-    },
-    "4000": {
-      "name": "Dungeon Cell 1",
-      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
-      "location_type": "building",
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5,
-        "crystal": 1
-      },
-      "npcs": [],
-      "actions": {
-        "examine bars": {
-          "text": "The bars are rusted but still solid. They won't be easy to break."
-        }
-      },
-      "exits": {
-        "south": {
-          "target": "4003",
-          "type": "direction"
-        },
-        "east": {
-          "target": "4001",
-          "type": "direction"
-        }
-      }
-    },
-    "4001": {
-      "name": "Dungeon Cell 2",
-      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
-      "location_type": "building",
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5,
-        "crystal": 1
-      },
-      "npcs": [],
-      "actions": {
-        "examine bars": {
-          "text": "The bars are rusted but still solid. They won't be easy to break."
-        }
-      },
-      "exits": {
-        "south": {
-          "target": "4004",
-          "type": "direction"
-        },
-        "east": {
-          "target": "4002",
-          "type": "direction"
-        },
-        "west": {
-          "target": "4000",
-          "type": "direction"
-        }
-      }
-    },
-    "4002": {
-      "name": "Dungeon Cell 3",
-      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
-      "location_type": "building",
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5,
-        "crystal": 1
-      },
-      "npcs": [],
-      "actions": {
-        "examine bars": {
-          "text": "The bars are rusted but still solid. They won't be easy to break."
-        }
-      },
-      "exits": {
-        "south": {
-          "target": "4005",
-          "type": "direction"
-        },
-        "west": {
-          "target": "4001",
-          "type": "direction"
-        }
-      }
-    },
-    "4003": {
-      "name": "Dungeon Cell 4",
-      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
-      "location_type": "building",
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
-      },
-      "npcs": [],
-      "actions": {
-        "examine bars": {
-          "text": "The bars are rusted but still solid. They won't be easy to break."
-        }
-      },
-      "exits": {
-        "north": {
-          "target": "4000",
-          "type": "direction"
-        },
-        "south": {
-          "target": "4006",
-          "type": "direction"
-        },
-        "east": {
-          "target": "4004",
-          "type": "direction"
-        }
-      }
-    },
-    "4004": {
-      "name": "Dungeon Cell 5",
-      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
-      "location_type": "building",
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
-      },
-      "npcs": [],
-      "actions": {
-        "examine bars": {
-          "text": "The bars are rusted but still solid. They won't be easy to break."
-        }
-      },
-      "exits": {
-        "north": {
-          "target": "4001",
-          "type": "direction"
-        },
-        "south": {
-          "target": "4007",
-          "type": "direction"
-        },
-        "east": {
-          "target": "4005",
-          "type": "direction"
-        },
-        "west": {
-          "target": "4003",
-          "type": "direction"
-        }
-      }
-    },
-    "4005": {
-      "name": "Dungeon Cell 6",
-      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
-      "location_type": "building",
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
-      },
-      "npcs": [],
-      "actions": {
-        "examine bars": {
-          "text": "The bars are rusted but still solid. They won't be easy to break."
-        }
-      },
-      "exits": {
-        "north": {
-          "target": "4002",
-          "type": "direction"
-        },
-        "south": {
-          "target": "4008",
-          "type": "direction"
-        },
-        "west": {
-          "target": "4004",
-          "type": "direction"
-        }
-      }
-    },
-    "4006": {
-      "name": "Dungeon Cell 7",
-      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
-      "location_type": "building",
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
-      },
-      "npcs": [],
-      "actions": {
-        "examine bars": {
-          "text": "The bars are rusted but still solid. They won't be easy to break."
-        }
-      },
-      "exits": {
-        "north": {
-          "target": "4003",
-          "type": "direction"
-        },
-        "east": {
-          "target": "4007",
-          "type": "direction"
-        }
-      }
-    },
-    "4007": {
-      "name": "Dungeon Cell 8",
-      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
-      "location_type": "building",
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
-      },
-      "npcs": [],
-      "actions": {
-        "examine bars": {
-          "text": "The bars are rusted but still solid. They won't be easy to break."
-        }
-      },
-      "exits": {
-        "north": {
-          "target": "4004",
-          "type": "direction"
-        },
-        "east": {
-          "target": "4008",
-          "type": "direction"
-        },
-        "west": {
-          "target": "4006",
-          "type": "direction"
-        }
-      }
-    },
-    "4008": {
-      "name": "Dungeon Cell 9",
-      "description": "A cramped stone cell with damp, slimy walls. Water drips from cracks in the ceiling. The air is thick with moisture and the smell of mildew. Iron bars form one wall, leading to a dark corridor beyond.",
-      "location_type": "building",
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
-      },
-      "npcs": [],
-      "actions": {
-        "examine bars": {
-          "text": "The bars are rusted but still solid. They won't be easy to break."
-        }
-      },
-      "exits": {
-        "north": {
-          "target": "4005",
-          "type": "direction"
-        },
-        "west": {
-          "target": "4007",
-          "type": "direction"
-        }
-      }
-    },
-    "example_tavern_copy": {
-      "name": "The The Golden Dragon",
-      "description": "A cozy tavern with wooden tables, flickering candles, and the warm aroma of roasted meat and ale. A roaring fireplace dominates one wall.",
-      "location_type": "building",
-      "items": {
-        "chair": 4,
-        "table": 2,
-        "mug": 3,
-        "torch": 1
-      },
-      "npcs": [
-        "bartender",
-        "patron"
-      ],
-      "actions": {
-        "order_drink": {
-          "text": "You order a drink from the barkeep."
-        },
-        "sit": {
-          "text": "You take a seat at a wooden table."
-        }
-      },
-      "exits": {}
-    },
-    "example_apothecary": {
-      "name": "The Apothecary",
-      "description": "A well-stocked shop with shelves of wares.",
-      "location_type": "building",
-      "items": {
-        "potion": 5,
-        "scroll": 3,
-        "gem": 2,
-        "torch": 1
-      },
-      "npcs": [
-        "shopkeeper"
-      ],
-      "actions": {
-        "browse": {
-          "text": "Fine goods at reasonable prices."
-        },
-        "buy potion": {
-          "text": "You purchase a potion."
-        }
-      },
-      "exits": {}
-    },
-    "example_market_square": {
-      "name": "Market Square",
-      "description": "A bustling marketplace with colorful stalls and merchants hawking wares.",
-      "location_type": "settlement",
-      "items": {
-        "basket": 3,
-        "apple": 10
-      },
-      "npcs": [
-        "merchant",
-        "customer"
-      ],
-      "actions": {
-        "browse stalls": {
-          "text": "You browse the many goods on offer."
-        }
-      },
-      "exits": {
-        "apothecary": {
-          "target": "example_shop_1",
-          "type": "named",
-          "display": "The Apothecary"
-        },
-        "armory": {
-          "target": "example_shop_2",
-          "type": "named",
-          "display": "The Armory"
-        },
-        "store": {
-          "target": "example_shop_3",
+        "shop": {
+          "target": "village_shop",
           "type": "named",
           "display": "General Store"
         },
-        "forest": {
-          "target": "example_forest_north",
-          "type": "direction",
-          "transition_text": "You leave the market and enter the forest."
+        "blacksmith": {
+          "target": "village_blacksmith",
+          "type": "named",
+          "display": "Blacksmith's Forge"
         }
       }
     },
-    "example_shop_1": {
-      "name": "The Apothecary",
-      "description": "A well-stocked shop with shelves of wares.",
+    "village_tavern": {
+      "id": "village_tavern",
+      "name": "The Golden Tankard",
+      "description": "A cozy tavern filled with the smell of roasted meat and ale. Wooden tables and chairs are occupied by locals sharing stories. A fire crackles in the hearth.",
       "location_type": "building",
+      "coordinates": [2, 1],
       "items": {
-        "potion": 5,
-        "scroll": 3,
-        "gem": 2,
-        "torch": 1
+        "ale_mug": {"quantity": 1, "value": 3}
       },
-      "npcs": [
-        "shopkeeper"
-      ],
-      "actions": {
-        "browse": {
-          "text": "Fine goods at reasonable prices."
-        },
-        "buy potion": {
-          "text": "You purchase a potion."
-        }
-      },
+      "npcs": ["bartender", "patron"],
       "exits": {
-        "market": {
-          "target": "example_market_square",
+        "outside": {
+          "target": "village_square",
           "type": "named",
-          "display": "Back to Market Square"
+          "display": "Village Square"
         }
       }
     },
-    "example_shop_2": {
-      "name": "The Armory",
-      "description": "A well-stocked shop with shelves of wares.",
+    "village_shop": {
+      "id": "village_shop",
+      "name": "General Store",
+      "description": "Shelves lined with goods of all kinds. The shopkeeper watches carefully from behind the counter. You can buy and sell items here.",
       "location_type": "building",
-      "items": {
-        "potion": 5,
-        "scroll": 3,
-        "gem": 2,
-        "torch": 1
-      },
-      "npcs": [
-        "shopkeeper"
-      ],
-      "actions": {
-        "browse": {
-          "text": "Fine goods at reasonable prices."
-        },
-        "buy potion": {
-          "text": "You purchase a potion."
-        }
-      },
+      "coordinates": [3, 0],
+      "items": {},
+      "npcs": ["shopkeeper"],
+      "shop": true,
       "exits": {
-        "market": {
-          "target": "example_market_square",
+        "outside": {
+          "target": "village_square",
           "type": "named",
-          "display": "Back to Market Square"
+          "display": "Village Square"
         }
       }
     },
-    "example_shop_3": {
-      "name": "The General Store",
-      "description": "A well-stocked shop with shelves of wares.",
+    "village_blacksmith": {
+      "id": "village_blacksmith",
+      "name": "Blacksmith's Forge",
+      "description": "The heat from the forge is intense. The blacksmith hammers away at red-hot metal on an anvil. Weapons and armor hang on the walls.",
       "location_type": "building",
+      "coordinates": [2, -1],
       "items": {
-        "potion": 5,
-        "scroll": 3,
-        "gem": 2,
-        "torch": 1
+        "iron_ingot": {"quantity": 1, "value": 20}
       },
-      "npcs": [
-        "shopkeeper"
-      ],
-      "actions": {
-        "browse": {
-          "text": "Fine goods at reasonable prices."
-        },
-        "buy potion": {
-          "text": "You purchase a potion."
+      "npcs": ["blacksmith"],
+      "exits": {
+        "outside": {
+          "target": "village_square",
+          "type": "named",
+          "display": "Village Square"
         }
+      }
+    },
+    "village_outskirts": {
+      "id": "village_outskirts",
+      "name": "Village Outskirts",
+      "description": "The edge of the village. Simple wooden houses with thatched roofs line a dirt road. Beyond, you can see farmland and wilderness.",
+      "location_type": "settlement",
+      "coordinates": [2, 1],
+      "items": {},
+      "exits": {
+        "south": {"target": "village_square", "type": "direction"},
+        "west": {"target": "forest_grove", "type": "direction"},
+        "east": {"target": "mountain_foothills", "type": "direction"}
+      }
+    },
+    "mountain_foothills": {
+      "id": "mountain_foothills",
+      "name": "Mountain Foothills",
+      "description": "Rolling hills mark the beginning of the mountain range. Rocky outcrops become more frequent. The path begins to climb.",
+      "location_type": "wilderness",
+      "coordinates": [3, 1],
+      "items": {
+        "smooth_stone": {"quantity": 3, "value": 8}
       },
       "exits": {
-        "market": {
-          "target": "example_market_square",
-          "type": "named",
-          "display": "Back to Market Square"
+        "west": {"target": "village_outskirts", "type": "direction"},
+        "north": {"target": "mountain_path", "type": "direction"}
+      }
+    },
+    "mountain_path": {
+      "id": "mountain_path",
+      "name": "Mountain Path",
+      "description": "A narrow trail winds up the mountainside. The air grows thinner and colder. Far below, you can see the village and forest.",
+      "location_type": "wilderness",
+      "coordinates": [3, 2],
+      "items": {},
+      "exits": {
+        "south": {"target": "mountain_foothills", "type": "direction"},
+        "north": {"target": "mountain_peak", "type": "direction"},
+        "west": {"target": "dungeon_mountain_entrance", "type": "direction"}
+      }
+    },
+    "dungeon_mountain_entrance": {
+      "id": "dungeon_mountain_entrance",
+      "name": "Ancient Mountain Gate",
+      "description": "Massive stone doors are set into the mountainside. Dwarven runes glow faintly around the frame. This entrance leads to deep halls carved long ago.",
+      "location_type": "wilderness",
+      "coordinates": [2, 2],
+      "items": {},
+      "exits": {
+        "east": {"target": "mountain_path", "type": "direction"},
+        "enter": {
+          "target": "DYNAMIC",
+          "type": "time_gated_dungeon",
+          "dungeon_id": "mountain_halls",
+          "schedule": "every_3h_for_1h",
+          "transition_text": "You pass through the ancient gates into the mountain halls..."
+        }
+      }
+    },
+    "mountain_peak": {
+      "id": "mountain_peak",
+      "name": "Mountain Peak",
+      "description": "The summit! Cold wind whips around you. The view is breathtaking - you can see the entire region spread out below. Clouds drift past at eye level.",
+      "location_type": "wilderness",
+      "coordinates": [3, 3],
+      "items": {
+        "eagle_feather": {"quantity": 1, "value": 35}
+      },
+      "exits": {
+        "south": {"target": "mountain_path", "type": "direction"}
+      }
+    },
+    "swamp_trail": {
+      "id": "swamp_trail",
+      "name": "Swamp Trail",
+      "description": "The ground becomes soft and muddy. Twisted trees with hanging moss appear. The air smells of decay and stagnant water.",
+      "location_type": "wilderness",
+      "coordinates": [-1, 0],
+      "items": {},
+      "exits": {
+        "east": {"target": "clearing", "type": "direction"},
+        "west": {"target": "swamp_edge", "type": "direction"}
+      }
+    },
+    "swamp_edge": {
+      "id": "swamp_edge",
+      "name": "Swamp Edge",
+      "description": "Standing water pools between clumps of marsh grass. Insects buzz constantly. You can hear strange croaking sounds deeper in the swamp.",
+      "location_type": "wilderness",
+      "coordinates": [-2, 0],
+      "items": {
+        "swamp_reed": {"quantity": 4, "value": 3}
+      },
+      "exits": {
+        "east": {"target": "swamp_trail", "type": "direction"},
+        "west": {"target": "deep_swamp", "type": "direction"}
+      }
+    },
+    "deep_swamp": {
+      "id": "deep_swamp",
+      "name": "Deep Swamp",
+      "description": "Murky water reaches your knees. Gnarled trees rise from the water like skeletal hands. This place is dangerous and disorienting.",
+      "location_type": "wilderness",
+      "coordinates": [-3, 0],
+      "items": {},
+      "exits": {
+        "east": {"target": "swamp_edge", "type": "direction"},
+        "north": {"target": "witch_hut", "type": "direction"}
+      }
+    },
+    "witch_hut": {
+      "id": "witch_hut",
+      "name": "Decrepit Hut",
+      "description": "A ramshackle hut stands on stilts above the swamp water. Smoke drifts from a crooked chimney. Strange herbs hang drying from the rafters.",
+      "location_type": "building",
+      "coordinates": [-3, 1],
+      "items": {
+        "strange_herb": {"quantity": 2, "value": 25}
+      },
+      "npcs": ["swamp_witch"],
+      "exits": {
+        "south": {"target": "deep_swamp", "type": "direction"}
+      }
+    },
+    "river_path": {
+      "id": "river_path",
+      "name": "River Path",
+      "description": "A path follows alongside a clear, fast-flowing river. You can hear the rush of water over rocks. Trees line the opposite bank.",
+      "location_type": "wilderness",
+      "coordinates": [0, -1],
+      "items": {},
+      "exits": {
+        "north": {"target": "clearing", "type": "direction"},
+        "south": {"target": "riverbank", "type": "direction"}
+      }
+    },
+    "riverbank": {
+      "id": "riverbank",
+      "name": "Riverbank",
+      "description": "The river widens here, flowing more slowly. Smooth stones line the bank. This is a peaceful spot to rest and refill water.",
+      "location_type": "wilderness",
+      "coordinates": [0, -2],
+      "items": {
+        "smooth_pebble": {"quantity": 10, "value": 1}
+      },
+      "exits": {
+        "north": {"target": "river_path", "type": "direction"},
+        "east": {"target": "old_battlefield", "type": "direction"},
+        "south": {"target": "beach", "type": "direction"}
+      }
+    },
+    "beach": {
+      "id": "beach",
+      "name": "Sandy Beach",
+      "description": "The river meets a large lake here. Gentle waves lap at the sandy shore. Seagulls cry overhead.",
+      "location_type": "wilderness",
+      "coordinates": [0, -3],
+      "items": {
+        "seashell": {"quantity": 5, "value": 4}
+      },
+      "exits": {
+        "north": {"target": "riverbank", "type": "direction"},
+        "east": {"target": "old_dock", "type": "direction"}
+      }
+    },
+    "old_dock": {
+      "id": "old_dock",
+      "name": "Abandoned Dock",
+      "description": "Weathered wooden planks extend out over the water. An old, rotting boat is tied to a post. This dock hasn't been used in years.",
+      "location_type": "wilderness",
+      "coordinates": [1, -3],
+      "items": {
+        "old_rope": {"quantity": 1, "value": 6}
+      },
+      "exits": {
+        "west": {"target": "beach", "type": "direction"}
+      }
+    },
+    "old_battlefield": {
+      "id": "old_battlefield",
+      "name": "Old Battlefield",
+      "description": "Rusted weapons and broken shields litter the ground. This was the site of a great battle long ago. The dead rest uneasily here.",
+      "location_type": "wilderness",
+      "coordinates": [1, -2],
+      "items": {
+        "rusty_sword": {"quantity": 1, "value": 12},
+        "broken_shield": {"quantity": 1, "value": 8}
+      },
+      "exits": {
+        "west": {"target": "riverbank", "type": "direction"},
+        "east": {"target": "ancient_ruins", "type": "direction"}
+      }
+    },
+    "ancient_ruins": {
+      "id": "ancient_ruins",
+      "name": "Ancient Ruins",
+      "description": "Crumbling stone walls and fallen pillars mark what was once a grand structure. Vines and moss cover everything. Time has reclaimed this place.",
+      "location_type": "wilderness",
+      "coordinates": [2, -2],
+      "items": {
+        "ancient_brick": {"quantity": 3, "value": 10}
+      },
+      "exits": {
+        "west": {"target": "old_battlefield", "type": "direction"},
+        "down": {"target": "dungeon_ruins_entrance", "type": "direction"}
+      }
+    },
+    "dungeon_ruins_entrance": {
+      "id": "dungeon_ruins_entrance",
+      "name": "Catacombs Entrance",
+      "description": "Stone stairs descend into darkness beneath the ruins. Cold air flows up from below. Ancient tombs and treasures lie in the depths.",
+      "location_type": "wilderness",
+      "coordinates": [2, -3],
+      "items": {},
+      "exits": {
+        "up": {"target": "ancient_ruins", "type": "direction"},
+        "enter": {
+          "target": "DYNAMIC",
+          "type": "time_gated_dungeon",
+          "dungeon_id": "forgotten_catacombs",
+          "schedule": "every_3h_for_1h",
+          "transition_text": "You descend into the forgotten catacombs..."
         }
       }
     }
@@ -1007,10 +449,7 @@
         "table": 2,
         "mug": 3
       },
-      "npcs": [
-        "bartender",
-        "patron"
-      ],
+      "npcs": ["bartender", "patron"],
       "actions": {
         "order_drink": {
           "text": "You order a drink from the barkeep."
@@ -1061,9 +500,7 @@
         "scroll": 3,
         "gem": 2
       },
-      "npcs": [
-        "shopkeeper"
-      ],
+      "npcs": ["shopkeeper"],
       "actions": {
         "browse": {
           "text": "Fine goods at reasonable prices."

@@ -1,275 +1,130 @@
 {
   "player": {
-    "current_room": "forest hut",
-    "inventory": {
-      "golden ring": 1
-    },
+    "current_room": "dungeon_ruins_entrance",
+    "inventory": {},
     "state": {},
     "stats": {
-      "gold": 8,
+      "gold": 0,
       "health": 100
-    }
+    },
+    "visited_rooms": [
+      "ancient_ruins",
+      "clearing",
+      "dungeon_ruins_entrance"
+    ]
   },
   "rooms": {
     "clearing": {
-      "items": {
-        "bronze coin": 1,
-        "gold coin": 1
-      }
-    },
-    "village": {
       "items": {}
     },
-    "pond": {
+    "forest_path": {
       "items": {
-        "old coin": 1
+        "stick": 1
       }
     },
-    "forest hut": {
+    "deep_forest": {
+      "items": {
+        "mushroom": 1
+      }
+    },
+    "dungeon_forest_entrance": {
       "items": {}
     },
-    "1000": {
+    "ancient_grove": {
       "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
+        "ancient_acorn": 1
       }
     },
-    "1001": {
+    "forest_grove": {
       "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
+        "wildflower": 1
       }
     },
-    "1002": {
+    "village_road": {
+      "items": {}
+    },
+    "village_square": {
+      "items": {}
+    },
+    "village_tavern": {
       "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
+        "ale_mug": 1
       }
     },
-    "1003": {
+    "village_shop": {
+      "items": {}
+    },
+    "village_blacksmith": {
       "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
+        "iron_ingot": 1
       }
     },
-    "1004": {
+    "village_outskirts": {
+      "items": {}
+    },
+    "mountain_foothills": {
       "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
+        "smooth_stone": 1
       }
     },
-    "1005": {
+    "mountain_path": {
+      "items": {}
+    },
+    "dungeon_mountain_entrance": {
+      "items": {}
+    },
+    "mountain_peak": {
       "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
+        "eagle_feather": 1
       }
     },
-    "1006": {
+    "swamp_trail": {
+      "items": {}
+    },
+    "swamp_edge": {
       "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
+        "swamp_reed": 1
       }
     },
-    "1007": {
+    "deep_swamp": {
+      "items": {}
+    },
+    "witch_hut": {
       "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
+        "strange_herb": 1
       }
     },
-    "1008": {
+    "river_path": {
+      "items": {}
+    },
+    "riverbank": {
       "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
+        "smooth_pebble": 1
       }
     },
-    "example_inn": {
+    "beach": {
       "items": {
-        "ale": 5,
-        "bread": 3,
-        "bed": 2,
-        "torch": 1
+        "seashell": 1
       }
     },
-    "example_town_square": {
+    "old_dock": {
       "items": {
-        "fountain": 1
+        "old_rope": 1
       }
     },
-    "example_tavern_1": {
+    "old_battlefield": {
       "items": {
-        "chair": 4,
-        "table": 2,
-        "mug": 3,
-        "torch": 1
+        "rusty_sword": 1,
+        "broken_shield": 1
       }
     },
-    "example_tavern_2": {
+    "ancient_ruins": {
       "items": {
-        "chair": 4,
-        "table": 2,
-        "mug": 3,
-        "torch": 1
+        "ancient_brick": 1
       }
     },
-    "example_forest_north": {
-      "items": {
-        "mushroom": 2,
-        "stick": 1,
-        "berry": 3
-      }
-    },
-    "example_forest_east": {
-      "items": {
-        "mushroom": 2,
-        "stick": 1,
-        "berry": 3
-      }
-    },
-    "example_forest_south": {
-      "items": {
-        "mushroom": 2,
-        "stick": 1,
-        "berry": 3
-      }
-    },
-    "4000": {
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5,
-        "crystal": 1
-      }
-    },
-    "4001": {
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5,
-        "crystal": 1
-      }
-    },
-    "4002": {
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5,
-        "crystal": 1
-      }
-    },
-    "4003": {
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
-      }
-    },
-    "4004": {
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
-      }
-    },
-    "4005": {
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
-      }
-    },
-    "4006": {
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
-      }
-    },
-    "4007": {
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
-      }
-    },
-    "4008": {
-      "items": {
-        "chain": 1,
-        "bones": 2,
-        "torch": 1,
-        "gold coin": 5
-      }
-    },
-    "example_tavern_copy": {
-      "items": {
-        "chair": 4,
-        "table": 2,
-        "mug": 3,
-        "torch": 1
-      }
-    },
-    "example_apothecary": {
-      "items": {
-        "potion": 5,
-        "scroll": 3,
-        "gem": 2,
-        "torch": 1
-      }
-    },
-    "example_market_square": {
-      "items": {
-        "basket": 3,
-        "apple": 10
-      }
-    },
-    "example_shop_1": {
-      "items": {
-        "potion": 5,
-        "scroll": 3,
-        "gem": 2,
-        "torch": 1
-      }
-    },
-    "example_shop_2": {
-      "items": {
-        "potion": 5,
-        "scroll": 3,
-        "gem": 2,
-        "torch": 1
-      }
-    },
-    "example_shop_3": {
-      "items": {
-        "potion": 5,
-        "scroll": 3,
-        "gem": 2,
-        "torch": 1
-      }
+    "dungeon_ruins_entrance": {
+      "items": {}
     }
   },
   "item_worth": {
