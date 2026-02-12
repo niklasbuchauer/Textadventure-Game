@@ -4,13 +4,50 @@ import sys
 import tkinter as tk
 from tkinter import simpledialog, messagebox, font
 
-# Dungeon system imports
+# =====================================================================
+# SHOP SYSTEM INITIALIZATION
+# =====================================================================
 try:
-	from dungeon_scheduler import DungeonScheduler, get_scheduler
-	from dungeon_instance import get_current_dungeon, DungeonInstance
+	from shop_system import Shop, Shopkeeper
+	SHOP_AVAILABLE = True
+except Exception as e:
+	SHOP_AVAILABLE = False
+	print(f"[INIT] ⚠ Shop system DISABLED: {e}")
+
+# =====================================================================
+# DUNGEON SYSTEM INITIALIZATION
+# =====================================================================
+# DUNGEON_AVAILABLE is set to True ONLY if all dungeon modules import
+# successfully. Each module is tested independently to provide clear
+# diagnostics if something fails. This is set at module load time and
+# never changes after initialization.
+# =====================================================================
+
+DUNGEON_AVAILABLE: bool = False
+_DUNGEON_IMPORT_ERROR: str = ""
+
+try:
+	# Test dungeon_scheduler module first
+	try:
+		from dungeon_scheduler import DungeonScheduler, get_scheduler
+	except Exception as e:
+		raise ImportError(f"Failed to import dungeon_scheduler: {type(e).__name__}: {e}")
+	
+	# Test dungeon_instance module second
+	try:
+		from dungeon_instance import get_current_dungeon, DungeonInstance
+	except Exception as e:
+		raise ImportError(f"Failed to import dungeon_instance: {type(e).__name__}: {e}")
+	
+	# If we got here, both modules loaded successfully
 	DUNGEON_AVAILABLE = True
-except ImportError:
+	print("[INIT] ✓ Dungeon system initialized (imports successful)")
+	
+except ImportError as e:
+	# One or both dungeon modules failed to import
 	DUNGEON_AVAILABLE = False
+	_DUNGEON_IMPORT_ERROR = str(e)
+	print(f"[INIT] ⚠ Dungeon system DISABLED: {_DUNGEON_IMPORT_ERROR}")
 
 # Map and debug system imports
 try:
@@ -163,7 +200,9 @@ class CommandHandler:
 			return self._perform_global_command(effect)
 
 		# check for room-specific action (exact command match)
-		room = self.engine.rooms[self.engine.player.current_room]
+		room = self.engine.get_room_data(self.engine.player.current_room)
+		if not room:
+			return "[Room not found - game state error]"
 		if cmd in room.actions:
 			effect = room.actions[cmd]
 			ok, msg = self._check_conditions(effect.get("conditions", {}))
@@ -217,6 +256,40 @@ class CommandHandler:
 			if not args:
 				return "Sell what?"
 			return self._sell(" ".join(args))
+		
+		# Shop commands
+		if verb == "shop":
+			if not args:
+				return self._shop_help()
+			subcommand = args[0].lower()
+			if subcommand == "browse" or subcommand == "view" or subcommand == "inventory":
+				return self._shop_browse()
+			elif subcommand == "buy":
+				if len(args) < 2:
+					return "Buy what? (Usage: shop buy <item_name>)"
+				item_name = " ".join(args[1:]).lower()
+				return self._shop_buy(item_name)
+			elif subcommand == "sell":
+				if len(args) < 3:
+					return "Usage: shop sell <item_name> <gold_amount>"
+				item_name = " ".join(args[1:-1]).lower()
+				try:
+					price = int(args[-1])
+				except ValueError:
+					return "Price must be a number."
+				return self._shop_sell(item_name, price)
+			elif subcommand == "talk":
+				return self._shop_talk()
+			elif subcommand == "info":
+				return self._shop_info()
+			else:
+				return self._shop_help()
+		
+		if verb == "talk":
+			if len(args) >= 2 and args[0].lower() == "to" and args[1].lower() == "shopkeeper":
+				return self._shop_talk()
+			return "Talk to whom?"
+		
 		# Map commands
 		if verb == "open":
 			if args and args[0].lower() == "map":
@@ -289,10 +362,11 @@ class CommandHandler:
 			new_room = effect["move_to"]
 			if new_room in self.engine.rooms:
 				self.engine.player.current_room = new_room
-				parts.append(self.engine.rooms[new_room].describe())
+			room = self.engine.get_room_data(new_room)
+			if room:
+				parts.append(room.describe())
 			else:
-				parts.append(f"Cannot move to {new_room} (unknown room).")
-
+				parts.append("[Room not found]")
 		# notify engine that inventory changed so UI can refresh
 		if inv_changed:
 			try:
@@ -358,7 +432,9 @@ class CommandHandler:
 		if self.engine.player.state.get("sitting"):
 			return "You need to stand up first."
 		
-		room = self.engine.rooms[self.engine.player.current_room]
+		room = self.engine.get_room_data(self.engine.player.current_room)
+		if not room:
+			return "[Current room not found]"
 		exits = room.exits
 		
 		# Handle old-style exits (backward compatibility): "exits": {"north": "room_id"}
@@ -381,19 +457,36 @@ class CommandHandler:
 		
 		# Handle time-gated dungeon entrance
 		if exit_info and isinstance(exit_info, dict) and exit_info.get("type") == "time_gated_dungeon":
-			if DUNGEON_AVAILABLE:
+			print(f"[DEBUG _go] Dungeon entrance detected via '{direction}'")
+			
+			# Check if dungeon system is available
+			is_available, reason = self._check_dungeon_system_available()
+			
+			if is_available:
+				print("[DEBUG _go] System check passed, routing to entrance handler")
 				return self._handle_dungeon_entrance(exit_info)
 			else:
-				return "The dungeon system is not available."
+				print(f"[ERROR _go] Dungeon system unavailable: {reason}")
+				error_msg = (
+					"The dungeon system is currently unavailable.\n"
+					f"Reason: {reason}\n"
+					"Please contact an administrator."
+				)
+				return error_msg
 		
-		if not target_room_id or target_room_id not in self.engine.rooms:
-			# Show available exits based on location type
+		if not target_room_id:
+			# No valid exit found
+			location_type = room.__dict__.get('location_type', 'wilderness')
+			return self._describe_exits(room, location_type)
+		
+		# Check if target room exists (in world or dungeon)
+		dest_room = self.engine.get_room_data(target_room_id)
+		if not dest_room:
 			location_type = room.__dict__.get('location_type', 'wilderness')
 			return self._describe_exits(room, location_type)
 		
 		# Move player
 		self.engine.player.current_room = target_room_id
-		dest_room = self.engine.rooms[target_room_id]
 		
 		# Show transition text if available
 		if exit_info and isinstance(exit_info, dict):
@@ -468,6 +561,27 @@ class CommandHandler:
 			# Invalid response - keep the pending flag so they can answer again
 			return f"\nInvalid response: '{response}'\nPlease type 'yes' to enter or 'no' to decline.\n"
 
+	def _check_dungeon_system_available(self) -> tuple[bool, str]:
+		"""
+		Check if the dungeon system is available for use.
+		
+		Returns:
+			(is_available: bool, reason: str)
+			- If True: (True, "")
+			- If False: (False, "reason why it's unavailable")
+		"""
+		if DUNGEON_AVAILABLE:
+			# System is fully initialized
+			return True, ""
+		
+		# System is disabled - provide detailed reason
+		if _DUNGEON_IMPORT_ERROR:
+			reason = f"System initialization failed: {_DUNGEON_IMPORT_ERROR}"
+		else:
+			reason = "Dungeon system failed to initialize (unknown reason)"
+		
+		return False, reason
+
 	def handle_enter_command(self):
 		"""
 		Smart ENTER command that handles:
@@ -475,16 +589,41 @@ class CommandHandler:
 		- Building entrances
 		
 		Automatically detects what kind of entrance based on current room.
+		
+		Why we need to check DUNGEON_AVAILABLE:
+		- DUNGEON_AVAILABLE is a module-level flag set at import time
+		- It is True ONLY if dungeon_scheduler and dungeon_instance modules loaded
+		- If either module has an import error, it becomes False
+		- This check happens BEFORE time-gating checks, preventing errors
 		"""
 		if self.engine.player.state.get("sitting"):
 			return "You need to stand up first."
 		
-		current_room = self.engine.rooms[self.engine.player.current_room]
+		current_room = self.engine.get_room_data(self.engine.player.current_room)
+		if not current_room:
+			return "[Current room not found]"
 		
 		# Check for dungeon entrance (time-gated)
 		for exit_name, exit_data in current_room.exits.items():
 			if isinstance(exit_data, dict) and exit_data.get("type") == "time_gated_dungeon":
-				# This is a dungeon entrance room
+				# This is marked as a dungeon entrance
+				print(f"[DEBUG handle_enter] Dungeon entrance detected via '{exit_name}'")
+				
+				# **CRITICAL CHECK**: Verify dungeon system is actually available
+				is_available, reason = self._check_dungeon_system_available()
+				
+				if not is_available:
+					# Dungeon system is broken - provide diagnostic info
+					print(f"[ERROR handle_enter] Dungeon system unavailable: {reason}")
+					error_msg = (
+						"The dungeon system is currently unavailable.\n"
+						f"Reason: {reason}\n"
+						"Please contact an administrator."
+					)
+					return error_msg
+				
+				# System is available - proceed to entrance handler
+				print(f"[DEBUG handle_enter] Dungeon system OK (DUNGEON_AVAILABLE={DUNGEON_AVAILABLE})")
 				return self._handle_dungeon_entrance(exit_data)
 		
 		# Check for explicit "enter" exit
@@ -499,25 +638,36 @@ class CommandHandler:
 			
 			if target_room_id and target_room_id in self.engine.rooms:
 				self.engine.player.current_room = target_room_id
-				dest_room = self.engine.rooms[target_room_id]
+			dest_room = self.engine.get_room_data(target_room_id)
+			if dest_room:
 				self._update_map_on_move(target_room_id)
 				return dest_room.describe()
 			else:
-				return "There's nothing to enter here."
-		
-		# No entrance found
+				return "[Room not found]"
 		return "There's nothing to enter here.\nTry: 'look' to see available exits."
 
 	def _handle_dungeon_entrance(self, exit_info):
 		"""
 		Handle time-gated dungeon entrance interaction.
 		Sets up pending state and asks for confirmation.
+		
+		This is the SECOND line of defense - after handle_enter_command already checked
+		that DUNGEON_AVAILABLE is True. We check again here for safety.
 		"""
 		try:
-			if not DUNGEON_AVAILABLE:
-				return "The dungeon system is not available."
+			print("[DEBUG _handle_dungeon_entrance] Called")
 			
+			# Defensive check: verify dungeon system is still available
+			is_available, reason = self._check_dungeon_system_available()
+			print(f"[DEBUG] Dungeon system available: {is_available}")
+			
+			if not is_available:
+				print(f"[ERROR _handle_dungeon_entrance] System check failed: {reason}")
+				return f"Dungeon system error: {reason}"
+			
+			print("[DEBUG] Getting scheduler...")
 			scheduler = get_scheduler()
+			print(f"[DEBUG] Scheduler obtained: {type(scheduler).__name__}")
 			
 			# Visual separator
 			result = "\n" + "-" * 60 + "\n"
@@ -525,8 +675,12 @@ class CommandHandler:
 			result += "║              DUNGEON ENTRANCE DETECTED                 ║\n"
 			result += "╚════════════════════════════════════════════════════════╝\n"
 			
-			if not scheduler.is_dungeon_open():
-				# CLOSED
+			# Check if dungeon is open OR if it was explicitly forced open (e.g., via debug command)
+			dungeon_is_open = scheduler.is_dungeon_open()
+			dungeon_was_forced_open = self.engine.current_dungeon_instance is not None
+			
+			if not dungeon_is_open and not dungeon_was_forced_open:
+				# CLOSED and not forced open
 				_, time_until_str = scheduler.get_time_until_next_opening()
 				result += f"""
 Status: CLOSED (sealed by magic)
@@ -547,19 +701,28 @@ Schedule: Opens every 3 hours for 1 hour
 				result += "-" * 60 + "\n"
 				
 			else:
-				# OPEN
-				_, time_remaining_str = scheduler.get_time_until_closing()
+				# OPEN (or forced open)
+				if dungeon_was_forced_open and not dungeon_is_open:
+					status_text = "OPEN (Debug Mode)"
+					_, time_until_str = scheduler.get_time_until_next_opening()
+					extra_note = "\n[DEBUG: Dungeon forced open via debug command]\n"
+				else:
+					status_text = "OPEN"
+					_, time_remaining_str = scheduler.get_time_until_closing()
+					extra_note = ""
+				
+				time_info = time_remaining_str if dungeon_is_open else time_until_str
+				
 				result += f"""
-Status: OPEN
-
+Status: {status_text}{extra_note}
 The magical barrier has faded! The entrance yawns before you,
 revealing ancient stone steps descending into darkness. A
 cold wind blows up from the depths.
 
-Time Remaining: {time_remaining_str}
+Time Remaining: {time_info}
 
 WARNINGS:
-  * The dungeon will close in {time_remaining_str}
+  * The dungeon will close in {time_info}
   * If inside when it closes, you'll be teleported out
   * Your loot and progress will be saved
   * The dungeon layout regenerates each opening
@@ -591,24 +754,42 @@ Do you wish to enter? (yes/no)
 		
 		Args:
 			dungeon_exit_data: The exit data containing dungeon info
+			
+		Note: This is the THIRD line of defense - we check availability once more
+		just before actually creating the dungeon instance.
 		"""
 		try:
-			if not DUNGEON_AVAILABLE:
-				return "The dungeon system is not available."
+			print("[DEBUG _enter_dungeon] Called")
 			
+			# Final defensive check before entering
+			is_available, reason = self._check_dungeon_system_available()
+			print(f"[DEBUG] Dungeon system available: {is_available}")
+			
+			if not is_available:
+				print(f"[ERROR _enter_dungeon] System check failed: {reason}")
+				return f"Dungeon system error: {reason}"
+			
+			print("[DEBUG] System OK, proceeding with entry...")
 			dungeon_id = dungeon_exit_data.get("dungeon_id")
 			transition_text = dungeon_exit_data.get("transition_text", "You enter the dungeon...")
 			
 			result = f"\n{transition_text}\n"
 			
+			# Get the scheduler instance
+			scheduler = get_scheduler()
+			
 			# Get the active dungeon instance
-			active_dungeon = get_current_dungeon()
+			active_dungeon = get_current_dungeon(scheduler)
 			
 			if active_dungeon:
 				result += "\n✓ Dungeon generated!\n"
 				
-				# Get entrance room of dungeon
-				entrance_room_id = active_dungeon.get("floor_1", {}).get("entrance_room")
+				# Get entrance room of dungeon from dungeon_data
+				if active_dungeon.dungeon_data:
+					floor_1_data = active_dungeon.dungeon_data.get("floors", {}).get(1, {})
+					entrance_room_id = floor_1_data.get("entrance_room")
+				else:
+					entrance_room_id = None
 				
 				if entrance_room_id:
 					# Move player to entrance
@@ -620,8 +801,8 @@ Do you wish to enter? (yes/no)
 					result += "╚════════════════════════════════════════════════════════╝\n"
 					
 					# Get the room description
-					if entrance_room_id in self.engine.rooms:
-						room = self.engine.rooms[entrance_room_id]
+					room = self.engine.get_room_data(entrance_room_id)
+					if room:
 						result += "\n" + room.describe()
 					else:
 						result += "\n[Dungeon entrance room not found]"
@@ -683,7 +864,9 @@ Do you wish to enter? (yes/no)
 		return "\n".join(parts)
 
 	def _look(self):
-		room = self.engine.rooms[self.engine.player.current_room]
+		room = self.engine.get_room_data(self.engine.player.current_room)
+		if not room:
+			return "[Current room not found]"
 		return room.describe()
 
 	# helper inventory modifiers
@@ -714,7 +897,7 @@ Do you wish to enter? (yes/no)
 		"""
 		if not self.engine.player:
 			return "No game in progress."
-		room = self.engine.rooms.get(self.engine.player.current_room)
+		room = self.engine.get_room_data(self.engine.player.current_room)
 		if room is None:
 			return "You are nowhere."
 
@@ -781,7 +964,7 @@ Do you wish to enter? (yes/no)
 			else:
 				inv.pop(item_name, None)
 			# add to current room items
-			room = self.engine.rooms.get(self.engine.player.current_room)
+			room = self.engine.get_room_data(self.engine.player.current_room)
 			if room is None:
 				# put it back if something goes wrong
 				inv[item_name] = inv.get(item_name, 0) + 1
@@ -814,7 +997,9 @@ Do you wish to enter? (yes/no)
 		# check inventory and room items
 		if target in self.engine.player.inventory:
 			return f"You look closely at the {target}. It looks ordinary."
-		room = self.engine.rooms[self.engine.player.current_room]
+		room = self.engine.get_room_data(self.engine.player.current_room)
+		if not room:
+			return "You don't see that here."
 		if target in room.items:
 			return f"You examine the {target} in the room. It looks useful."
 		return "You don't see that here."
@@ -848,6 +1033,153 @@ Do you wish to enter? (yes/no)
 			pass
 		return f"You sold 1 {item_name} for {price} gold."
 
+	# ========== SHOP SYSTEM METHODS ==========
+	
+	def _check_in_shop(self):
+		"""Verify player is in the shop."""
+		if self.engine.player.current_room != "village_shop":
+			return False, "You need to be in the village shop to do that."
+		if not self.engine.shop or not self.engine.shopkeeper:
+			return False, "The shop system is not available."
+		# Check if inventory needs rotation
+		if self.engine.shop.check_and_rotate():
+			pass  # Silently rotated
+		return True, ""
+	
+	def _shop_help(self):
+		"""Show shop command help."""
+		return """Shop Commands:
+shop browse       - View available items for sale
+shop buy <item>   - Purchase an item
+shop sell <item> <gold>  - Attempt to sell an item to shopkeeper
+shop talk         - Chat with the shopkeeper
+shop info         - Information about the shop and negotiation
+
+Abbreviations: 
+  'talk to shopkeeper' also works
+  'shop view' or 'shop inventory' work instead of 'shop browse'"""
+	
+	def _shop_browse(self):
+		"""Display shop inventory."""
+		ok, msg = self._check_in_shop()
+		if not ok:
+			return msg
+		
+		inventory_display = self.engine.shop.get_inventory()
+		if not inventory_display or inventory_display == "The shop appears to be empty today.":
+			return "The shop is empty today. Check back in an hour for new stock!"
+		
+		header = "╔" + "═" * 56 + "╗\n"
+		header += "║" + " GENERAL STORE INVENTORY ".center(56) + "║\n"
+		header += "╠" + "═" * 56 + "╣\n"
+		footer = "╚" + "═" * 56 + "╝"
+		
+		return header + inventory_display + footer
+	
+	def _shop_buy(self, item_name):
+		"""Buy an item from the shop."""
+		ok, msg = self._check_in_shop()
+		if not ok:
+			return msg
+		
+		item_name = item_name.strip().lower()
+		if not self.engine.shop.can_buy(item_name):
+			return self.engine.shopkeeper.get_item_not_found_response()
+		
+		price = self.engine.shop.get_buy_price(item_name)
+		player_gold = self.engine.player.stats.get("gold", 0)
+		
+		if player_gold < price:
+			return f"You don't have enough gold. This costs {price}g but you only have {player_gold}g."
+		
+		# Take the gold
+		self.engine.player.stats["gold"] = player_gold - price
+		# Add item to inventory
+		self._add_to_inventory(item_name)
+		# Remove from shop
+		self.engine.shop.buy_item(item_name)
+		
+		# Get shopkeeper response
+		response = self.engine.shopkeeper.get_buy_response(item_name, price)
+		return f"{response}\n✓ You bought 1 {item_name} for {price} gold."
+	
+	def _shop_sell(self, item_name, offered_price):
+		"""Attempt to sell an item to shopkeeper with negotiation."""
+		ok, msg = self._check_in_shop()
+		if not ok:
+			return msg
+		
+		item_name = item_name.strip().lower()
+		
+		# Check if player has item
+		if item_name not in self.engine.player.inventory or self.engine.player.inventory[item_name] <= 0:
+			return f"You don't have any {item_name}."
+		
+		# Get item value
+		item_worth = self.engine.item_worth.get(item_name, 10)
+		
+		# Validate offered price
+		if offered_price <= 0:
+			return "Price must be positive."
+		if offered_price > item_worth * 2:
+			return f"That's {offered_price}g? The shopkeeper laughs. 'That's absurd!'"
+		
+		# Negotiate with shopkeeper
+		accepted, final_price, dialogue = self.engine.shopkeeper.negotiate_price(
+			item_name, offered_price, item_worth
+		)
+		
+		if accepted:
+			# Complete the sale
+			self._remove_from_inventory(item_name, 1)
+			self.engine.player.stats["gold"] = int(self.engine.player.stats.get("gold", 0)) + final_price
+			return f"Shopkeeper: \"{dialogue}\"\n✓ Deal complete! You received {final_price} gold."
+		else:
+			if final_price == 0:
+				# Permanent refusal
+				return f"Shopkeeper: \"{dialogue}\"\n✗ The shopkeeper refuses to buy from you anymore."
+			else:
+				# Counter offer
+				return f"Shopkeeper: \"{dialogue}\"\nType 'shop sell {item_name} {final_price}' to accept, or try a different price."
+	
+	def _shop_talk(self):
+		"""Talk to shopkeeper."""
+		ok, msg = self._check_in_shop()
+		if not ok:
+			return msg
+		
+		greeting = self.engine.shopkeeper.greet()
+		return f"Shopkeeper: \"{greeting}\""
+	
+	def _shop_info(self):
+		"""Show negotiation tips and shop information."""
+		return """═════════════════════════════════════════════════════════════════
+
+SHOP INFORMATION & NEGOTIATION GUIDE
+
+The Shopkeeper is a skilled negotiator. Here's how selling works:
+
+PRICING STRATEGIES:
+  • Ask 30% or less of item value  → REFUSED (permanent!)
+  • Ask 30-50% of value           → Shopkeeper counters at ~75%
+  • Ask 50-85% of value           → ACCEPTED at ~80% of your offer
+  • Ask 85-100% of value          → ACCEPTED at ~95% of your offer
+  • Ask more than 100% of value   → Shopkeeper laughs, counters at 60-70%
+
+TIPS:
+  • The better you negotiate, the more gold you keep
+  • Being greedy (asking way too much) can get you permanently refused
+  • Once refused on an item, you can't sell it anymore
+  • Different items have different base values
+  • Shop inventory changes every hour (Germany time)
+
+INVENTORY ROTATION:
+  • Browse shop stock with 'shop browse'
+  • New items appear every hour at :00 (Germany timezone)
+  • Stock includes common tools, rare treasures, and quality goods
+
+═════════════════════════════════════════════════════════════════"""
+
 	def _open_map(self):
 		"""Open the live map window."""
 		if not MAP_AVAILABLE:
@@ -856,18 +1188,8 @@ Do you wish to enter? (yes/no)
 		try:
 			# Create or focus the map window
 			if not self.engine.map_window:
-				root = tk.Tk()
-				# Try to get the tkinter root from GUI if it exists
-				try:
-					# If AdventureGUI has been instantiated, use its root
-					for obj in self.engine.__dict__.values():
-						if hasattr(obj, 'root'):
-							root = obj.root
-							break
-				except:
-					pass
-				
-				self.engine.map_window = LiveMapWindow(root, self.engine.rooms)
+				# Use the hidden root window from AdventureGUI
+				self.engine.map_window = LiveMapWindow(self.engine.root, self.engine.rooms)
 			
 			self.engine.map_window.create_window()
 			
@@ -902,6 +1224,15 @@ drop [item]       - Drop an item
 inventory         - Check your inventory
 save              - Save your game
 open map          - Open interactive map
+sell [item]       - Sell item for its standard value
+
+Shop Commands (in village shop):
+shop browse       - View available items
+shop buy <item>   - Purchase an item
+shop sell <item> <gold>  - Negotiate selling an item
+shop talk         - Chat with shopkeeper
+shop info         - Learn about negotiation
+
 help              - Show this help
 quit              - Exit the game"""
 
@@ -947,6 +1278,33 @@ class GameEngine:
 		self.map_window = None
 		# Track pending dungeon entry confirmation
 		self.pending_dungeon_entry = None
+		
+		# Initialize shop system
+		if SHOP_AVAILABLE:
+			try:
+				self.shop = Shop("village_shop")
+				self.shopkeeper = Shopkeeper(self.shop)
+			except Exception as e:
+				print(f"[ERROR] Failed to initialize shop: {e}")
+				self.shop = None
+				self.shopkeeper = None
+		else:
+			self.shop = None
+			self.shopkeeper = None
+		
+		# Initialize dungeon systems
+		if DUNGEON_AVAILABLE:
+			try:
+				self.dungeon_scheduler = DungeonScheduler()
+				self.current_dungeon_instance = None  # Will be set when player enters dungeon
+			except Exception as e:
+				print(f"[ERROR] Failed to initialize DungeonScheduler: {e}")
+				self.dungeon_scheduler = None
+				self.current_dungeon_instance = None
+		else:
+			self.dungeon_scheduler = None
+			self.current_dungeon_instance = None
+		
 		self.load_world()
 		# Set up graceful shutdown handler if root provided
 		if self.root:
@@ -1113,7 +1471,7 @@ class GameEngine:
 		Saves game and shuts down gracefully.
 		"""
 		print("\n╔════════════════════════════════════════╗")
-		print("║  Closing game. Saving progress...    ║")
+		print("║  Closing game. Saving progress...      ║")
 		print("╚════════════════════════════════════════╝")
 		
 		# Save game
@@ -1137,6 +1495,100 @@ class GameEngine:
 		
 		print("\nGoodbye!\n")
 		sys.exit(0)
+
+	def get_room_data(self, room_name):
+		"""
+		Get a room from either the world (surface) or the current dungeon.
+		
+		Args:
+			room_name: Name/ID of the room
+			
+		Returns:
+			Room object (always returns as Room object for consistency)
+		"""
+		# Check world rooms first
+		if room_name in self.rooms:
+			return self.rooms[room_name]
+		
+		# If not in world, check if we're in a dungeon
+		if DUNGEON_AVAILABLE and self.current_dungeon_instance:
+			# Dungeon rooms are named like "dungeon_20260212_00_floor1_room1"
+			# Extract floor number from room name
+			try:
+				if room_name.startswith("dungeon_"):
+					# Parse "dungeon_{seed}_floor{N}_room{M}" format
+					parts = room_name.split("_")
+					# Parts: [dungeon, ...seed..., floorN, roomM]
+					# Find the part that starts with "floor"
+					floor_num = None
+					for part in parts:
+						if part.startswith("floor"):
+							floor_str = part[5:]  # Remove "floor" prefix
+							floor_num = int(floor_str)
+							break
+					
+					if floor_num is not None:
+						# Get the room from dungeon data
+						room_dict = self.current_dungeon_instance.get_room(floor_num, room_name)
+						if room_dict:
+							# Convert dungeon room dict to world room format for consistency
+							converted_room = self._convert_dungeon_room_to_world(room_dict)
+							return Room(converted_room)
+			except (ValueError, IndexError, AttributeError):
+				# Room name doesn't match dungeon format or error occurred
+				pass
+		
+		return None
+
+	def _convert_dungeon_room_to_world(self, dungeon_room):
+		"""
+		Convert a dungeon room dict to world room format for the Room class.
+		Dungeon rooms have different item/chest formats that need conversion.
+		
+		Args:
+			dungeon_room: Raw dungeon room dict from dungeon_data
+			
+		Returns:
+			dict: Room data in world room format
+		"""
+		# Convert items dict to list format and preserve item values
+		items_list = []
+		if dungeon_room.get("items"):
+			items_dict = dungeon_room.get("items", {})
+			for item_name, item_data in items_dict.items():
+				# Add item_name to list qty times
+				if isinstance(item_data, dict):
+					qty = item_data.get("quantity", 1)
+					value = item_data.get("value", 10)
+				else:
+					qty = 1
+					value = 10
+				
+				# Store the item value in engine.item_worth so it can be sold
+				if item_name not in self.item_worth:
+					self.item_worth[item_name] = value
+				
+				for _ in range(qty):
+					items_list.append(item_name)
+		
+		# Convert exits format if needed (dungeon format is already compatible)
+		exits = {}
+		raw_exits = dungeon_room.get("exits", {})
+		for direction, exit_data in raw_exits.items():
+			if isinstance(exit_data, dict):
+				exits[direction] = exit_data.get("target", exit_data)
+			else:
+				exits[direction] = exit_data
+		
+		return {
+			"name": dungeon_room.get("name", "Unknown Room"),
+			"description": dungeon_room.get("description", ""),
+			"exits": exits,
+			"items": items_list,
+			"actions": {},  # Dungeon rooms don't have custom actions
+			"coordinates": dungeon_room.get("coordinates", [0, 0]),
+			"location_type": "dungeon"
+		}
 
 	def new_game(self):
 		if not self.start_room:
@@ -1915,12 +2367,14 @@ def main():
 	try:
 		# Start GUI
 		root = tk.Tk()
+		# CRITICAL: Hide the empty root window - the map window will be a Toplevel
+		root.withdraw()
 		app = AdventureGUI(root)
 		root.mainloop()
 		
 	except KeyboardInterrupt:
 		print("\n\n╔════════════════════════════════════════╗")
-		print("║ Game interrupted. Saving progress...  ║")
+		print("║ Game interrupted. Saving progress...   ║")
 		print("╚════════════════════════════════════════╝")
 		
 		# Try to save game state

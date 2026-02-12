@@ -1,16 +1,26 @@
 {
   "player": {
-    "current_room": "dungeon_ruins_entrance",
-    "inventory": {},
+    "current_room": "village_shop",
+    "inventory": {
+      "ancient_tome": 1,
+      "healing_potion": 1,
+      "steel_dagger": 2,
+      "silver_ring": 1
+    },
     "state": {},
     "stats": {
-      "gold": 0,
+      "gold": 19945,
       "health": 100
     },
     "visited_rooms": [
-      "ancient_ruins",
       "clearing",
-      "dungeon_ruins_entrance"
+      "village_shop",
+      "dungeon_forest_entrance",
+      "dungeon_2026021221_floor2_room9",
+      "dungeon_ruins_entrance",
+      "floor1_room1",
+      "floor1_room3",
+      "floor1_room2"
     ]
   },
   "rooms": {

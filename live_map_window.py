@@ -57,6 +57,9 @@ class LiveMapWindow:
         self.window.title("World Map - Fog of War")
         self.window.geometry("800x600")
         
+        # CRITICAL: Set up window close handler to prevent closing root
+        self.window.protocol("WM_DELETE_WINDOW", self.close_window)
+        
         # Create toolbar
         toolbar = tk.Frame(self.window, bg='#2c3e50')
         toolbar.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
