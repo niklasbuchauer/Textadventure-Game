@@ -40,11 +40,20 @@ def handle_debug_commands(engine, args):
         return _debug_show_stats(engine)
     elif subcommand == "dungeon":
         if len(args) < 2:
-            return "Usage: debug dungeon open"
+            return "Usage: debug dungeon open [room_id] | debug dungeon close <dungeon_id> | debug dungeon list | debug dungeon check"
         action = args[1].lower()
         if action == "open":
-            return _debug_dungeon_open(engine)
-        return "Usage: debug dungeon open"
+            room_id = args[2] if len(args) > 2 else None
+            return _debug_dungeon_open(engine, room_id)
+        elif action == "close":
+            if len(args) < 3:
+                return "Usage: debug dungeon close <dungeon_id>"
+            return _debug_dungeon_close(engine, args[2])
+        elif action == "list":
+            return _debug_dungeon_list(engine)
+        elif action == "check":
+            return _debug_dungeon_check_integrity(engine)
+        return "Usage: debug dungeon open [room_id] | debug dungeon close <dungeon_id> | debug dungeon list | debug dungeon check"
     else:
         return f"Unknown debug command: {subcommand}\n{_show_debug_menu()}"
 
@@ -59,6 +68,10 @@ Available debug commands:
   debug hide map         - Hide unvisited rooms
   debug teleport <id>    - Teleport to a room
   debug dungeon open     - Force open dungeon for testing
+  debug dungeon open <room_id> - Force open dungeon at specific entrance
+  debug dungeon close <id>     - Remove force-open override
+  debug dungeon list     - List force-opened dungeons
+  debug dungeon check    - Check dungeon integrity (connectivity & secrets)
   debug heal             - Restore health
   debug rooms [page]     - List rooms (paginated)
   debug gold <amount>    - Set gold
@@ -67,17 +80,21 @@ Available debug commands:
 
 Example: debug teleport mountain_peak
 Example: debug dungeon open
+Example: debug dungeon open dungeon_forest_entrance
+Example: debug dungeon close shifting_depths
+Example: debug dungeon check
 Example: debug rooms 1 (world) | debug rooms 2 (dungeon)
 """.strip()
 
 
 def _debug_reveal_map(engine):
-    """Reveal all rooms on the map."""
+    """Reveal all rooms on the map (toggle)."""
     if hasattr(engine, 'map_window') and engine.map_window:
-        engine.map_window.reveal_all = True
-        if engine.map_window.is_open():
-            engine.map_window.redraw_map()
-        return "Map revealed: All rooms visible"
+        revealed = engine.map_window.toggle_reveal()
+        if revealed:
+            return "Map revealed: All rooms visible (fog of war disabled)"
+        else:
+            return "Map hidden: Fog of war restored"
     return "Map window not open. Use 'open map' first."
 
 
@@ -303,8 +320,13 @@ Inventory ({len(inventory)} items):
     return msg
 
 
-def _debug_dungeon_open(engine):
-    """Force open a dungeon for debug purposes using the closest opening time's seed."""
+def _debug_dungeon_open(engine, room_id=None):
+    """Force open a dungeon for debug purposes.
+    
+    If room_id is provided, finds the dungeon entrance at that room and adds its
+    dungeon_id to the force-open set so the player can enter normally via 'enter'.
+    If room_id is None, uses the original behavior (closest opening time seed).
+    """
     if not hasattr(engine, 'dungeon_scheduler') or not engine.dungeon_scheduler:
         return "Dungeon system not available."
     
@@ -312,6 +334,29 @@ def _debug_dungeon_open(engine):
         from dungeon_instance import DungeonInstance, set_current_dungeon
         
         scheduler = engine.dungeon_scheduler
+        
+        # If a room_id was provided, find the dungeon entrance and force-open it
+        dungeon_id = None
+        dungeon_exit = None
+        
+        if room_id:
+            # Find the room
+            room = engine.rooms.get(room_id)
+            if not room:
+                return f"[DEBUG] ❌ Room '{room_id}' not found!\nUse 'debug rooms' to list available rooms."
+            
+            # Find dungeon exit in this room
+            exits = room.exits if hasattr(room, 'exits') else {}
+            for exit_name, exit_data in exits.items():
+                if isinstance(exit_data, dict) and exit_data.get("type") == "time_gated_dungeon":
+                    dungeon_exit = exit_data
+                    dungeon_id = exit_data.get("dungeon_id")
+                    break
+            
+            if not dungeon_exit or not dungeon_id:
+                return (f"[DEBUG] ❌ No dungeon entrance in room '{room_id}'!\n"
+                        f"This room does not have a time_gated_dungeon exit.\n"
+                        f"Available exits: {list(exits.keys())}")
         
         # Get current time
         now = scheduler._get_current_time()
@@ -333,8 +378,8 @@ def _debug_dungeon_open(engine):
         date_str = now.strftime("%Y%m%d")
         seed = int(f"{date_str}{closest_hour:02d}")
         
-        # Create dungeon instance with this seed
-        active_dungeon = DungeonInstance(seed, scheduler)
+        # Create dungeon instance with this seed and dungeon_id (if we have one)
+        active_dungeon = DungeonInstance(seed, scheduler, dungeon_id=dungeon_id)
         
         # Update both the engine and the global dungeon state
         engine.current_dungeon_instance = active_dungeon
@@ -346,6 +391,24 @@ def _debug_dungeon_open(engine):
         if not active_dungeon or not active_dungeon.dungeon_data:
             return "Failed to generate dungeon data."
         
+        # Add dungeon_id to force-open set if we found one
+        if dungeon_id:
+            if not hasattr(engine, 'debug_force_open_dungeons'):
+                engine.debug_force_open_dungeons = set()
+            engine.debug_force_open_dungeons.add(dungeon_id)
+        
+        # Also find and add ALL dungeon_ids from the world if no specific room given
+        if not dungeon_id:
+            for rid, room in engine.rooms.items():
+                exits = room.exits if hasattr(room, 'exits') else {}
+                for exit_name, exit_data in exits.items():
+                    if isinstance(exit_data, dict) and exit_data.get("type") == "time_gated_dungeon":
+                        did = exit_data.get("dungeon_id")
+                        if did:
+                            if not hasattr(engine, 'debug_force_open_dungeons'):
+                                engine.debug_force_open_dungeons = set()
+                            engine.debug_force_open_dungeons.add(did)
+        
         # Check if it's actually the right time for the dungeon to be open
         is_open_now = scheduler.is_dungeon_open()
         
@@ -356,18 +419,165 @@ def _debug_dungeon_open(engine):
             _, time_str = scheduler.get_time_until_next_opening()
             time_info = f"⚠ FORCING EARLY (normally opens in {time_str})"
         
-        return f"""✓ Dungeon forced open for debugging! {time_info}
+        # Build force-open info
+        force_open_info = ""
+        if hasattr(engine, 'debug_force_open_dungeons') and engine.debug_force_open_dungeons:
+            force_open_info = f"\nForce-opened dungeon IDs: {', '.join(engine.debug_force_open_dungeons)}"
+            force_open_info += "\n✓ Time-gating OVERRIDDEN - you can enter normally using 'enter' command"
+        
+        result = f"""✓ Dungeon forced open for debugging! {time_info}
+{force_open_info}
 
 The dungeon is now ready to enter. You can:
-  1. Travel to one of these entrances and ENTER:
+  1. Travel to one of these entrances and type ENTER:
      - dungeon_forest_entrance (Dark Cave)
      - dungeon_mountain_entrance (Ancient Mountain Gate)
      - dungeon_ruins_entrance (Catacombs)
   2. Use 'debug teleport <room_id>' to jump to a specific dungeon room
   3. Use 'debug rooms' to list all available dungeon rooms"""
+        
+        if dungeon_id:
+            result += f"\n\nSpecific dungeon '{dungeon_id}' at room '{room_id}' is now force-opened."
+        
+        return result
     
     except Exception as e:
         return f"Failed to force open dungeon: {e}"
+
+
+def _debug_dungeon_close(engine, dungeon_id):
+    """Remove debug override for a dungeon."""
+    if not hasattr(engine, 'debug_force_open_dungeons'):
+        return "[DEBUG] No dungeons are force-opened."
+    
+    if dungeon_id in engine.debug_force_open_dungeons:
+        engine.debug_force_open_dungeons.remove(dungeon_id)
+        return (f"[DEBUG] ✓ Removed '{dungeon_id}' from force-open list\n"
+                f"[DEBUG] Dungeon will now follow normal time schedule")
+    else:
+        current = engine.debug_force_open_dungeons if engine.debug_force_open_dungeons else "(none)"
+        return (f"[DEBUG] Dungeon '{dungeon_id}' is not force-opened\n"
+                f"[DEBUG] Currently force-opened: {current}")
+
+
+def _debug_dungeon_list(engine):
+    """List force-opened dungeons."""
+    if not hasattr(engine, 'debug_force_open_dungeons') or not engine.debug_force_open_dungeons:
+        return "[DEBUG] No dungeons are currently force-opened."
+    
+    result = "\n[DEBUG] Force-opened dungeons:\n"
+    for dung_id in engine.debug_force_open_dungeons:
+        result += f"  - {dung_id}\n"
+    result += "\nUse 'debug dungeon close <id>' to remove an override."
+    return result
+
+
+def _debug_dungeon_check_integrity(engine):
+    """Check dungeon integrity: connectivity and secret room generation."""
+    if not hasattr(engine, 'current_dungeon_instance') or not engine.current_dungeon_instance:
+        return "No active dungeon. Enter a dungeon first to check its integrity."
+    
+    dungeon_instance = engine.current_dungeon_instance
+    dungeon_data = dungeon_instance.dungeon_data
+    
+    if not dungeon_data:
+        return "No dungeon data available."
+    
+    result = "\n" + "="*80 + "\n"
+    result += "DUNGEON INTEGRITY CHECK\n"
+    result += "="*80 + "\n"
+    
+    # Check each floor
+    for floor_num in sorted(dungeon_data["floors"].keys()):
+        floor_data = dungeon_data["floors"][floor_num]
+        result += f"\n--- FLOOR {floor_num} ---\n"
+        
+        rooms = floor_data["rooms"]
+        num_rooms = len(rooms)
+        entrance = floor_data.get("entrance_room")
+        boss = floor_data.get("boss_room")
+        
+        result += f"Total rooms: {num_rooms}\n"
+        result += f"Entrance: {entrance}\n"
+        result += f"Boss: {boss}\n"
+        
+        # Check connectivity using BFS
+        if entrance:
+            visited = set()
+            queue = [entrance]
+            
+            while queue:
+                current = queue.pop(0)
+                if current in visited:
+                    continue
+                visited.add(current)
+                
+                room = rooms.get(current)
+                if room:
+                    for exit_data in room.get("exits", {}).values():
+                        if isinstance(exit_data, dict):
+                            target = exit_data.get("target")
+                        else:
+                            target = exit_data
+                        
+                        if target and target in rooms:
+                            queue.append(target)
+            
+            disconnected = set(rooms.keys()) - visited
+            
+            if disconnected:
+                result += f"❌ DISCONNECTED ROOMS: {len(disconnected)}\n"
+                for room_id in list(disconnected)[:5]:
+                    result += f"   - {room_id}\n"
+                if len(disconnected) > 5:
+                    result += f"   ... and {len(disconnected) - 5} more\n"
+            else:
+                result += f"✓ All {num_rooms} rooms connected\n"
+        else:
+            result += "⚠️ No entrance room defined!\n"
+        
+        # Check secret room on boss floor
+        if boss:
+            boss_room = rooms[boss]
+            has_secret = boss_room.get("has_secret")
+            secret_id = boss_room.get("secret_room_id")
+            secret_discovered = boss_room.get("secret_discovered")
+            
+            if has_secret:
+                result += f"✓ Boss room has secret: {secret_id}\n"
+                
+                if secret_id and secret_id in rooms:
+                    result += f"✓ Secret room exists in floor data\n"
+                    secret_room = rooms[secret_id]
+                    
+                    # Check secret room has items
+                    if secret_room.get("items"):
+                        result += f"✓ Secret room has items: {secret_room['items']}\n"
+                    
+                    # Check back exit
+                    if "back" in secret_room.get("exits", {}):
+                        result += f"✓ Secret room has 'back' exit\n"
+                    else:
+                        result += f"❌ Secret room missing 'back' exit!\n"
+                    
+                    # Check if discovered
+                    if secret_discovered:
+                        result += f"✓ Secret already discovered by player\n"
+                        # Check if boss room has secret exit
+                        if "secret" in boss_room.get("exits", {}):
+                            result += f"✓ Boss room has 'secret' exit (discovered)\n"
+                        else:
+                            result += f"⚠️ Secret discovered but boss room missing 'secret' exit\n"
+                    else:
+                        result += f"⏳ Secret not yet discovered\n"
+                        
+                elif secret_id:
+                    result += f"❌ Secret room {secret_id} NOT FOUND in floor data!\n"
+            else:
+                result += f"❌ Boss room has NO secret!\n"
+    
+    result += "\n" + "="*80 + "\n"
+    return result
 
 
 def show_player_commands():

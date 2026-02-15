@@ -1,26 +1,140 @@
 {
   "player": {
-    "current_room": "village_shop",
+    "current_room": "sd_f1_shadow_well",
     "inventory": {
       "ancient_tome": 1,
       "healing_potion": 1,
-      "steel_dagger": 2,
-      "silver_ring": 1
+      "silver_ring": 1,
+      "legendary_artifact": 1,
+      "ancient_relic": 1
     },
     "state": {},
     "stats": {
-      "gold": 19945,
-      "health": 100
+      "gold": 19955,
+      "health": 32
     },
     "visited_rooms": [
+      "dungeon_2026021500_floor1_room2",
+      "dungeon_2026021512_floor1_room5",
+      "village_square",
+      "dungeon_2026021512_floor1_room1",
+      "dungeon_2026021512_floor2_room20",
+      "farmland",
+      "dungeon_2026021512_floor4_room14",
+      "dungeon_2026021512_floor1_room20",
+      "dungeon_forest_entrance",
+      "swamp_trail",
+      "dungeon_2026021512_floor1_room15",
+      "dungeon_2026021512_floor2_room19",
+      "dungeon_mountain_entrance",
+      "dungeon_2026021421_floor2_room2",
+      "dungeon_2026021421_floor1_room12",
+      "dungeon_2026021421_floor1_room8",
+      "mossy_hollow",
+      "dungeon_2026021421_floor2_room5",
+      "dungeon_2026021512_floor4_room11",
+      "dungeon_2026021500_floor1_room13",
+      "dungeon_2026021515_floor3_room11",
+      "ancient_ruins",
+      "dungeon_2026021421_floor1_room3",
+      "dungeon_2026021512_floor3_room4",
+      "floor1_room1",
+      "graveyard",
+      "sd_f1_obsidian_gallery",
+      "dungeon_2026021421_floor1_room2",
+      "dungeon_2026021512_floor4_room9",
+      "dungeon_2026021500_floor1_room11",
+      "dungeon_2026021512_floor1_room4",
+      "dungeon_2026021512_floor4_room10",
+      "dungeon_2026021500_floor1_room23",
+      "dungeon_2026021500_floor2_room3",
+      "open_crypt",
+      "dungeon_2026021421_floor1_room9",
+      "graveyard_gates",
+      "dungeon_2026021500_floor1_room8",
+      "dungeon_2026021500_floor2_room8",
+      "mountain_peak",
+      "dungeon_2026021515_floor3_room16_secret",
+      "old_battlefield",
+      "dungeon_2026021512_floor4_room2",
+      "dungeon_2026021500_floor1_room22",
+      "village_road",
+      "dungeon_2026021418_floor1_room1",
+      "dungeon_2026021500_floor1_room15",
+      "dungeon_2026021500_floor2_room7",
+      "village_blacksmith",
+      "dungeon_2026021512_floor3_room9",
+      "dungeon_2026021500_floor1_room9",
+      "dungeon_2026021512_floor2_room2",
+      "dungeon_2026021421_floor2_room7",
+      "dungeon_2026021500_floor1_room10",
+      "deep_forest",
+      "dungeon_2026021512_floor3_room6",
+      "dungeon_2026021512_floor2_room4",
+      "dungeon_2026021512_floor3_room8",
+      "floor1_room3",
+      "dungeon_2026021512_floor2_room9",
+      "dungeon_2026021421_floor2_room6",
+      "dungeon_2026021512_floor4_room5",
+      "forest_grove",
+      "dungeon_2026021500_floor2_room8_secret",
+      "dungeon_2026021512_floor1_room2",
+      "dungeon_2026021500_floor1_room14",
+      "dungeon_2026021500_floor2_room4",
+      "dungeon_2026021421_floor2_room3",
+      "crossroads",
+      "forest_path",
+      "dungeon_2026021512_floor4_room6",
+      "dungeon_2026021421_floor1_room10",
+      "dungeon_2026021421_floor1_room7",
+      "dungeon_2026021500_floor1_room16",
+      "dungeon_2026021421_floor1_room11",
+      "dungeon_2026021515_floor1_room1",
+      "dungeon_2026021500_floor2_room2",
+      "dungeon_2026021500_floor2_room5",
+      "dungeon_2026021515_floor3_room16",
+      "dungeon_2026021421_floor2_room10",
+      "dungeon_2026021512_floor3_room7",
+      "dungeon_2026021512_floor2_room3",
+      "dungeon_2026021512_floor4_room15",
+      "dungeon_2026021421_floor1_room4",
+      "dungeon_2026021512_floor1_room3",
+      "dungeon_2026021421_floor1_room6",
+      "floor1_room2",
+      "dungeon_2026021421_floor1_room5",
+      "dungeon_ruins_entrance",
+      "dungeon_2026021421_floor2_room11",
+      "dungeon_2026021421_floor1_room15",
+      "dungeon_2026021512_floor3_room3",
+      "dungeon_2026021512_floor4_room1",
+      "dungeon_2026021421_floor2_room8",
+      "dungeon_2026021512_floor3_room5",
+      "dungeon_2026021221_floor2_room9",
+      "sd_f1_dark_threshold",
+      "dungeon_2026021500_floor2_room6",
+      "dungeon_2026021421_floor1_room14",
+      "dungeon_2026021500_floor1_room21",
+      "dungeon_2026021512_floor2_room1",
+      "village_outskirts",
+      "dungeon_2026021515_floor1_room3",
+      "dungeon_2026021512_floor3_room10",
+      "dungeon_2026021512_floor3_room2",
+      "dungeon_2026021500_floor1_room1",
+      "dungeon_2026021421_floor2_room1",
+      "dungeon_2026021421_floor2_room4",
       "clearing",
       "village_shop",
-      "dungeon_forest_entrance",
-      "dungeon_2026021221_floor2_room9",
-      "dungeon_ruins_entrance",
-      "floor1_room1",
-      "floor1_room3",
-      "floor1_room2"
+      "dungeon_2026021500_floor1_room3",
+      "dungeon_2026021500_floor1_room18",
+      "dungeon_2026021421_floor1_room1",
+      "dungeon_2026021512_floor3_room1",
+      "village_east_end",
+      "sd_f1_shadow_well",
+      "dungeon_2026021500_floor2_room1",
+      "dungeon_2026021421_floor1_room13",
+      "dungeon_2026021512_floor2_room14",
+      "dungeon_2026021500_floor1_room6",
+      "dungeon_2026021512_floor1_room10"
     ]
   },
   "rooms": {
@@ -32,9 +146,21 @@
         "stick": 1
       }
     },
+    "mossy_hollow": {
+      "items": {
+        "glowing_moss": 1,
+        "shelf_mushroom": 1
+      }
+    },
     "deep_forest": {
       "items": {
         "mushroom": 1
+      }
+    },
+    "woodland_shrine": {
+      "items": {
+        "old_coin": 1,
+        "silver_ring": 1
       }
     },
     "dungeon_forest_entrance": {
@@ -43,6 +169,12 @@
     "ancient_grove": {
       "items": {
         "ancient_acorn": 1
+      }
+    },
+    "hermit_cabin": {
+      "items": {
+        "strange_herb": 1,
+        "wolf_pelt": 1
       }
     },
     "forest_grove": {
@@ -72,6 +204,48 @@
     "village_outskirts": {
       "items": {}
     },
+    "village_east_end": {
+      "items": {}
+    },
+    "chapel": {
+      "items": {
+        "prayer_candle": 1
+      }
+    },
+    "farmland": {
+      "items": {
+        "wheat_bundle": 1
+      }
+    },
+    "crossroads": {
+      "items": {}
+    },
+    "watchtower_hill": {
+      "items": {
+        "old_spyglass": 1,
+        "broken_arrow": 1
+      }
+    },
+    "graveyard_gates": {
+      "items": {}
+    },
+    "graveyard": {
+      "items": {
+        "bronze_coin": 1,
+        "old_bone": 1
+      }
+    },
+    "open_crypt": {
+      "items": {
+        "golden_ring": 1,
+        "dusty_tome": 1
+      }
+    },
+    "highland_trail": {
+      "items": {
+        "heather_sprig": 1
+      }
+    },
     "mountain_foothills": {
       "items": {
         "smooth_stone": 1
@@ -91,6 +265,11 @@
     "swamp_trail": {
       "items": {}
     },
+    "foggy_marsh": {
+      "items": {
+        "marsh_lily": 1
+      }
+    },
     "swamp_edge": {
       "items": {
         "swamp_reed": 1
@@ -98,6 +277,12 @@
     },
     "deep_swamp": {
       "items": {}
+    },
+    "sunken_ruins": {
+      "items": {
+        "ancient_brick": 1,
+        "gold_coin": 1
+      }
     },
     "witch_hut": {
       "items": {
@@ -112,14 +297,31 @@
         "smooth_pebble": 1
       }
     },
+    "fishing_spot": {
+      "items": {
+        "old_fishing_rod": 1
+      }
+    },
     "beach": {
       "items": {
         "seashell": 1
       }
     },
+    "tidal_caves": {
+      "items": {
+        "cave_crystal": 1,
+        "seaweed": 1
+      }
+    },
     "old_dock": {
       "items": {
         "old_rope": 1
+      }
+    },
+    "lakeside_camp": {
+      "items": {
+        "torch": 1,
+        "rope_coil": 1
       }
     },
     "old_battlefield": {
@@ -133,8 +335,128 @@
         "ancient_brick": 1
       }
     },
+    "ruined_library": {
+      "items": {
+        "intact_tome": 1,
+        "faded_map": 1
+      }
+    },
     "dungeon_ruins_entrance": {
       "items": {}
+    },
+    "sd_f1_dark_threshold": {
+      "items": {
+        "shadow_shard": 2
+      }
+    },
+    "sd_f1_obsidian_gallery": {
+      "items": {
+        "obsidian_blade_fragment": 2,
+        "dark_glass_shard": 3
+      }
+    },
+    "sd_f1_echo_void": {
+      "items": {
+        "void_echo_stone": 1
+      }
+    },
+    "sd_f1_whispering_alcove": {
+      "items": {
+        "shadow_coin": 4,
+        "dark_offering": 1
+      }
+    },
+    "sd_f1_umbral_passage": {
+      "items": {
+        "umbral_thread": 1
+      }
+    },
+    "sd_f1_shadow_well": {
+      "items": {
+        "void_droplet": 1
+      }
+    },
+    "sd_f1_plunging_shaft": {
+      "items": {}
+    },
+    "sd_f1_bone_niche": {
+      "items": {
+        "shadow_bone": 2,
+        "necrotic_dust": 3
+      }
+    },
+    "sd_f2_void_landing": {
+      "items": {}
+    },
+    "sd_f2_nightmare_hall": {
+      "items": {
+        "nightmare_essence": 2
+      }
+    },
+    "sd_f2_dark_mirror": {
+      "items": {
+        "mirror_shadow_fragment": 2
+      }
+    },
+    "sd_f2_entropy_chamber": {
+      "items": {
+        "entropy_crystal": 1
+      }
+    },
+    "sd_f2_shadow_library": {
+      "items": {
+        "shadow_tome": 1,
+        "void_ink_vial": 2
+      }
+    },
+    "sd_f2_dread_sanctum": {
+      "items": {
+        "dread_idol": 1,
+        "dark_altar_fragment": 1
+      }
+    },
+    "sd_f2_rift_core": {
+      "items": {
+        "rift_shard": 1
+      }
+    },
+    "sd_f2_hollow_tomb": {
+      "items": {
+        "void_ward_seal": 1,
+        "obsidian_burial_gem": 1
+      }
+    },
+    "sd_f3_abyssal_gate": {
+      "items": {}
+    },
+    "sd_f3_oblivion_corridor": {
+      "items": {
+        "oblivion_shard": 1
+      }
+    },
+    "sd_f3_void_treasury": {
+      "items": {
+        "void_gold": 3,
+        "paradox_gemstone": 2
+      }
+    },
+    "sd_f3_shadow_sovereign_throne": {
+      "items": {
+        "sovereign_shadow_crown": 1,
+        "void_heart_fragment": 1
+      }
+    },
+    "sd_f3_lost_souls_chamber": {
+      "items": {
+        "soul_fragment": 2,
+        "spectral_essence": 1,
+        "void_pearl": 2
+      }
+    },
+    "sd_f3_shadowforge": {
+      "items": {
+        "concentrated_void_essence": 1
+      }
     }
   },
   "item_worth": {
@@ -143,6 +465,74 @@
     "rusty key": 5,
     "silver ring": 10,
     "bronze coin": 1,
-    "golden ring": 40
+    "golden ring": 40,
+    "rusty_dagger": 5,
+    "old_boot": 2,
+    "empty_bottle": 2,
+    "bent_fork": 3,
+    "cracked_skull": 6,
+    "torn_cloth": 2,
+    "broken_chain": 4,
+    "moldy_bread": 1,
+    "torch": 3,
+    "coin_pouch": 20,
+    "worn_map": 45,
+    "quality_torch": 15,
+    "steel_longsword": 110,
+    "platinum_bar": 150,
+    "gold_chalice": 100,
+    "royal_signet": 140,
+    "craftsman_hammer": 38,
+    "healing_salve": 35,
+    "leather_armor_piece": 25,
+    "steel_dagger": 42,
+    "enchanted_candle": 66,
+    "iron_key": 30,
+    "enchanted_ring": 144,
+    "ancient_tome": 138,
+    "healing_potion": 102,
+    "ancient_coin": 72,
+    "silver_ring": 48,
+    "magic_amulet": 130,
+    "jeweled_dagger": 105,
+    "spell_scroll": 95,
+    "iron_sword": 36,
+    "rat_pelt": 4,
+    "lockpick_set": 60,
+    "masterwork_shield": 150,
+    "rope_coil": 20,
+    "legendary_artifact": 10,
+    "ancient_relic": 10,
+    "enchanted_cloak_fragment": 135,
+    "rare_gemstone": 174,
+    "shadow_shard": 14,
+    "obsidian_blade_fragment": 26,
+    "dark_glass_shard": 16,
+    "void_echo_stone": 38,
+    "shadow_coin": 12,
+    "dark_offering": 30,
+    "umbral_thread": 42,
+    "void_droplet": 55,
+    "shadow_bone": 20,
+    "necrotic_dust": 8,
+    "nightmare_essence": 32,
+    "mirror_shadow_fragment": 48,
+    "entropy_crystal": 65,
+    "shadow_tome": 50,
+    "void_ink_vial": 35,
+    "dread_idol": 75,
+    "dark_altar_fragment": 55,
+    "rift_shard": 110,
+    "void_ward_seal": 42,
+    "obsidian_burial_gem": 58,
+    "oblivion_shard": 90,
+    "void_gold": 130,
+    "paradox_gemstone": 95,
+    "sovereign_shadow_crown": 200,
+    "void_heart_fragment": 150,
+    "soul_fragment": 105,
+    "spectral_essence": 140,
+    "void_pearl": 120,
+    "concentrated_void_essence": 175
   }
 }

@@ -1,0 +1,507 @@
+{
+  "dungeon_id": "sunken_catacombs",
+  "name": "The Sunken Catacombs",
+  "description": "Ancient burial chambers beneath the ruins, half-flooded and reeking of decay. The dead do not rest easily here.",
+  "entrance_room_id": "dungeon_ruins_entrance",
+  "always_open": true,
+  "num_floors": 3,
+  "theme": "undead_crypt",
+  "difficulty": "medium",
+  "floors": {
+    "1": {
+      "floor_number": 1,
+      "num_rooms": 8,
+      "entrance_room": "sc_f1_entrance",
+      "exit_stairs_down": "sc_f1_stairs_down",
+      "rooms": {
+        "sc_f1_entrance": {
+          "name": "Catacomb Entry Hall",
+          "description": "Water-stained stone steps lead down into a wide hall lined with burial niches. Tattered funeral banners hang from the ceiling. The air is cold and smells of mildew. A passage leads deeper, while stone steps behind you lead back to the surface.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"torch": {"quantity": 2, "value": 5}},
+          "exits": {
+            "leave": {
+              "target": "dungeon_ruins_entrance",
+              "type": "leave_dungeon",
+              "transition_text": "You climb the wet stairs back to the surface, gasping fresh air..."
+            },
+            "south": {"target": "sc_f1_ossuary", "type": "direction"},
+            "east": {"target": "sc_f1_flooded_passage", "type": "direction"}
+          }
+        },
+        "sc_f1_ossuary": {
+          "name": "The Ossuary",
+          "description": "Thousands of bones are stacked in geometric patterns along the walls — skulls forming arches, femurs creating pillars. It is both beautiful and deeply unsettling. Water drips steadily from above.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"old_bone": {"quantity": 4, "value": 2}, "bronze_coin": {"quantity": 3, "value": 1}},
+          "traps": [
+            {
+              "type": "pit_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "sc_f1_entrance", "type": "direction"},
+            "west": {"target": "sc_f1_embalming_room", "type": "direction"},
+            "south": {"target": "sc_f1_collapsed_crypt", "type": "direction"}
+          }
+        },
+        "sc_f1_flooded_passage": {
+          "name": "Flooded Passage",
+          "description": "Knee-deep murky water fills this low corridor. Something moves beneath the surface — just ripples, you tell yourself. Fungal growths glow faintly on the walls, providing dim greenish light.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"glowing_moss": {"quantity": 3, "value": 8}},
+          "traps": [
+            {
+              "type": "poison_dart",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "west": {"target": "sc_f1_entrance", "type": "direction"},
+            "south": {"target": "sc_f1_sarcophagus_hall", "type": "direction"}
+          }
+        },
+        "sc_f1_embalming_room": {
+          "name": "Embalming Chamber",
+          "description": "Stone slabs hold the remains of ancient embalming work. Clay jars line shelves — canopic vessels still sealed after centuries. Tools of bronze and obsidian rest on a workbench.",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {"obsidian_knife": {"quantity": 1, "value": 35}, "canopic_jar": {"quantity": 2, "value": 20}},
+          "traps": [
+            {
+              "type": "gas_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "east": {"target": "sc_f1_ossuary", "type": "direction"}
+          }
+        },
+        "sc_f1_sarcophagus_hall": {
+          "name": "Hall of Sarcophagi",
+          "description": "Massive stone coffins stand upright along both walls like silent sentinels. Their carved faces stare with empty eyes. One sarcophagus stands open, its lid shattered on the ground.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"golden_scarab": {"quantity": 1, "value": 55}, "dusty_tome": {"quantity": 1, "value": 35}},
+          "traps": [
+            {
+              "type": "spike_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "sc_f1_flooded_passage", "type": "direction"},
+            "west": {"target": "sc_f1_collapsed_crypt", "type": "direction"}
+          }
+        },
+        "sc_f1_collapsed_crypt": {
+          "name": "Collapsed Crypt",
+          "description": "Part of the ceiling has given way, creating a mountain of rubble. Through the debris, you can see another chamber beyond. A narrow path has been cleared — recently, judging by the boot prints in the dust.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"ancient_brick": {"quantity": 2, "value": 10}},
+          "traps": [
+            {
+              "type": "crushing_ceiling",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "sc_f1_ossuary", "type": "direction"},
+            "east": {"target": "sc_f1_sarcophagus_hall", "type": "direction"},
+            "south": {"target": "sc_f1_guardian_chamber", "type": "direction"}
+          }
+        },
+        "sc_f1_guardian_chamber": {
+          "name": "Guardian's Chamber",
+          "description": "A circular room with a domed ceiling painted with faded stars. In the center, an armored skeleton sits on a stone throne, a rusted greatsword across its lap. Behind the throne, stairs descend into darkness.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {"rusted_greatsword": {"quantity": 1, "value": 45}, "guardian_medallion": {"quantity": 1, "value": 60}},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "sc_f1_collapsed_crypt", "type": "direction"},
+            "down": {
+              "target": "sc_f2_waterfall_landing",
+              "type": "stairs_down",
+              "transition_text": "You descend the worn stairs. The sound of rushing water grows louder..."
+            }
+          }
+        },
+        "sc_f1_hidden_alcove": {
+          "name": "Hidden Alcove",
+          "description": "A small chamber concealed behind a loose wall section. Someone stashed supplies here long ago — a bedroll, a lantern, and a locked chest.",
+          "coordinates": [-1, 0],
+          "location_type": "dungeon",
+          "items": {"healing_salve": {"quantity": 2, "value": 35}, "iron_key": {"quantity": 1, "value": 25}},
+          "exits": {
+            "east": {"target": "sc_f1_entrance", "type": "direction"}
+          }
+        }
+      }
+    },
+    "2": {
+      "floor_number": 2,
+      "num_rooms": 8,
+      "entrance_room": "sc_f2_waterfall_landing",
+      "exit_stairs_up": "sc_f2_waterfall_landing",
+      "exit_stairs_down": "sc_f2_drowned_shrine",
+      "rooms": {
+        "sc_f2_waterfall_landing": {
+          "name": "Waterfall Landing",
+          "description": "An underground waterfall cascades from a crack in the ceiling, filling the chamber with mist and noise. The water flows into a channel cut in the floor, disappearing into the rock. Stairs behind you lead back up.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "up": {
+              "target": "sc_f1_guardian_chamber",
+              "type": "stairs_up",
+              "transition_text": "You climb back up to the first level..."
+            },
+            "east": {"target": "sc_f2_fungal_garden", "type": "direction"},
+            "south": {"target": "sc_f2_bone_bridge", "type": "direction"}
+          }
+        },
+        "sc_f2_fungal_garden": {
+          "name": "Fungal Garden",
+          "description": "Enormous mushrooms grow from the damp stone floor, some taller than you. Their caps glow in shades of blue and violet, illuminating the chamber in an eerie light. Spores drift lazily through the air.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"luminous_cap": {"quantity": 3, "value": 18}, "spore_sac": {"quantity": 2, "value": 12}},
+          "traps": [
+            {
+              "type": "gas_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "west": {"target": "sc_f2_waterfall_landing", "type": "direction"},
+            "south": {"target": "sc_f2_worm_tunnel", "type": "direction"}
+          }
+        },
+        "sc_f2_bone_bridge": {
+          "name": "Bridge of Bones",
+          "description": "A narrow bridge made entirely of fused bones spans a deep chasm. Far below, dark water glints. The bridge creaks and shifts with every step. Skulls are embedded in the railings, their jaws wired open in silent screams.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {},
+          "traps": [
+            {
+              "type": "pit_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "spike_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "sc_f2_waterfall_landing", "type": "direction"},
+            "south": {"target": "sc_f2_reliquary", "type": "direction"},
+            "east": {"target": "sc_f2_worm_tunnel", "type": "direction"}
+          }
+        },
+        "sc_f2_worm_tunnel": {
+          "name": "Worm-Eaten Tunnels",
+          "description": "The walls here are riddled with holes bored by something large. Slime trails glisten on every surface. Occasionally you hear a wet, grinding sound from deep within the rock.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"cave_crystal": {"quantity": 2, "value": 22}},
+          "traps": [
+            {
+              "type": "poison_dart",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "sc_f2_fungal_garden", "type": "direction"},
+            "west": {"target": "sc_f2_bone_bridge", "type": "direction"},
+            "south": {"target": "sc_f2_sacrificial_pit", "type": "direction"}
+          }
+        },
+        "sc_f2_reliquary": {
+          "name": "Reliquary of the Damned",
+          "description": "Glass cases — somehow still intact — display holy relics corrupted by dark magic. A golden chalice overflows with black liquid. A silver cross has been bent into an impossible shape. The air vibrates with wrongness.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"corrupted_chalice": {"quantity": 1, "value": 70}, "bent_silver_cross": {"quantity": 1, "value": 50}},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "gas_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "sc_f2_bone_bridge", "type": "direction"},
+            "east": {"target": "sc_f2_sacrificial_pit", "type": "direction"},
+            "south": {"target": "sc_f2_drowned_shrine", "type": "direction"}
+          }
+        },
+        "sc_f2_sacrificial_pit": {
+          "name": "Sacrificial Pit",
+          "description": "A deep pit dominates the center of this room, its edges stained dark. Stone channels lead from the pit to the walls — blood gutters. Chains hang from the ceiling, ending in rusted manacles. This was a terrible place.",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {"blood_ruby": {"quantity": 1, "value": 85}, "chain_links": {"quantity": 3, "value": 8}},
+          "traps": [
+            {
+              "type": "crushing_ceiling",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "spike_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "sc_f2_worm_tunnel", "type": "direction"},
+            "west": {"target": "sc_f2_reliquary", "type": "direction"}
+          }
+        },
+        "sc_f2_drowned_shrine": {
+          "name": "Drowned Shrine",
+          "description": "An underwater shrine, now only partially submerged. Barnacle-encrusted statues of forgotten gods watch from alcoves. The water is still and black as ink. Steps carved into the far wall descend into the flooded depths.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {"pearl_of_the_deep": {"quantity": 1, "value": 90}},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "sc_f2_reliquary", "type": "direction"},
+            "down": {
+              "target": "sc_f3_abyssal_gate",
+              "type": "stairs_down",
+              "transition_text": "You take a deep breath and descend into the flooded stairs. Miraculously, an air pocket waits below..."
+            }
+          }
+        },
+        "sc_f2_tomb_guardians": {
+          "name": "Tomb Guardian Alcoves",
+          "description": "Six alcoves line the walls, each containing a full suit of ancient plate armor standing at attention. Their visors are down, concealing whatever — if anything — is inside. One suit has toppled forward, revealing an empty cavity.",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {"ancient_plate_piece": {"quantity": 1, "value": 65}},
+          "traps": [
+            {
+              "type": "spike_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "east": {"target": "sc_f2_bone_bridge", "type": "direction"}
+          }
+        }
+      }
+    },
+    "3": {
+      "floor_number": 3,
+      "num_rooms": 6,
+      "entrance_room": "sc_f3_abyssal_gate",
+      "boss_room": "sc_f3_lich_throne",
+      "rooms": {
+        "sc_f3_abyssal_gate": {
+          "name": "The Abyssal Gate",
+          "description": "A massive stone archway inscribed with death runes marks the entrance to the deepest level. Beyond, the air itself feels heavy with ancient malice. The temperature drops sharply. Stairs behind lead back up.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "up": {
+              "target": "sc_f2_drowned_shrine",
+              "type": "stairs_up",
+              "transition_text": "You swim up through the flooded passage back to the shrine..."
+            },
+            "south": {"target": "sc_f3_soul_corridor", "type": "direction"}
+          }
+        },
+        "sc_f3_soul_corridor": {
+          "name": "Corridor of Souls",
+          "description": "Ghostly blue flames burn in sconces along a long corridor. Faces appear and vanish in the stone walls — trapped souls pressing against the barrier between worlds. They whisper warnings you cannot quite understand.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"soul_gem": {"quantity": 1, "value": 100}},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "poison_dart",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "crushing_ceiling",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "sc_f3_abyssal_gate", "type": "direction"},
+            "east": {"target": "sc_f3_phylactery_vault", "type": "direction"},
+            "south": {"target": "sc_f3_lich_throne", "type": "direction"}
+          }
+        },
+        "sc_f3_phylactery_vault": {
+          "name": "Phylactery Vault",
+          "description": "Iron cages hang from the ceiling, each containing a glowing crystal orb. These are phylacteries — soul anchors for the undead. Most are dark and cracked, their owners long destroyed. A few still pulse with sickly light.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"cracked_phylactery": {"quantity": 2, "value": 75}, "spell_scroll": {"quantity": 1, "value": 95}},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "gas_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "west": {"target": "sc_f3_soul_corridor", "type": "direction"}
+          }
+        },
+        "sc_f3_lich_throne": {
+          "name": "Throne of the Lich King",
+          "description": "A vast, vaulted chamber of black marble. A throne of fused bones and dark iron sits atop a pyramid of steps. The lich that once ruled here is gone, but its power lingers. Shadows move of their own accord. Behind the throne, a door of pure obsidian stands — the treasure vault.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"lich_crown_fragment": {"quantity": 1, "value": 150}, "enchanted_ring": {"quantity": 1, "value": 120}},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "spike_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "crushing_ceiling",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "sc_f3_soul_corridor", "type": "direction"},
+            "west": {"target": "sc_f3_treasury", "type": "direction"},
+            "east": {"target": "sc_f3_altar_of_binding", "type": "direction"}
+          }
+        },
+        "sc_f3_treasury": {
+          "name": "Lich King's Treasury",
+          "description": "Mountains of gold coins, jeweled weapons, and enchanted artifacts fill this chamber. Centuries of plunder from a kingdom of the dead. Magical wards still protect some of the more powerful items.",
+          "coordinates": [-1, -2],
+          "location_type": "dungeon",
+          "items": {
+            "gold_chalice": {"quantity": 2, "value": 100},
+            "rare_gemstone": {"quantity": 1, "value": 145},
+            "platinum_bar": {"quantity": 1, "value": 150},
+            "jeweled_dagger": {"quantity": 1, "value": 105},
+            "magic_amulet": {"quantity": 1, "value": 130}
+          },
+          "traps": [
+            {
+              "type": "spike_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "poison_dart",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "east": {"target": "sc_f3_lich_throne", "type": "direction"}
+          }
+        },
+        "sc_f3_altar_of_binding": {
+          "name": "Altar of Binding",
+          "description": "A chamber of absolute stillness. In the center, a circular altar of polished obsidian hovers above the floor, held aloft by streams of dark energy. Ancient channeling runes spiral outward from its surface. The air thrums with latent power — this altar was used to bind souls to objects.\n\nThe altar seems to still function. Perhaps items could be combined here...",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {"binding_essence": {"quantity": 1, "value": 200}},
+          "crafting_altar": true,
+          "altar_name": "Altar of Binding",
+          "altar_description": "The obsidian altar pulses with dark energy. Channeling runes glow faintly as you approach. It seems capable of fusing items together — binding their essences into something greater.",
+          "exits": {
+            "west": {"target": "sc_f3_lich_throne", "type": "direction"}
+          }
+        }
+      }
+    }
+  }
+}

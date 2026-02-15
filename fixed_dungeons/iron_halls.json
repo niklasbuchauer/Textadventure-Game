@@ -1,0 +1,527 @@
+{
+  "dungeon_id": "iron_halls",
+  "name": "The Iron Halls",
+  "description": "A dwarven fortress carved deep into the mountain, abandoned after a catastrophe. Masterwork stonework and iron mechanisms still function, but the halls echo with the groans of stressed metal and shifting stone.",
+  "entrance_room_id": "dungeon_mountain_entrance",
+  "always_open": true,
+  "num_floors": 3,
+  "theme": "dwarven_fortress",
+  "difficulty": "very_hard",
+  "floors": {
+    "1": {
+      "floor_number": 1,
+      "num_rooms": 8,
+      "entrance_room": "ih_f1_great_gate",
+      "exit_stairs_down": "ih_f1_mineshaft",
+      "rooms": {
+        "ih_f1_great_gate": {
+          "name": "The Great Gate",
+          "description": "Massive iron doors, each twenty feet tall, stand permanently open — their hinges rusted solid. Beyond, a grand entrance hall stretches into the mountain. Dwarven runes spell out a warning above the doors: 'Beware the Forge Eternal.' Stone steps behind lead back to the mountainside.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"iron_ingot": {"quantity": 2, "value": 20}},
+          "exits": {
+            "leave": {
+              "target": "dungeon_mountain_entrance",
+              "type": "leave_dungeon",
+              "transition_text": "You pass through the great iron gates and emerge onto the mountain path..."
+            },
+            "south": {"target": "ih_f1_grand_foyer", "type": "direction"},
+            "east": {"target": "ih_f1_guard_station", "type": "direction"}
+          }
+        },
+        "ih_f1_guard_station": {
+          "name": "Guard Station",
+          "description": "A fortified checkpoint with murder holes in the ceiling and arrow slits in the walls. Iron portcullis mechanisms line both ends — this was the fortress's first line of defense. Dwarven armor stands in racks, still polished by some enchantment.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"dwarven_shield": {"quantity": 1, "value": 55}, "crossbow_bolt": {"quantity": 5, "value": 4}},
+          "traps": [
+            {
+              "type": "spike_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "poison_dart",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "west": {"target": "ih_f1_great_gate", "type": "direction"},
+            "south": {"target": "ih_f1_armory", "type": "direction"}
+          }
+        },
+        "ih_f1_grand_foyer": {
+          "name": "Grand Foyer",
+          "description": "A cavernous hall with pillars carved to resemble armored dwarves. Each holds a real weapon — axes, hammers, swords — as if ready for battle. The ceiling is painted with scenes of dwarven glory: mountains conquered, dragons slain, fortresses built.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"dwarven_rune_stone": {"quantity": 2, "value": 30}},
+          "traps": [
+            {
+              "type": "crushing_ceiling",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "ih_f1_great_gate", "type": "direction"},
+            "east": {"target": "ih_f1_armory", "type": "direction"},
+            "south": {"target": "ih_f1_feast_hall", "type": "direction"},
+            "west": {"target": "ih_f1_records_office", "type": "direction"}
+          }
+        },
+        "ih_f1_records_office": {
+          "name": "Forge-Master's Records",
+          "description": "Filing cabinets of iron (naturally) hold centuries of meticulous records. Production quotas, ore purity reports, worker rosters — all in neat dwarven script. A large desk holds a half-finished letter: 'The Deep Forge is consuming more fuel than it should. Something stirs in the—'",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {"forgemaster_journal": {"quantity": 1, "value": 45}, "iron_key": {"quantity": 1, "value": 25}},
+          "exits": {
+            "east": {"target": "ih_f1_grand_foyer", "type": "direction"}
+          }
+        },
+        "ih_f1_armory": {
+          "name": "Main Armory",
+          "description": "Racks upon racks of dwarven-forged weapons, still sharp after centuries. The workmanship is extraordinary — each blade perfectly balanced, each hammer precisely weighted. Most are too heavy for human hands, but smaller pieces remain.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"dwarven_war_hammer": {"quantity": 1, "value": 85}, "steel_longsword": {"quantity": 1, "value": 110}},
+          "traps": [
+            {
+              "type": "spike_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "gas_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "ih_f1_guard_station", "type": "direction"},
+            "west": {"target": "ih_f1_grand_foyer", "type": "direction"}
+          }
+        },
+        "ih_f1_feast_hall": {
+          "name": "Great Feast Hall",
+          "description": "Long stone tables stretch the length of this enormous hall, each with stone benches on either side. Iron chandeliers the size of wagon wheels hang from chains above. The hearth at the far end could roast an entire boar. Stone mugs still sit on the tables, as if the dwarves simply walked away mid-meal.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"dwarven_ale_barrel": {"quantity": 1, "value": 25}, "iron_chandelier_piece": {"quantity": 1, "value": 35}},
+          "traps": [
+            {
+              "type": "pit_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "ih_f1_grand_foyer", "type": "direction"},
+            "south": {"target": "ih_f1_mineshaft", "type": "direction"},
+            "east": {"target": "ih_f1_treasure_vault", "type": "direction"}
+          }
+        },
+        "ih_f1_treasure_vault": {
+          "name": "First Vault",
+          "description": "An iron vault door stands ajar — it took something incredibly strong to force it. Inside, neat stacks of gold bars and iron strongboxes line the walls. Most have been looted, but several remain intact, too heavy to move easily.",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {"gold_bar": {"quantity": 1, "value": 100}, "platinum_bar": {"quantity": 1, "value": 150}},
+          "traps": [
+            {
+              "type": "poison_dart",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "crushing_ceiling",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "west": {"target": "ih_f1_feast_hall", "type": "direction"}
+          }
+        },
+        "ih_f1_mineshaft": {
+          "name": "Central Mine Shaft",
+          "description": "A massive vertical shaft with iron scaffolding and a functioning (if terrifying) lift platform. Chains as thick as your arm connect to a winch mechanism above. The shaft descends into pitch darkness. The air rising from below is hot and smells of sulfur.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {"mining_lantern": {"quantity": 1, "value": 15}},
+          "traps": [
+            {
+              "type": "pit_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "ih_f1_feast_hall", "type": "direction"},
+            "down": {
+              "target": "ih_f2_deep_crossing",
+              "type": "stairs_down",
+              "transition_text": "You pull the lever and the iron platform descends with a grinding of chains. Down, down, into the heat below..."
+            }
+          }
+        }
+      }
+    },
+    "2": {
+      "floor_number": 2,
+      "num_rooms": 8,
+      "entrance_room": "ih_f2_deep_crossing",
+      "exit_stairs_up": "ih_f2_deep_crossing",
+      "exit_stairs_down": "ih_f2_magma_bridge",
+      "rooms": {
+        "ih_f2_deep_crossing": {
+          "name": "The Deep Crossing",
+          "description": "The mine shaft opens onto a vast underground cavern. An iron bridge spans a chasm so deep you cannot see the bottom. The heat here is oppressive, and the ironwork radiates warmth. The lift platform behind you leads back up.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "up": {
+              "target": "ih_f1_mineshaft",
+              "type": "stairs_up",
+              "transition_text": "The iron lift groans as it carries you back to the upper level..."
+            },
+            "south": {"target": "ih_f2_ore_processing", "type": "direction"},
+            "east": {"target": "ih_f2_fungal_farm", "type": "direction"}
+          }
+        },
+        "ih_f2_fungal_farm": {
+          "name": "Underground Fungal Farm",
+          "description": "The dwarves cultivated massive fungi for food and brewing. The farm is overgrown now — mushrooms the size of horses grow between stone planting beds. The air is thick with spores. Some fungi glow, others pulse, and a few seem to track your movement.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"giant_truffle": {"quantity": 2, "value": 30}, "luminous_cap": {"quantity": 3, "value": 18}},
+          "traps": [
+            {
+              "type": "gas_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "west": {"target": "ih_f2_deep_crossing", "type": "direction"},
+            "south": {"target": "ih_f2_workshop", "type": "direction"}
+          }
+        },
+        "ih_f2_ore_processing": {
+          "name": "Ore Processing Hall",
+          "description": "Enormous stone crushers, sorting mechanisms, and smelting channels fill this industrial space. The machinery is driven by water power from an underground river, and some of it still turns — grinding endlessly with no ore to process. The sound is deafening.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"refined_iron": {"quantity": 2, "value": 40}, "mithril_dust": {"quantity": 1, "value": 90}},
+          "traps": [
+            {
+              "type": "crushing_ceiling",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "spike_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "ih_f2_deep_crossing", "type": "direction"},
+            "east": {"target": "ih_f2_workshop", "type": "direction"},
+            "south": {"target": "ih_f2_collapsed_gallery", "type": "direction"}
+          }
+        },
+        "ih_f2_workshop": {
+          "name": "Master Craftsman's Workshop",
+          "description": "A personal workshop filled with half-finished projects of astounding skill. Clockwork mechanisms, articulated gauntlets, a mechanical bird frozen mid-flight. The craftsman's tools are laid out with obsessive precision. Everything speaks of genius interrupted.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"clockwork_mechanism": {"quantity": 1, "value": 75}, "artisan_tools": {"quantity": 1, "value": 60}},
+          "traps": [
+            {
+              "type": "poison_dart",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "ih_f2_fungal_farm", "type": "direction"},
+            "west": {"target": "ih_f2_ore_processing", "type": "direction"}
+          }
+        },
+        "ih_f2_collapsed_gallery": {
+          "name": "Collapsed Gallery",
+          "description": "A once-grand gallery has partially collapsed, revealing natural caverns behind the stonework. Dwarven statues lie broken amid the rubble. Through the gaps, you can see veins of precious metal glinting in the exposed rock face.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"gold_vein_sample": {"quantity": 1, "value": 65}},
+          "traps": [
+            {
+              "type": "pit_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "crushing_ceiling",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "ih_f2_ore_processing", "type": "direction"},
+            "south": {"target": "ih_f2_magma_bridge", "type": "direction"},
+            "west": {"target": "ih_f2_tombs_of_kings", "type": "direction"}
+          }
+        },
+        "ih_f2_tombs_of_kings": {
+          "name": "Tombs of the Mountain Kings",
+          "description": "Seven massive sarcophagi of polished granite, each topped with a life-sized iron effigy of a dwarven king in full battle armor. Their names are carved in dwarven runes at their feet. Treasure was buried with them, but disturbing it feels... unwise.",
+          "coordinates": [-1, -2],
+          "location_type": "dungeon",
+          "items": {"king_crown_iron": {"quantity": 1, "value": 130}, "royal_signet": {"quantity": 1, "value": 140}},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "spike_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "gas_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "east": {"target": "ih_f2_collapsed_gallery", "type": "direction"}
+          }
+        },
+        "ih_f2_magma_bridge": {
+          "name": "Bridge Over Magma",
+          "description": "An iron bridge spans a river of molten rock. The heat is nearly unbearable, and the light from the magma casts everything in hellish red-orange. The bridge's surface is blackened but solid — dwarven engineering at its finest. On the far side, stairs descend to the deepest level.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {},
+          "traps": [
+            {
+              "type": "spike_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "ih_f2_collapsed_gallery", "type": "direction"},
+            "down": {
+              "target": "ih_f3_eternal_forge_entrance",
+              "type": "stairs_down",
+              "transition_text": "You descend iron stairs that radiate heat. The air shimmers. The distant ring of a hammer grows louder..."
+            }
+          }
+        },
+        "ih_f2_barracks": {
+          "name": "Deep Guard Barracks",
+          "description": "Stone bunks carved into the walls, each with a locker of personal effects. These soldiers guarded the deep levels — their equipment was heavier, their weapons more brutal. Whatever they were protecting against was no ordinary threat.",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {"deep_guard_helm": {"quantity": 1, "value": 50}, "battle_horn": {"quantity": 1, "value": 35}},
+          "exits": {
+            "east": {"target": "ih_f2_ore_processing", "type": "direction"}
+          }
+        }
+      }
+    },
+    "3": {
+      "floor_number": 3,
+      "num_rooms": 6,
+      "entrance_room": "ih_f3_eternal_forge_entrance",
+      "boss_room": "ih_f3_heart_of_mountain",
+      "rooms": {
+        "ih_f3_eternal_forge_entrance": {
+          "name": "Anteroom of the Eternal Forge",
+          "description": "The heat is staggering. This anteroom is carved from obsidian, proof against the temperatures beyond. Dwarven warnings cover every surface: 'TURN BACK.' 'THE FORGE DEMANDS.' 'WE WERE WRONG TO DIG THIS DEEP.' Iron stairs behind you lead back to safety.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"obsidian_shard": {"quantity": 2, "value": 25}},
+          "exits": {
+            "up": {
+              "target": "ih_f2_magma_bridge",
+              "type": "stairs_up",
+              "transition_text": "You climb back up the scorching stairs to the bridge above..."
+            },
+            "south": {"target": "ih_f3_cooling_chambers", "type": "direction"}
+          }
+        },
+        "ih_f3_cooling_chambers": {
+          "name": "Cooling Chambers",
+          "description": "A series of water-cooled chambers where newly forged items were tempered. The water channels still flow, fed by an underground river, creating clouds of steam where they meet the superheated rock. Abandoned masterworks cool on iron racks.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"masterwork_blade": {"quantity": 1, "value": 125}, "tempered_steel_ingot": {"quantity": 2, "value": 55}},
+          "traps": [
+            {
+              "type": "gas_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "poison_dart",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "spike_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "ih_f3_eternal_forge_entrance", "type": "direction"},
+            "east": {"target": "ih_f3_mithril_seam", "type": "direction"},
+            "south": {"target": "ih_f3_heart_of_mountain", "type": "direction"}
+          }
+        },
+        "ih_f3_mithril_seam": {
+          "name": "The Mithril Seam",
+          "description": "The reason the dwarves dug this deep — a seam of pure mithril, the rarest of metals. It gleams with an inner light, almost liquid in appearance. Mining tools still embedded in the vein suggest the dwarves were desperate to extract every ounce before they fled.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"raw_mithril": {"quantity": 1, "value": 250}, "mithril_dust": {"quantity": 3, "value": 90}},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "crushing_ceiling",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "west": {"target": "ih_f3_cooling_chambers", "type": "direction"}
+          }
+        },
+        "ih_f3_heart_of_mountain": {
+          "name": "Heart of the Mountain",
+          "description": "The deepest chamber. A natural magma vent has been harnessed by dwarven engineering into the Eternal Forge — a mechanism of iron, stone, and channeled lava that can heat metal to temperatures impossible on the surface. The forge glows white-hot, still burning after centuries. This is what the dwarves fear: the forge cannot be stopped.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"eternal_ember": {"quantity": 1, "value": 300}, "forgemaster_hammer": {"quantity": 1, "value": 175}},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "crushing_ceiling",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "spike_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "gas_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "ih_f3_cooling_chambers", "type": "direction"},
+            "west": {"target": "ih_f3_vault_of_wonders", "type": "direction"},
+            "east": {"target": "ih_f3_anvil_of_creation", "type": "direction"}
+          }
+        },
+        "ih_f3_vault_of_wonders": {
+          "name": "Vault of Wonders",
+          "description": "The dwarves' ultimate treasury — their greatest creations stored for safekeeping. Weapons that hum with enchantment, armor that weighs nothing, tools that never dull. Each item is mounted on a pedestal with a plaque describing its maker and properties.",
+          "coordinates": [-1, -2],
+          "location_type": "dungeon",
+          "items": {
+            "enchanted_warhammer": {"quantity": 1, "value": 200},
+            "mithril_chainmail_piece": {"quantity": 1, "value": 225},
+            "masterwork_shield": {"quantity": 1, "value": 125},
+            "ancient_tome": {"quantity": 1, "value": 115}
+          },
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "poison_dart",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "east": {"target": "ih_f3_heart_of_mountain", "type": "direction"}
+          }
+        },
+        "ih_f3_anvil_of_creation": {
+          "name": "Anvil of Creation",
+          "description": "A single anvil of meteoric iron sits upon a raised platform, surrounded by a ring of channeled magma. This anvil was used to create the dwarves' most legendary artifacts. Runes of making are carved into every surface. The hammer beside it vibrates with stored energy.\n\nThe anvil awaits. Perhaps items could be forged here...",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {"meteoric_iron_fragment": {"quantity": 1, "value": 200}},
+          "crafting_altar": true,
+          "altar_name": "Anvil of Creation",
+          "altar_description": "The meteoric iron anvil thrums with ancient power. Channeled magma provides impossible heat. Items placed upon this anvil could be reforged, combined, or transmuted into something greater.",
+          "exits": {
+            "west": {"target": "ih_f3_heart_of_mountain", "type": "direction"}
+          }
+        }
+      }
+    }
+  }
+}

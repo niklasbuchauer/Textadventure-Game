@@ -1,0 +1,481 @@
+{
+  "dungeon_id": "shadow_depths",
+  "name": "The Shadow Depths",
+  "description": "A yawning abyss beneath the old crypt, where darkness itself has become a living force. Obsidian walls absorb all light, and void energy pulses through veins in the rock. Only the brave — or the foolish — dare enter.",
+  "entrance_room_id": "open_crypt",
+  "always_open": true,
+  "num_floors": 3,
+  "theme": "shadow_magic",
+  "difficulty": "hard",
+  "floors": {
+    "1": {
+      "floor_number": 1,
+      "num_rooms": 8,
+      "entrance_room": "sd_f1_dark_threshold",
+      "exit_stairs_down": "sd_f1_plunging_shaft",
+      "rooms": {
+        "sd_f1_dark_threshold": {
+          "name": "Dark Threshold",
+          "description": "The crack in the crypt wall opens into a vast underground space. The darkness here is almost solid — your torchlight barely reaches the walls. Obsidian pillars rise from the floor, their surfaces swirling with trapped shadows. A cold wind whispers from below.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"shadow_shard": {"quantity": 2, "value": 14}},
+          "exits": {
+            "leave": {
+              "target": "open_crypt",
+              "type": "leave_dungeon",
+              "transition_text": "You claw your way back through the crack into the dim but welcome light of the crypt..."
+            },
+            "south": {"target": "sd_f1_obsidian_gallery", "type": "direction"},
+            "east": {"target": "sd_f1_echo_void", "type": "direction"}
+          }
+        },
+        "sd_f1_obsidian_gallery": {
+          "name": "Obsidian Gallery",
+          "description": "Walls of polished obsidian line this corridor, reflecting distorted versions of yourself. Some reflections move a heartbeat too late. Others grin when you don't. The volcanic glass is razor-sharp along its broken edges.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"obsidian_blade_fragment": {"quantity": 2, "value": 26}, "dark_glass_shard": {"quantity": 3, "value": 16}},
+          "traps": [
+            {
+              "type": "spike_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "sd_f1_dark_threshold", "type": "direction"},
+            "south": {"target": "sd_f1_shadow_well", "type": "direction"},
+            "west": {"target": "sd_f1_whispering_alcove", "type": "direction"}
+          }
+        },
+        "sd_f1_echo_void": {
+          "name": "Echo Void",
+          "description": "A cavernous space where sound behaves strangely — your footsteps echo back as whispered words in languages you don't understand. The void above swallows all light that reaches upward. Faint purple phosphorescence clings to the floor.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"void_echo_stone": {"quantity": 1, "value": 38}},
+          "traps": [
+            {
+              "type": "gas_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "west": {"target": "sd_f1_dark_threshold", "type": "direction"},
+            "south": {"target": "sd_f1_umbral_passage", "type": "direction"}
+          }
+        },
+        "sd_f1_whispering_alcove": {
+          "name": "Whispering Alcove",
+          "description": "A small chamber where the shadows gather in dense pools. They whisper constantly — fragments of conversations, warnings, pleas. Among the shadows, old offerings lie scattered: coins, trinkets, desperate gifts to appease the dark.",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {"shadow_coin": {"quantity": 4, "value": 12}, "dark_offering": {"quantity": 1, "value": 30}},
+          "exits": {
+            "east": {"target": "sd_f1_obsidian_gallery", "type": "direction"}
+          }
+        },
+        "sd_f1_umbral_passage": {
+          "name": "Umbral Passage",
+          "description": "A twisting corridor where the walls seem to breathe. Tendrils of living shadow reach out from cracks in the obsidian, recoiling when light touches them. The passage is narrow and claustrophobic, with an oppressive sense of being watched.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"umbral_thread": {"quantity": 1, "value": 42}},
+          "traps": [
+            {
+              "type": "pit_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "sd_f1_echo_void", "type": "direction"},
+            "west": {"target": "sd_f1_shadow_well", "type": "direction"}
+          }
+        },
+        "sd_f1_shadow_well": {
+          "name": "Shadow Well",
+          "description": "A circular chamber with a gaping well in the center. Instead of water, pure darkness fills it — a liquid shadow that ripples when you speak. Strange symbols carved around the rim glow faintly violet. Objects dropped in make no sound.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"void_droplet": {"quantity": 1, "value": 55}},
+          "traps": [
+            {
+              "type": "crushing_ceiling",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "sd_f1_obsidian_gallery", "type": "direction"},
+            "east": {"target": "sd_f1_umbral_passage", "type": "direction"},
+            "south": {"target": "sd_f1_plunging_shaft", "type": "direction"}
+          }
+        },
+        "sd_f1_plunging_shaft": {
+          "name": "Plunging Shaft",
+          "description": "A vertical shaft plummets into deeper darkness. Rough-hewn stairs spiral down along the walls, carved by something with claws rather than tools. Cold air rushes up from below, carrying the scent of ancient stone and something metallic.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {},
+          "traps": [
+            {
+              "type": "spike_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "sd_f1_shadow_well", "type": "direction"},
+            "down": {
+              "target": "sd_f2_void_landing",
+              "type": "stairs_down",
+              "transition_text": "You descend the clawed staircase. The darkness grows absolute, pressing against you like a physical weight..."
+            }
+          }
+        },
+        "sd_f1_bone_niche": {
+          "name": "Bone Niche",
+          "description": "A forgotten burial alcove packed with ancient bones. They've fused with the obsidian walls over millennia, creating grotesque sculptures of stone and skeleton. Some bones glow with residual shadow magic, pulsing dimly like dying embers.",
+          "coordinates": [-1, 0],
+          "location_type": "dungeon",
+          "items": {"shadow_bone": {"quantity": 2, "value": 20}, "necrotic_dust": {"quantity": 3, "value": 8}},
+          "exits": {
+            "east": {"target": "sd_f1_dark_threshold", "type": "direction"}
+          }
+        }
+      }
+    },
+    "2": {
+      "floor_number": 2,
+      "num_rooms": 8,
+      "entrance_room": "sd_f2_void_landing",
+      "exit_stairs_up": "sd_f2_void_landing",
+      "exit_stairs_down": "sd_f2_rift_core",
+      "rooms": {
+        "sd_f2_void_landing": {
+          "name": "Void Landing",
+          "description": "The staircase opens into a realm of deeper darkness. Here the shadows don't just obscure — they have texture, temperature, intent. The obsidian walls have given way to something stranger: solidified void, neither stone nor shadow but something in between.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "up": {
+              "target": "sd_f1_plunging_shaft",
+              "type": "stairs_up",
+              "transition_text": "You climb back up the spiraling staircase toward the faint light above..."
+            },
+            "east": {"target": "sd_f2_nightmare_hall", "type": "direction"},
+            "south": {"target": "sd_f2_dark_mirror", "type": "direction"}
+          }
+        },
+        "sd_f2_nightmare_hall": {
+          "name": "Nightmare Hall",
+          "description": "This long hall is lined with alcoves, each containing a swirling vortex of shadow that shows disturbing visions — fears given form. The closer you look, the more real they become. The shadows feed on attention. Best to keep moving.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"nightmare_essence": {"quantity": 2, "value": 32}},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "gas_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "west": {"target": "sd_f2_void_landing", "type": "direction"},
+            "south": {"target": "sd_f2_entropy_chamber", "type": "direction"}
+          }
+        },
+        "sd_f2_dark_mirror": {
+          "name": "Dark Mirror Chamber",
+          "description": "A vast obsidian mirror dominates one wall, but it doesn't reflect the room. Instead it shows a shadowy duplicate world — your dark reflection moves independently, mimicking your actions with a mocking delay. Items in the mirror world glint with tempting value.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"mirror_shadow_fragment": {"quantity": 2, "value": 48}},
+          "traps": [
+            {
+              "type": "crushing_ceiling",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "sd_f2_void_landing", "type": "direction"},
+            "east": {"target": "sd_f2_entropy_chamber", "type": "direction"},
+            "south": {"target": "sd_f2_shadow_library", "type": "direction"}
+          }
+        },
+        "sd_f2_entropy_chamber": {
+          "name": "Entropy Chamber",
+          "description": "In this room, decay is accelerated. Metal rusts before your eyes, wood crumbles to dust, and even stone slowly erodes. The void energy here breaks down all things. Paradoxically, certain shadow-forged artifacts seem immune — even strengthened — by the effect.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"entropy_crystal": {"quantity": 1, "value": 65}},
+          "traps": [
+            {
+              "type": "poison_dart",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "spike_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "sd_f2_nightmare_hall", "type": "direction"},
+            "west": {"target": "sd_f2_dark_mirror", "type": "direction"}
+          }
+        },
+        "sd_f2_shadow_library": {
+          "name": "Shadow Library",
+          "description": "Bookshelves carved from obsidian hold tomes bound in darkness itself. The pages are blank to normal eyes, but holding a light source behind them reveals text written in shadow-ink — forbidden knowledge inscribed in negative space. The books whisper when you touch them.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"shadow_tome": {"quantity": 1, "value": 50}, "void_ink_vial": {"quantity": 2, "value": 35}},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "sd_f2_dark_mirror", "type": "direction"},
+            "south": {"target": "sd_f2_rift_core", "type": "direction"},
+            "east": {"target": "sd_f2_dread_sanctum", "type": "direction"}
+          }
+        },
+        "sd_f2_dread_sanctum": {
+          "name": "Dread Sanctum",
+          "description": "An ancient shrine to something that dwells in the space between shadows. Obsidian idols stand in a semicircle around a black altar. The altar is stained with offerings centuries old. Dark energy radiates from it in waves you can feel in your teeth.",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {"dread_idol": {"quantity": 1, "value": 75}, "dark_altar_fragment": {"quantity": 1, "value": 55}},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "west": {"target": "sd_f2_shadow_library", "type": "direction"}
+          }
+        },
+        "sd_f2_rift_core": {
+          "name": "Rift Core",
+          "description": "The center of this level is dominated by a tear in reality itself — a vertical rift that crackles with void energy. Through it, you glimpse an alien landscape of impossible geometry. The rift is stable but radiates cold that burns. A narrow staircase of solidified shadow spirals down into the depths.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {"rift_shard": {"quantity": 1, "value": 110}},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "crushing_ceiling",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "sd_f2_shadow_library", "type": "direction"},
+            "down": {
+              "target": "sd_f3_abyssal_gate",
+              "type": "stairs_down",
+              "transition_text": "You descend the shadow-staircase. Reality bends and warps around you as you plunge into the deepest darkness..."
+            }
+          }
+        },
+        "sd_f2_hollow_tomb": {
+          "name": "Hollow Tomb",
+          "description": "An ancient burial vault where the dead were interred with shadow magic. The sarcophagi are made of obsidian, sealed with void-wards. One has been broken open — from the inside. Whatever was buried here is long gone, but it left behind treasures it no longer needed.",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {"void_ward_seal": {"quantity": 1, "value": 42}, "obsidian_burial_gem": {"quantity": 1, "value": 58}},
+          "exits": {
+            "east": {"target": "sd_f2_dark_mirror", "type": "direction"}
+          }
+        }
+      }
+    },
+    "3": {
+      "floor_number": 3,
+      "num_rooms": 6,
+      "entrance_room": "sd_f3_abyssal_gate",
+      "boss_room": "sd_f3_shadow_sovereign_throne",
+      "rooms": {
+        "sd_f3_abyssal_gate": {
+          "name": "Abyssal Gate",
+          "description": "The deepest level of the Shadow Depths. You stand at the threshold of pure void. The walls here aren't obsidian anymore — they're solidified shadow, and they shift and flow like slow liquid. Purple-black lightning crackles silently in the distance. The stairs behind you offer the only escape.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "up": {
+              "target": "sd_f2_rift_core",
+              "type": "stairs_up",
+              "transition_text": "You flee up the shadow-staircase, gasping as reality reasserts itself..."
+            },
+            "south": {"target": "sd_f3_oblivion_corridor", "type": "direction"}
+          }
+        },
+        "sd_f3_oblivion_corridor": {
+          "name": "Oblivion Corridor",
+          "description": "A corridor where existence itself seems thin. Parts of the walls occasionally flicker out of existence, revealing the raw void behind reality. Walking through feels like pushing through thick cobwebs made of nothingness. The air tastes of iron and endings.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"oblivion_shard": {"quantity": 1, "value": 90}},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "gas_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "pit_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "sd_f3_abyssal_gate", "type": "direction"},
+            "east": {"target": "sd_f3_void_treasury", "type": "direction"},
+            "south": {"target": "sd_f3_shadow_sovereign_throne", "type": "direction"}
+          }
+        },
+        "sd_f3_void_treasury": {
+          "name": "Void Treasury",
+          "description": "A vault of impossible wealth — treasures stolen from reality by the void. Coins from kingdoms that never existed, gems in colors that have no name, weapons forged from paradox. Everything here feels slightly wrong, as if it exists only because the void wills it.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"void_gold": {"quantity": 3, "value": 130}, "paradox_gemstone": {"quantity": 2, "value": 95}},
+          "traps": [
+            {
+              "type": "crushing_ceiling",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "poison_dart",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "west": {"target": "sd_f3_oblivion_corridor", "type": "direction"}
+          }
+        },
+        "sd_f3_shadow_sovereign_throne": {
+          "name": "Throne of the Shadow Sovereign",
+          "description": "The heart of the Shadow Depths — a cathedral-sized cavern dominated by a throne carved from a single block of living shadow. The Sovereign is gone, but its presence lingers like a stain on reality. The throne pulses with void energy, and shadows orbit it like dark planets. Power beyond comprehension once sat here.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"sovereign_shadow_crown": {"quantity": 1, "value": 200}, "void_heart_fragment": {"quantity": 1, "value": 150}},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "spike_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "gas_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "sd_f3_oblivion_corridor", "type": "direction"},
+            "west": {"target": "sd_f3_lost_souls_chamber", "type": "direction"},
+            "east": {"target": "sd_f3_shadowforge", "type": "direction"}
+          }
+        },
+        "sd_f3_lost_souls_chamber": {
+          "name": "Chamber of Lost Souls",
+          "description": "Wispy forms drift through this chamber — echoes of those consumed by the void. They reach out with translucent hands, mouthing silent words. Among them, fragments of their former possessions litter the floor — last remnants of lives swallowed by shadow.",
+          "coordinates": [-1, -2],
+          "location_type": "dungeon",
+          "items": {
+            "soul_fragment": {"quantity": 2, "value": 105},
+            "spectral_essence": {"quantity": 1, "value": 140},
+            "void_pearl": {"quantity": 2, "value": 120}
+          },
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "east": {"target": "sd_f3_shadow_sovereign_throne", "type": "direction"}
+          }
+        },
+        "sd_f3_shadowforge": {
+          "name": "The Shadowforge",
+          "description": "A forge fueled not by fire but by concentrated void energy. Dark flames that consume light rather than produce it dance over an anvil of pure obsidian. The Shadow Sovereign used this forge to create weapons and artifacts of terrible power. The forge still burns, hungry for materials to unmake and reshape.\n\nThe forge hums with dark potential. Perhaps items could be reshaped here...",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {"concentrated_void_essence": {"quantity": 1, "value": 175}},
+          "crafting_altar": true,
+          "altar_name": "The Shadowforge",
+          "altar_description": "Dark flames of concentrated void energy dance over the obsidian anvil. The forge hungers for materials to unmake and reshape into shadow-forged artifacts of terrible power.",
+          "exits": {
+            "west": {"target": "sd_f3_shadow_sovereign_throne", "type": "direction"}
+          }
+        }
+      }
+    }
+  }
+}

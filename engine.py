@@ -8,11 +8,21 @@ from tkinter import simpledialog, messagebox, font
 # SHOP SYSTEM INITIALIZATION
 # =====================================================================
 try:
-	from shop_system import Shop, Shopkeeper
+	from shop_system import Shop, Shopkeeper, ShopUI
 	SHOP_AVAILABLE = True
 except Exception as e:
 	SHOP_AVAILABLE = False
 	print(f"[INIT] ⚠ Shop system DISABLED: {e}")
+
+# =====================================================================
+# TRAP SYSTEM INITIALIZATION
+# =====================================================================
+try:
+	from trap_system import TrapSystem
+	TRAP_AVAILABLE = True
+except Exception as e:
+	TRAP_AVAILABLE = False
+	print(f"[INIT] ⚠ Trap system DISABLED: {e}")
 
 # =====================================================================
 # DUNGEON SYSTEM INITIALIZATION
@@ -41,13 +51,13 @@ try:
 	
 	# If we got here, both modules loaded successfully
 	DUNGEON_AVAILABLE = True
-	print("[INIT] ✓ Dungeon system initialized (imports successful)")
+	print("[INIT] [SUCCESS] Dungeon system initialized (imports successful)")
 	
 except ImportError as e:
 	# One or both dungeon modules failed to import
 	DUNGEON_AVAILABLE = False
 	_DUNGEON_IMPORT_ERROR = str(e)
-	print(f"[INIT] ⚠ Dungeon system DISABLED: {_DUNGEON_IMPORT_ERROR}")
+	print(f"[INIT] [WARNING] Dungeon system DISABLED: {_DUNGEON_IMPORT_ERROR}")
 
 # Map and debug system imports
 try:
@@ -181,9 +191,35 @@ class CommandHandler:
 			# Player is answering yes/no question
 			return self.confirm_dungeon_entry(cmd)
 		
+		# Check if we're waiting for yes/no response to shop negotiation
+		if SHOP_AVAILABLE and self.engine.shop_ui and self.engine.shop_ui.pending_negotiation:
+			# Player is answering yes/no to counter-offer
+			return self.engine.shop_ui.respond_to_negotiation(self.engine.player, cmd)
+		
+		# Check if we're in a disarm minigame
+		if hasattr(self.engine, 'pending_disarm') and self.engine.pending_disarm is not None:
+			result = self.confirm_disarm_choice(cmd)
+			if result is not None:
+				return result
+		
 		parts = cmd.split()
 		verb = parts[0].lower()
 		args = parts[1:]
+		
+		# Command aliases for easier play
+		aliases = {
+			"n": "north",
+			"s": "south",
+			"e": "east",
+			"w": "west",
+			"u": "up",
+			"d": "down",
+		}
+		
+		# Expand single-letter movement aliases
+		if verb in aliases and not args:
+			verb = "go"
+			args = [aliases[cmd.lower()]]
 
 		# Example generic blocking: if sitting, block movement and taking until they stand.
 		# To change this behavior, update the blocked_verbs list or add more complex checks.
@@ -241,12 +277,20 @@ class CommandHandler:
 			return self.engine.save_game()
 		if verb == "load":
 			return self.engine.load_game(interactive=False)
+		if verb == "disarm":
+			return self._disarm_trap()
+		if verb in ("craft", "forge", "altar"):
+			return self._use_crafting_altar()
+		if verb == "use" and args and args[0].lower() == "altar":
+			return self._use_crafting_altar()
+		if verb == "leave":
+			return self._go("leave")
 		if verb in ("quit", "exit"):
 			# set flag so GUI can act on it
 			self.engine.should_quit = True
 			return "Goodbye."
 		if verb in ("help", "?"):
-			return self._help()
+			return self._show_commands()
 		if verb in ("examine", "inspect", "x"):
 			if not args:
 				return "Examine what?"
@@ -290,10 +334,16 @@ class CommandHandler:
 				return self._shop_talk()
 			return "Talk to whom?"
 		
+		# Search command
+		if verb == "search":
+			return self._search_room()
+		
 		# Map commands
 		if verb == "open":
 			if args and args[0].lower() == "map":
 				return self._open_map()
+			if args and args[0].lower() == "chest":
+				return self._open_chest()
 			return "Open what?"
 		if verb == "close":
 			if args and args[0].lower() == "map":
@@ -432,6 +482,11 @@ class CommandHandler:
 		if self.engine.player.state.get("sitting"):
 			return "You need to stand up first."
 		
+		# Check for blocking traps in the current room
+		block_msg = self._check_blocking_traps()
+		if block_msg and direction != "leave":
+			return block_msg
+		
 		room = self.engine.get_room_data(self.engine.player.current_room)
 		if not room:
 			return "[Current room not found]"
@@ -440,6 +495,27 @@ class CommandHandler:
 		# Handle old-style exits (backward compatibility): "exits": {"north": "room_id"}
 		if not exits:
 			return "There are no exits here."
+		
+		# Check for secret room access (both dict and Room object)
+		if direction == "secret":
+			is_boss = False
+			has_secret_discovered = False
+			secret_room_id = None
+			
+			if isinstance(room, dict):
+				is_boss = room.get("is_boss_room")
+				has_secret_discovered = room.get("secret_discovered")
+				secret_room_id = room.get("secret_room_id")
+			elif hasattr(room, "is_boss_room"):
+				is_boss = room.is_boss_room
+				has_secret_discovered = getattr(room, "secret_discovered", False)
+				secret_room_id = getattr(room, "secret_room_id", None)
+			
+			if is_boss:
+				if not has_secret_discovered:
+					return "You don't see a secret exit here. Perhaps you should examine the walls more carefully."
+				if secret_room_id:
+					return self._enter_secret_room(secret_room_id)
 		
 		# Check for exact exit match (handles both old string format and new dict format)
 		target_room_id = None
@@ -474,6 +550,15 @@ class CommandHandler:
 				)
 				return error_msg
 		
+		# Handle fixed dungeon entrance (always open, hand-crafted)
+		if exit_info and isinstance(exit_info, dict) and exit_info.get("type") == "fixed_dungeon":
+			print(f"[DEBUG _go] Fixed dungeon entrance detected via '{direction}'")
+			return self._handle_fixed_dungeon_entrance(exit_info)
+		
+		# Handle leaving the dungeon
+		if exit_info and isinstance(exit_info, dict) and exit_info.get("type") == "leave_dungeon":
+			return self._leave_dungeon(exit_info)
+		
 		if not target_room_id:
 			# No valid exit found
 			location_type = room.__dict__.get('location_type', 'wilderness')
@@ -488,17 +573,32 @@ class CommandHandler:
 		# Move player
 		self.engine.player.current_room = target_room_id
 		
+		# Check for traps in the new room
+		trap_msg = self._check_room_traps(target_room_id)
+		
+		# Tick poison damage on movement
+		poison_msg = self._tick_poison()
+		
 		# Show transition text if available
 		if exit_info and isinstance(exit_info, dict):
 			transition_text = exit_info.get("transition_text")
 			if transition_text:
 				result = f"{transition_text}\n\n"
 				result += dest_room.describe()
+				if trap_msg:
+					result += "\n" + trap_msg
+				if poison_msg:
+					result += poison_msg
 				self._update_map_on_move(target_room_id)
 				return result
 		
 		self._update_map_on_move(target_room_id)
-		return dest_room.describe()
+		result = dest_room.describe()
+		if trap_msg:
+			result += "\n" + trap_msg
+		if poison_msg:
+			result += poison_msg
+		return result
 	
 	def _update_map_on_move(self, new_room_id):
 		"""Update the live map when player moves."""
@@ -517,6 +617,351 @@ class CommandHandler:
 		except Exception:
 			pass  # Silently fail if map update fails
 	
+	def _leave_dungeon(self, exit_info):
+		"""Handle the player leaving the dungeon back to the surface."""
+		target = exit_info.get("target", "dungeon_forest_entrance")
+		transition = exit_info.get("transition_text", "You climb back to the surface...")
+
+		# Clean up dungeon state
+		self.engine.cleanup_dungeon()
+
+		# Move player to surface room
+		self.engine.player.current_room = target
+		self._update_map_on_move(target)
+
+		dest = self.engine.get_room_data(target)
+		result = f"\n{transition}\n\n"
+		result += "\n" + "=" * 50 + "\n"
+		result += "You have left the dungeon!\n"
+		result += "=" * 50 + "\n\n"
+		if dest:
+			result += dest.describe()
+		return result
+
+	def _check_room_traps(self, room_id):
+		"""Check for traps when entering a room. Returns message string or empty.
+		
+		Three outcomes per trap:
+		  1. Detected (40%) — full warning, player can disarm
+		  2. Not detected but subtle hint (70% of non-detect) — atmospheric text
+		  3. Triggered — trap fires based on trigger_chance
+		"""
+		import random as _rng
+		
+		try:
+			# Use TrapSystem helper to find the raw room dict
+			raw_room = TrapSystem.find_raw_room(
+				self.engine.current_dungeon_instance, room_id
+			) if TRAP_AVAILABLE else None
+			if not raw_room:
+				return ""
+
+			traps = raw_room.get("traps", [])
+			if not traps:
+				return ""
+
+			for trap in traps:
+				if trap.get("triggered") or trap.get("disarmed"):
+					continue
+
+				# Chance to fully detect the trap
+				detect = trap.get("detection_chance", 0.40)
+				if _rng.random() < detect:
+					trap_name = trap.get("name", trap.get("type", "trap").replace("_", " "))
+					warning = trap.get("warning_signs", "Something feels off about this room.")
+					return (
+						f"\n⚠️  You notice a {trap_name}!\n"
+						f"{warning}\n"
+						"Type 'disarm' to attempt to disarm it, or 'search' to investigate further.\n"
+					)
+
+				# Roll for trigger
+				trigger_chance = trap.get("trigger_chance", 0.30)
+				if _rng.random() < trigger_chance:
+					return self._trigger_trap(trap)
+				
+				# If neither detected nor triggered, show a subtle atmospheric hint (70% chance)
+				if _rng.random() < 0.70:
+					trap_type = trap.get("type", "")
+					hints = TrapSystem.SUBTLE_HINTS.get(trap_type, ["Something feels off about this room..."]) if TRAP_AVAILABLE else ["Something feels off about this room..."]
+					hint = _rng.choice(hints)
+					return f"\n💭 {hint}\n(Try 'search' to investigate.)\n"
+
+			return ""
+		except Exception:
+			return ""
+
+	def _check_blocking_traps(self):
+		"""Check if there's a blocking trap in the current room preventing movement.
+		Returns a warning message if blocked, or None if movement is allowed."""
+		room_id = self.engine.player.current_room
+		raw_room = TrapSystem.find_raw_room(
+			self.engine.current_dungeon_instance, room_id
+		) if TRAP_AVAILABLE else None
+		if not raw_room:
+			return None
+		
+		blocking = TrapSystem.BLOCKING_TRAP_TYPES if TRAP_AVAILABLE else {"pit_trap", "crushing_ceiling"}
+		
+		traps = raw_room.get("traps", [])
+		for trap in traps:
+			if trap.get("triggered") or trap.get("disarmed"):
+				continue
+			trap_type = trap.get("type", "")
+			if trap_type in blocking:
+				trap_name = trap.get("name", trap_type.replace("_", " "))
+				if trap_type == "pit_trap":
+					return (
+						f"\n🚫 A {trap_name} blocks your path!\n"
+						"A gaping pit stretches across the room. You can't cross safely.\n"
+						"You must 'disarm' the trap before you can proceed.\n"
+					)
+				elif trap_type == "crushing_ceiling":
+					return (
+						f"\n🚫 A {trap_name} blocks your path!\n"
+						"The ceiling mechanism is active — moving further would be deadly.\n"
+						"You must 'disarm' the trap before you can proceed.\n"
+					)
+		return None
+
+	def _trigger_trap(self, trap):
+		"""Trigger a trap and deal damage. Applies poison if applicable."""
+		import random as _rng
+		trap["triggered"] = True
+
+		dmg_spec = trap.get("damage", (10, 20))
+		if isinstance(dmg_spec, (list, tuple)) and len(dmg_spec) == 2:
+			damage = _rng.randint(dmg_spec[0], dmg_spec[1])
+		elif isinstance(dmg_spec, (int, float)):
+			damage = int(dmg_spec)
+		else:
+			damage = 15
+
+		trap_name = trap.get("name", trap.get("type", "trap").replace("_", " "))
+		desc = trap.get("description", "A trap activates!")
+
+		result = "\n" + "=" * 50 + "\n"
+		result += "\U0001f480 TRAP TRIGGERED! \U0001f480\n"
+		result += "=" * 50 + "\n"
+		result += f"{desc}\n"
+		result += f"You take {damage} damage!\n"
+
+		if hasattr(self.engine.player, 'stats'):
+			hp = self.engine.player.stats.get("health", 100)
+			hp -= damage
+			self.engine.player.stats["health"] = hp
+			result += f"Health: {hp}\n"
+
+		# Apply poison effect if this is a poison trap
+		poison_dmg = trap.get("poison_damage")
+		poison_dur = trap.get("poison_duration", 0)
+		if poison_dmg and poison_dur > 0:
+			self.engine.poison_status = {
+				"damage_per_move": poison_dmg,
+				"moves_remaining": poison_dur,
+				"source": trap_name,
+			}
+			result += f"\n🧪 You've been POISONED!\n"
+			result += f"   {poison_dmg} damage per move for {poison_dur} moves.\n"
+
+		result += "=" * 50 + "\n"
+		return result
+
+	def _tick_poison(self):
+		"""Apply poison damage when player moves. Returns message or empty string."""
+		if not hasattr(self.engine, 'poison_status') or self.engine.poison_status is None:
+			return ""
+		
+		poison = self.engine.poison_status
+		dmg = poison.get("damage_per_move", 0)
+		remaining = poison.get("moves_remaining", 0)
+		
+		if remaining <= 0 or dmg <= 0:
+			self.engine.poison_status = None
+			return ""
+		
+		# Apply poison damage
+		if hasattr(self.engine.player, 'stats'):
+			hp = self.engine.player.stats.get("health", 100)
+			hp -= dmg
+			self.engine.player.stats["health"] = hp
+		
+		poison["moves_remaining"] = remaining - 1
+		
+		result = f"\n🧪 Poison deals {dmg} damage! (Health: {self.engine.player.stats.get('health', '?')})\n"
+		
+		if poison["moves_remaining"] <= 0:
+			self.engine.poison_status = None
+			result += "   The poison has worn off.\n"
+		else:
+			result += f"   Poison: {poison['moves_remaining']} moves remaining.\n"
+		
+		return result
+
+	def _use_crafting_altar(self):
+		"""
+		Interact with a crafting altar in the current room.
+		Crafting altars exist at the deepest floor of each fixed dungeon.
+		Currently a placeholder — full crafting system will be added later.
+		"""
+		room_id = self.engine.player.current_room
+		
+		# Check if this room has a crafting altar in the raw dungeon data
+		raw_room = None
+		if self.engine.current_dungeon_instance:
+			raw_room = TrapSystem.find_raw_room(
+				self.engine.current_dungeon_instance, room_id
+			) if TRAP_AVAILABLE else None
+			# Also check the fixed dungeon data directly
+			if not raw_room and self.engine.current_fixed_dungeon:
+				for _fnum, fdata in self.engine.current_fixed_dungeon.get("floors", {}).items():
+					if room_id in fdata.get("rooms", {}):
+						raw_room = fdata["rooms"][room_id]
+						break
+		
+		if not raw_room or not raw_room.get("crafting_altar"):
+			return "There is no crafting altar here."
+		
+		altar_name = raw_room.get("altar_name", "Crafting Altar")
+		altar_desc = raw_room.get("altar_description", "An ancient altar pulses with energy.")
+		
+		result = "\n" + "=" * 60 + "\n"
+		result += f"  ⚒️  {altar_name}\n"
+		result += "=" * 60 + "\n\n"
+		result += f"{altar_desc}\n\n"
+		result += "You place your hands upon the altar. Ancient runes flare\n"
+		result += "with brilliant light, and you feel raw creative energy\n"
+		result += "coursing through the surface...\n\n"
+		result += "But the knowledge of how to use this power eludes you.\n"
+		result += "Perhaps in time, you will learn the art of crafting.\n\n"
+		result += "  [Crafting system coming soon!]\n"
+		result += "  The altar remembers your visit.\n"
+		result += "=" * 60 + "\n"
+		
+		# Mark in player state that they've found this altar
+		found_altars = self.engine.player.state.get("found_altars", [])
+		if altar_name not in found_altars:
+			found_altars.append(altar_name)
+			self.engine.player.state["found_altars"] = found_altars
+			result += f"\n✦ New altar discovered: {altar_name}!\n"
+		
+		return result
+
+	def _disarm_trap(self):
+		"""Attempt to disarm a trap in the current room."""
+		import random as _rng
+		room_id = self.engine.player.current_room
+		raw_room = TrapSystem.find_raw_room(
+			self.engine.current_dungeon_instance, room_id
+		) if TRAP_AVAILABLE else None
+		if not raw_room:
+			return "There are no traps to disarm here."
+
+		traps = raw_room.get("traps", [])
+		active = [t for t in traps if not t.get("triggered") and not t.get("disarmed")]
+		if not active:
+			return "There are no active traps here."
+
+		trap = active[0]
+
+		# Check for disarm tools
+		difficulty = trap.get("disarm_difficulty", "medium")
+		success_rate = TrapSystem.DISARM_SUCCESS_RATES.get(difficulty, 0.50) if TRAP_AVAILABLE else 0.50
+
+		required_tools = trap.get("disarm_tools", ["lockpick_set"])
+		has_tool = any(t in self.engine.player.inventory for t in required_tools)
+
+		if not has_tool:
+			return f"You need one of these tools: {', '.join(required_tools)}"
+
+		trap_name = trap.get("name", trap.get("type", "trap").replace("_", " "))
+		trap_type = trap.get("type", "unknown")
+
+		# Start disarm minigame — present the player with a choice
+		challenge = TrapSystem.get_disarm_challenge(trap_type) if TRAP_AVAILABLE else {"description": "How do you disarm it?", "options": ["Cut the wire", "Jam it", "Disassemble"], "correct": 1}
+		
+		# Store pending disarm state
+		self.engine.pending_disarm = {
+			"trap": trap,
+			"trap_name": trap_name,
+			"correct_answer": challenge["correct"],
+			"success_rate": success_rate,
+			"has_tool": has_tool,
+		}
+		
+		result = "\n" + "=" * 50 + "\n"
+		result += f"🔧 DISARMING: {trap_name}\n"
+		result += "=" * 50 + "\n"
+		result += f"\n{challenge['description']}\n\n"
+		for i, option in enumerate(challenge["options"], 1):
+			result += f"  {i}. {option}\n"
+		result += f"\nDifficulty: {difficulty.replace('_', ' ').title()}\n"
+		if has_tool:
+			result += f"✓ Tool bonus active\n"
+		result += "\nType the number of your choice (1, 2, or 3):\n"
+		result += "=" * 50 + "\n"
+		return result
+
+	def confirm_disarm_choice(self, choice):
+		"""Handle the player's disarm minigame choice."""
+		import random as _rng
+		
+		if not hasattr(self.engine, 'pending_disarm') or self.engine.pending_disarm is None:
+			return None  # Not in a disarm minigame
+		
+		pending = self.engine.pending_disarm
+		trap = pending["trap"]
+		trap_name = pending["trap_name"]
+		correct = pending["correct_answer"]
+		success_rate = pending["success_rate"]
+		has_tool = pending["has_tool"]
+		
+		# Clear pending state
+		self.engine.pending_disarm = None
+		
+		# Parse choice
+		try:
+			choice_num = int(choice.strip())
+		except (ValueError, AttributeError):
+			# Invalid input — treat as failed attempt
+			result = "Invalid choice! Your fumbling almost triggers the trap!\n"
+			if _rng.random() < 0.30:
+				result += self._trigger_trap(trap)
+			else:
+				result += f"You narrowly avoid triggering the {trap_name}. Try 'disarm' again."
+			return result
+		
+		if choice_num < 1 or choice_num > 3:
+			result = "Invalid choice! You hesitate and lose your focus.\n"
+			return result + f"The {trap_name} is still active. Try 'disarm' again."
+		
+		# Correct choice + tool bonus gives high success; wrong choice reduces it
+		if choice_num == correct:
+			# Correct answer: success_rate boosted by tool
+			final_rate = min(0.95, success_rate + (0.25 if has_tool else 0.0))
+		else:
+			# Wrong answer: much lower success rate
+			final_rate = max(0.05, success_rate * 0.3)
+		
+		if _rng.random() < final_rate:
+			trap["disarmed"] = True
+			result = "\n" + "=" * 50 + "\n"
+			result += f"✅ You successfully disarm the {trap_name}!\n"
+			if choice_num == correct:
+				result += "Your approach was perfect — the mechanism clicks into a safe state.\n"
+			else:
+				result += "Despite a rough approach, you managed to disable it through sheer luck!\n"
+			result += "=" * 50 + "\n"
+			return result
+		else:
+			# Failed — chance to trigger
+			if _rng.random() < 0.50:
+				result = f"Your disarm attempt fails and the {trap_name} activates!\n"
+				result += self._trigger_trap(trap)
+				return result
+			else:
+				return f"Your disarm attempt on the {trap_name} fails, but you avoid triggering it.\nTry 'disarm' again to reattempt."
+
 	def confirm_dungeon_entry(self, response):
 		"""
 		Handles the yes/no response to dungeon entry.
@@ -536,11 +981,17 @@ class CommandHandler:
 			result += "=" * 60 + "\n"
 			result += "\nYou steel your nerves and step into the entrance.\n"
 			result += "The air grows cold as you descend the ancient stairs...\n\n"
-			result += "[Generating dungeon layout, please wait...]\n"
 			
-			# Actually enter the dungeon
+			# Actually enter the dungeon (fixed or procedural)
 			dungeon_exit_data = self.engine.pending_dungeon_entry.get("dungeon_data")
-			dungeon_result = self._enter_dungeon(dungeon_exit_data)
+			is_fixed = self.engine.pending_dungeon_entry.get("fixed", False)
+			
+			if is_fixed:
+				result += "[Loading dungeon...]\n"
+				dungeon_result = self._enter_fixed_dungeon(dungeon_exit_data)
+			else:
+				result += "[Generating dungeon layout, please wait...]\n"
+				dungeon_result = self._enter_dungeon(dungeon_exit_data)
 			result += dungeon_result
 			
 			# Clear pending flag
@@ -626,6 +1077,12 @@ class CommandHandler:
 				print(f"[DEBUG handle_enter] Dungeon system OK (DUNGEON_AVAILABLE={DUNGEON_AVAILABLE})")
 				return self._handle_dungeon_entrance(exit_data)
 		
+		# Check for fixed dungeon entrance (always open, hand-crafted)
+		for exit_name, exit_data in current_room.exits.items():
+			if isinstance(exit_data, dict) and exit_data.get("type") == "fixed_dungeon":
+				print(f"[DEBUG handle_enter] Fixed dungeon entrance detected via '{exit_name}'")
+				return self._handle_fixed_dungeon_entrance(exit_data)
+		
 		# Check for explicit "enter" exit
 		if "enter" in current_room.exits:
 			exit_data = current_room.exits["enter"]
@@ -666,7 +1123,7 @@ class CommandHandler:
 				return f"Dungeon system error: {reason}"
 			
 			print("[DEBUG] Getting scheduler...")
-			scheduler = get_scheduler()
+			scheduler = get_scheduler(game_engine=self.engine)
 			print(f"[DEBUG] Scheduler obtained: {type(scheduler).__name__}")
 			
 			# Visual separator
@@ -675,11 +1132,25 @@ class CommandHandler:
 			result += "║              DUNGEON ENTRANCE DETECTED                 ║\n"
 			result += "╚════════════════════════════════════════════════════════╝\n"
 			
-			# Check if dungeon is open OR if it was explicitly forced open (e.g., via debug command)
-			dungeon_is_open = scheduler.is_dungeon_open()
-			dungeon_was_forced_open = self.engine.current_dungeon_instance is not None
+			# Get dungeon_id from exit info for debug override check
+			dungeon_id = exit_info.get("dungeon_id") if isinstance(exit_info, dict) else None
 			
-			if not dungeon_is_open and not dungeon_was_forced_open:
+			# Check if dungeon is open (by schedule OR debug override)
+			dungeon_is_open = scheduler.is_dungeon_open(dungeon_id=dungeon_id)
+			
+			# Check if specifically debug-forced
+			is_debug_forced = (
+				hasattr(self.engine, 'debug_force_open_dungeons') and
+				dungeon_id is not None and
+				dungeon_id in self.engine.debug_force_open_dungeons
+			)
+			
+			print(f"[DEBUG] Dungeon ID: {dungeon_id}")
+			print(f"[DEBUG] Time-based open: {scheduler.is_dungeon_open()}")
+			print(f"[DEBUG] Debug force-open: {is_debug_forced}")
+			print(f"[DEBUG] Final is_open: {dungeon_is_open}")
+			
+			if not dungeon_is_open:
 				# CLOSED and not forced open
 				_, time_until_str = scheduler.get_time_until_next_opening()
 				result += f"""
@@ -702,16 +1173,15 @@ Schedule: Opens every 3 hours for 1 hour
 				
 			else:
 				# OPEN (or forced open)
-				if dungeon_was_forced_open and not dungeon_is_open:
+				if is_debug_forced and not scheduler.is_dungeon_open():
 					status_text = "OPEN (Debug Mode)"
-					_, time_until_str = scheduler.get_time_until_next_opening()
-					extra_note = "\n[DEBUG: Dungeon forced open via debug command]\n"
+					extra_note = "\n⚙️  This dungeon has been force-opened for testing.\n   It will remain open for this game session.\n"
+					time_info = "N/A (debug override)"
 				else:
 					status_text = "OPEN"
 					_, time_remaining_str = scheduler.get_time_until_closing()
 					extra_note = ""
-				
-				time_info = time_remaining_str if dungeon_is_open else time_until_str
+					time_info = time_remaining_str
 				
 				result += f"""
 Status: {status_text}{extra_note}
@@ -759,65 +1229,255 @@ Do you wish to enter? (yes/no)
 		just before actually creating the dungeon instance.
 		"""
 		try:
-			print("[DEBUG _enter_dungeon] Called")
-			
 			# Final defensive check before entering
 			is_available, reason = self._check_dungeon_system_available()
-			print(f"[DEBUG] Dungeon system available: {is_available}")
-			
 			if not is_available:
-				print(f"[ERROR _enter_dungeon] System check failed: {reason}")
 				return f"Dungeon system error: {reason}"
 			
-			print("[DEBUG] System OK, proceeding with entry...")
 			dungeon_id = dungeon_exit_data.get("dungeon_id")
 			transition_text = dungeon_exit_data.get("transition_text", "You enter the dungeon...")
 			
 			result = f"\n{transition_text}\n"
 			
 			# Get the scheduler instance
-			scheduler = get_scheduler()
+			scheduler = get_scheduler(game_engine=self.engine)
 			
-			# Get the active dungeon instance
-			active_dungeon = get_current_dungeon(scheduler)
+			# Determine which overworld room the player is entering from
+			# so we can route the "leave" exit back to the correct entrance
+			overworld_entrance = self.engine.player.current_room
 			
-			if active_dungeon:
-				result += "\n✓ Dungeon generated!\n"
-				
-				# Get entrance room of dungeon from dungeon_data
-				if active_dungeon.dungeon_data:
-					floor_1_data = active_dungeon.dungeon_data.get("floors", {}).get(1, {})
-					entrance_room_id = floor_1_data.get("entrance_room")
-				else:
-					entrance_room_id = None
-				
-				if entrance_room_id:
-					# Move player to entrance
-					self.engine.player.current_room = entrance_room_id
-					self._update_map_on_move(entrance_room_id)
-					
-					result += "\n╔════════════════════════════════════════════════════════╗\n"
-					result += "║  You have entered the dungeon!                         ║\n"
-					result += "╚════════════════════════════════════════════════════════╝\n"
-					
-					# Get the room description
-					room = self.engine.get_room_data(entrance_room_id)
-					if room:
-						result += "\n" + room.describe()
-					else:
-						result += "\n[Dungeon entrance room not found]"
-				else:
-					result += "\n[Error: No entrance room in dungeon]"
+			# Try to get the active dungeon instance
+			# First check if we have one stored (from debug command)
+			active_dungeon = self.engine.current_dungeon_instance
+			
+			# Fallback: try to get from global state
+			if not active_dungeon:
+				active_dungeon = get_current_dungeon(scheduler, entrance_room_id=overworld_entrance)
+			
+			if not active_dungeon:
+				return result + "\n[Error: Could not load dungeon instance]"
+			
+			if not active_dungeon.dungeon_data:
+				return result + "\n[Error: Dungeon has no data]"
+			
+			result += "\n✓ Dungeon generated!\n"
+			
+			# Store the dungeon instance on engine
+			self.engine.current_dungeon_instance = active_dungeon
+			
+			# PRE-REGISTER all dungeon rooms into engine.rooms
+			# This ensures get_room_data() finds them immediately via the rooms dict
+			# instead of needing the dungeon parsing path (which can fail silently)
+			self._register_dungeon_rooms(active_dungeon)
+			
+			# Get entrance room
+			floor_1_data = active_dungeon.dungeon_data.get("floors", {}).get(1, {})
+			entrance_room_id = floor_1_data.get("entrance_room")
+			
+			if not entrance_room_id:
+				return result + "\n[Error: No entrance room in dungeon]"
+			
+			# Move player to entrance
+			self.engine.player.current_room = entrance_room_id
+			self._update_map_on_move(entrance_room_id)
+			
+			result += "\n╔════════════════════════════════════════════════════════╗\n"
+			result += "║  You have entered the dungeon!                         ║\n"
+			result += "╚════════════════════════════════════════════════════════╝\n"
+			
+			# Get the room description (should always work now since rooms are pre-registered)
+			room = self.engine.get_room_data(entrance_room_id)
+			if room:
+				result += "\n" + room.describe()
 			else:
-				result += "\n[Error: Could not load dungeon instance]"
+				# Last-resort fallback: build description from raw dungeon data
+				direct_room = floor_1_data.get("rooms", {}).get(entrance_room_id)
+				if direct_room:
+					name = direct_room.get("name", "Dungeon Entrance")
+					desc = direct_room.get("description", "You stand in the dungeon entrance.")
+					exits = direct_room.get("exits", {})
+					exit_names = list(exits.keys())
+					result += f"\n{name}\n{desc}\n"
+					if exit_names:
+						result += f"Exits: {', '.join(exit_names)}\n"
+				else:
+					result += "\n[Dungeon entrance room not found]"
+			
+			# Update live map to show dungeon floor
+			self._update_map_on_move(entrance_room_id)
 			
 			return result
 		
 		except Exception as e:
+			import traceback
+			traceback.print_exc()
 			return f"Error entering dungeon: {str(e)}"
 	
-	def _handle_dungeon_entrance_old(self, exit_info):
-		"""OLD BROKEN VERSION - DO NOT USE"""
+	def _handle_fixed_dungeon_entrance(self, exit_info):
+		"""
+		Handle entering a fixed (always-open, hand-crafted) dungeon.
+		Shows dungeon info and asks for yes/no confirmation.
+		"""
+		dungeon_id = exit_info.get("dungeon_id", "unknown")
+		
+		# Load the dungeon data to get name/description
+		dungeon_data = self.engine._load_fixed_dungeon(dungeon_id)
+		if not dungeon_data:
+			return f"The entrance seems sealed. [Error: Fixed dungeon '{dungeon_id}' not found]"
+		
+		name = dungeon_data.get("name", "Unknown Dungeon")
+		description = dungeon_data.get("description", "A mysterious dungeon.")
+		num_floors = dungeon_data.get("num_floors", "?")
+		difficulty = dungeon_data.get("difficulty", "unknown")
+		
+		result = "\n" + "-" * 60 + "\n"
+		result += "╔════════════════════════════════════════════════════════╗\n"
+		result += "║              DUNGEON ENTRANCE DETECTED                 ║\n"
+		result += "╚════════════════════════════════════════════════════════╝\n"
+		result += f"\n  {name}\n"
+		result += f"  {description}\n\n"
+		result += f"  Floors: {num_floors}\n"
+		result += f"  Difficulty: {difficulty.replace('_', ' ').title()}\n\n"
+		result += "  Status: ALWAYS OPEN\n\n"
+		result += "  This is a permanent dungeon with a fixed layout.\n"
+		result += "  Unlike time-gated dungeons, this dungeon:\n"
+		result += "    * Never closes or regenerates\n"
+		result += "    * Has a hand-crafted layout with unique rooms\n"
+		result += "    * Contains many traps and valuable loot\n"
+		result += "    * Has a crafting altar on the deepest floor\n\n"
+		result += "---\n\n"
+		result += "Do you wish to enter? (yes/no)\n"
+		
+		# Set pending flag with fixed marker
+		self.engine.pending_dungeon_entry = {
+			"dungeon_data": exit_info,
+			"fixed": True
+		}
+		result += "-" * 60 + "\n"
+		
+		return result
+
+	def _enter_fixed_dungeon(self, exit_data):
+		"""
+		Actually enter a fixed dungeon (after yes confirmation).
+		Loads dungeon from JSON, registers rooms, moves player to entrance.
+		"""
+		try:
+			dungeon_id = exit_data.get("dungeon_id")
+			transition_text = exit_data.get("transition_text", "You enter the dungeon...")
+			
+			result = f"\n{transition_text}\n"
+			
+			# Load the dungeon data
+			dungeon_data = self.engine._load_fixed_dungeon(dungeon_id)
+			if not dungeon_data:
+				return result + f"\n[Error: Could not load fixed dungeon '{dungeon_id}']"
+			
+			# Store the overworld room we're entering from
+			overworld_entrance = self.engine.player.current_room
+			
+			# Create a lightweight wrapper for trap system compatibility
+			# TrapSystem.find_raw_room needs .dungeon_data with floors/rooms structure
+			class FixedDungeonWrapper:
+				def __init__(self, data, entrance_id):
+					self.dungeon_data = data
+					self.entrance_room_id = entrance_id
+			
+			wrapper = FixedDungeonWrapper(dungeon_data, overworld_entrance)
+			self.engine.current_dungeon_instance = wrapper
+			self.engine.current_fixed_dungeon = dungeon_data
+			
+			# Register all rooms from the fixed dungeon
+			self.engine.fixed_dungeon_room_ids.clear()
+			floors = dungeon_data.get("floors", {})
+			registered = 0
+			for floor_num, floor_data in floors.items():
+				rooms = floor_data.get("rooms", {})
+				for room_id, room_dict in rooms.items():
+					if room_id not in self.engine.rooms:
+						try:
+							converted = self.engine._convert_dungeon_room_to_world(room_dict)
+							self.engine.rooms[room_id] = Room(converted)
+							self.engine.fixed_dungeon_room_ids.add(room_id)
+							registered += 1
+						except Exception as e:
+							print(f"[ERROR] Failed to register fixed dungeon room '{room_id}': {e}")
+			
+			print(f"[DEBUG] Registered {registered} fixed dungeon rooms into engine.rooms")
+			
+			# Get entrance room (floor keys are strings in JSON)
+			floor_1_data = floors.get("1", floors.get(1, {}))
+			entrance_room_id = floor_1_data.get("entrance_room")
+			
+			if not entrance_room_id:
+				return result + "\n[Error: No entrance room in fixed dungeon]"
+			
+			# Move player
+			self.engine.player.current_room = entrance_room_id
+			self._update_map_on_move(entrance_room_id)
+			
+			result += "\n✓ Dungeon loaded!\n"
+			
+			dungeon_name = dungeon_data.get('name', 'the dungeon')
+			result += "\n╔════════════════════════════════════════════════════════╗\n"
+			result += f"║  You have entered {dungeon_name}!{' ' * max(0, 37 - len(dungeon_name))}║\n"
+			result += "╚════════════════════════════════════════════════════════╝\n"
+			
+			room = self.engine.get_room_data(entrance_room_id)
+			if room:
+				result += "\n" + room.describe()
+			
+			# Check for traps in entrance room
+			trap_msg = self._check_room_traps(entrance_room_id)
+			if trap_msg:
+				result += "\n" + trap_msg
+			
+			return result
+		
+		except Exception as e:
+			import traceback
+			traceback.print_exc()
+			return f"Error entering fixed dungeon: {str(e)}"
+	
+	def _register_dungeon_rooms(self, dungeon_instance):
+		"""
+		Pre-register all dungeon rooms into self.engine.rooms so they can be
+		found by get_room_data() through the normal world rooms lookup.
+		This avoids issues with the dungeon-specific parsing path.
+		
+		Args:
+			dungeon_instance: Active DungeonInstance with generated data
+		"""
+		if not dungeon_instance or not dungeon_instance.dungeon_data:
+			return
+		
+		registered = 0
+		floors = dungeon_instance.dungeon_data.get("floors", {})
+		for floor_num, floor_data in floors.items():
+			rooms = floor_data.get("rooms", {})
+			for room_id, room_dict in rooms.items():
+				if room_id not in self.engine.rooms:
+					try:
+						converted = self.engine._convert_dungeon_room_to_world(room_dict)
+						self.engine.rooms[room_id] = Room(converted)
+						registered += 1
+					except Exception as e:
+						print(f"[ERROR] Failed to register dungeon room '{room_id}': {e}")
+						import traceback
+						traceback.print_exc()
+		
+		print(f"[DEBUG] Registered {registered} dungeon rooms into engine.rooms")
+
+	def _unregister_dungeon_rooms(self):
+		"""
+		Remove all dungeon rooms from engine.rooms.
+		Called when the dungeon closes or regenerates so stale rooms don't linger.
+		"""
+		to_remove = [rid for rid in self.engine.rooms if rid.startswith("dungeon_") and "_floor" in rid]
+		for rid in to_remove:
+			del self.engine.rooms[rid]
+		if to_remove:
+			print(f"[DEBUG] Unregistered {len(to_remove)} dungeon rooms from engine.rooms")
 	
 	def _describe_exits(self, room, location_type="wilderness"):
 		"""Format exit description based on location type."""
@@ -994,21 +1654,340 @@ Do you wish to enter? (yes/no)
 		return "Commands: go [dir], look, collect [item], drop [item], inventory, save, load, quit\nRooms may also define custom actions (try commands specific to the room)."
 
 	def _examine(self, target):
-		# check inventory and room items
-		if target in self.engine.player.inventory:
-			return f"You look closely at the {target}. It looks ordinary."
+		"""Examine/inspect an object or location. Handles secret room discovery and provides detailed feedback."""
+		target = target.lower()
 		room = self.engine.get_room_data(self.engine.player.current_room)
+		
+		# Check for secret room discovery in boss chamber
+		if room and target in ("wall", "walls", "room", "stone", "carvings", "ornate wall", "ornate walls", "the wall", "stone wall"):
+			# Check for is_boss_room attribute (works with both dicts and Room objects)
+			is_boss = False
+			has_secret = False
+			secret_discovered = False
+			
+			if isinstance(room, dict):
+				is_boss = room.get("is_boss_room")
+				has_secret = room.get("has_secret")
+				secret_discovered = room.get("secret_discovered")
+			elif hasattr(room, "is_boss_room"):
+				is_boss = getattr(room, "is_boss_room", False)
+				has_secret = getattr(room, "has_secret", False)
+				secret_discovered = getattr(room, "secret_discovered", False)
+			
+			if is_boss and has_secret and not secret_discovered:
+				return self._discover_secret_room(room)
+			elif is_boss and secret_discovered:
+				return "The secret passage you discovered is still open.\nUse 'go secret' to enter it."
+			elif is_boss:
+				return "You carefully examine the walls of the boss chamber.\nThe ancient stone shows signs of many battles, but nothing else stands out."
+			else:
+				# Not a boss room, but still examining walls
+				return "You carefully examine the walls.\nThe stone is cold and weathered. Nothing unusual stands out."
+		
+		# Chest inspection
+		if target in ("chest", "treasure chest", "box", "the chest"):
+			if isinstance(room, dict):
+				chests = room.get("chests", [])
+				if chests:
+					unopened = [c for c in chests if not c.get("opened")]
+					if unopened:
+						chest_type = unopened[0].get("type", "wooden")
+						return f"You inspect the chest closely.\nIt's a {chest_type} chest, securely locked.\nType 'open chest' to attempt to open it."
+					else:
+						return "The chest is empty - already looted."
+				return "There's no chest here to inspect."
+		
+		# Trap inspection
+		if "trap" in target:
+			if isinstance(room, dict):
+				traps = room.get("traps", [])
+				visible_traps = [t for t in traps if not t.get("triggered") and not t.get("disarmed")]
+				if visible_traps:
+					trap = visible_traps[0]
+					trap_type = trap.get("type", "unknown")
+					return f"You spot a {trap_type.replace('_', ' ')}!\nIt looks dangerous.\nType 'disarm' to attempt to disarm it."
+				else:
+					return "You don't see any traps here.\nTry 'search' to look for hidden traps."
+			return "You don't see any traps here."
+		
+		# Ground/floor inspection
+		if target in ("ground", "floor", "the floor", "the ground"):
+			if isinstance(room, dict):
+				items = room.get("items", {})
+				if items:
+					return "You examine the ground.\nYou see some items scattered about.\nType 'look' to see what's available."
+				else:
+					return "You examine the ground.\nNothing interesting on the floor."
+			elif hasattr(room, "items"):
+				if room.items:
+					return "You examine the ground.\nYou see some items scattered about.\nType 'look' to see what's available."
+				else:
+					return "You examine the ground.\nNothing interesting on the floor."
+		
+		# Regular inventory/item examination
+		if target in self.engine.player.inventory:
+			item_qty = self.engine.player.inventory[target]
+			return f"You examine your {target}.\nQuantity: {item_qty}\nIt looks like it could be useful or valuable."
 		if not room:
 			return "You don't see that here."
 		if target in room.items:
-			return f"You examine the {target} in the room. It looks useful."
-		return "You don't see that here."
+			return f"You examine the {target} in the room.\nIt looks useful. Type 'take {target}' to pick it up."
+		return f"You don't see any '{target}' here to examine.\n\nTry examining:\n  - wall (look for secrets)\n  - chest (examine containers)\n  - ground (search the floor)\n  - <item_name> (inspect items)"
+
+	def _search_room(self):
+		"""Actively search the current room for hidden traps and items."""
+		room_id = self.engine.player.current_room
+		room = self.engine.get_room_data(room_id)
+		if not room:
+			return "[Room not found]"
+		
+		result_parts = []
+		found_something = False
+		
+		# Search for traps in dungeon rooms
+		raw_room = TrapSystem.find_raw_room(
+			self.engine.current_dungeon_instance, room_id
+		) if TRAP_AVAILABLE else None
+		
+		if raw_room:
+			traps = raw_room.get("traps", [])
+			active_traps = [t for t in traps if not t.get("triggered") and not t.get("disarmed")]
+			if active_traps:
+				found_something = True
+				for trap in active_traps:
+					trap_name = trap.get("name", trap.get("type", "trap").replace("_", " "))
+					warning = trap.get("warning_signs", "Something seems dangerous here.")
+					result_parts.append(
+						f"⚠️  You found a {trap_name}!\n"
+						f"   {warning}\n"
+						f"   Type 'disarm' to attempt to disarm it."
+					)
+			
+			# Search for chests
+			chests = raw_room.get("chests", [])
+			unopened = [c for c in chests if not c.get("opened")]
+			if unopened:
+				found_something = True
+				for chest in unopened:
+					chest_type = chest.get("type", "wooden").replace("_", " ")
+					result_parts.append(
+						f"📦 You found a {chest_type}!\n"
+						f"   Type 'open chest' to try opening it."
+					)
+			
+			# Check for triggered/disarmed traps
+			old_traps = [t for t in traps if t.get("triggered") or t.get("disarmed")]
+			if old_traps:
+				for trap in old_traps:
+					trap_name = trap.get("name", trap.get("type", "trap").replace("_", " "))
+					if trap.get("disarmed"):
+						result_parts.append(f"   A disarmed {trap_name} lies here.")
+					else:
+						result_parts.append(f"   The remains of a triggered {trap_name} are visible.")
+		
+		# Check for items on the ground
+		if hasattr(room, "items") and room.items:
+			found_something = True
+			result_parts.append(f"You see items on the ground. Type 'look' to see what's available.")
+		
+		if not found_something:
+			return "You search the room carefully...\n\nYou don't find anything hidden."
+		
+		header = "You search the room carefully...\n\n"
+		return header + "\n\n".join(result_parts)
+
+	def _open_chest(self):
+		"""Open a treasure chest in the current room."""
+		room_id = self.engine.player.current_room
+		
+		# Find chest in raw dungeon data
+		raw_room = TrapSystem.find_raw_room(
+			self.engine.current_dungeon_instance, room_id
+		) if TRAP_AVAILABLE else None
+		
+		if not raw_room:
+			return "There's no chest here to open."
+		
+		chests = raw_room.get("chests", [])
+		if not chests:
+			return "There's no chest here to open."
+		
+		# Find first unopened chest
+		chest = None
+		for c in chests:
+			if not c.get("opened"):
+				chest = c
+				break
+		
+		if not chest:
+			return "All chests in this room have already been opened."
+		
+		# Open the chest
+		chest["opened"] = True
+		chest_type = chest.get("type", "wooden").replace("_", " ")
+		contents = chest.get("contents", {})
+		
+		result = "\n" + "=" * 50 + "\n"
+		result += f"📦 You open the {chest_type}!\n"
+		result += "=" * 50 + "\n"
+		
+		got_something = False
+		
+		# Add gold
+		gold = contents.get("gold", 0)
+		if gold > 0:
+			got_something = True
+			self.engine.player.stats["gold"] = self.engine.player.stats.get("gold", 0) + gold
+			result += f"\n💰 You found {gold} gold!\n"
+		
+		# Add items
+		items = contents.get("items", {})
+		if items:
+			got_something = True
+			result += "\nItems found:\n"
+			for item_name, item_data in items.items():
+				if isinstance(item_data, dict):
+					qty = item_data.get("quantity", 1)
+					value = item_data.get("value", 10)
+				else:
+					qty = 1
+					value = 10
+				
+				self._add_to_inventory(item_name, qty)
+				# Store item value
+				if item_name not in self.engine.item_worth:
+					self.engine.item_worth[item_name] = value
+				
+				result += f"  • {item_name} x{qty}\n"
+		
+		if not got_something:
+			result += "\nThe chest is empty!\n"
+		
+		result += "\n" + "=" * 50 + "\n"
+		
+		# Notify UI of inventory change
+		try:
+			self.engine._inventory_changed = True
+		except Exception:
+			pass
+		
+		return result
+
+	def _discover_secret_room(self, boss_room):
+		"""Handle secret room discovery in boss chamber with full visual experience."""
+		# Handle both dict and Room objects
+		has_secret = False
+		secret_room_id = None
+		
+		if isinstance(boss_room, dict):
+			has_secret = boss_room.get("has_secret")
+			secret_room_id = boss_room.get("secret_room_id")
+		elif hasattr(boss_room, "has_secret"):
+			has_secret = boss_room.has_secret
+			secret_room_id = getattr(boss_room, "secret_room_id", None)
+		
+		if not has_secret:
+			return "You examine the walls carefully, but find nothing unusual."
+		
+		# Mark secret as discovered (both in room and player state)
+		if isinstance(boss_room, dict):
+			boss_room["secret_discovered"] = True
+		elif hasattr(boss_room, "secret_discovered"):
+			boss_room.secret_discovered = True
+		
+		self.engine.player.state["secret_discovered"] = True
+		
+		# Add secret exit to boss room
+		if secret_room_id:
+			if isinstance(boss_room, dict):
+				boss_room["exits"]["secret"] = {
+					"target": secret_room_id,
+					"type": "secret"
+				}
+			elif hasattr(boss_room, "exits"):
+				boss_room.exits["secret"] = {
+					"target": secret_room_id,
+					"type": "secret"
+				}
+		
+		return ("\n" + "="*80 + "\n"
+				"You carefully examine the walls...\n"
+				"\n"
+				"Wait... one section seems different!\n"
+				"The carvings form a pattern... it's a hidden mechanism!\n"
+				"\n"
+				"You press the suspicious stone...\n"
+				"\n"
+				"*CLICK*\n"
+				"\n"
+				"A hidden doorway grinds open with ancient gears!\n"
+				"A secret passage is revealed!\n"
+				"="*80 + "\n"
+				"\n"
+				"You can now 'go secret' to enter the hidden passage!\n")
+
+	def _enter_secret_room(self, secret_room_id):
+		"""Enter and display the secret chamber with ASCII art easter egg."""
+		self.engine.player.current_room = secret_room_id
+		
+		room = self.engine.get_room_data(secret_room_id)
+		if not room:
+			return "The secret passage leads nowhere..."
+		
+		self._update_map_on_move(secret_room_id)
+		
+		# Display spectacular entrance with ASCII art
+		ascii_art = r"""
+               ___.-------.___
+           _.-'     /   \     '-._
+         .'   /   /  |  \  \   '.
+        /   /   / /| |\ \   \   \
+       /   /   /_/ | | \_\   \   \
+      |   |  .' \  | |  / '.  |   |
+      |   | /    `.|.|.'    \ |   |
+      |   |/  .-.  |||  .-.  \|   |
+      |    \ |   | ||| |   | /    |
+      |     \\  '-' ||| '-'  //     |
+      |.     `\    |||    /'     .|
+      |  '-.   `.  |||  .'   .-'  |
+      |     '-. ;--'-'--; .-'     |
+      |        '| VAULT |'        |
+      |         | ~~~~~ |         |
+      \         |  ___  |         /
+       \        | |   | |        /
+        `.      | |___| |      .'
+          `-.   |_______|   .-'
+             `-.  |   |  .-'
+                `-'   '-'
+"""
+		
+		room_name = ""
+		room_desc = ""
+		if isinstance(room, dict):
+			room_name = room.get("name", "Secret Chamber")
+			room_desc = room.get("description", "A hidden chamber.")
+		else:
+			room_name = room.name
+			room_desc = room.description
+		
+		return ("\n\n"
+				"="*80 + "\n"
+				"🌟 YOU'VE DISCOVERED THE SECRET CHAMBER! 🌟\n"
+				"="*80 + "\n"
+				"\n"
+				+ ascii_art +
+				"\n"
+				"Ancient runes glow on the walls, spelling out a legendary name...\n"
+				"This secret has been hidden for centuries.\n"
+				"You are among the few who have found it.\n"
+				"\n"
+				+ f"{room_name}\n"
+				+ f"{room_desc}\n"
+				"\n"
+				"[Type 'go back' to return to the treasure vault]")
 
 	def _sell(self, item_name):
-		"""Sell one unit of item_name for its worth (in gold)."""
-		if not self.engine.player:
-			return "No game in progress."
-		item_name = item_name.strip()
+		"""Sell an item for its standard worth value."""
 		if not item_name:
 			return "Sell what?"
 		inv = self.engine.player.inventory
@@ -1047,64 +2026,42 @@ Do you wish to enter? (yes/no)
 		return True, ""
 	
 	def _shop_help(self):
-		"""Show shop command help."""
-		return """Shop Commands:
-shop browse       - View available items for sale
-shop buy <item>   - Purchase an item
-shop sell <item> <gold>  - Attempt to sell an item to shopkeeper
-shop talk         - Chat with the shopkeeper
-shop info         - Information about the shop and negotiation
-
-Abbreviations: 
-  'talk to shopkeeper' also works
-  'shop view' or 'shop inventory' work instead of 'shop browse'"""
+		"""Show shop command help with beautiful UI."""
+		if not self._check_in_shop()[0]:
+			return self._check_in_shop()[1]
+		self.engine.shop_ui.show_shop_welcome()
+		return ""
 	
 	def _shop_browse(self):
-		"""Display shop inventory."""
+		"""Display shop inventory with beautiful UI."""
 		ok, msg = self._check_in_shop()
 		if not ok:
 			return msg
 		
-		inventory_display = self.engine.shop.get_inventory()
-		if not inventory_display or inventory_display == "The shop appears to be empty today.":
-			return "The shop is empty today. Check back in an hour for new stock!"
-		
-		header = "╔" + "═" * 56 + "╗\n"
-		header += "║" + " GENERAL STORE INVENTORY ".center(56) + "║\n"
-		header += "╠" + "═" * 56 + "╣\n"
-		footer = "╚" + "═" * 56 + "╝"
-		
-		return header + inventory_display + footer
+		self.engine.shop_ui.show_shop_inventory(self.engine.player)
+		return ""
 	
 	def _shop_buy(self, item_name):
-		"""Buy an item from the shop."""
+		"""Buy an item from the shop with beautiful UI."""
 		ok, msg = self._check_in_shop()
 		if not ok:
 			return msg
 		
 		item_name = item_name.strip().lower()
-		if not self.engine.shop.can_buy(item_name):
-			return self.engine.shopkeeper.get_item_not_found_response()
 		
-		price = self.engine.shop.get_buy_price(item_name)
-		player_gold = self.engine.player.stats.get("gold", 0)
-		
-		if player_gold < price:
-			return f"You don't have enough gold. This costs {price}g but you only have {player_gold}g."
-		
-		# Take the gold
-		self.engine.player.stats["gold"] = player_gold - price
-		# Add item to inventory
-		self._add_to_inventory(item_name)
-		# Remove from shop
-		self.engine.shop.buy_item(item_name)
-		
-		# Get shopkeeper response
-		response = self.engine.shopkeeper.get_buy_response(item_name, price)
-		return f"{response}\n✓ You bought 1 {item_name} for {price} gold."
+		# Use beautiful UI for the buy process
+		if self.engine.shop_ui.buy_item(self.engine.player, item_name):
+			# Update engine player inventory
+			if item_name not in self.engine.player.inventory:
+				self.engine.player.inventory[item_name] = 1
+			else:
+				self.engine.player.inventory[item_name] += 1
+			return ""
+		else:
+			return ""
 	
 	def _shop_sell(self, item_name, offered_price):
-		"""Attempt to sell an item to shopkeeper with negotiation."""
+		"""Attempt to sell an item to shopkeeper with beautiful negotiation UI."""
 		ok, msg = self._check_in_shop()
 		if not ok:
 			return msg
@@ -1113,34 +2070,26 @@ Abbreviations:
 		
 		# Check if player has item
 		if item_name not in self.engine.player.inventory or self.engine.player.inventory[item_name] <= 0:
-			return f"You don't have any {item_name}."
-		
-		# Get item value
-		item_worth = self.engine.item_worth.get(item_name, 10)
+			self.engine.display_message(f"⚠️  You don't have any {item_name}.")
+			return ""
 		
 		# Validate offered price
 		if offered_price <= 0:
-			return "Price must be positive."
-		if offered_price > item_worth * 2:
-			return f"That's {offered_price}g? The shopkeeper laughs. 'That's absurd!'"
+			self.engine.display_message("⚠️  Price must be positive!")
+			return ""
 		
-		# Negotiate with shopkeeper
-		accepted, final_price, dialogue = self.engine.shopkeeper.negotiate_price(
-			item_name, offered_price, item_worth
-		)
+		# Use beautiful UI for selling
+		result = self.engine.shop_ui.sell_item(self.engine.player, item_name, offered_price)
 		
-		if accepted:
-			# Complete the sale
-			self._remove_from_inventory(item_name, 1)
-			self.engine.player.stats["gold"] = int(self.engine.player.stats.get("gold", 0)) + final_price
-			return f"Shopkeeper: \"{dialogue}\"\n✓ Deal complete! You received {final_price} gold."
+		if result == 'pending':
+			# Waiting for user response on counter offer
+			return ""
+		elif result:
+			# Sale completed
+			return ""
 		else:
-			if final_price == 0:
-				# Permanent refusal
-				return f"Shopkeeper: \"{dialogue}\"\n✗ The shopkeeper refuses to buy from you anymore."
-			else:
-				# Counter offer
-				return f"Shopkeeper: \"{dialogue}\"\nType 'shop sell {item_name} {final_price}' to accept, or try a different price."
+			# Sale refused
+			return ""
 	
 	def _shop_talk(self):
 		"""Talk to shopkeeper."""
@@ -1149,36 +2098,17 @@ Abbreviations:
 			return msg
 		
 		greeting = self.engine.shopkeeper.greet()
-		return f"Shopkeeper: \"{greeting}\""
+		self.engine.display_message(f"💬 Shopkeeper: \"{greeting}\"")
+		return ""
 	
 	def _shop_info(self):
-		"""Show negotiation tips and shop information."""
-		return """═════════════════════════════════════════════════════════════════
-
-SHOP INFORMATION & NEGOTIATION GUIDE
-
-The Shopkeeper is a skilled negotiator. Here's how selling works:
-
-PRICING STRATEGIES:
-  • Ask 30% or less of item value  → REFUSED (permanent!)
-  • Ask 30-50% of value           → Shopkeeper counters at ~75%
-  • Ask 50-85% of value           → ACCEPTED at ~80% of your offer
-  • Ask 85-100% of value          → ACCEPTED at ~95% of your offer
-  • Ask more than 100% of value   → Shopkeeper laughs, counters at 60-70%
-
-TIPS:
-  • The better you negotiate, the more gold you keep
-  • Being greedy (asking way too much) can get you permanently refused
-  • Once refused on an item, you can't sell it anymore
-  • Different items have different base values
-  • Shop inventory changes every hour (Germany time)
-
-INVENTORY ROTATION:
-  • Browse shop stock with 'shop browse'
-  • New items appear every hour at :00 (Germany timezone)
-  • Stock includes common tools, rare treasures, and quality goods
-
-═════════════════════════════════════════════════════════════════"""
+		"""Show negotiation tips and shop information with beautiful UI."""
+		ok, msg = self._check_in_shop()
+		if not ok:
+			return msg
+		
+		self.engine.shop_ui.show_shop_info()
+		return ""
 
 	def _open_map(self):
 		"""Open the live map window."""
@@ -1188,8 +2118,11 @@ INVENTORY ROTATION:
 		try:
 			# Create or focus the map window
 			if not self.engine.map_window:
-				# Use the hidden root window from AdventureGUI
-				self.engine.map_window = LiveMapWindow(self.engine.root, self.engine.rooms)
+				self.engine.map_window = LiveMapWindow(
+					self.engine.root,
+					self.engine.rooms,
+					game_engine=self.engine
+				)
 			
 			self.engine.map_window.create_window()
 			
@@ -1213,29 +2146,145 @@ INVENTORY ROTATION:
 		return "Map is not open."
 
 	def _show_commands(self):
-		"""Display available player commands."""
+		"""Display comprehensive command list with context awareness."""
+		current_room = self.engine.get_room_data(self.engine.player.current_room)
+		cr = self.engine.player.current_room
+		in_dungeon = (cr.startswith("dungeon_") and "_floor" in cr) or cr in self.engine.fixed_dungeon_room_ids
+		in_shop = False
+		
+		if isinstance(current_room, dict):
+			in_shop = current_room.get("shop", False)
+		elif hasattr(current_room, "shop"):
+			in_shop = current_room.shop
+		
+		result = """
+╔════════════════════════════════════════════════════════════════╗
+║                     AVAILABLE COMMANDS                         ║
+╠════════════════════════════════════════════════════════════════╣
+║                                                                ║
+║  [MOVEMENT]                                                    ║
+║  ---------------------------------------------------------------║
+║    go <direction>       - Move (north, south, east, west)      ║
+║    n / s / e / w        - Quick movement shortcuts             ║
+║    go up / u            - Climb stairs to previous floor       ║
+║    go down / d          - Descend stairs to next floor         ║
+║    enter                - Enter building/dungeon               ║
+║    leave / exit         - Leave current location               ║
+║                                                                ║
+║  [EXPLORATION]                                                 ║
+║  ---------------------------------------------------------------║
+║    look / l             - Look around current room             ║
+║    examine <target>     - Examine something closely            ║
+║    inspect <target>     - Same as examine (inspect wall!)      ║
+║    search               - Search for hidden items/traps        ║
+║    open map             - Open live map window                 ║
+║    close map            - Close map window                     ║
+║                                                                ║
+║  [INVENTORY]                                                   ║
+║  ---------------------------------------------------------------║
+║    inventory / inv / i  - View your inventory                  ║
+║    take <item>          - Pick up an item                      ║
+║    drop <item>          - Drop an item from inventory          ║
+║    sell <item>          - Sell item for standard value         ║
+║                                                                ║"""
+		
+		# Context-specific commands
+		if in_dungeon:
+			result += """║  [DUNGEON ACTIONS]                                             ║
+║  ---------------------------------------------------------------║
+║    open chest           - Open a treasure chest                ║
+║    disarm / disarm trap - Attempt to disarm a trap             ║
+║    go secret            - Enter secret passage (if discovered) ║
+║    craft / forge        - Use crafting altar (if present)      ║
+║    use altar            - Same as craft                        ║
+║                                                                ║"""
+		
+		if SHOP_AVAILABLE and in_shop:
+			result += """║  [SHOP COMMANDS]                                               ║
+║  ---------------------------------------------------------------║
+║    shop browse          - View items for sale                  ║
+║    shop buy <item>      - Purchase an item                     ║
+║    shop sell <item> <price> - Sell item to merchant            ║
+║    shop info            - Trading tips and pricing guide       ║
+║    shop talk            - Chat with merchant                   ║
+║                                                                ║"""
+		
+		result += """║  [SYSTEM]                                                      ║
+║  ---------------------------------------------------------------║
+║    help / commands / ?  - Show this command list               ║
+║    save                 - Save your game                       ║
+║    quit / exit          - Save and exit game                   ║
+║                                                                ║
+╠════════════════════════════════════════════════════════════════╣
+║                                                                ║
+║  [TIPS]                                                        ║
+║    • Commands are not case-sensitive                           ║
+║    • Use 'look' often to get your bearings                     ║
+║    • 'inspect wall' in boss rooms may reveal secrets!          ║
+║    • 'search' can find hidden traps before they trigger        ║
+║    • Keep the map open to track your progress                  ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+"""
+		
+		# Show contextual hints
+		hints = self._get_contextual_hints()
+		if hints:
+			result += "\n" + hints
+		
+		# Add debug commands note if available
 		if DEBUG_AVAILABLE:
-			return show_player_commands()
-		return """Available commands:
-go [direction]     - Move around
-look              - Examine the current room
-take [item]       - Pick up an item
-drop [item]       - Drop an item
-inventory         - Check your inventory
-save              - Save your game
-open map          - Open interactive map
-sell [item]       - Sell item for its standard value
+			result += "\n[DEBUG MODE] Type 'debug commands' to see debug menu.\n"
+		
+		return result
 
-Shop Commands (in village shop):
-shop browse       - View available items
-shop buy <item>   - Purchase an item
-shop sell <item> <gold>  - Negotiate selling an item
-shop talk         - Chat with shopkeeper
-shop info         - Learn about negotiation
-
-help              - Show this help
-quit              - Exit the game"""
-
+	def _get_contextual_hints(self):
+		"""Get hints based on current situation."""
+		current_room = self.engine.get_room_data(self.engine.player.current_room)
+		
+		if not current_room:
+			return ""
+		
+		hints = []
+		
+		if isinstance(current_room, dict):
+			# Secret room hint
+			if current_room.get("has_secret") and not current_room.get("secret_discovered"):
+				hints.append("[HINT] This room feels unusual. Try 'inspect wall' to look for secrets!")
+			
+			# Trap hint
+			if current_room.get("traps"):
+				unsprung = [t for t in current_room["traps"] if not t.get("triggered") and not t.get("disarmed")]
+				if unsprung:
+					hints.append("[WARNING] Be careful! This area looks dangerous. Use 'search' to look for traps.")
+			
+			# Loot hint
+			if current_room.get("items"):
+				hints.append("[LOOT] Items are available here. Use 'take <item>' or look around.")
+			
+			# Chest hint
+			if current_room.get("chests"):
+				unopened = [c for c in current_room["chests"] if not c.get("opened")]
+				if unopened:
+					hints.append("[TREASURE] A chest is here! Try 'open chest' to see what's inside.")
+			
+			# Available exits hint
+			exits = current_room.get("exits", {})
+			if "secret" in exits:
+				hints.append("[SECRET] Secret passage available - use 'go secret'")
+			if "up" in exits:
+				hints.append("[EXIT] Stairs up available - use 'go up' or 'u'")
+			if "down" in exits:
+				hints.append("[EXIT] Stairs down available - use 'go down' or 'd'")
+		
+		if hints:
+			result = "\n[AVAILABLE ACTIONS IN THIS ROOM]\n"
+			for hint in hints:
+				result += "   " + hint + "\n"
+			return result
+		
+		return ""
+	
 	def _show_debug_menu(self):
 		"""Display the debug commands menu."""
 		if DEBUG_AVAILABLE:
@@ -1257,9 +2306,10 @@ class GameEngine:
 	"""Main engine: loads world, manages game state, save/load functionality.
 	All public methods return strings to be displayed by the UI.
 	"""
-	def __init__(self, world_file=WORLD_FILE, root=None):
+	def __init__(self, world_file=WORLD_FILE, root=None, gui=None):
 		self.world_file = world_file
 		self.root = root
+		self.gui = gui  # Reference to AdventureGUI for displaying messages
 		self.rooms = {}  # name -> Room
 		self.player = None
 		self.cmd = None
@@ -1278,24 +2328,38 @@ class GameEngine:
 		self.map_window = None
 		# Track pending dungeon entry confirmation
 		self.pending_dungeon_entry = None
+		# Track pending disarm minigame
+		self.pending_disarm = None
+		# Track poison status
+		self.poison_status = None
+		
+		# Debug overrides for dungeons
+		self.debug_force_open_dungeons = set()  # Stores dungeon_ids that are force-opened
+		
+		# Fixed dungeon tracking
+		self.current_fixed_dungeon = None  # Loaded fixed dungeon JSON data
+		self.fixed_dungeon_room_ids = set()  # Room IDs belonging to current fixed dungeon
 		
 		# Initialize shop system
 		if SHOP_AVAILABLE:
 			try:
 				self.shop = Shop("village_shop")
 				self.shopkeeper = Shopkeeper(self.shop)
+				self.shop_ui = ShopUI(self.shop, self.shopkeeper, self)
 			except Exception as e:
 				print(f"[ERROR] Failed to initialize shop: {e}")
 				self.shop = None
 				self.shopkeeper = None
+				self.shop_ui = None
 		else:
 			self.shop = None
 			self.shopkeeper = None
+			self.shop_ui = None
 		
 		# Initialize dungeon systems
 		if DUNGEON_AVAILABLE:
 			try:
-				self.dungeon_scheduler = DungeonScheduler()
+				self.dungeon_scheduler = DungeonScheduler(game_engine=self)
 				self.current_dungeon_instance = None  # Will be set when player enters dungeon
 			except Exception as e:
 				print(f"[ERROR] Failed to initialize DungeonScheduler: {e}")
@@ -1309,6 +2373,69 @@ class GameEngine:
 		# Set up graceful shutdown handler if root provided
 		if self.root:
 			self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+	def cleanup_dungeon(self):
+		"""
+		Clean up dungeon state when a dungeon closes or player leaves.
+		Removes registered dungeon rooms from engine.rooms,
+		clears the dungeon instance, and updates the map.
+		Handles both procedural (time-gated) and fixed dungeons.
+		"""
+		# Remove procedural dungeon rooms from engine.rooms
+		to_remove = [rid for rid in self.rooms
+		             if rid.startswith("dungeon_") and "_floor" in rid]
+		# Also remove fixed dungeon rooms
+		to_remove.extend(rid for rid in self.fixed_dungeon_room_ids if rid in self.rooms)
+		
+		for rid in to_remove:
+			del self.rooms[rid]
+		if to_remove:
+			print(f"[DEBUG] Cleaned up {len(to_remove)} dungeon rooms from engine.rooms")
+
+		# Teleport player out if still inside a dungeon room
+		player_in_dungeon = False
+		if self.player:
+			cr = self.player.current_room
+			if (cr.startswith("dungeon_") and "_floor" in cr):
+				player_in_dungeon = True
+			elif cr in self.fixed_dungeon_room_ids:
+				player_in_dungeon = True
+		
+		if player_in_dungeon:
+			# Use the entrance_room_id stored in the dungeon data if available
+			exit_target = "dungeon_forest_entrance"  # fallback
+			if self.current_dungeon_instance:
+				if hasattr(self.current_dungeon_instance, 'entrance_room_id'):
+					exit_target = self.current_dungeon_instance.entrance_room_id
+				elif self.current_dungeon_instance.dungeon_data:
+					exit_target = self.current_dungeon_instance.dungeon_data.get("entrance_room_id", exit_target)
+			self.player.current_room = exit_target
+
+		# Clear dungeon instance and fixed dungeon state
+		self.current_dungeon_instance = None
+		self.current_fixed_dungeon = None
+		self.fixed_dungeon_room_ids.clear()
+
+		# Refresh map to show overworld
+		if self.map_window and self.map_window.is_open():
+			self.map_window.update_location(
+				self.player.current_room,
+				getattr(self.player, "visited_rooms", set())
+			)
+
+	def _load_fixed_dungeon(self, dungeon_id):
+		"""Load fixed dungeon data from fixed_dungeons/{dungeon_id}.json."""
+		try:
+			base_dir = os.path.dirname(os.path.abspath(self.world_file))
+			dungeon_path = os.path.join(base_dir, "fixed_dungeons", f"{dungeon_id}.json")
+			if not os.path.exists(dungeon_path):
+				print(f"[ERROR] Fixed dungeon file not found: {dungeon_path}")
+				return None
+			with open(dungeon_path, "r", encoding="utf-8") as f:
+				return json.load(f)
+		except Exception as e:
+			print(f"[ERROR] Failed to load fixed dungeon '{dungeon_id}': {e}")
+			return None
 
 	def load_world(self):
 		# If world file does not exist, create a sample (so users can edit it without touching code)
@@ -1499,6 +2626,7 @@ class GameEngine:
 	def get_room_data(self, room_name):
 		"""
 		Get a room from either the world (surface) or the current dungeon.
+		Dungeon rooms are cached in self.rooms after first access for performance.
 		
 		Args:
 			room_name: Name/ID of the room
@@ -1506,37 +2634,35 @@ class GameEngine:
 		Returns:
 			Room object (always returns as Room object for consistency)
 		"""
-		# Check world rooms first
+		# Check world/cached rooms first (dungeon rooms get cached here too)
 		if room_name in self.rooms:
 			return self.rooms[room_name]
 		
-		# If not in world, check if we're in a dungeon
+		# If not in cache, check if we're in a dungeon
 		if DUNGEON_AVAILABLE and self.current_dungeon_instance:
-			# Dungeon rooms are named like "dungeon_20260212_00_floor1_room1"
-			# Extract floor number from room name
 			try:
 				if room_name.startswith("dungeon_"):
 					# Parse "dungeon_{seed}_floor{N}_room{M}" format
 					parts = room_name.split("_")
-					# Parts: [dungeon, ...seed..., floorN, roomM]
-					# Find the part that starts with "floor"
 					floor_num = None
 					for part in parts:
 						if part.startswith("floor"):
-							floor_str = part[5:]  # Remove "floor" prefix
-							floor_num = int(floor_str)
+							floor_num = int(part[5:])
 							break
 					
 					if floor_num is not None:
-						# Get the room from dungeon data
 						room_dict = self.current_dungeon_instance.get_room(floor_num, room_name)
 						if room_dict:
-							# Convert dungeon room dict to world room format for consistency
 							converted_room = self._convert_dungeon_room_to_world(room_dict)
-							return Room(converted_room)
-			except (ValueError, IndexError, AttributeError):
-				# Room name doesn't match dungeon format or error occurred
-				pass
+							room_obj = Room(converted_room)
+							# Cache in self.rooms so subsequent lookups are instant
+							self.rooms[room_name] = room_obj
+							return room_obj
+			except Exception as e:
+				# Catch ALL exceptions to prevent silent failures
+				print(f"[ERROR get_room_data] Failed to load dungeon room '{room_name}': {e}")
+				import traceback
+				traceback.print_exc()
 		
 		return None
 
@@ -1551,32 +2677,49 @@ class GameEngine:
 		Returns:
 			dict: Room data in world room format
 		"""
-		# Convert items dict to list format and preserve item values
+		# Convert items to list format and preserve item values
 		items_list = []
 		if dungeon_room.get("items"):
-			items_dict = dungeon_room.get("items", {})
-			for item_name, item_data in items_dict.items():
-				# Add item_name to list qty times
-				if isinstance(item_data, dict):
-					qty = item_data.get("quantity", 1)
-					value = item_data.get("value", 10)
-				else:
-					qty = 1
-					value = 10
-				
-				# Store the item value in engine.item_worth so it can be sold
-				if item_name not in self.item_worth:
-					self.item_worth[item_name] = value
-				
-				for _ in range(qty):
+			items_data = dungeon_room.get("items", {})
+			
+			# Handle both list and dict formats
+			if isinstance(items_data, list):
+				# List format: ["item1", "item2"]
+				for item_name in items_data:
 					items_list.append(item_name)
+					# Set default value if not already set
+					if item_name not in self.item_worth:
+						self.item_worth[item_name] = 10
+			elif isinstance(items_data, dict):
+				# Dict format: {"item_name": {"quantity": 1, "value": 10}}
+				for item_name, item_data in items_data.items():
+					# Add item_name to list qty times
+					if isinstance(item_data, dict):
+						qty = item_data.get("quantity", 1)
+						value = item_data.get("value", 10)
+					else:
+						qty = 1
+						value = 10
+					
+					# Store the item value in engine.item_worth so it can be sold
+					if item_name not in self.item_worth:
+						self.item_worth[item_name] = value
+					
+					for _ in range(qty):
+						items_list.append(item_name)
 		
-		# Convert exits format if needed (dungeon format is already compatible)
+		# Convert exits format if needed
+		# Preserve full dict for special exit types (leave_dungeon, stairs, etc.)
 		exits = {}
 		raw_exits = dungeon_room.get("exits", {})
 		for direction, exit_data in raw_exits.items():
 			if isinstance(exit_data, dict):
-				exits[direction] = exit_data.get("target", exit_data)
+				exit_type = exit_data.get("type", "direction")
+				if exit_type in ("leave_dungeon", "stairs_up", "stairs_down", "fixed_dungeon"):
+					# Preserve full dict for special exit types
+					exits[direction] = exit_data
+				else:
+					exits[direction] = exit_data.get("target", exit_data)
 			else:
 				exits[direction] = exit_data
 		
@@ -1589,6 +2732,19 @@ class GameEngine:
 			"coordinates": dungeon_room.get("coordinates", [0, 0]),
 			"location_type": "dungeon"
 		}
+
+	def display_message(self, message):
+		"""
+		Display a message in the game window via the GUI.
+		
+		Args:
+			message: Text to display
+		"""
+		if self.gui and hasattr(self.gui, 'append'):
+			self.gui.append(message)
+		else:
+			# Fallback to print if GUI not available
+			print(message)
 
 	def new_game(self):
 		if not self.start_room:
@@ -1861,7 +3017,7 @@ class AdventureGUI:
 	def _init_engine(self):
 		"""Initialize GameEngine after the GUI has been drawn to avoid startup delay."""
 		try:
-			self.engine = GameEngine(root=self.root)
+			self.engine = GameEngine(root=self.root, gui=self)
 		except Exception as e:
 			messagebox.showerror("Error", str(e))
 			self.root.destroy()

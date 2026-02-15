@@ -1,0 +1,481 @@
+{
+  "dungeon_id": "crystal_caverns",
+  "name": "The Crystal Caverns",
+  "description": "A natural cave system transformed by ancient magic. Crystalline formations pulse with stored energy, and the very walls seem alive with light.",
+  "entrance_room_id": "dungeon_forest_entrance",
+  "always_open": true,
+  "num_floors": 3,
+  "theme": "crystal_magic",
+  "difficulty": "hard",
+  "floors": {
+    "1": {
+      "floor_number": 1,
+      "num_rooms": 8,
+      "entrance_room": "cc_f1_crystal_mouth",
+      "exit_stairs_down": "cc_f1_crystal_elevator",
+      "rooms": {
+        "cc_f1_crystal_mouth": {
+          "name": "Crystal Cave Mouth",
+          "description": "The cave entrance glitters with embedded quartz crystals that catch and multiply any light source. The walls narrow into a passage ahead, faceted like the inside of a gemstone. A faint harmonic hum resonates from deep within.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"raw_quartz": {"quantity": 3, "value": 12}},
+          "exits": {
+            "leave": {
+              "target": "dungeon_forest_entrance",
+              "type": "leave_dungeon",
+              "transition_text": "You shield your eyes as you step back into the forest light..."
+            },
+            "south": {"target": "cc_f1_prism_gallery", "type": "direction"},
+            "east": {"target": "cc_f1_echo_chamber", "type": "direction"}
+          }
+        },
+        "cc_f1_prism_gallery": {
+          "name": "Prism Gallery",
+          "description": "Natural crystal columns split light into dancing rainbows that play across every surface. The effect is mesmerizing — and disorienting. Each column is a different mineral: amethyst, citrine, rose quartz, and others you cannot name.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"amethyst_shard": {"quantity": 2, "value": 28}, "citrine_chip": {"quantity": 2, "value": 22}},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "cc_f1_crystal_mouth", "type": "direction"},
+            "south": {"target": "cc_f1_geode_chamber", "type": "direction"},
+            "west": {"target": "cc_f1_mineral_spring", "type": "direction"}
+          }
+        },
+        "cc_f1_echo_chamber": {
+          "name": "Echo Chamber",
+          "description": "A perfectly spherical cavity in the rock where every sound is amplified a hundredfold. Even your breathing reverberates. Crystal formations on the walls act like tuning forks, sustaining tones indefinitely.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"resonance_crystal": {"quantity": 1, "value": 40}},
+          "traps": [
+            {
+              "type": "gas_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "west": {"target": "cc_f1_crystal_mouth", "type": "direction"},
+            "south": {"target": "cc_f1_singing_tunnels", "type": "direction"}
+          }
+        },
+        "cc_f1_mineral_spring": {
+          "name": "Mineral Hot Spring",
+          "description": "A natural hot spring bubbles up through crystal-lined rock. The water shimmers with dissolved minerals, and the warmth is heavenly after the cold stone passages. Mineral deposits have built up into fantastic formations.",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {"mineral_water_flask": {"quantity": 2, "value": 15}, "mineral_deposit": {"quantity": 2, "value": 18}},
+          "exits": {
+            "east": {"target": "cc_f1_prism_gallery", "type": "direction"}
+          }
+        },
+        "cc_f1_singing_tunnels": {
+          "name": "Singing Tunnels",
+          "description": "Wind flowing through crystal tubes in the walls produces an eerie, beautiful melody. The tunnels branch and reconnect in confusing patterns. Someone has scratched directional arrows into the walls — not all of them point the right way.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"crystal_flute": {"quantity": 1, "value": 45}},
+          "traps": [
+            {
+              "type": "pit_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "spike_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "cc_f1_echo_chamber", "type": "direction"},
+            "west": {"target": "cc_f1_geode_chamber", "type": "direction"}
+          }
+        },
+        "cc_f1_geode_chamber": {
+          "name": "Giant Geode Chamber",
+          "description": "You stand inside what must be the world's largest geode. The entire chamber is lined with purple amethyst crystals, some as tall as trees. Light refracts endlessly between them, creating a kaleidoscope effect that makes distances impossible to judge.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"giant_amethyst": {"quantity": 1, "value": 65}},
+          "traps": [
+            {
+              "type": "crushing_ceiling",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "cc_f1_prism_gallery", "type": "direction"},
+            "east": {"target": "cc_f1_singing_tunnels", "type": "direction"},
+            "south": {"target": "cc_f1_crystal_elevator", "type": "direction"}
+          }
+        },
+        "cc_f1_crystal_elevator": {
+          "name": "Crystal Elevator Shaft",
+          "description": "A vertical shaft lined with smoothly polished crystal. A floating platform of translucent quartz hovers in the center, responding to weight. Standing on it causes a slow, controlled descent to the level below.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "cc_f1_geode_chamber", "type": "direction"},
+            "down": {
+              "target": "cc_f2_refraction_hall",
+              "type": "stairs_down",
+              "transition_text": "The crystal platform descends smoothly, light spiraling around you..."
+            }
+          }
+        },
+        "cc_f1_miner_camp": {
+          "name": "Abandoned Miner's Camp",
+          "description": "An old campsite wedged into a crystal alcove. Pickaxes, lanterns, and personal effects suggest miners who came for the crystals but never left. A journal lies open, the last entry reading: 'The deeper crystals... they sing to you. They don't want you to leave.'",
+          "coordinates": [-1, 0],
+          "location_type": "dungeon",
+          "items": {"worn_pickaxe": {"quantity": 1, "value": 20}, "miner_journal": {"quantity": 1, "value": 30}},
+          "exits": {
+            "east": {"target": "cc_f1_crystal_mouth", "type": "direction"}
+          }
+        }
+      }
+    },
+    "2": {
+      "floor_number": 2,
+      "num_rooms": 8,
+      "entrance_room": "cc_f2_refraction_hall",
+      "exit_stairs_up": "cc_f2_refraction_hall",
+      "exit_stairs_down": "cc_f2_crystalline_heart",
+      "rooms": {
+        "cc_f2_refraction_hall": {
+          "name": "Hall of Refraction",
+          "description": "Light bends impossibly here. You can see rooms that don't exist and doorways that lead to walls. The crystals on this level have grown denser and more complex, forming structures that defy geometry. The platform behind you leads back up.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "up": {
+              "target": "cc_f1_crystal_elevator",
+              "type": "stairs_up",
+              "transition_text": "The crystal platform rises, returning you to the upper level..."
+            },
+            "east": {"target": "cc_f2_mirror_maze", "type": "direction"},
+            "south": {"target": "cc_f2_frozen_falls", "type": "direction"}
+          }
+        },
+        "cc_f2_mirror_maze": {
+          "name": "Mirror Maze",
+          "description": "Perfectly flat crystal surfaces create a hall of mirrors. Your reflection stares back from a dozen angles — but not all of them move when you do. The real passages are nearly impossible to distinguish from reflections.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"mirror_shard": {"quantity": 2, "value": 25}},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "spike_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "west": {"target": "cc_f2_refraction_hall", "type": "direction"},
+            "south": {"target": "cc_f2_resonance_chamber", "type": "direction"}
+          }
+        },
+        "cc_f2_frozen_falls": {
+          "name": "Frozen Crystal Falls",
+          "description": "What appears to be a waterfall is actually a cascade of liquid crystal, frozen mid-flow by some ancient spell. The crystallized stream captures light and sends it dancing across the cavern in prismatic waves.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"frozen_crystal_tear": {"quantity": 2, "value": 55}},
+          "traps": [
+            {
+              "type": "crushing_ceiling",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "cc_f2_refraction_hall", "type": "direction"},
+            "east": {"target": "cc_f2_resonance_chamber", "type": "direction"},
+            "south": {"target": "cc_f2_growth_lab", "type": "direction"}
+          }
+        },
+        "cc_f2_resonance_chamber": {
+          "name": "Resonance Chamber",
+          "description": "The crystals here have grown into an enormous natural organ. Air currents produce a constant, deep chord that vibrates in your chest. Touching different crystals changes the tone. One sequence might reveal hidden passages.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"harmonic_crystal": {"quantity": 1, "value": 70}},
+          "traps": [
+            {
+              "type": "gas_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "poison_dart",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "cc_f2_mirror_maze", "type": "direction"},
+            "west": {"target": "cc_f2_frozen_falls", "type": "direction"}
+          }
+        },
+        "cc_f2_growth_lab": {
+          "name": "Crystal Growth Laboratory",
+          "description": "An ancient workspace where someone studied — or created — crystal formations. Stone basins hold solutions that still slowly grow crystals. Notes in an unknown script cover the walls. Apparatus of glass and metal stands ready, as if the researcher just stepped out.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"growth_solution": {"quantity": 2, "value": 35}, "research_notes": {"quantity": 1, "value": 50}},
+          "traps": [
+            {
+              "type": "poison_dart",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "cc_f2_frozen_falls", "type": "direction"},
+            "south": {"target": "cc_f2_crystalline_heart", "type": "direction"},
+            "east": {"target": "cc_f2_lattice_garden", "type": "direction"}
+          }
+        },
+        "cc_f2_lattice_garden": {
+          "name": "Lattice Garden",
+          "description": "Crystals here have grown into delicate lattice structures resembling trees, flowers, and vines. It looks like a garden made entirely of light and mineral. Tiny crystal 'butterflies' cling to the formations — were they alive once, or just shaped by magic?",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {"crystal_butterfly": {"quantity": 1, "value": 80}, "lattice_flower": {"quantity": 2, "value": 30}},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "west": {"target": "cc_f2_growth_lab", "type": "direction"}
+          }
+        },
+        "cc_f2_crystalline_heart": {
+          "name": "Crystalline Heart Chamber",
+          "description": "The center of this level — a vast cavern dominated by a single enormous crystal that pulses with inner light like a heartbeat. Veins of crystal radiate outward through the rock in all directions. The air is warm and electric. A spiral staircase of crystal descends around the great crystal.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {"heart_crystal_fragment": {"quantity": 1, "value": 120}},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "crushing_ceiling",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "cc_f2_growth_lab", "type": "direction"},
+            "down": {
+              "target": "cc_f3_prismatic_threshold",
+              "type": "stairs_down",
+              "transition_text": "You descend the spiral crystal staircase. The pulsing light intensifies with each step..."
+            }
+          }
+        },
+        "cc_f2_crystal_pool": {
+          "name": "Crystal Pool",
+          "description": "A perfectly still pool of hyper-clear water sits in a bowl of white crystal. The water is so transparent it's nearly invisible — only the slight shimmer at the surface reveals its presence. Objects dropped in seem to hang in mid-air.",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {"prismatic_droplet": {"quantity": 1, "value": 45}},
+          "exits": {
+            "east": {"target": "cc_f2_frozen_falls", "type": "direction"}
+          }
+        }
+      }
+    },
+    "3": {
+      "floor_number": 3,
+      "num_rooms": 6,
+      "entrance_room": "cc_f3_prismatic_threshold",
+      "boss_room": "cc_f3_crystal_titan_chamber",
+      "rooms": {
+        "cc_f3_prismatic_threshold": {
+          "name": "Prismatic Threshold",
+          "description": "The deepest level of the caverns. The rock walls have been completely replaced by crystal — floor, walls, ceiling, all one continuous formation. Light from unknown sources creates a permanent aurora. The stairs behind you lead back up.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "up": {
+              "target": "cc_f2_crystalline_heart",
+              "type": "stairs_up",
+              "transition_text": "You ascend the spiral crystal staircase..."
+            },
+            "south": {"target": "cc_f3_spectrum_corridor", "type": "direction"}
+          }
+        },
+        "cc_f3_spectrum_corridor": {
+          "name": "Spectrum Corridor",
+          "description": "A long corridor where each section is bathed in a different color of light — red, orange, yellow, green, blue, indigo, violet. The colors shift as you walk, and the temperature changes with them. Hot in red, freezing in blue.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"spectrum_prism": {"quantity": 1, "value": 95}},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "gas_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "spike_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "cc_f3_prismatic_threshold", "type": "direction"},
+            "east": {"target": "cc_f3_diamond_vault", "type": "direction"},
+            "south": {"target": "cc_f3_crystal_titan_chamber", "type": "direction"}
+          }
+        },
+        "cc_f3_diamond_vault": {
+          "name": "Diamond Vault",
+          "description": "A chamber where the crystal formations have compressed into pure diamond. The walls are nearly indestructible and reflect everything with perfect clarity. A king's ransom in raw diamonds juts from the walls.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"raw_diamond": {"quantity": 2, "value": 140}, "diamond_dust": {"quantity": 3, "value": 45}},
+          "traps": [
+            {
+              "type": "crushing_ceiling",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "poison_dart",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "west": {"target": "cc_f3_spectrum_corridor", "type": "direction"}
+          }
+        },
+        "cc_f3_crystal_titan_chamber": {
+          "name": "Chamber of the Crystal Titan",
+          "description": "An immense cavern where a creature of living crystal once dwelt. Its petrified form — thirty feet tall — stands frozen mid-stride, arms raised as if to strike. Cracks in its crystal body leak pure energy. The power here is overwhelming.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"titan_crystal_core": {"quantity": 1, "value": 200}, "enchanted_cloak_fragment": {"quantity": 1, "value": 135}},
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "spike_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            },
+            {
+              "type": "gas_trap",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "north": {"target": "cc_f3_spectrum_corridor", "type": "direction"},
+            "west": {"target": "cc_f3_titan_treasury", "type": "direction"},
+            "east": {"target": "cc_f3_forge_of_light", "type": "direction"}
+          }
+        },
+        "cc_f3_titan_treasury": {
+          "name": "Titan's Treasury",
+          "description": "Behind the crystal titan, a small chamber holds its hoard. Not gold and gems, but crystallized knowledge — thought-crystals that contain memories, skills, and forgotten lore. Each one hums at a different frequency.",
+          "coordinates": [-1, -2],
+          "location_type": "dungeon",
+          "items": {
+            "thought_crystal": {"quantity": 2, "value": 110},
+            "memory_prism": {"quantity": 1, "value": 160},
+            "rare_gemstone": {"quantity": 2, "value": 145}
+          },
+          "traps": [
+            {
+              "type": "magic_rune",
+              "triggered": false,
+              "detected": false,
+              "disarmed": false
+            }
+          ],
+          "exits": {
+            "east": {"target": "cc_f3_crystal_titan_chamber", "type": "direction"}
+          }
+        },
+        "cc_f3_forge_of_light": {
+          "name": "Forge of Light",
+          "description": "Unlike any forge you've seen — no fire, no anvil. Instead, focused beams of pure light converge on a crystalline workbench. The bench's surface is etched with intricate focusing patterns. Items placed here are bathed in concentrated light energy that can reshape their fundamental structure.\n\nThe forge still functions. Perhaps items could be refined here...",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {"concentrated_light_essence": {"quantity": 1, "value": 180}},
+          "crafting_altar": true,
+          "altar_name": "Forge of Light",
+          "altar_description": "Beams of pure light converge on the crystalline workbench. The focusing patterns glow with readiness. It seems capable of transmuting and refining materials through concentrated light energy.",
+          "exits": {
+            "west": {"target": "cc_f3_crystal_titan_chamber", "type": "direction"}
+          }
+        }
+      }
+    }
+  }
+}

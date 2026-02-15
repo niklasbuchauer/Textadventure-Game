@@ -1,6 +1,6 @@
 """
 Shop System with NPC Shopkeeper and Negotiation
-Handles shop inventory rotation, buying/selling, and dynamic shopkeeper dialogue.
+Handles shop inventory rotation, buying/selling, dynamic shopkeeper dialogue, and beautiful ASCII UI.
 """
 
 import datetime
@@ -8,33 +8,36 @@ from zoneinfo import ZoneInfo
 import random
 
 
-# Items available for purchase at the shop
-# These are useful crafting/common items, not too rare but occasional good items
-SHOP_INVENTORY_POOL = {
-    # Common crafting materials (high spawn chance)
-    "rope_coil": {"value": 20, "rarity": "common", "spawn_chance": 0.35},
-    "quality_torch": {"value": 15, "rarity": "common", "spawn_chance": 0.32},
-    "lockpick_set": {"value": 50, "rarity": "common", "spawn_chance": 0.25},
-    "coin_pouch": {"value": 20, "rarity": "common", "spawn_chance": 0.30},
-    "craftsman_hammer": {"value": 38, "rarity": "common", "spawn_chance": 0.25},
-    "healing_salve": {"value": 35, "rarity": "common", "spawn_chance": 0.30},
-    "iron_key": {"value": 25, "rarity": "common", "spawn_chance": 0.20},
-    "torch": {"value": 3, "rarity": "common", "spawn_chance": 0.35},
+# Item database with metadata for display
+ITEM_DATABASE = {
+    # Common crafting materials
+    "rope_coil": {"name": "Rope Coil", "icon": "🪢", "desc": "Sturdy rope for climbing or binding", "value": 20, "rarity": "common", "spawn_chance": 0.35},
+    "quality_torch": {"name": "Quality Torch", "icon": "🔦", "desc": "Bright and reliable light source", "value": 15, "rarity": "common", "spawn_chance": 0.32},
+    "lockpick_set": {"name": "Lockpick Set", "icon": "🔓", "desc": "Tools for opening locked containers", "value": 50, "rarity": "common", "spawn_chance": 0.25},
+    "coin_pouch": {"name": "Coin Pouch", "icon": "💰", "desc": "Secure leather pouch for valuables", "value": 20, "rarity": "common", "spawn_chance": 0.30},
+    "craftsman_hammer": {"name": "Craftsman Hammer", "icon": "🔨", "desc": "Essential tool for the trade", "value": 38, "rarity": "common", "spawn_chance": 0.25},
+    "healing_salve": {"name": "Healing Salve", "icon": "🧴", "desc": "Restores minor wounds and bruises", "value": 35, "rarity": "common", "spawn_chance": 0.30},
+    "iron_key": {"name": "Iron Key", "icon": "🔑", "desc": "Unlocks iron-banded doors", "value": 25, "rarity": "common", "spawn_chance": 0.20},
+    "torch": {"name": "Torch", "icon": "🔥", "desc": "Basic light source for dark places", "value": 3, "rarity": "common", "spawn_chance": 0.35},
     
-    # Decent tools/equipment (medium spawn chance)
-    "steel_dagger": {"value": 35, "rarity": "uncommon", "spawn_chance": 0.18},
-    "iron_sword": {"value": 30, "rarity": "uncommon", "spawn_chance": 0.15},
-    "leather_armor_piece": {"value": 25, "rarity": "uncommon", "spawn_chance": 0.12},
-    "silver_ring": {"value": 40, "rarity": "uncommon", "spawn_chance": 0.15},
-    "worn_map": {"value": 45, "rarity": "uncommon", "spawn_chance": 0.12},
-    "enchanted_candle": {"value": 55, "rarity": "uncommon", "spawn_chance": 0.10},
+    # Uncommon tools/equipment
+    "steel_dagger": {"name": "Steel Dagger", "icon": "🗡️", "desc": "Reliable blade for self-defense", "value": 35, "rarity": "uncommon", "spawn_chance": 0.18},
+    "iron_sword": {"name": "Iron Sword", "icon": "⚔️", "desc": "Well-forged weapon of quality", "value": 30, "rarity": "uncommon", "spawn_chance": 0.15},
+    "leather_armor_piece": {"name": "Leather Armor", "icon": "🛡️", "desc": "Protects against common blows", "value": 25, "rarity": "uncommon", "spawn_chance": 0.12},
+    "silver_ring": {"name": "Silver Ring", "icon": "💍", "desc": "Gleaming silver band with faint magic", "value": 40, "rarity": "uncommon", "spawn_chance": 0.15},
+    "worn_map": {"name": "Worn Map", "icon": "🗺️", "desc": "Map with mysterious markings", "value": 45, "rarity": "uncommon", "spawn_chance": 0.12},
+    "enchanted_candle": {"name": "Enchanted Candle", "icon": "🕯️", "desc": "Never burns out, always glows", "value": 55, "rarity": "uncommon", "spawn_chance": 0.10},
     
-    # Rare better items (low spawn chance but still meaningful)
-    "healing_potion": {"value": 85, "rarity": "rare", "spawn_chance": 0.08},
-    "spell_scroll": {"value": 95, "rarity": "rare", "spawn_chance": 0.08},
-    "ancient_coin": {"value": 60, "rarity": "rare", "spawn_chance": 0.05},
-    "magic_amulet": {"value": 130, "rarity": "rare", "spawn_chance": 0.05},
+    # Rare items
+    "healing_potion": {"name": "Healing Potion", "icon": "🧪", "desc": "Restores vitality and health", "value": 85, "rarity": "rare", "spawn_chance": 0.08},
+    "spell_scroll": {"name": "Spell Scroll", "icon": "📜", "desc": "Ancient magic inscribed on parchment", "value": 95, "rarity": "rare", "spawn_chance": 0.08},
+    "ancient_coin": {"name": "Ancient Coin", "icon": "🪙", "desc": "From a forgotten civilization", "value": 60, "rarity": "rare", "spawn_chance": 0.05},
+    "magic_amulet": {"name": "Magic Amulet", "icon": "✨", "desc": "Radiates mysterious magical energy", "value": 130, "rarity": "rare", "spawn_chance": 0.05},
 }
+
+# Backwards compatibility reference
+SHOP_INVENTORY_POOL = {item_id: {"value": data["value"], "rarity": data["rarity"], "spawn_chance": data["spawn_chance"]} 
+                       for item_id, data in ITEM_DATABASE.items()}
 
 
 class Shop:
@@ -45,7 +48,9 @@ class Shop:
         self.shop_id = shop_id
         self.timezone = self._get_timezone()
         self.inventory = {}
+        self.shop_inventory = {}  # Modern interface
         self.last_rotation_hour = self._get_current_hour()
+        self.item_database = ITEM_DATABASE
         self.generate_inventory()
     
     def _get_timezone(self):
@@ -74,16 +79,27 @@ class Shop:
             return True
         return False
     
+    def refresh_inventory(self):
+        """Alias for check_and_rotate for new UI compatibility."""
+        return self.check_and_rotate()
+    
     def generate_inventory(self):
         """Generate random inventory based on spawn chances."""
         self.inventory = {}
-        for item_name, item_data in SHOP_INVENTORY_POOL.items():
+        self.shop_inventory = {}
+        for item_id, item_data in ITEM_DATABASE.items():
             if random.random() < item_data["spawn_chance"]:
                 quantity = random.randint(1, 3)
-                self.inventory[item_name] = {
+                price = item_data["value"]
+                self.inventory[item_id] = {
                     "quantity": quantity,
-                    "value": item_data["value"],
+                    "value": price,
                     "rarity": item_data["rarity"]
+                }
+                # Modern interface
+                self.shop_inventory[item_id] = {
+                    "quantity": quantity,
+                    "price": price
                 }
     
     def get_inventory(self):
@@ -137,6 +153,11 @@ class Shop:
         """Remove item from shop inventory."""
         if self.can_buy(item_name):
             self.inventory[item_name]["quantity"] -= 1
+            # Update modern interface
+            if item_name in self.shop_inventory:
+                self.shop_inventory[item_name]["quantity"] -= 1
+                if self.shop_inventory[item_name]["quantity"] <= 0:
+                    del self.shop_inventory[item_name]
             if self.inventory[item_name]["quantity"] <= 0:
                 del self.inventory[item_name]
             return True
@@ -145,6 +166,479 @@ class Shop:
     def format_inventory(self):
         """Return formatted inventory display for UI."""
         return self.get_inventory()
+
+
+class ShopUI:
+    """Beautiful ASCII art UI for the shop system."""
+    
+    def __init__(self, shop, shopkeeper=None, engine=None):
+        """Initialize shop UI."""
+        self.shop = shop
+        self.shopkeeper = shopkeeper
+        self.engine = engine  # Reference to GameEngine for displaying messages
+        self.item_database = shop.item_database
+        self.shop_inventory = shop.shop_inventory
+        self.refused_items = {}  # Track refused sales: {player_id: [item_ids]}
+        self.pending_negotiation = None
+
+    def _remove_one_from_inventory(self, player, item_id):
+        """Remove one unit of an item from player inventory.
+        Handles both int and legacy dict inventory formats."""
+        if item_id in player.inventory:
+            if isinstance(player.inventory[item_id], int):
+                if player.inventory[item_id] > 1:
+                    player.inventory[item_id] -= 1
+                else:
+                    del player.inventory[item_id]
+            elif isinstance(player.inventory[item_id], dict):
+                qty = player.inventory[item_id].get('quantity', 1)
+                if qty > 1:
+                    player.inventory[item_id]['quantity'] -= 1
+                else:
+                    del player.inventory[item_id]
+    
+    def display(self, message):
+        """
+        Display a message to the player.
+        Routes to game engine's display function if available, otherwise prints.
+        """
+        if self.engine and hasattr(self.engine, 'display_message'):
+            self.engine.display_message(message)
+        else:
+            # Fallback to print if engine not available
+            print(message)
+    
+    def show_shop_welcome(self):
+        """
+        Display beautiful shop welcome screen.
+        Called when player enters shop or types 'shop' or 'shop help'.
+        """
+        self.display("""
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  ╔═══╗                                            ╔═══╗ ┃
+┃  ║ ◈ ║          ⚜ THE WANDERING MERCHANT ⚜      ║ ◈ ║ ┃
+┃  ╚═══╝          "Fair Trades & Rare Wares"        ╚═══╝ ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃                                                         ┃
+┃  📜 AVAILABLE COMMANDS:                                 ┃
+┃  ┌────────────────────────────────────────────────────┐ ┃
+┃  │ shop browse      ▸ View wares for sale             │ ┃
+┃  │ shop buy <item>  ▸ Purchase an item                │ ┃
+┃  │ shop sell <item> <gold> ▸ Sell to shopkeeper       │ ┃
+┃  │ shop talk        ▸ Speak with merchant             │ ┃
+┃  │ shop info        ▸ Trading tips & shop details     │ ┃
+┃  └────────────────────────────────────────────────────┘ ┃
+┃                                                         ┃
+┃  💡 Quick Tips:                                         ┃
+┃     • 'shop view' or 'shop inventory' = 'shop browse'   ┃
+┃     • 'talk to shopkeeper' also works                   ┃
+┃                                                         ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+""")
+    
+    def show_shop_inventory(self, player):
+        """
+        Display shop inventory with beautiful ASCII art.
+        Called when player types 'shop browse' or 'shop inventory'.
+        """
+        # Refresh inventory if needed
+        self.shop.refresh_inventory()
+        self.shop_inventory = self.shop.shop_inventory
+        
+        output = """
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃         🏺 GENERAL STORE - CURRENT INVENTORY 🏺                 ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃                                                                  ┃
+┃  ╔═════════════════ COMMON WARES ════════════════════════════╗   ┃
+┃  ║                                                           ║   ┃"""
+        
+        # Display each item in inventory
+        if not self.shop_inventory:
+            output += """
+┃  ║     ~ No items currently in stock ~                       ║   ┃
+┃  ║     (Inventory refreshes hourly at :00)                   ║   ┃"""
+        else:
+            for item_id, stock in self.shop_inventory.items():
+                item_data = self.item_database.get(item_id, {})
+                
+                name = item_data.get("name", item_id)
+                icon = item_data.get("icon", "📦")
+                desc = item_data.get("desc", "A mysterious item")
+                price = stock.get("price", 0)
+                quantity = stock.get("quantity", 0)
+                
+                # Format item line with proper spacing
+                # Icon + Name (padded to 30 chars) + Quantity + Price
+                name_padded = f"{icon} {name}".ljust(30)
+                qty_str = f"{quantity}x"
+                price_str = f"{price}g"
+                
+                output += f"\n┃  ║  {name_padded} {qty_str:>3}  •••  {price_str:>4}  [BUY]  ║   ┃"
+                output += f"\n┃  ║     └─ \"{desc}\"{'':>{48-len(desc)}}║   ┃"
+                output += "\n┃   ║                              ║   ┃"                        
+                                                    
+        output += """
+┃  ╚════════════════════════════════════════════════════════════╝   ┃
+┃                                                                   ┃
+┃  ⏰ Stock refreshes hourly at XX:00(Germany Time)                         ┃
+┃  💬 Type 'shop talk' to negotiate with the merchant               ┃
+┃                                                                   ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+"""
+        
+        # Show player's gold
+        player_gold = getattr(player, 'gold', 0)
+        if not hasattr(player, 'gold'):
+            # Try stats dict
+            player_gold = player.stats.get("gold", 0) if hasattr(player, 'stats') else 0
+        output += f"\n💰 Your gold: {player_gold}g"
+        
+        self.display(output)
+    
+    def show_shop_info(self):
+        """
+        Display merchant's guide to negotiation.
+        Called when player types 'shop info'.
+        """
+        self.display("""
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃      📖 MERCHANT'S GUIDE TO FAIR NEGOTIATION 📖        ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃                                                         ┃
+┃  The shopkeeper is shrewd but honest. Master the art    ┃
+┃  of negotiation to maximize your profits!               ┃
+┃                                                         ┃
+┃  ╔═══════════════ PRICING STRATEGIES ═══════════════╗   ┃
+┃  ║                                                  ║   ┃
+┃  ║  ⛔ TOO LOW (≤30% of value)                      ║   ┃
+┃  ║     → Permanently REFUSED! Merchant won't budge  ║   ┃
+┃  ║                                                  ║   ┃
+┃  ║  🤝 LOWBALL (30-50% of value)                    ║   ┃
+┃  ║     → Counter-offer at ~75% of your asking price ║   ┃
+┃  ║                                                  ║   ┃
+┃  ║  ✨ FAIR DEAL (50-85% of value)                  ║   ┃
+┃  ║     → ACCEPTED at ~80% of your offer             ║   ┃
+┃  ║                                                  ║   ┃
+┃  ║  💎 PREMIUM (85-100% of value)                   ║   ┃
+┃  ║     → ACCEPTED at ~95% of your offer             ║   ┃
+┃  ║                                                  ║   ┃
+┃  ║  😂 OUTRAGEOUS (>100% of value)                  ║   ┃
+┃  ║     → Merchant laughs, counters at 60-70%        ║   ┃
+┃  ║                                                  ║   ┃
+┃  ╚══════════════════════════════════════════════════╝   ┃
+┃                                                         ┃
+┃  ⚠️  IMPORTANT NOTES:                                   ┃
+┃  • Once refused on an item, you cannot sell it again    ┃
+┃  • Different items have different base values           ┃
+┃  • Better negotiation = more gold in your pocket        ┃
+┃  • Shop inventory rotates every hour at :00 (Germany)   ┃
+┃                                                         ┃
+┃  💡 Pro Tip: Start high but reasonable - aim for the    ┃
+┃     85-100% sweet spot for maximum profit!              ┃
+┃                                                         ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+""")
+    
+    def buy_item(self, player, item_id):
+        """
+        Handle buying an item with beautiful confirmation.
+        """
+        # Check if item exists in shop
+        if item_id not in self.shop_inventory:
+            self.display("⚠️  That item is not available in the shop.")
+            return False
+        
+        item_data = self.item_database.get(item_id, {})
+        stock = self.shop_inventory[item_id]
+        
+        name = item_data.get("name", item_id)
+        icon = item_data.get("icon", "📦")
+        price = stock.get("price", 0)
+        quantity = stock.get("quantity", 0)
+        
+        # Check if in stock
+        if quantity <= 0:
+            self.display(f"⚠️  Sorry, {name} is out of stock!")
+            return False
+        
+        # Check if player has enough gold
+        player_gold = getattr(player, 'gold', 0)
+        if not hasattr(player, 'gold'):
+            # Try stats dict
+            player_gold = player.stats.get("gold", 0) if hasattr(player, 'stats') else 0
+        
+        if player_gold < price:
+            self.display(f"""
+┌─────────────────────────────────────────────┐
+│  ⚠️  INSUFFICIENT FUNDS                     │
+├─────────────────────────────────────────────┤
+│  {icon} {name}
+│  Price: {price}g
+│  Your gold: {player_gold}g
+│  Need: {price - player_gold}g more
+└─────────────────────────────────────────────┘
+""")
+            return False
+        
+        # Purchase successful
+        self.display(f"""
+┌─────────────────────────────────────────────┐
+│  ✅ PURCHASE SUCCESSFUL!                    │
+├─────────────────────────────────────────────┤
+│  {icon} {name}
+│  Paid: {price}g
+│  Remaining gold: {player_gold - price}g
+└─────────────────────────────────────────────┘
+""")
+        
+        # Update player inventory and gold
+        if hasattr(player, 'gold'):
+            player.gold -= price
+        else:
+            player.stats["gold"] = player.stats.get("gold", 0) - price
+        
+        # Add item to player inventory (always use int count format for consistency)
+        if hasattr(player, 'inventory'):
+            if item_id in player.inventory:
+                if isinstance(player.inventory[item_id], dict):
+                    # Convert legacy dict format to int
+                    player.inventory[item_id] = player.inventory[item_id].get('quantity', 1) + 1
+                else:
+                    player.inventory[item_id] += 1
+            else:
+                player.inventory[item_id] = 1
+        
+        # Reduce shop stock
+        self.shop_inventory[item_id]['quantity'] -= 1
+        self.shop.shop_inventory[item_id]['quantity'] -= 1
+        
+        # Remove from shop if out of stock
+        if self.shop_inventory[item_id]['quantity'] <= 0:
+            del self.shop_inventory[item_id]
+            if item_id in self.shop.shop_inventory:
+                del self.shop.shop_inventory[item_id]
+        
+        return True
+    
+    def sell_item(self, player, item_id, asking_price):
+        """
+        Handle selling with negotiation mechanics and beautiful UI.
+        """
+        # Check if player has the item
+        if not hasattr(player, 'inventory') or item_id not in player.inventory:
+            print("\n⚠️  You don't have that item to sell.\n")
+            return False
+        
+        # Check if already refused
+        player_id = getattr(player, 'id', 'default_player')
+        if player_id in self.refused_items and item_id in self.refused_items[player_id]:
+            self.display(f"""
+┌─────────────────────────────────────────────┐
+│  ⛔ PERMANENTLY REFUSED                     │
+├─────────────────────────────────────────────┤
+│  The merchant shakes his head firmly.       │
+│  "I told you before - I won't buy that      │
+│  item from you. My decision is final!"      │
+└─────────────────────────────────────────────┘
+""")
+            return False
+        
+        # Get item true value
+        item_data = player.inventory[item_id]
+        if isinstance(item_data, dict):
+            true_value = item_data.get('value', 50)
+        else:
+            # Fallback to item database
+            true_value = self.item_database.get(item_id, {}).get('value', 50)
+        
+        # Calculate percentage of true value
+        percentage = (asking_price / true_value) * 100 if true_value > 0 else 0
+        
+        # TOO LOW - Permanent refusal
+        if percentage <= 30:
+            self.display(f"""
+┌─────────────────────────────────────────────┐
+│  ⛔ INSULTING OFFER - PERMANENTLY REFUSED!  │
+├─────────────────────────────────────────────┤
+│  The merchant's face turns red with anger.  │
+│  "How DARE you insult me with such a        │
+│  pathetic offer! I will NEVER buy this      │
+│  item from you. Get out!"                   │
+│                                             │
+│  Your offer: {asking_price}g
+│  True value: {true_value}g
+│  Percentage: {percentage:.1f}%
+└─────────────────────────────────────────────┘
+""")
+            # Mark as permanently refused
+            if player_id not in self.refused_items:
+                self.refused_items[player_id] = []
+            self.refused_items[player_id].append(item_id)
+            return False
+        
+        # LOWBALL - Counter offer
+        elif percentage <= 50:
+            counter_offer = int(asking_price * 0.75)
+            self.display(f"""
+┌─────────────────────────────────────────────┐
+│  🤝 COUNTER-OFFER                           │
+├─────────────────────────────────────────────┤
+│  The merchant frowns and strokes his beard. │
+│  "That's quite low, friend. I can offer     │
+│  you {counter_offer}g - that's my final price."
+│                                             │
+│  Your offer: {asking_price}g
+│  Counter: {counter_offer}g
+│  True value: {true_value}g
+└─────────────────────────────────────────────┘
+
+Accept counter-offer? (yes/no)
+""")
+            # Set pending negotiation
+            self.pending_negotiation = {
+                'item_id': item_id,
+                'counter_offer': counter_offer
+            }
+            return 'pending'
+        
+        # FAIR DEAL - Accepted with slight reduction
+        elif percentage <= 85:
+            final_price = int(asking_price * 0.80)
+            self.display(f"""
+┌─────────────────────────────────────────────┐
+│  ✨ FAIR DEAL - ACCEPTED!                   │
+├─────────────────────────────────────────────┤
+│  The merchant nods approvingly.             │
+│  "A reasonable price. I'll take it for      │
+│  {final_price}g - fair and square."
+│                                             │
+│  Your offer: {asking_price}g
+│  Final price: {final_price}g
+│  You earned: {final_price}g
+└─────────────────────────────────────────────┘
+""")
+            # Complete sale
+            if hasattr(player, 'gold'):
+                player.gold += final_price
+            else:
+                player.stats["gold"] = player.stats.get("gold", 0) + final_price
+            self._remove_one_from_inventory(player, item_id)
+            return True
+        
+        # PREMIUM - Accepted at high percentage
+        elif percentage <= 100:
+            final_price = int(asking_price * 0.95)
+            self.display(f"""
+┌───────────────────────────────────────────────┐
+│  💎 PREMIUM DEAL - ACCEPTED!                  │
+├───────────────────────────────────────────────┤
+│  The merchant's eyes light up.                │
+│  "You drive a hard bargain! Very well,        │
+│  {final_price}g it is. Excellent merchandise!"
+│                                               │
+│  Your offer: {asking_price}g
+│  Final price: {final_price}g
+│  You earned: {final_price}g
+└───────────────────────────────────────────────┘
+""")
+            # Complete sale
+            if hasattr(player, 'gold'):
+                player.gold += final_price
+            else:
+                player.stats["gold"] = player.stats.get("gold", 0) + final_price
+            self._remove_one_from_inventory(player, item_id)
+            return True
+        
+        # OUTRAGEOUS - Merchant laughs, low counter
+        else:
+            counter_offer = int(true_value * 0.65)
+            self.display(f"""
+┌───────────────────────────────────────────────┐
+│  😂 OUTRAGEOUS OFFER                          │
+├───────────────────────────────────────────────┤
+│  The merchant bursts into laughter!           │
+│  "You must be joking! That's absurd!          │
+│  I'll give you {counter_offer}g and not a coin
+│  more. Take it or leave it!"
+│                                               │
+│  Your offer: {asking_price}g
+│  Counter: {counter_offer}g
+│  True value: {true_value}g
+└───────────────────────────────────────────────┘
+
+Accept counter-offer? (yes/no)
+""")
+            # Set pending negotiation
+            self.pending_negotiation = {
+                'item_id': item_id,
+                'counter_offer': counter_offer
+            }
+            return 'pending'
+
+    def respond_to_negotiation(self, player, response):
+        """
+        Handle user's yes/no response to pending negotiation.
+        
+        Args:
+            player: The player object
+            response: User's response string (yes/no)
+            
+        Returns:
+            String message to display to player
+        """
+        if not self.pending_negotiation:
+            return "There's no pending negotiation to respond to."
+        
+        response = response.lower().strip()
+        
+        if response in ["yes", "y"]:
+            # Accept the counter offer
+            item_id = self.pending_negotiation['item_id']
+            counter_offer = self.pending_negotiation['counter_offer']
+            
+            # Complete the sale
+            if hasattr(player, 'gold'):
+                player.gold += counter_offer
+            else:
+                player.stats["gold"] = player.stats.get("gold", 0) + counter_offer
+            
+            # Remove item from inventory
+            self._remove_one_from_inventory(player, item_id)
+            
+            # Clear pending negotiation
+            self.pending_negotiation = None
+            
+            return f"""
+┌────────────────────────────────────────────┐
+│  ✅ DEAL ACCEPTED!                         │
+├────────────────────────────────────────────┤
+│  The merchant smiles broadly and hands     │
+│  you {counter_offer}g.                          │
+│  "A pleasure doing business with you!"     │
+└────────────────────────────────────────────┘
+"""
+        
+        elif response in ["no", "n"]:
+            # Decline the counter offer
+            item_id = self.pending_negotiation['item_id']
+            
+            # Clear pending negotiation
+            self.pending_negotiation = None
+            
+            return f"""
+┌────────────────────────────────────────────┐
+│  ❌ DEAL DECLINED                          │
+├────────────────────────────────────────────┤
+│  The merchant nods understandingly.        │
+│  "No? Fair enough. Come back if you        │
+│  change your mind."                        │
+└────────────────────────────────────────────┘
+"""
+        
+        else:
+            # Invalid response - keep pending so they can answer again
+            return f"\nInvalid response: '{response}'\nPlease type 'yes' to accept or 'no' to decline the counter-offer.\n"
 
 
 class Shopkeeper:

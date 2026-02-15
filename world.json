@@ -4,15 +4,30 @@
     "clearing": {
       "id": "clearing",
       "name": "Forest Clearing",
-      "description": "You stand in a peaceful clearing surrounded by tall trees. Sunlight filters through the canopy above. Well-worn paths lead in several directions.",
+      "description": "You stand in a peaceful clearing surrounded by tall trees. Sunlight filters through the canopy above. Well-worn paths lead in several directions. A weathered signpost reads: North — Forest, East — Village, South — River, West — Swamp.",
       "location_type": "wilderness",
-      "coordinates": [0, 0],
+      "coordinates": [
+        0,
+        0
+      ],
       "items": {},
       "exits": {
-        "north": {"target": "forest_path", "type": "direction"},
-        "east": {"target": "village_road", "type": "direction"},
-        "south": {"target": "river_path", "type": "direction"},
-        "west": {"target": "swamp_trail", "type": "direction"}
+        "north": {
+          "target": "forest_path",
+          "type": "direction"
+        },
+        "east": {
+          "target": "village_road",
+          "type": "direction"
+        },
+        "south": {
+          "target": "river_path",
+          "type": "direction"
+        },
+        "west": {
+          "target": "swamp_trail",
+          "type": "direction"
+        }
       }
     },
     "forest_path": {
@@ -20,14 +35,63 @@
       "name": "Forest Path",
       "description": "A narrow dirt path winds through dense forest. Birds chirp overhead and small animals rustle in the undergrowth.",
       "location_type": "wilderness",
-      "coordinates": [0, 1],
+      "coordinates": [
+        0,
+        1
+      ],
       "items": {
-        "stick": {"quantity": 2, "value": 1}
+        "stick": {
+          "quantity": 2,
+          "value": 1
+        }
       },
       "exits": {
-        "south": {"target": "clearing", "type": "direction"},
-        "north": {"target": "deep_forest", "type": "direction"},
-        "east": {"target": "forest_grove", "type": "direction"}
+        "south": {
+          "target": "clearing",
+          "type": "direction"
+        },
+        "north": {
+          "target": "deep_forest",
+          "type": "direction"
+        },
+        "east": {
+          "target": "forest_grove",
+          "type": "direction"
+        },
+        "west": {
+          "target": "mossy_hollow",
+          "type": "direction"
+        }
+      }
+    },
+    "mossy_hollow": {
+      "id": "mossy_hollow",
+      "name": "Mossy Hollow",
+      "description": "A damp depression in the forest floor where everything is carpeted in soft emerald moss. Fallen logs covered in shelf mushrooms create natural seats. Fireflies drift lazily between the ferns.",
+      "location_type": "wilderness",
+      "coordinates": [
+        -1,
+        1
+      ],
+      "items": {
+        "glowing_moss": {
+          "quantity": 2,
+          "value": 8
+        },
+        "shelf_mushroom": {
+          "quantity": 3,
+          "value": 4
+        }
+      },
+      "exits": {
+        "east": {
+          "target": "forest_path",
+          "type": "direction"
+        },
+        "north": {
+          "target": "dungeon_forest_entrance",
+          "type": "direction"
+        }
       }
     },
     "deep_forest": {
@@ -35,14 +99,63 @@
       "name": "Deep Forest",
       "description": "The forest grows darker here. Ancient trees tower above you, their branches blocking most of the sunlight. The air is cool and damp.",
       "location_type": "wilderness",
-      "coordinates": [0, 2],
+      "coordinates": [
+        0,
+        2
+      ],
       "items": {
-        "mushroom": {"quantity": 3, "value": 5}
+        "mushroom": {
+          "quantity": 3,
+          "value": 5
+        }
       },
       "exits": {
-        "south": {"target": "forest_path", "type": "direction"},
-        "north": {"target": "ancient_grove", "type": "direction"},
-        "west": {"target": "dungeon_forest_entrance", "type": "direction"}
+        "south": {
+          "target": "forest_path",
+          "type": "direction"
+        },
+        "north": {
+          "target": "ancient_grove",
+          "type": "direction"
+        },
+        "west": {
+          "target": "dungeon_forest_entrance",
+          "type": "direction"
+        },
+        "east": {
+          "target": "woodland_shrine",
+          "type": "direction"
+        }
+      }
+    },
+    "woodland_shrine": {
+      "id": "woodland_shrine",
+      "name": "Woodland Shrine",
+      "description": "A circle of standing stones draped in ivy marks an ancient place of worship. Offerings of wilted flowers and small coins are scattered at the base of a moss-covered altar. The air hums with faint energy.",
+      "location_type": "wilderness",
+      "coordinates": [
+        1,
+        2
+      ],
+      "items": {
+        "old_coin": {
+          "quantity": 2,
+          "value": 3
+        },
+        "silver_ring": {
+          "quantity": 1,
+          "value": 10
+        }
+      },
+      "exits": {
+        "west": {
+          "target": "deep_forest",
+          "type": "direction"
+        },
+        "south": {
+          "target": "forest_grove",
+          "type": "direction"
+        }
       }
     },
     "dungeon_forest_entrance": {
@@ -50,16 +163,25 @@
       "name": "Dark Cave Entrance",
       "description": "A foreboding cave mouth opens in the side of a moss-covered hill. Strange energy pulses from within. Ancient runes are carved into the stone archway.",
       "location_type": "wilderness",
-      "coordinates": [-1, 2],
+      "coordinates": [
+        -1,
+        2
+      ],
       "items": {},
       "exits": {
-        "east": {"target": "deep_forest", "type": "direction"},
+        "east": {
+          "target": "deep_forest",
+          "type": "direction"
+        },
+        "south": {
+          "target": "mossy_hollow",
+          "type": "direction"
+        },
         "enter": {
-          "target": "DYNAMIC",
+          "target": "DUNGEON",
           "type": "time_gated_dungeon",
-          "dungeon_id": "shifting_depths",
-          "schedule": "every_3h_for_1h",
-          "transition_text": "You descend into the dark depths of the dungeon..."
+          "dungeon_id": "crystal_caverns",
+          "transition_text": "You step into the shimmering cave mouth. Crystal formations catch and scatter the light as you descend into the depths..."
         }
       }
     },
@@ -68,12 +190,54 @@
       "name": "Ancient Grove",
       "description": "Massive, impossibly old trees form a natural cathedral. Shafts of golden light pierce the canopy. This place feels sacred and timeless.",
       "location_type": "wilderness",
-      "coordinates": [0, 3],
+      "coordinates": [
+        0,
+        3
+      ],
       "items": {
-        "ancient_acorn": {"quantity": 1, "value": 50}
+        "ancient_acorn": {
+          "quantity": 1,
+          "value": 50
+        }
       },
       "exits": {
-        "south": {"target": "deep_forest", "type": "direction"}
+        "south": {
+          "target": "deep_forest",
+          "type": "direction"
+        },
+        "east": {
+          "target": "hermit_cabin",
+          "type": "direction"
+        }
+      }
+    },
+    "hermit_cabin": {
+      "id": "hermit_cabin",
+      "name": "Hermit's Cabin",
+      "description": "A rough-hewn log cabin sits in a small clearing. Smoke curls from a stone chimney. Herbs and animal skins dry on a line outside. An old man watches you from the doorway.",
+      "location_type": "building",
+      "coordinates": [
+        1,
+        3
+      ],
+      "items": {
+        "strange_herb": {
+          "quantity": 1,
+          "value": 25
+        },
+        "wolf_pelt": {
+          "quantity": 1,
+          "value": 18
+        }
+      },
+      "npcs": [
+        "hermit"
+      ],
+      "exits": {
+        "west": {
+          "target": "ancient_grove",
+          "type": "direction"
+        }
       }
     },
     "forest_grove": {
@@ -81,13 +245,29 @@
       "name": "Sunny Grove",
       "description": "A pleasant grove where wildflowers grow in abundance. Butterflies flit between blossoms. This is a peaceful spot.",
       "location_type": "wilderness",
-      "coordinates": [1, 1],
+      "coordinates": [
+        1,
+        1
+      ],
       "items": {
-        "wildflower": {"quantity": 5, "value": 2}
+        "wildflower": {
+          "quantity": 5,
+          "value": 2
+        }
       },
       "exits": {
-        "west": {"target": "forest_path", "type": "direction"},
-        "east": {"target": "village_outskirts", "type": "direction"}
+        "west": {
+          "target": "forest_path",
+          "type": "direction"
+        },
+        "east": {
+          "target": "village_outskirts",
+          "type": "direction"
+        },
+        "north": {
+          "target": "woodland_shrine",
+          "type": "direction"
+        }
       }
     },
     "village_road": {
@@ -95,11 +275,20 @@
       "name": "Village Road",
       "description": "A well-maintained road of packed earth leads toward a small village. You can see smoke rising from chimneys in the distance.",
       "location_type": "transition",
-      "coordinates": [1, 0],
+      "coordinates": [
+        1,
+        0
+      ],
       "items": {},
       "exits": {
-        "west": {"target": "clearing", "type": "direction"},
-        "east": {"target": "village_square", "type": "direction"}
+        "west": {
+          "target": "clearing",
+          "type": "direction"
+        },
+        "east": {
+          "target": "village_square",
+          "type": "direction"
+        }
       }
     },
     "village_square": {
@@ -107,12 +296,28 @@
       "name": "Village Square",
       "description": "The heart of the village. A stone well sits in the center of the square. Villagers go about their daily business. Cobblestone paths lead to various buildings.",
       "location_type": "settlement",
-      "coordinates": [2, 0],
+      "coordinates": [
+        2,
+        0
+      ],
       "items": {},
-      "npcs": ["town_crier", "merchant"],
+      "npcs": [
+        "town_crier",
+        "merchant"
+      ],
       "exits": {
-        "west": {"target": "village_road", "type": "direction"},
-        "north": {"target": "village_outskirts", "type": "direction"},
+        "west": {
+          "target": "village_road",
+          "type": "direction"
+        },
+        "north": {
+          "target": "village_outskirts",
+          "type": "direction"
+        },
+        "east": {
+          "target": "village_east_end",
+          "type": "direction"
+        },
         "tavern": {
           "target": "village_tavern",
           "type": "named",
@@ -135,11 +340,20 @@
       "name": "The Golden Tankard",
       "description": "A cozy tavern filled with the smell of roasted meat and ale. Wooden tables and chairs are occupied by locals sharing stories. A fire crackles in the hearth.",
       "location_type": "building",
-      "coordinates": [2, 1],
+      "coordinates": [
+        1,
+        -1
+      ],
       "items": {
-        "ale_mug": {"quantity": 1, "value": 3}
+        "ale_mug": {
+          "quantity": 1,
+          "value": 3
+        }
       },
-      "npcs": ["bartender", "patron"],
+      "npcs": [
+        "bartender",
+        "patron"
+      ],
       "exits": {
         "outside": {
           "target": "village_square",
@@ -153,9 +367,14 @@
       "name": "General Store",
       "description": "Shelves lined with goods of all kinds. The shopkeeper watches carefully from behind the counter. You can buy and sell items here.",
       "location_type": "building",
-      "coordinates": [3, 0],
+      "coordinates": [
+        3,
+        1
+      ],
       "items": {},
-      "npcs": ["shopkeeper"],
+      "npcs": [
+        "shopkeeper"
+      ],
       "shop": true,
       "exits": {
         "outside": {
@@ -170,11 +389,19 @@
       "name": "Blacksmith's Forge",
       "description": "The heat from the forge is intense. The blacksmith hammers away at red-hot metal on an anvil. Weapons and armor hang on the walls.",
       "location_type": "building",
-      "coordinates": [2, -1],
+      "coordinates": [
+        2,
+        -1
+      ],
       "items": {
-        "iron_ingot": {"quantity": 1, "value": 20}
+        "iron_ingot": {
+          "quantity": 1,
+          "value": 20
+        }
       },
-      "npcs": ["blacksmith"],
+      "npcs": [
+        "blacksmith"
+      ],
       "exits": {
         "outside": {
           "target": "village_square",
@@ -188,39 +415,329 @@
       "name": "Village Outskirts",
       "description": "The edge of the village. Simple wooden houses with thatched roofs line a dirt road. Beyond, you can see farmland and wilderness.",
       "location_type": "settlement",
-      "coordinates": [2, 1],
+      "coordinates": [
+        2,
+        1
+      ],
       "items": {},
       "exits": {
-        "south": {"target": "village_square", "type": "direction"},
-        "west": {"target": "forest_grove", "type": "direction"},
-        "east": {"target": "mountain_foothills", "type": "direction"}
+        "south": {
+          "target": "village_square",
+          "type": "direction"
+        },
+        "west": {
+          "target": "forest_grove",
+          "type": "direction"
+        },
+        "east": {
+          "target": "farmland",
+          "type": "direction"
+        },
+        "north": {
+          "target": "highland_trail",
+          "type": "direction"
+        }
+      }
+    },
+    "village_east_end": {
+      "id": "village_east_end",
+      "name": "Village East End",
+      "description": "The eastern edge of the village where the cobblestones give way to a dusty road. A wooden notice board displays local announcements and bounty postings. Beyond, rolling farmland stretches toward the mountains.",
+      "location_type": "settlement",
+      "coordinates": [
+        3,
+        0
+      ],
+      "items": {},
+      "exits": {
+        "west": {
+          "target": "village_square",
+          "type": "direction"
+        },
+        "east": {
+          "target": "farmland",
+          "type": "direction"
+        },
+        "south": {
+          "target": "chapel",
+          "type": "direction"
+        }
+      }
+    },
+    "chapel": {
+      "id": "chapel",
+      "name": "Village Chapel",
+      "description": "A modest stone chapel with stained glass windows that cast colorful light across wooden pews. Candles flicker on the altar. The air is still and reverent.",
+      "location_type": "building",
+      "coordinates": [
+        3,
+        -1
+      ],
+      "items": {
+        "prayer_candle": {
+          "quantity": 2,
+          "value": 5
+        }
+      },
+      "npcs": [
+        "priest"
+      ],
+      "exits": {
+        "north": {
+          "target": "village_east_end",
+          "type": "direction"
+        }
+      }
+    },
+    "farmland": {
+      "id": "farmland",
+      "name": "Farmland",
+      "description": "Golden wheat fields stretch in every direction, swaying gently in the breeze. A scarecrow stands watch over the crops. Farmhouses dot the landscape in the distance.",
+      "location_type": "wilderness",
+      "coordinates": [
+        4,
+        0
+      ],
+      "items": {
+        "wheat_bundle": {
+          "quantity": 3,
+          "value": 3
+        }
+      },
+      "exits": {
+        "west": {
+          "target": "village_east_end",
+          "type": "direction"
+        },
+        "north": {
+          "target": "mountain_foothills",
+          "type": "direction"
+        },
+        "east": {
+          "target": "crossroads",
+          "type": "direction"
+        },
+        "south": {
+          "target": "old_battlefield",
+          "type": "direction"
+        }
+      }
+    },
+    "crossroads": {
+      "id": "crossroads",
+      "name": "Lonely Crossroads",
+      "description": "Two roads meet at a weathered stone marker covered in unreadable script. A cold wind gusts through. Wagon wheel ruts lead in every direction. Something about this place feels uneasy.",
+      "location_type": "wilderness",
+      "coordinates": [
+        5,
+        0
+      ],
+      "items": {},
+      "exits": {
+        "west": {
+          "target": "farmland",
+          "type": "direction"
+        },
+        "north": {
+          "target": "watchtower_hill",
+          "type": "direction"
+        },
+        "south": {
+          "target": "graveyard_gates",
+          "type": "direction"
+        }
+      }
+    },
+    "watchtower_hill": {
+      "id": "watchtower_hill",
+      "name": "Watchtower Hill",
+      "description": "A crumbling stone watchtower sits atop a windswept hill. Much of the upper floor has collapsed. From here you can see for miles — the village, the mountains, and dark forests stretching to the horizon.",
+      "location_type": "wilderness",
+      "coordinates": [
+        5,
+        1
+      ],
+      "items": {
+        "old_spyglass": {
+          "quantity": 1,
+          "value": 30
+        },
+        "broken_arrow": {
+          "quantity": 2,
+          "value": 2
+        }
+      },
+      "exits": {
+        "south": {
+          "target": "crossroads",
+          "type": "direction"
+        }
+      }
+    },
+    "graveyard_gates": {
+      "id": "graveyard_gates",
+      "name": "Graveyard Gates",
+      "description": "Wrought-iron gates hang open between two crumbling stone pillars. Beyond, rows of crooked headstones disappear into mist. Ravens watch silently from the dead tree branches above.",
+      "location_type": "wilderness",
+      "coordinates": [
+        5,
+        -1
+      ],
+      "items": {},
+      "exits": {
+        "north": {
+          "target": "crossroads",
+          "type": "direction"
+        },
+        "south": {
+          "target": "graveyard",
+          "type": "direction"
+        }
+      }
+    },
+    "graveyard": {
+      "id": "graveyard",
+      "name": "Overgrown Graveyard",
+      "description": "Cracked headstones lean at odd angles among tall weeds. Some graves appear to have been disturbed. The mist is thicker here, muffling all sound. An open crypt yawns darkly at the far end.",
+      "location_type": "wilderness",
+      "coordinates": [
+        5,
+        -2
+      ],
+      "items": {
+        "bronze_coin": {
+          "quantity": 3,
+          "value": 1
+        },
+        "old_bone": {
+          "quantity": 2,
+          "value": 2
+        }
+      },
+      "exits": {
+        "north": {
+          "target": "graveyard_gates",
+          "type": "direction"
+        },
+        "crypt": {
+          "target": "open_crypt",
+          "type": "named",
+          "display": "Enter the Open Crypt"
+        }
+      }
+    },
+    "open_crypt": {
+      "id": "open_crypt",
+      "name": "Open Crypt",
+      "description": "Stone stairs descend into a small burial chamber. Cobwebs hang thick as curtains. Niches in the walls hold crumbling coffins. A faint, unnatural glow emanates from deeper within. A yawning rift in the back wall leads down into absolute darkness — the Shadow Depths.",
+      "location_type": "building",
+      "coordinates": [
+        5,
+        -3
+      ],
+      "items": {
+        "golden_ring": {
+          "quantity": 1,
+          "value": 40
+        },
+        "dusty_tome": {
+          "quantity": 1,
+          "value": 35
+        }
+      },
+      "exits": {
+        "outside": {
+          "target": "graveyard",
+          "type": "named",
+          "display": "Graveyard"
+        },
+        "enter": {
+          "target": "FIXED",
+          "type": "fixed_dungeon",
+          "dungeon_id": "shadow_depths",
+          "transition_text": "You squeeze through the crack in the crypt wall and descend into suffocating darkness. The air grows ice-cold and the shadows seem to move with a life of their own..."
+        }
+      }
+    },
+    "highland_trail": {
+      "id": "highland_trail",
+      "name": "Highland Trail",
+      "description": "A windswept trail climbs through scrubby heathland. Purple heather and grey boulders punctuate the grassy slopes. The village lies below to the south, and craggy mountains loom to the east.",
+      "location_type": "wilderness",
+      "coordinates": [
+        3,
+        2
+      ],
+      "items": {
+        "heather_sprig": {
+          "quantity": 3,
+          "value": 3
+        }
+      },
+      "exits": {
+        "south": {
+          "target": "village_outskirts",
+          "type": "direction"
+        },
+        "east": {
+          "target": "mountain_foothills",
+          "type": "direction"
+        }
       }
     },
     "mountain_foothills": {
       "id": "mountain_foothills",
       "name": "Mountain Foothills",
-      "description": "Rolling hills mark the beginning of the mountain range. Rocky outcrops become more frequent. The path begins to climb.",
+      "description": "Rolling hills mark the beginning of the mountain range. Rocky outcrops become more frequent. The path begins to climb steeply.",
       "location_type": "wilderness",
-      "coordinates": [3, 1],
+      "coordinates": [
+        4,
+        1
+      ],
       "items": {
-        "smooth_stone": {"quantity": 3, "value": 8}
+        "smooth_stone": {
+          "quantity": 3,
+          "value": 8
+        }
       },
       "exits": {
-        "west": {"target": "village_outskirts", "type": "direction"},
-        "north": {"target": "mountain_path", "type": "direction"}
+        "south": {
+          "target": "farmland",
+          "type": "direction"
+        },
+        "west": {
+          "target": "highland_trail",
+          "type": "direction"
+        },
+        "north": {
+          "target": "mountain_path",
+          "type": "direction"
+        }
       }
     },
     "mountain_path": {
       "id": "mountain_path",
       "name": "Mountain Path",
-      "description": "A narrow trail winds up the mountainside. The air grows thinner and colder. Far below, you can see the village and forest.",
+      "description": "A narrow trail winds up the mountainside. The air grows thinner and colder. Far below, you can see the village and forest spread out like a patchwork quilt.",
       "location_type": "wilderness",
-      "coordinates": [3, 2],
+      "coordinates": [
+        4,
+        2
+      ],
       "items": {},
       "exits": {
-        "south": {"target": "mountain_foothills", "type": "direction"},
-        "north": {"target": "mountain_peak", "type": "direction"},
-        "west": {"target": "dungeon_mountain_entrance", "type": "direction"}
+        "south": {
+          "target": "mountain_foothills",
+          "type": "direction"
+        },
+        "north": {
+          "target": "mountain_peak",
+          "type": "direction"
+        },
+        "west": {
+          "target": "dungeon_mountain_entrance",
+          "type": "direction"
+        }
       }
     },
     "dungeon_mountain_entrance": {
@@ -228,30 +745,44 @@
       "name": "Ancient Mountain Gate",
       "description": "Massive stone doors are set into the mountainside. Dwarven runes glow faintly around the frame. This entrance leads to deep halls carved long ago.",
       "location_type": "wilderness",
-      "coordinates": [2, 2],
+      "coordinates": [
+        3,
+        3
+      ],
       "items": {},
       "exits": {
-        "east": {"target": "mountain_path", "type": "direction"},
+        "east": {
+          "target": "mountain_path",
+          "type": "direction"
+        },
         "enter": {
-          "target": "DYNAMIC",
+          "target": "DUNGEON",
           "type": "time_gated_dungeon",
-          "dungeon_id": "mountain_halls",
-          "schedule": "every_3h_for_1h",
-          "transition_text": "You pass through the ancient gates into the mountain halls..."
+          "dungeon_id": "iron_halls",
+          "transition_text": "You pass through the great iron gates. The air grows warm and dry as you enter the ancient dwarven fortress..."
         }
       }
     },
     "mountain_peak": {
       "id": "mountain_peak",
       "name": "Mountain Peak",
-      "description": "The summit! Cold wind whips around you. The view is breathtaking - you can see the entire region spread out below. Clouds drift past at eye level.",
+      "description": "The summit! Cold wind whips around you. The view is breathtaking — you can see the entire region spread out below. Clouds drift past at eye level. A stone cairn marks the highest point.",
       "location_type": "wilderness",
-      "coordinates": [3, 3],
+      "coordinates": [
+        4,
+        3
+      ],
       "items": {
-        "eagle_feather": {"quantity": 1, "value": 35}
+        "eagle_feather": {
+          "quantity": 1,
+          "value": 35
+        }
       },
       "exits": {
-        "south": {"target": "mountain_path", "type": "direction"}
+        "south": {
+          "target": "mountain_path",
+          "type": "direction"
+        }
       }
     },
     "swamp_trail": {
@@ -259,11 +790,50 @@
       "name": "Swamp Trail",
       "description": "The ground becomes soft and muddy. Twisted trees with hanging moss appear. The air smells of decay and stagnant water.",
       "location_type": "wilderness",
-      "coordinates": [-1, 0],
+      "coordinates": [
+        -1,
+        0
+      ],
       "items": {},
       "exits": {
-        "east": {"target": "clearing", "type": "direction"},
-        "west": {"target": "swamp_edge", "type": "direction"}
+        "east": {
+          "target": "clearing",
+          "type": "direction"
+        },
+        "west": {
+          "target": "swamp_edge",
+          "type": "direction"
+        },
+        "south": {
+          "target": "foggy_marsh",
+          "type": "direction"
+        }
+      }
+    },
+    "foggy_marsh": {
+      "id": "foggy_marsh",
+      "name": "Foggy Marsh",
+      "description": "Dense fog rolls across the soggy ground, reducing visibility to a few feet. The squelch of each step is the loudest sound. Pale wisps of light flicker in the distance — swamp gas, or something else?",
+      "location_type": "wilderness",
+      "coordinates": [
+        -1,
+        -1
+      ],
+      "items": {
+        "marsh_lily": {
+          "quantity": 2,
+          "value": 12
+        }
+      },
+      "exits": {
+        "north": {
+          "target": "swamp_trail",
+          "type": "direction"
+        },
+        "east": {
+          "target": "river_path",
+          "type": "direction"
+        }
       }
     },
     "swamp_edge": {
@@ -271,13 +841,25 @@
       "name": "Swamp Edge",
       "description": "Standing water pools between clumps of marsh grass. Insects buzz constantly. You can hear strange croaking sounds deeper in the swamp.",
       "location_type": "wilderness",
-      "coordinates": [-2, 0],
+      "coordinates": [
+        -2,
+        0
+      ],
       "items": {
-        "swamp_reed": {"quantity": 4, "value": 3}
+        "swamp_reed": {
+          "quantity": 4,
+          "value": 3
+        }
       },
       "exits": {
-        "east": {"target": "swamp_trail", "type": "direction"},
-        "west": {"target": "deep_swamp", "type": "direction"}
+        "east": {
+          "target": "swamp_trail",
+          "type": "direction"
+        },
+        "west": {
+          "target": "deep_swamp",
+          "type": "direction"
+        }
       }
     },
     "deep_swamp": {
@@ -285,11 +867,50 @@
       "name": "Deep Swamp",
       "description": "Murky water reaches your knees. Gnarled trees rise from the water like skeletal hands. This place is dangerous and disorienting.",
       "location_type": "wilderness",
-      "coordinates": [-3, 0],
+      "coordinates": [
+        -3,
+        0
+      ],
       "items": {},
       "exits": {
-        "east": {"target": "swamp_edge", "type": "direction"},
-        "north": {"target": "witch_hut", "type": "direction"}
+        "east": {
+          "target": "swamp_edge",
+          "type": "direction"
+        },
+        "north": {
+          "target": "witch_hut",
+          "type": "direction"
+        },
+        "south": {
+          "target": "sunken_ruins",
+          "type": "direction"
+        }
+      }
+    },
+    "sunken_ruins": {
+      "id": "sunken_ruins",
+      "name": "Sunken Ruins",
+      "description": "Half-submerged stone walls rise from the murky swamp water. Carved faces stare blindly from moss-covered columns. Whatever civilization built this was swallowed by the marsh long ago. Strange bubbles rise from the depths.",
+      "location_type": "wilderness",
+      "coordinates": [
+        -3,
+        -1
+      ],
+      "items": {
+        "ancient_brick": {
+          "quantity": 2,
+          "value": 10
+        },
+        "gold_coin": {
+          "quantity": 1,
+          "value": 2
+        }
+      },
+      "exits": {
+        "north": {
+          "target": "deep_swamp",
+          "type": "direction"
+        }
       }
     },
     "witch_hut": {
@@ -297,13 +918,24 @@
       "name": "Decrepit Hut",
       "description": "A ramshackle hut stands on stilts above the swamp water. Smoke drifts from a crooked chimney. Strange herbs hang drying from the rafters.",
       "location_type": "building",
-      "coordinates": [-3, 1],
+      "coordinates": [
+        -3,
+        1
+      ],
       "items": {
-        "strange_herb": {"quantity": 2, "value": 25}
+        "strange_herb": {
+          "quantity": 2,
+          "value": 25
+        }
       },
-      "npcs": ["swamp_witch"],
+      "npcs": [
+        "swamp_witch"
+      ],
       "exits": {
-        "south": {"target": "deep_swamp", "type": "direction"}
+        "south": {
+          "target": "deep_swamp",
+          "type": "direction"
+        }
       }
     },
     "river_path": {
@@ -311,11 +943,24 @@
       "name": "River Path",
       "description": "A path follows alongside a clear, fast-flowing river. You can hear the rush of water over rocks. Trees line the opposite bank.",
       "location_type": "wilderness",
-      "coordinates": [0, -1],
+      "coordinates": [
+        0,
+        -1
+      ],
       "items": {},
       "exits": {
-        "north": {"target": "clearing", "type": "direction"},
-        "south": {"target": "riverbank", "type": "direction"}
+        "north": {
+          "target": "clearing",
+          "type": "direction"
+        },
+        "south": {
+          "target": "riverbank",
+          "type": "direction"
+        },
+        "west": {
+          "target": "foggy_marsh",
+          "type": "direction"
+        }
       }
     },
     "riverbank": {
@@ -323,28 +968,111 @@
       "name": "Riverbank",
       "description": "The river widens here, flowing more slowly. Smooth stones line the bank. This is a peaceful spot to rest and refill water.",
       "location_type": "wilderness",
-      "coordinates": [0, -2],
+      "coordinates": [
+        0,
+        -2
+      ],
       "items": {
-        "smooth_pebble": {"quantity": 10, "value": 1}
+        "smooth_pebble": {
+          "quantity": 10,
+          "value": 1
+        }
       },
       "exits": {
-        "north": {"target": "river_path", "type": "direction"},
-        "east": {"target": "old_battlefield", "type": "direction"},
-        "south": {"target": "beach", "type": "direction"}
+        "north": {
+          "target": "river_path",
+          "type": "direction"
+        },
+        "east": {
+          "target": "old_battlefield",
+          "type": "direction"
+        },
+        "south": {
+          "target": "beach",
+          "type": "direction"
+        },
+        "west": {
+          "target": "fishing_spot",
+          "type": "direction"
+        }
+      }
+    },
+    "fishing_spot": {
+      "id": "fishing_spot",
+      "name": "Old Fishing Spot",
+      "description": "A flat rock juts out over a deep pool in the river. An old fishing rod leans against a stump. Fish jump occasionally, sending ripples across the still water. Someone has carved notches in the rock — a catch tally from years past.",
+      "location_type": "wilderness",
+      "coordinates": [
+        -1,
+        -2
+      ],
+      "items": {
+        "old_fishing_rod": {
+          "quantity": 1,
+          "value": 15
+        }
+      },
+      "exits": {
+        "east": {
+          "target": "riverbank",
+          "type": "direction"
+        }
       }
     },
     "beach": {
       "id": "beach",
       "name": "Sandy Beach",
-      "description": "The river meets a large lake here. Gentle waves lap at the sandy shore. Seagulls cry overhead.",
+      "description": "The river meets a large lake here. Gentle waves lap at the sandy shore. Seagulls cry overhead. Driftwood and shells are scattered across the sand.",
       "location_type": "wilderness",
-      "coordinates": [0, -3],
+      "coordinates": [
+        0,
+        -3
+      ],
       "items": {
-        "seashell": {"quantity": 5, "value": 4}
+        "seashell": {
+          "quantity": 5,
+          "value": 4
+        }
       },
       "exits": {
-        "north": {"target": "riverbank", "type": "direction"},
-        "east": {"target": "old_dock", "type": "direction"}
+        "north": {
+          "target": "riverbank",
+          "type": "direction"
+        },
+        "east": {
+          "target": "old_dock",
+          "type": "direction"
+        },
+        "west": {
+          "target": "tidal_caves",
+          "type": "direction"
+        }
+      }
+    },
+    "tidal_caves": {
+      "id": "tidal_caves",
+      "name": "Tidal Caves",
+      "description": "Water-carved caves open in the cliff face at the lake edge. At low tide you can explore the glistening rock chambers. Crystals in the walls catch the light and sparkle like stars. The sound of dripping water echoes endlessly.",
+      "location_type": "wilderness",
+      "coordinates": [
+        -1,
+        -3
+      ],
+      "items": {
+        "cave_crystal": {
+          "quantity": 2,
+          "value": 22
+        },
+        "seaweed": {
+          "quantity": 3,
+          "value": 2
+        }
+      },
+      "exits": {
+        "east": {
+          "target": "beach",
+          "type": "direction"
+        }
       }
     },
     "old_dock": {
@@ -352,12 +1080,55 @@
       "name": "Abandoned Dock",
       "description": "Weathered wooden planks extend out over the water. An old, rotting boat is tied to a post. This dock hasn't been used in years.",
       "location_type": "wilderness",
-      "coordinates": [1, -3],
+      "coordinates": [
+        1,
+        -3
+      ],
       "items": {
-        "old_rope": {"quantity": 1, "value": 6}
+        "old_rope": {
+          "quantity": 1,
+          "value": 6
+        }
       },
       "exits": {
-        "west": {"target": "beach", "type": "direction"}
+        "west": {
+          "target": "beach",
+          "type": "direction"
+        },
+        "east": {
+          "target": "lakeside_camp",
+          "type": "direction"
+        }
+      }
+    },
+    "lakeside_camp": {
+      "id": "lakeside_camp",
+      "name": "Abandoned Lakeside Camp",
+      "description": "The remains of a campsite sit on a small bluff overlooking the lake. A fire pit, a few rotten tent poles, and scattered supply crates suggest traders camped here. One crate still has goods inside.",
+      "location_type": "wilderness",
+      "coordinates": [
+        2,
+        -3
+      ],
+      "items": {
+        "torch": {
+          "quantity": 2,
+          "value": 5
+        },
+        "rope_coil": {
+          "quantity": 1,
+          "value": 20
+        }
+      },
+      "exits": {
+        "west": {
+          "target": "old_dock",
+          "type": "direction"
+        },
+        "north": {
+          "target": "ancient_ruins",
+          "type": "direction"
+        }
       }
     },
     "old_battlefield": {
@@ -365,14 +1136,33 @@
       "name": "Old Battlefield",
       "description": "Rusted weapons and broken shields litter the ground. This was the site of a great battle long ago. The dead rest uneasily here.",
       "location_type": "wilderness",
-      "coordinates": [1, -2],
+      "coordinates": [
+        1,
+        -2
+      ],
       "items": {
-        "rusty_sword": {"quantity": 1, "value": 12},
-        "broken_shield": {"quantity": 1, "value": 8}
+        "rusty_sword": {
+          "quantity": 1,
+          "value": 12
+        },
+        "broken_shield": {
+          "quantity": 1,
+          "value": 8
+        }
       },
       "exits": {
-        "west": {"target": "riverbank", "type": "direction"},
-        "east": {"target": "ancient_ruins", "type": "direction"}
+        "west": {
+          "target": "riverbank",
+          "type": "direction"
+        },
+        "east": {
+          "target": "ancient_ruins",
+          "type": "direction"
+        },
+        "north": {
+          "target": "farmland",
+          "type": "direction"
+        }
       }
     },
     "ancient_ruins": {
@@ -380,13 +1170,59 @@
       "name": "Ancient Ruins",
       "description": "Crumbling stone walls and fallen pillars mark what was once a grand structure. Vines and moss cover everything. Time has reclaimed this place.",
       "location_type": "wilderness",
-      "coordinates": [2, -2],
+      "coordinates": [
+        2,
+        -2
+      ],
       "items": {
-        "ancient_brick": {"quantity": 3, "value": 10}
+        "ancient_brick": {
+          "quantity": 3,
+          "value": 10
+        }
       },
       "exits": {
-        "west": {"target": "old_battlefield", "type": "direction"},
-        "down": {"target": "dungeon_ruins_entrance", "type": "direction"}
+        "west": {
+          "target": "old_battlefield",
+          "type": "direction"
+        },
+        "south": {
+          "target": "lakeside_camp",
+          "type": "direction"
+        },
+        "east": {
+          "target": "ruined_library",
+          "type": "direction"
+        },
+        "down": {
+          "target": "dungeon_ruins_entrance",
+          "type": "direction"
+        }
+      }
+    },
+    "ruined_library": {
+      "id": "ruined_library",
+      "name": "Ruined Library",
+      "description": "Collapsed bookshelves and scattered pages fill what remains of a once-great library. Most books have rotted to pulp, but a few leather-bound volumes survived in stone niches. Faded murals on the ceiling depict constellations and unknown lands.",
+      "location_type": "building",
+      "coordinates": [
+        3,
+        -2
+      ],
+      "items": {
+        "intact_tome": {
+          "quantity": 1,
+          "value": 45
+        },
+        "faded_map": {
+          "quantity": 1,
+          "value": 20
+        }
+      },
+      "exits": {
+        "west": {
+          "target": "ancient_ruins",
+          "type": "direction"
+        }
       }
     },
     "dungeon_ruins_entrance": {
@@ -394,16 +1230,21 @@
       "name": "Catacombs Entrance",
       "description": "Stone stairs descend into darkness beneath the ruins. Cold air flows up from below. Ancient tombs and treasures lie in the depths.",
       "location_type": "wilderness",
-      "coordinates": [2, -3],
+      "coordinates": [
+        2,
+        -4
+      ],
       "items": {},
       "exits": {
-        "up": {"target": "ancient_ruins", "type": "direction"},
+        "up": {
+          "target": "ancient_ruins",
+          "type": "direction"
+        },
         "enter": {
-          "target": "DYNAMIC",
+          "target": "DUNGEON",
           "type": "time_gated_dungeon",
-          "dungeon_id": "forgotten_catacombs",
-          "schedule": "every_3h_for_1h",
-          "transition_text": "You descend into the forgotten catacombs..."
+          "dungeon_id": "sunken_catacombs",
+          "transition_text": "You descend the ancient stone stairs into the catacombs. The air grows cold and smells of dust and ages past..."
         }
       }
     }
@@ -431,12 +1272,46 @@
     "health": 100
   },
   "item_worth": {
-    "gold coin": 2,
-    "old coin": 3,
-    "rusty key": 5,
-    "silver ring": 10,
-    "bronze coin": 1,
-    "golden ring": 40
+    "gold_coin": 2,
+    "old_coin": 3,
+    "rusty_key": 5,
+    "silver_ring": 10,
+    "bronze_coin": 1,
+    "golden_ring": 40,
+    "smooth_stone": 8,
+    "eagle_feather": 35,
+    "ancient_acorn": 50,
+    "cave_crystal": 22,
+    "marsh_lily": 12,
+    "intact_tome": 45,
+    "dusty_tome": 35,
+    "faded_map": 20,
+    "wolf_pelt": 18,
+    "old_spyglass": 30,
+    "old_fishing_rod": 15,
+    "glowing_moss": 8,
+    "strange_herb": 25,
+    "iron_ingot": 20,
+    "ancient_brick": 10,
+    "heather_sprig": 3,
+    "wheat_bundle": 3,
+    "prayer_candle": 5,
+    "old_bone": 2,
+    "shelf_mushroom": 4,
+    "seaweed": 2,
+    "broken_arrow": 2,
+    "torch": 5,
+    "rope_coil": 20,
+    "old_rope": 6,
+    "rusty_sword": 12,
+    "broken_shield": 8,
+    "mushroom": 5,
+    "wildflower": 2,
+    "stick": 1,
+    "ale_mug": 3,
+    "seashell": 4,
+    "smooth_pebble": 1,
+    "swamp_reed": 3
   },
   "default_inventory": {},
   "room_templates": {
@@ -449,7 +1324,10 @@
         "table": 2,
         "mug": 3
       },
-      "npcs": ["bartender", "patron"],
+      "npcs": [
+        "bartender",
+        "patron"
+      ],
       "actions": {
         "order_drink": {
           "text": "You order a drink from the barkeep."
@@ -500,7 +1378,9 @@
         "scroll": 3,
         "gem": 2
       },
-      "npcs": ["shopkeeper"],
+      "npcs": [
+        "shopkeeper"
+      ],
       "actions": {
         "browse": {
           "text": "Fine goods at reasonable prices."
