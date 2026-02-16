@@ -1,0 +1,1659 @@
+"""
+Combat System
+=============
+Turn-based combat for dungeon encounters.
+
+Features:
+  - 42+ unique enemies across 4 dungeons + 4 mini-bosses + 4 bosses
+  - ALL enemies have abilities (not just bosses)
+  - Status effects: poison, bleed, burn, stun, freeze
+  - Critical hits based on dexterity, perception, and skill bonuses
+  - Class-specific attacks (warrior/rogue/mage)
+  - Revamped defend: counterattack chance + adrenaline buff
+  - Enemy AI: varied actions (attack, ability, heavy attack, defend/heal)
+  - Skill tree combat abilities integration
+  - Enemy level scaling: enemies scale with dungeon floor depth
+"""
+
+import random
+
+# =====================================================================
+# LEVEL SYSTEM
+# =====================================================================
+
+def calculate_enemy_level(floor_num, enemy_type="regular"):
+    """
+    Calculate enemy level based on dungeon floor and enemy type.
+    
+    Base levels:
+      - Regular enemies: 1-3 (randomized)
+      - Mini-bosses: 5
+      - Bosses: 8
+    
+    Floor scaling: +3 levels per floor
+      - Floor 1: Regular 1-3, Mini-boss 5, Boss 8
+      - Floor 2: Regular 4-6, Mini-boss 8, Boss 11
+      - Floor 3: Regular 7-9, Mini-boss 11, Boss 14
+    """
+    base_level = 1
+    if enemy_type == "mini_boss":
+        base_level = 5
+    elif enemy_type == "boss":
+        base_level = 8
+    else:  # regular
+        base_level = random.randint(1, 3)
+    
+    # Add floor scaling
+    floor_bonus = (floor_num - 1) * 3
+    return base_level + floor_bonus
+
+
+def scale_enemy_stats(base_stats, level, enemy_type="regular"):
+    """
+    Scale enemy stats based on level.
+    
+    Level 1 = base stats
+    Each level adds:
+      - HP: +15%
+      - Attack: +10%
+      - Defense: +8%
+      - XP: +20%
+      - Gold: +15%
+    
+    Returns dict with scaled stats.
+    """
+    if level <= 1:
+        return base_stats.copy()
+    
+    scaled = base_stats.copy()
+    level_mult = level - 1  # Level 1 = no bonus
+    
+    # Scale HP (15% per level)
+    if "hp" in scaled:
+        scaled["hp"] = int(scaled["hp"] * (1 + 0.15 * level_mult))
+    
+    # Scale Attack (10% per level)
+    if "attack" in scaled:
+        scaled["attack"] = int(scaled["attack"] * (1 + 0.10 * level_mult))
+    
+    # Scale Defense (8% per level)
+    if "defense" in scaled:
+        scaled["defense"] = int(scaled["defense"] * (1 + 0.08 * level_mult))
+    
+    # Scale XP (20% per level)
+    if "xp_reward" in scaled:
+        scaled["xp_reward"] = int(scaled["xp_reward"] * (1 + 0.20 * level_mult))
+    
+    # Scale Gold (15% per level)
+    if "gold_reward" in scaled:
+        if isinstance(scaled["gold_reward"], (list, tuple)):
+            low, high = scaled["gold_reward"]
+            scaled["gold_reward"] = (
+                int(low * (1 + 0.15 * level_mult)),
+                int(high * (1 + 0.15 * level_mult))
+            )
+        else:
+            scaled["gold_reward"] = int(scaled["gold_reward"] * (1 + 0.15 * level_mult))
+    
+    return scaled
+
+
+def get_level_abilities(abilities, level):
+    """
+    Some abilities unlock only at higher levels.
+    Returns filtered ability list based on enemy level.
+    
+    For now, all abilities are available at all levels.
+    Future enhancement: add level requirements to specific abilities.
+    """
+    return abilities
+
+
+# =====================================================================
+# STATUS EFFECTS
+# =====================================================================
+
+STATUS_EFFECTS = {
+    "poison": {
+        "name": "Poison",
+        "icon": "☠️",
+        "type": "dot",           # damage over time
+        "message_apply": "is poisoned!",
+        "message_tick": "takes {dmg} poison damage!",
+        "message_expire": "The poison wears off.",
+    },
+    "bleed": {
+        "name": "Bleed",
+        "icon": "🩸",
+        "type": "dot",
+        "message_apply": "is bleeding!",
+        "message_tick": "bleeds for {dmg} damage!",
+        "message_expire": "The bleeding stops.",
+    },
+    "burn": {
+        "name": "Burn",
+        "icon": "🔥",
+        "type": "dot",
+        "message_apply": "is burning!",
+        "message_tick": "burns for {dmg} damage!",
+        "message_expire": "The flames die out.",
+    },
+    "stun": {
+        "name": "Stun",
+        "icon": "💫",
+        "type": "disable",       # skip turn
+        "message_apply": "is stunned!",
+        "message_tick": "is still stunned!",
+        "message_expire": "shakes off the stun.",
+    },
+    "freeze": {
+        "name": "Freeze",
+        "icon": "❄️",
+        "type": "debuff",        # reduces attack
+        "reduction": 0.30,       # 30% attack reduction
+        "message_apply": "is frozen! Attack reduced!",
+        "message_tick": "is still frozen!",
+        "message_expire": "thaws out.",
+    },
+}
+
+
+# =====================================================================
+# ENEMY ABILITY DEFINITIONS
+# =====================================================================
+# Each ability has: name, type, value(s), description, chance
+# Types: damage, status, heal, buff_defense, heavy_attack
+
+ENEMY_ABILITIES = {
+    # -- Damage abilities --
+    "bite": {"name": "Bite", "type": "damage", "value": (3, 6),
+             "text": "bites down hard!"},
+    "claw_swipe": {"name": "Claw Swipe", "type": "damage", "value": (4, 8),
+                   "text": "swipes with razor claws!"},
+    "acid_spit": {"name": "Acid Spit", "type": "damage_status", "value": (3, 5), "status": "poison",
+                  "status_dmg": 3, "status_dur": 2, "text": "spits burning acid!"},
+    "venom_fang": {"name": "Venom Fang", "type": "damage_status", "value": (2, 4), "status": "poison",
+                   "status_dmg": 4, "status_dur": 3, "text": "strikes with venomous fangs!"},
+    "fire_breath": {"name": "Fire Breath", "type": "damage_status", "value": (5, 10), "status": "burn",
+                    "status_dmg": 3, "status_dur": 2, "text": "breathes fire!"},
+    "ice_blast": {"name": "Ice Blast", "type": "status", "status": "freeze",
+                  "status_dur": 2, "text": "unleashes a blast of freezing cold!"},
+    "tail_slam": {"name": "Tail Slam", "type": "damage_stun", "value": (4, 7),
+                  "stun_dur": 1, "text": "slams its massive tail!"},
+    "death_gaze": {"name": "Death Gaze", "type": "damage", "value": (6, 12),
+                   "text": "fixes you with a death gaze!"},
+    "shadow_bolt": {"name": "Shadow Bolt", "type": "damage", "value": (5, 10),
+                    "text": "hurls a bolt of shadow energy!"},
+    "bone_throw": {"name": "Bone Throw", "type": "damage", "value": (3, 6),
+                   "text": "throws a sharpened bone!"},
+    "disease_touch": {"name": "Disease Touch", "type": "damage_status", "value": (2, 4), "status": "poison",
+                      "status_dmg": 3, "status_dur": 3, "text": "touches you with rotting fingers!"},
+    "soul_drain": {"name": "Soul Drain", "type": "damage_heal", "value": (4, 8),
+                   "text": "drains your life force!"},
+    "crystal_shard": {"name": "Crystal Shard", "type": "damage", "value": (4, 8),
+                      "text": "launches razor-sharp crystal shards!"},
+    "iron_slam": {"name": "Iron Slam", "type": "damage_stun", "value": (5, 9),
+                  "stun_dur": 1, "text": "slams you with an iron fist!"},
+    "void_touch": {"name": "Void Touch", "type": "damage_status", "value": (3, 7), "status": "bleed",
+                   "status_dmg": 4, "status_dur": 2, "text": "touches you with void energy!"},
+    "screech": {"name": "Screech", "type": "status", "status": "stun",
+                "status_dur": 1, "text": "lets out an ear-splitting screech!"},
+    "web_snare": {"name": "Web Snare", "type": "status", "status": "freeze",
+                  "status_dur": 1, "text": "snares you in thick webbing!"},
+    "charge": {"name": "Charge", "type": "damage", "value": (6, 10),
+               "text": "charges at you with tremendous force!"},
+    "drain_life": {"name": "Drain Life", "type": "damage_heal", "value": (5, 10),
+                   "text": "drains your life energy!"},
+    "corrosion": {"name": "Corrosion", "type": "damage_status", "value": (2, 5), "status": "bleed",
+                  "status_dmg": 3, "status_dur": 2, "text": "corrodes your armor!"},
+    "flame_slash": {"name": "Flame Slash", "type": "damage_status", "value": (5, 9), "status": "burn",
+                    "status_dmg": 4, "status_dur": 2, "text": "strikes with a flaming blade!"},
+    "necrotic_blast": {"name": "Necrotic Blast", "type": "damage_status", "value": (6, 12), "status": "poison",
+                       "status_dmg": 5, "status_dur": 2, "text": "unleashes necrotic energy!"},
+    "petrify_gaze": {"name": "Petrifying Gaze", "type": "damage_stun", "value": (3, 6),
+                     "stun_dur": 2, "text": "locks eyes with a petrifying gaze!"},
+
+    # -- Boss abilities --
+    "crystal_slam": {"name": "Crystal Slam", "type": "damage", "value": (8, 15),
+                     "text": "SLAMS the ground with crystal fists!"},
+    "regenerate": {"name": "Regenerate", "type": "heal", "value": (10, 20),
+                   "text": "regenerates!"},
+    "flame_strike": {"name": "Flame Strike", "type": "damage_status", "value": (10, 18), "status": "burn",
+                     "status_dmg": 5, "status_dur": 3, "text": "unleashes a FLAME STRIKE!"},
+    "fortify": {"name": "Fortify", "type": "buff_defense", "value": 2,
+                "text": "hardens its defenses!"},
+    "shadow_strike": {"name": "Shadow Strike", "type": "damage", "value": (12, 20),
+                      "text": "strikes from the shadows!"},
+    "darkness": {"name": "Darkness", "type": "status", "status": "freeze",
+                 "status_dur": 2, "text": "plunges the room into DARKNESS!"},
+    "death_bolt": {"name": "Death Bolt", "type": "damage_status", "value": (10, 22), "status": "poison",
+                   "status_dmg": 6, "status_dur": 3, "text": "launches a bolt of death magic!"},
+    "summon_skeleton": {"name": "Summon Skeleton", "type": "heal", "value": (5, 15),
+                        "text": "summons spectral reinforcements!"},
+
+    # -- Mini-boss abilities --
+    "crystal_nova": {"name": "Crystal Nova", "type": "damage_stun", "value": (6, 12),
+                     "stun_dur": 1, "text": "explodes with crystal energy!"},
+    "molten_core": {"name": "Molten Core", "type": "damage_status", "value": (7, 14), "status": "burn",
+                    "status_dmg": 5, "status_dur": 3, "text": "erupts with molten metal!"},
+    "void_rift": {"name": "Void Rift", "type": "damage_status", "value": (8, 14), "status": "bleed",
+                  "status_dmg": 5, "status_dur": 3, "text": "tears open a rift in reality!"},
+    "bone_storm": {"name": "Bone Storm", "type": "damage", "value": (8, 16),
+                   "text": "summons a storm of flying bones!"},
+}
+
+
+# =====================================================================
+# ENEMY DATABASE - 42+ enemies across 4 dungeons
+# =====================================================================
+
+ENEMY_DATABASE = {
+    # ── CRYSTAL CAVERNS ENEMIES ──────────────────────────────────
+    "crystal_beetle": {
+        "name": "Crystal Beetle", "description": "A large beetle with a shimmering crystalline shell.",
+        "hp": 20, "attack": 5, "defense": 1,
+        "xp_reward": 15, "gold_reward": (3, 8),
+        "loot": [("cave_crystal", 0.30), ("raw_diamond", 0.05)],
+        "floor_range": (1, 2), "dungeon": "crystal_caverns",
+        "abilities": ["bite", "crystal_shard"],
+    },
+    "crystal_spider": {
+        "name": "Crystal Spider", "description": "Its legs are translucent crystal. Fast and venomous.",
+        "hp": 25, "attack": 7, "defense": 2,
+        "xp_reward": 20, "gold_reward": (5, 12),
+        "loot": [("cave_crystal", 0.25), ("spider_silk", 0.15)],
+        "floor_range": (1, 3), "dungeon": "crystal_caverns",
+        "abilities": ["venom_fang", "web_snare"],
+    },
+    "crystal_golem": {
+        "name": "Crystal Golem", "description": "A towering construct of living crystal. Slow but devastating.",
+        "hp": 50, "attack": 10, "defense": 5,
+        "xp_reward": 40, "gold_reward": (15, 30),
+        "loot": [("heart_crystal_fragment", 0.20), ("raw_diamond", 0.10)],
+        "floor_range": (2, 3), "dungeon": "crystal_caverns",
+        "abilities": ["crystal_shard", "iron_slam"],
+    },
+    "gem_wyrm": {
+        "name": "Gem Wyrm", "description": "A serpentine creature with scales of living gemstone.",
+        "hp": 30, "attack": 8, "defense": 3,
+        "xp_reward": 25, "gold_reward": (8, 18),
+        "loot": [("cave_crystal", 0.20), ("raw_diamond", 0.08)],
+        "floor_range": (1, 2), "dungeon": "crystal_caverns",
+        "abilities": ["bite", "tail_slam"],
+    },
+    "prism_wisp": {
+        "name": "Prism Wisp", "description": "A floating orb of refracted light. Blindingly bright.",
+        "hp": 15, "attack": 6, "defense": 0,
+        "xp_reward": 12, "gold_reward": (2, 7),
+        "loot": [("cave_crystal", 0.15)],
+        "floor_range": (1, 2), "dungeon": "crystal_caverns",
+        "abilities": ["screech", "crystal_shard"],
+    },
+    "crystal_crawler": {
+        "name": "Crystal Crawler", "description": "A hulking insectoid covered in crystal growths.",
+        "hp": 35, "attack": 8, "defense": 4,
+        "xp_reward": 30, "gold_reward": (10, 22),
+        "loot": [("cave_crystal", 0.25), ("heart_crystal_fragment", 0.08)],
+        "floor_range": (2, 3), "dungeon": "crystal_caverns",
+        "abilities": ["claw_swipe", "crystal_shard", "charge"],
+    },
+    "geode_guardian": {
+        "name": "Geode Guardian", "description": "A humanoid crystal that shatters and reforms endlessly.",
+        "hp": 45, "attack": 9, "defense": 6,
+        "xp_reward": 35, "gold_reward": (12, 28),
+        "loot": [("heart_crystal_fragment", 0.15), ("raw_diamond", 0.12)],
+        "floor_range": (2, 3), "dungeon": "crystal_caverns",
+        "abilities": ["crystal_shard", "iron_slam", "charge"],
+    },
+
+    # ── IRON HALLS ENEMIES ───────────────────────────────────────
+    "rust_rat": {
+        "name": "Rust Rat", "description": "A dog-sized rat with iron-hard teeth that gnaw through metal.",
+        "hp": 18, "attack": 5, "defense": 1,
+        "xp_reward": 12, "gold_reward": (2, 6),
+        "loot": [("iron_ingot", 0.15), ("old_bone", 0.25)],
+        "floor_range": (1, 2), "dungeon": "iron_halls",
+        "abilities": ["bite", "corrosion"],
+    },
+    "iron_sentinel": {
+        "name": "Iron Sentinel", "description": "An animated suit of armor. Its eyes glow with ancient fire.",
+        "hp": 40, "attack": 9, "defense": 6,
+        "xp_reward": 35, "gold_reward": (10, 25),
+        "loot": [("iron_ingot", 0.30), ("tempered_steel_ingot", 0.10)],
+        "floor_range": (2, 3), "dungeon": "iron_halls",
+        "abilities": ["iron_slam", "charge"],
+    },
+    "forge_elemental": {
+        "name": "Forge Elemental", "description": "A being of living flame and molten metal.",
+        "hp": 45, "attack": 12, "defense": 4,
+        "xp_reward": 40, "gold_reward": (15, 35),
+        "loot": [("eternal_ember", 0.15), ("raw_mithril", 0.08)],
+        "floor_range": (2, 3), "dungeon": "iron_halls",
+        "abilities": ["fire_breath", "flame_slash"],
+    },
+    "gear_golem": {
+        "name": "Gear Golem", "description": "A construct of interlocking gears and pistons. It clicks menacingly.",
+        "hp": 35, "attack": 7, "defense": 5,
+        "xp_reward": 28, "gold_reward": (8, 18),
+        "loot": [("iron_ingot", 0.20), ("tempered_steel_ingot", 0.05)],
+        "floor_range": (1, 2), "dungeon": "iron_halls",
+        "abilities": ["iron_slam", "claw_swipe"],
+    },
+    "slag_hound": {
+        "name": "Slag Hound", "description": "A wolf-like creature forged from molten slag. Its bite sears flesh.",
+        "hp": 25, "attack": 8, "defense": 2,
+        "xp_reward": 20, "gold_reward": (5, 14),
+        "loot": [("iron_ingot", 0.10), ("eternal_ember", 0.05)],
+        "floor_range": (1, 2), "dungeon": "iron_halls",
+        "abilities": ["bite", "fire_breath"],
+    },
+    "anvil_wraith": {
+        "name": "Anvil Wraith", "description": "The ghost of a smith, its hammer still rings with spectral force.",
+        "hp": 30, "attack": 9, "defense": 3,
+        "xp_reward": 30, "gold_reward": (10, 20),
+        "loot": [("tempered_steel_ingot", 0.10), ("iron_ingot", 0.20)],
+        "floor_range": (1, 3), "dungeon": "iron_halls",
+        "abilities": ["iron_slam", "screech"],
+    },
+    "molten_crawler": {
+        "name": "Molten Crawler", "description": "A centipede-like creature that drips molten metal.",
+        "hp": 38, "attack": 10, "defense": 3,
+        "xp_reward": 32, "gold_reward": (12, 24),
+        "loot": [("eternal_ember", 0.12), ("raw_mithril", 0.06)],
+        "floor_range": (2, 3), "dungeon": "iron_halls",
+        "abilities": ["fire_breath", "acid_spit", "bite"],
+    },
+
+    # ── SHADOW DEPTHS ENEMIES ────────────────────────────────────
+    "shadow_wisp": {
+        "name": "Shadow Wisp", "description": "A flickering orb of dark energy. Hard to hit.",
+        "hp": 15, "attack": 6, "defense": 0,
+        "xp_reward": 10, "gold_reward": (1, 5),
+        "loot": [("concentrated_void_essence", 0.10)],
+        "floor_range": (1, 2), "dungeon": "shadow_depths",
+        "abilities": ["shadow_bolt", "screech"],
+    },
+    "shadow_stalker": {
+        "name": "Shadow Stalker", "description": "A humanoid shape of pure darkness. Silent and deadly.",
+        "hp": 35, "attack": 10, "defense": 3,
+        "xp_reward": 30, "gold_reward": (8, 20),
+        "loot": [("umbral_thread", 0.20), ("obsidian_blade_fragment", 0.10)],
+        "floor_range": (1, 3), "dungeon": "shadow_depths",
+        "abilities": ["shadow_bolt", "claw_swipe", "void_touch"],
+    },
+    "void_wraith": {
+        "name": "Void Wraith", "description": "A screaming horror from the space between worlds.",
+        "hp": 45, "attack": 13, "defense": 4,
+        "xp_reward": 45, "gold_reward": (15, 30),
+        "loot": [("void_heart_fragment", 0.15), ("concentrated_void_essence", 0.20)],
+        "floor_range": (2, 3), "dungeon": "shadow_depths",
+        "abilities": ["void_touch", "death_gaze", "drain_life"],
+    },
+    "nightmare": {
+        "name": "Nightmare", "description": "A horse-like creature of pure shadow. Its hooves crack the floor.",
+        "hp": 40, "attack": 11, "defense": 3,
+        "xp_reward": 35, "gold_reward": (10, 22),
+        "loot": [("umbral_thread", 0.15), ("concentrated_void_essence", 0.12)],
+        "floor_range": (2, 3), "dungeon": "shadow_depths",
+        "abilities": ["charge", "shadow_bolt", "screech"],
+    },
+    "gloom_bat": {
+        "name": "Gloom Bat", "description": "A bat with wings of living darkness. Its screech unravels sanity.",
+        "hp": 18, "attack": 7, "defense": 1,
+        "xp_reward": 14, "gold_reward": (3, 8),
+        "loot": [("concentrated_void_essence", 0.08)],
+        "floor_range": (1, 2), "dungeon": "shadow_depths",
+        "abilities": ["bite", "screech"],
+    },
+    "shade_weaver": {
+        "name": "Shade Weaver", "description": "A spider-like entity that webs corridors with shadow threads.",
+        "hp": 28, "attack": 8, "defense": 2,
+        "xp_reward": 22, "gold_reward": (5, 14),
+        "loot": [("umbral_thread", 0.25), ("concentrated_void_essence", 0.10)],
+        "floor_range": (1, 3), "dungeon": "shadow_depths",
+        "abilities": ["web_snare", "venom_fang", "shadow_bolt"],
+    },
+    "dark_elemental": {
+        "name": "Dark Elemental", "description": "Pure darkness given terrible form. Light dies in its presence.",
+        "hp": 42, "attack": 12, "defense": 4,
+        "xp_reward": 40, "gold_reward": (14, 28),
+        "loot": [("void_heart_fragment", 0.10), ("concentrated_void_essence", 0.18)],
+        "floor_range": (2, 3), "dungeon": "shadow_depths",
+        "abilities": ["shadow_bolt", "void_touch", "death_gaze"],
+    },
+
+    # ── SUNKEN CATACOMBS ENEMIES ─────────────────────────────────
+    "skeletal_warrior": {
+        "name": "Skeletal Warrior", "description": "The animated bones of a fallen soldier, sword in hand.",
+        "hp": 22, "attack": 6, "defense": 2,
+        "xp_reward": 15, "gold_reward": (3, 10),
+        "loot": [("old_bone", 0.35), ("rusty_sword", 0.10)],
+        "floor_range": (1, 2), "dungeon": "sunken_catacombs",
+        "abilities": ["bone_throw", "claw_swipe"],
+    },
+    "ghoul": {
+        "name": "Ghoul", "description": "A rotting creature that feeds on the dead. Its claws drip with disease.",
+        "hp": 30, "attack": 8, "defense": 2,
+        "xp_reward": 25, "gold_reward": (5, 15),
+        "loot": [("soul_gem", 0.10), ("old_bone", 0.20)],
+        "floor_range": (1, 3), "dungeon": "sunken_catacombs",
+        "abilities": ["disease_touch", "claw_swipe", "bite"],
+    },
+    "spectral_knight": {
+        "name": "Spectral Knight", "description": "A ghostly warrior in ethereal plate armor.",
+        "hp": 50, "attack": 12, "defense": 5,
+        "xp_reward": 45, "gold_reward": (15, 35),
+        "loot": [("cracked_phylactery", 0.12), ("soul_gem", 0.15)],
+        "floor_range": (2, 3), "dungeon": "sunken_catacombs",
+        "abilities": ["shadow_bolt", "charge", "death_gaze"],
+    },
+    "bone_crawler": {
+        "name": "Bone Crawler", "description": "A horrifying spider made of fused bones.",
+        "hp": 24, "attack": 7, "defense": 3,
+        "xp_reward": 18, "gold_reward": (4, 12),
+        "loot": [("old_bone", 0.30), ("soul_gem", 0.05)],
+        "floor_range": (1, 2), "dungeon": "sunken_catacombs",
+        "abilities": ["bone_throw", "web_snare"],
+    },
+    "plague_zombie": {
+        "name": "Plague Zombie", "description": "A shambling corpse oozing with disease. Don't let it touch you.",
+        "hp": 28, "attack": 6, "defense": 1,
+        "xp_reward": 16, "gold_reward": (2, 8),
+        "loot": [("old_bone", 0.20)],
+        "floor_range": (1, 2), "dungeon": "sunken_catacombs",
+        "abilities": ["disease_touch", "bite"],
+    },
+    "tomb_scarab": {
+        "name": "Tomb Scarab", "description": "A massive beetle that burrows through bone and stone alike.",
+        "hp": 20, "attack": 7, "defense": 4,
+        "xp_reward": 15, "gold_reward": (3, 9),
+        "loot": [("old_bone", 0.15)],
+        "floor_range": (1, 2), "dungeon": "sunken_catacombs",
+        "abilities": ["bite", "acid_spit"],
+    },
+    "wraith": {
+        "name": "Wraith", "description": "An angry spirit that drains the warmth from your soul.",
+        "hp": 32, "attack": 9, "defense": 2,
+        "xp_reward": 28, "gold_reward": (6, 16),
+        "loot": [("soul_gem", 0.12), ("cracked_phylactery", 0.06)],
+        "floor_range": (1, 3), "dungeon": "sunken_catacombs",
+        "abilities": ["soul_drain", "screech", "shadow_bolt"],
+    },
+    "death_knight": {
+        "name": "Death Knight", "description": "A heavily armored skeleton warrior radiating dark energy.",
+        "hp": 48, "attack": 11, "defense": 5,
+        "xp_reward": 42, "gold_reward": (14, 30),
+        "loot": [("cracked_phylactery", 0.15), ("soul_gem", 0.20)],
+        "floor_range": (2, 3), "dungeon": "sunken_catacombs",
+        "abilities": ["necrotic_blast", "charge", "bone_throw"],
+    },
+
+    # ── GENERIC / OVERWORLD ENEMIES ──────────────────────────────
+    "giant_rat": {
+        "name": "Giant Rat", "description": "An oversized rat with glowing red eyes.",
+        "hp": 12, "attack": 3, "defense": 0,
+        "xp_reward": 8, "gold_reward": (1, 4),
+        "loot": [],
+        "floor_range": (1, 1), "dungeon": "any",
+        "abilities": ["bite"],
+    },
+    "cave_bat": {
+        "name": "Cave Bat", "description": "A large bat that swoops aggressively from the darkness.",
+        "hp": 10, "attack": 4, "defense": 0,
+        "xp_reward": 6, "gold_reward": (1, 3),
+        "loot": [],
+        "floor_range": (1, 1), "dungeon": "any",
+        "abilities": ["screech", "bite"],
+    },
+    "dungeon_spider": {
+        "name": "Dungeon Spider", "description": "A huge spider with dripping fangs.",
+        "hp": 16, "attack": 5, "defense": 1,
+        "xp_reward": 10, "gold_reward": (2, 5),
+        "loot": [("spider_silk", 0.15)],
+        "floor_range": (1, 2), "dungeon": "any",
+        "abilities": ["venom_fang", "web_snare"],
+    },
+    "tunnel_snake": {
+        "name": "Tunnel Snake", "description": "A thick-bodied serpent that lurks in crevices.",
+        "hp": 14, "attack": 5, "defense": 1,
+        "xp_reward": 9, "gold_reward": (1, 4),
+        "loot": [],
+        "floor_range": (1, 1), "dungeon": "any",
+        "abilities": ["bite", "venom_fang"],
+    },
+    "moss_troll": {
+        "name": "Moss Troll", "description": "A hulking green-skinned troll overgrown with moss.",
+        "hp": 55, "attack": 10, "defense": 3,
+        "xp_reward": 38, "gold_reward": (10, 22),
+        "loot": [],
+        "floor_range": (2, 3), "dungeon": "any",
+        "abilities": ["claw_swipe", "charge", "bite"],
+    },
+    "mimic": {
+        "name": "Mimic", "description": "It looked like a treasure chest. It was NOT a treasure chest.",
+        "hp": 30, "attack": 9, "defense": 4,
+        "xp_reward": 35, "gold_reward": (15, 30),
+        "loot": [("raw_diamond", 0.10)],
+        "floor_range": (1, 3), "dungeon": "any",
+        "abilities": ["bite", "acid_spit", "claw_swipe"],
+    },
+}
+
+
+# =====================================================================
+# MINI-BOSS DATABASE - 1 per dungeon (floor 2)
+# =====================================================================
+
+MINI_BOSS_DATABASE = {
+    "crystal_matriarch": {
+        "name": "Crystal Matriarch",
+        "description": "An ancient crystal spider of immense size. Smaller spiders skitter around her.",
+        "hp": 75, "attack": 12, "defense": 5,
+        "xp_reward": 80, "gold_reward": (30, 60),
+        "loot": [("heart_crystal_fragment", 0.50), ("raw_diamond", 0.30)],
+        "abilities": ["crystal_nova", "venom_fang", "web_snare", "crystal_shard"],
+        "dungeon": "crystal_caverns",
+        "intro_text": (
+            "\n" + "=" * 55 + "\n"
+            "  MINI-BOSS: CRYSTAL MATRIARCH\n"
+            "=" * 55 + "\n"
+            "  A massive spider of living crystal descends from the\n"
+            "  ceiling, her body refracting light into deadly beams.\n"
+            "  Smaller crystal spiders skitter around her legs.\n"
+            "=" * 55 + "\n"
+        ),
+    },
+    "iron_warden": {
+        "name": "Iron Warden",
+        "description": "A colossal automaton built to guard the inner halls. Steam hisses from its joints.",
+        "hp": 80, "attack": 13, "defense": 8,
+        "xp_reward": 85, "gold_reward": (35, 65),
+        "loot": [("tempered_steel_ingot", 0.50), ("raw_mithril", 0.25)],
+        "abilities": ["molten_core", "iron_slam", "charge", "fire_breath"],
+        "dungeon": "iron_halls",
+        "intro_text": (
+            "\n" + "=" * 55 + "\n"
+            "  MINI-BOSS: IRON WARDEN\n"
+            "=" * 55 + "\n"
+            "  A massive automaton rises from its station, gears\n"
+            "  grinding with terrible purpose. Steam erupts from\n"
+            "  its joints as its furnace-heart glows red hot.\n"
+            "=" * 55 + "\n"
+        ),
+    },
+    "void_weaver": {
+        "name": "Void Weaver",
+        "description": "A creature that exists partially in another dimension. Reality warps around it.",
+        "hp": 70, "attack": 14, "defense": 4,
+        "xp_reward": 90, "gold_reward": (30, 55),
+        "loot": [("void_heart_fragment", 0.40), ("concentrated_void_essence", 0.50)],
+        "abilities": ["void_rift", "shadow_bolt", "void_touch", "death_gaze"],
+        "dungeon": "shadow_depths",
+        "intro_text": (
+            "\n" + "=" * 55 + "\n"
+            "  MINI-BOSS: VOID WEAVER\n"
+            "=" * 55 + "\n"
+            "  Reality cracks and fractures as a creature phase-shifts\n"
+            "  into existence. It exists in multiple dimensions at once,\n"
+            "  its form flickering between states of being.\n"
+            "=" * 55 + "\n"
+        ),
+    },
+    "bone_colossus": {
+        "name": "Bone Colossus",
+        "description": "Hundreds of skeletons fused into a towering horror. It never stops growing.",
+        "hp": 85, "attack": 12, "defense": 6,
+        "xp_reward": 85, "gold_reward": (35, 60),
+        "loot": [("soul_gem", 0.50), ("cracked_phylactery", 0.35)],
+        "abilities": ["bone_storm", "necrotic_blast", "disease_touch", "bone_throw"],
+        "dungeon": "sunken_catacombs",
+        "intro_text": (
+            "\n" + "=" * 55 + "\n"
+            "  MINI-BOSS: BONE COLOSSUS\n"
+            "=" * 55 + "\n"
+            "  The bones in the walls begin to move. Hundreds of\n"
+            "  skeletons rip free and fuse together into a towering\n"
+            "  monstrosity that fills the chamber. It roars with\n"
+            "  the voices of the dead.\n"
+            "=" * 55 + "\n"
+        ),
+    },
+}
+
+# Map dungeon IDs to their mini-boss
+DUNGEON_MINI_BOSS_MAP = {
+    "crystal_caverns": "crystal_matriarch",
+    "iron_halls": "iron_warden",
+    "shadow_depths": "void_weaver",
+    "sunken_catacombs": "bone_colossus",
+}
+
+
+# =====================================================================
+# BOSS DATABASE
+# =====================================================================
+
+BOSS_DATABASE = {
+    "crystal_titan": {
+        "name": "Crystal Titan",
+        "description": "A massive golem of pure crystal. Its fists could shatter mountains.",
+        "hp": 120, "attack": 15, "defense": 8,
+        "xp_reward": 150, "gold_reward": (50, 100),
+        "loot": [("heart_crystal_fragment", 0.80), ("raw_diamond", 0.50),
+                 ("spectrum_prism", 0.30)],
+        "abilities": ["crystal_slam", "regenerate", "crystal_shard", "iron_slam"],
+        "dungeon": "crystal_caverns",
+        "intro_text": (
+            "\n" + "=" * 55 + "\n"
+            "  BOSS ENCOUNTER: CRYSTAL TITAN\n"
+            "=" * 55 + "\n"
+            "  The ground trembles as a colossal figure of living\n"
+            "  crystal rises from the floor. Light refracts through\n"
+            "  its body in blinding rainbows. It regards you with\n"
+            "  eyes like blazing diamonds.\n"
+            "=" * 55 + "\n"
+        ),
+    },
+    "iron_forgemaster": {
+        "name": "Iron Forgemaster",
+        "description": "A dwarven automaton wreathed in flames. Its hammer rings like thunder.",
+        "hp": 130, "attack": 17, "defense": 10,
+        "xp_reward": 160, "gold_reward": (60, 120),
+        "loot": [("eternal_ember", 0.70), ("raw_mithril", 0.40),
+                 ("forgemaster_hammer", 0.25)],
+        "abilities": ["flame_strike", "fortify", "iron_slam", "fire_breath"],
+        "dungeon": "iron_halls",
+        "intro_text": (
+            "\n" + "=" * 55 + "\n"
+            "  BOSS ENCOUNTER: IRON FORGEMASTER\n"
+            "=" * 55 + "\n"
+            "  A massive dwarven construct slams its hammer on the\n"
+            "  anvil, sending sparks cascading across the chamber.\n"
+            "  Molten iron flows through its joints like blood.\n"
+            "  It turns to face you with furnace-bright eyes.\n"
+            "=" * 55 + "\n"
+        ),
+    },
+    "shadow_sovereign": {
+        "name": "Shadow Sovereign",
+        "description": "The lord of shadows. Darkness itself given terrible form.",
+        "hp": 110, "attack": 18, "defense": 6,
+        "xp_reward": 170, "gold_reward": (50, 110),
+        "loot": [("sovereign_shadow_crown", 0.60), ("concentrated_void_essence", 0.70),
+                 ("void_heart_fragment", 0.40)],
+        "abilities": ["shadow_strike", "darkness", "void_touch", "drain_life"],
+        "dungeon": "shadow_depths",
+        "intro_text": (
+            "\n" + "=" * 55 + "\n"
+            "  BOSS ENCOUNTER: SHADOW SOVEREIGN\n"
+            "=" * 55 + "\n"
+            "  The shadows in the room coalesce into a towering\n"
+            "  figure wearing a crown of pure darkness. Its voice\n"
+            "  echoes from everywhere and nowhere at once:\n"
+            '  "You dare enter MY domain?"\n'
+            "=" * 55 + "\n"
+        ),
+    },
+    "lich_king": {
+        "name": "Lich King",
+        "description": "An ancient undead sorcerer. Death magic crackles around his skeletal form.",
+        "hp": 140, "attack": 16, "defense": 7,
+        "xp_reward": 180, "gold_reward": (70, 130),
+        "loot": [("lich_crown_fragment", 0.70), ("soul_gem", 0.60),
+                 ("cracked_phylactery", 0.50), ("blood_ruby", 0.30)],
+        "abilities": ["death_bolt", "summon_skeleton", "necrotic_blast", "petrify_gaze"],
+        "dungeon": "sunken_catacombs",
+        "intro_text": (
+            "\n" + "=" * 55 + "\n"
+            "  BOSS ENCOUNTER: LICH KING\n"
+            "=" * 55 + "\n"
+            "  A skeletal figure draped in tattered robes rises\n"
+            "  from a throne of bones. Green fire burns in its\n"
+            "  empty eye sockets. It raises a bony hand and the\n"
+            "  temperature plummets.\n"
+            '  "Another fool seeks my crown..."\n'
+            "=" * 55 + "\n"
+        ),
+    },
+}
+
+DUNGEON_BOSS_MAP = {
+    "crystal_caverns": "crystal_titan",
+    "iron_halls": "iron_forgemaster",
+    "shadow_depths": "shadow_sovereign",
+    "sunken_catacombs": "lich_king",
+}
+
+ENEMY_SPAWN_CHANCE = {
+    1: 0.25,
+    2: 0.35,
+    3: 0.40,
+}
+
+
+# =====================================================================
+# COMBAT STATE
+# =====================================================================
+
+class CombatState:
+    """Tracks the state of an active combat encounter."""
+
+    def __init__(self, enemy_data, is_boss=False, is_mini_boss=False, level=1):
+        self.enemy_id = enemy_data.get("id", "unknown")
+        self.enemy_name = enemy_data["name"]
+        self.enemy_description = enemy_data["description"]
+        self.level = level
+        self.max_hp = enemy_data["hp"]
+        self.hp = enemy_data["hp"]
+        self.attack = enemy_data["attack"]
+        self.defense = enemy_data["defense"]
+        self.xp_reward = enemy_data["xp_reward"]
+        self.gold_reward = enemy_data["gold_reward"]
+        self.loot = list(enemy_data.get("loot", []))
+        self.abilities = list(enemy_data.get("abilities", []))
+        self.is_boss = is_boss
+        self.is_mini_boss = is_mini_boss
+        self.intro_text = enemy_data.get("intro_text", "")
+        self.turn = 0
+        self.player_defending = False
+        self.enemy_buff_defense = 0
+        self.player_fled = False
+
+        # Status effects: list of {"type": "poison", "dmg": 4, "duration": 3}
+        self.player_statuses = []
+        self.enemy_statuses = []
+
+        # Adrenaline buff from blocking big hits
+        self.player_adrenaline = 0  # bonus damage next attack
+
+    def to_dict(self):
+        return {
+            "enemy_id": self.enemy_id,
+            "enemy_name": self.enemy_name,
+            "enemy_description": self.enemy_description,
+            "level": self.level,
+            "max_hp": self.max_hp,
+            "hp": self.hp,
+            "attack": self.attack,
+            "defense": self.defense,
+            "xp_reward": self.xp_reward,
+            "gold_reward": self.gold_reward,
+            "loot": self.loot,
+            "abilities": self.abilities,
+            "is_boss": self.is_boss,
+            "is_mini_boss": self.is_mini_boss,
+            "turn": self.turn,
+            "player_defending": self.player_defending,
+            "enemy_buff_defense": self.enemy_buff_defense,
+            "player_statuses": self.player_statuses,
+            "enemy_statuses": self.enemy_statuses,
+            "player_adrenaline": self.player_adrenaline,
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        cs = cls.__new__(cls)
+        cs.enemy_id = data.get("enemy_id", "unknown")
+        cs.enemy_name = data.get("enemy_name", "Enemy")
+        cs.enemy_description = data.get("enemy_description", "")
+        cs.level = data.get("level", 1)
+        cs.max_hp = data.get("max_hp", 30)
+        cs.hp = data.get("hp", 30)
+        cs.attack = data.get("attack", 5)
+        cs.defense = data.get("defense", 2)
+        cs.xp_reward = data.get("xp_reward", 10)
+        cs.gold_reward = data.get("gold_reward", (5, 15))
+        cs.loot = data.get("loot", [])
+        cs.abilities = data.get("abilities", [])
+        cs.is_boss = data.get("is_boss", False)
+        cs.is_mini_boss = data.get("is_mini_boss", False)
+        cs.intro_text = ""
+        cs.turn = data.get("turn", 0)
+        cs.player_defending = data.get("player_defending", False)
+        cs.enemy_buff_defense = data.get("enemy_buff_defense", 0)
+        cs.player_fled = False
+        cs.player_statuses = data.get("player_statuses", [])
+        cs.enemy_statuses = data.get("enemy_statuses", [])
+        cs.player_adrenaline = data.get("player_adrenaline", 0)
+        return cs
+
+
+# =====================================================================
+# COMBAT LOGIC
+# =====================================================================
+
+def calculate_crit(player):
+    """
+    Check if the player's attack is a critical hit.
+    Base 5% + 2% per dexterity + 1% per perception + crit_chance_bonus from skills.
+    Returns (is_crit: bool, multiplier: float)
+    """
+    dex = player.stats.get("dexterity", 0)
+    perc = player.stats.get("perception", 0)
+    bonus = player.stats.get("crit_chance_bonus", 0)
+
+    crit_chance = min(0.50, 0.05 + dex * 0.02 + perc * 0.01 + bonus)
+
+    if random.random() < crit_chance:
+        return True, 1.8
+    return False, 1.0
+
+
+def calculate_player_damage(player, combat, multiplier=1.0):
+    """
+    Calculate damage the player deals to the enemy.
+    Strength determines base damage with some randomness.
+    """
+    strength = player.stats.get("strength", 0)
+    base = max(1, strength)
+    low = max(1, int(base * 0.75))
+    high = max(low + 1, int(base * 1.25) + 1)
+    raw_damage = random.randint(low, high)
+
+    # Apply multiplier (from abilities, crits, etc.)
+    raw_damage = int(raw_damage * multiplier)
+
+    # Apply adrenaline bonus
+    if combat.player_adrenaline > 0:
+        raw_damage += combat.player_adrenaline
+        combat.player_adrenaline = 0
+
+    # Apply enemy defense
+    effective_defense = combat.defense + combat.enemy_buff_defense
+    reduction = effective_defense * 0.04
+    damage = max(1, int(raw_damage * max(0.20, 1 - reduction)))
+
+    return damage
+
+
+def calculate_enemy_damage(player, combat):
+    """
+    Calculate damage the enemy deals to the player.
+    Accounts for freeze status on enemy.
+    """
+    base = combat.attack
+    low = max(1, int(base * 0.80))
+    high = max(low + 1, int(base * 1.20) + 1)
+    raw_damage = random.randint(low, high)
+
+    # Check if enemy is frozen (reduces attack)
+    for status in combat.enemy_statuses:
+        if status["type"] == "freeze":
+            se = STATUS_EFFECTS.get("freeze", {})
+            reduction_pct = se.get("reduction", 0.30)
+            raw_damage = max(1, int(raw_damage * (1 - reduction_pct)))
+            break
+
+    # Player defense reduces damage
+    defense = player.stats.get("defense", 0)
+    reduction = defense * 0.03
+    damage = max(1, int(raw_damage * max(0.25, 1 - reduction)))
+
+    # Defending halves damage
+    if combat.player_defending:
+        damage = max(1, damage // 2)
+
+    return damage
+
+
+def _tick_status_effects(statuses, target_name):
+    """
+    Process status effects at start of turn.
+    Returns (messages, total_damage, is_stunned)
+    """
+    messages = []
+    total_damage = 0
+    is_stunned = False
+    expired = []
+
+    for i, status in enumerate(statuses):
+        se = STATUS_EFFECTS.get(status["type"], {})
+        icon = se.get("icon", "")
+
+        if se.get("type") == "dot":
+            dmg = status.get("dmg", 0)
+            total_damage += dmg
+            msg = se.get("message_tick", "takes {dmg} damage!").format(dmg=dmg)
+            messages.append(f"  {icon} {target_name} {msg}")
+        elif se.get("type") == "disable":
+            is_stunned = True
+            messages.append(f"  {icon} {target_name} {se.get('message_tick', 'is stunned!')}")
+        elif se.get("type") == "debuff":
+            messages.append(f"  {icon} {target_name} {se.get('message_tick', 'is affected!')}")
+
+        status["duration"] -= 1
+        if status["duration"] <= 0:
+            expired.append(i)
+            expire_msg = se.get("message_expire", "")
+            if expire_msg:
+                messages.append(f"  {icon} {target_name} {expire_msg}")
+
+    for i in reversed(expired):
+        statuses.pop(i)
+
+    return messages, total_damage, is_stunned
+
+
+def _apply_status(statuses, status_type, dmg=0, duration=2):
+    """Add a status effect, stacking duration if already present."""
+    for s in statuses:
+        if s["type"] == status_type:
+            s["duration"] = max(s["duration"], duration)
+            if dmg > 0:
+                s["dmg"] = max(s.get("dmg", 0), dmg)
+            return
+    statuses.append({"type": status_type, "dmg": dmg, "duration": duration})
+
+
+def _process_enemy_ability(player, combat):
+    """
+    Enemy uses one of its abilities.
+    Returns message string.
+    """
+    if not combat.abilities:
+        return ""
+
+    ability_id = random.choice(combat.abilities)
+    ab = ENEMY_ABILITIES.get(ability_id)
+    if not ab:
+        return ""
+
+    result = ""
+    ab_type = ab.get("type", "damage")
+    text = ab.get("text", "attacks!")
+
+    if ab_type == "damage":
+        low, high = ab["value"]
+        dmg = random.randint(low, high)
+        if combat.player_defending:
+            dmg = max(1, dmg // 2)
+        player.stats["health"] = player.stats.get("health", 100) - dmg
+        result = f"\n  {combat.enemy_name} {text} ({dmg} damage)"
+
+    elif ab_type == "damage_status":
+        low, high = ab["value"]
+        dmg = random.randint(low, high)
+        if combat.player_defending:
+            dmg = max(1, dmg // 2)
+        player.stats["health"] = player.stats.get("health", 100) - dmg
+        status = ab.get("status", "poison")
+        status_dmg = ab.get("status_dmg", 3)
+        status_dur = ab.get("status_dur", 2)
+        _apply_status(combat.player_statuses, status, status_dmg, status_dur)
+        se = STATUS_EFFECTS.get(status, {})
+        icon = se.get("icon", "")
+        result = f"\n  {combat.enemy_name} {text} ({dmg} damage)"
+        result += f"\n  {icon} You {se.get('message_apply', 'are afflicted!')}"
+
+    elif ab_type == "status":
+        status = ab.get("status", "stun")
+        status_dur = ab.get("status_dur", 1)
+        _apply_status(combat.player_statuses, status, 0, status_dur)
+        se = STATUS_EFFECTS.get(status, {})
+        icon = se.get("icon", "")
+        result = f"\n  {combat.enemy_name} {text}"
+        result += f"\n  {icon} You {se.get('message_apply', 'are afflicted!')}"
+
+    elif ab_type == "damage_stun":
+        low, high = ab["value"]
+        dmg = random.randint(low, high)
+        if combat.player_defending:
+            dmg = max(1, dmg // 2)
+        player.stats["health"] = player.stats.get("health", 100) - dmg
+        stun_dur = ab.get("stun_dur", 1)
+        _apply_status(combat.player_statuses, "stun", 0, stun_dur)
+        result = f"\n  {combat.enemy_name} {text} ({dmg} damage)"
+        result += f"\n  💫 You are stunned!"
+
+    elif ab_type == "heal":
+        low, high = ab["value"]
+        heal = random.randint(low, high)
+        combat.hp = min(combat.max_hp, combat.hp + heal)
+        result = f"\n  ✨ {combat.enemy_name} {text} (+{heal} HP)"
+
+    elif ab_type == "damage_heal":
+        low, high = ab["value"]
+        dmg = random.randint(low, high)
+        if combat.player_defending:
+            dmg = max(1, dmg // 2)
+        player.stats["health"] = player.stats.get("health", 100) - dmg
+        combat.hp = min(combat.max_hp, combat.hp + dmg)
+        result = f"\n  {combat.enemy_name} {text} ({dmg} damage, heals {dmg} HP)"
+
+    elif ab_type == "buff_defense":
+        buff_val = ab.get("value", 2)
+        combat.enemy_buff_defense += buff_val
+        result = f"\n  🛡️ {combat.enemy_name} {text} (+{buff_val} Defense)"
+
+    return result
+
+
+def _enemy_turn(player, combat):
+    """
+    Process the enemy's turn with AI decision-making.
+    Returns narrative string.
+
+    Enemy AI chances:
+      Bosses/Mini-bosses: 35% basic attack, 40% ability, 15% heavy attack, 10% defend
+      Regular enemies:    40% basic attack, 30% ability, 20% heavy attack, 10% nothing special
+    """
+    result = ""
+
+    # Check if enemy is stunned
+    enemy_stun_msgs, _, enemy_stunned = _tick_status_effects(
+        combat.enemy_statuses, f"The {combat.enemy_name}"
+    )
+    if enemy_stun_msgs:
+        result += "\n" + "\n".join(enemy_stun_msgs)
+
+    if enemy_stunned:
+        result += f"\n  The {combat.enemy_name} is stunned and cannot act!"
+        return result
+
+    # Enemy DOT damage (bleed, burn, poison on enemy)
+    for status in combat.enemy_statuses:
+        se = STATUS_EFFECTS.get(status["type"], {})
+        if se.get("type") == "dot" and status.get("dmg", 0) > 0:
+            combat.hp -= status["dmg"]
+
+    # AI decision
+    roll = random.random()
+
+    if combat.is_boss or combat.is_mini_boss:
+        if roll < 0.35:
+            # Basic attack
+            enemy_dmg = calculate_enemy_damage(player, combat)
+            player.stats["health"] = player.stats.get("health", 100) - enemy_dmg
+            result += f"\n  The {combat.enemy_name} attacks you for {enemy_dmg} damage!"
+        elif roll < 0.75:
+            # Use ability
+            ab_msg = _process_enemy_ability(player, combat)
+            if ab_msg:
+                result += ab_msg
+            else:
+                enemy_dmg = calculate_enemy_damage(player, combat)
+                player.stats["health"] = player.stats.get("health", 100) - enemy_dmg
+                result += f"\n  The {combat.enemy_name} attacks you for {enemy_dmg} damage!"
+        elif roll < 0.90:
+            # Heavy attack (1.5x damage)
+            base_dmg = calculate_enemy_damage(player, combat)
+            heavy_dmg = max(1, int(base_dmg * 1.5))
+            player.stats["health"] = player.stats.get("health", 100) - heavy_dmg
+            result += f"\n  The {combat.enemy_name} winds up a HEAVY attack! ({heavy_dmg} damage!)"
+        else:
+            # Defend / heal
+            if combat.hp < combat.max_hp * 0.5:
+                heal = random.randint(5, 15)
+                combat.hp = min(combat.max_hp, combat.hp + heal)
+                result += f"\n  The {combat.enemy_name} retreats and recovers! (+{heal} HP)"
+            else:
+                combat.enemy_buff_defense += 1
+                result += f"\n  The {combat.enemy_name} takes a defensive stance! (+1 Def)"
+    else:
+        # Regular enemy AI
+        if roll < 0.40:
+            enemy_dmg = calculate_enemy_damage(player, combat)
+            player.stats["health"] = player.stats.get("health", 100) - enemy_dmg
+            result += f"\n  The {combat.enemy_name} attacks you for {enemy_dmg} damage!"
+        elif roll < 0.70:
+            ab_msg = _process_enemy_ability(player, combat)
+            if ab_msg:
+                result += ab_msg
+            else:
+                enemy_dmg = calculate_enemy_damage(player, combat)
+                player.stats["health"] = player.stats.get("health", 100) - enemy_dmg
+                result += f"\n  The {combat.enemy_name} attacks you for {enemy_dmg} damage!"
+        elif roll < 0.90:
+            base_dmg = calculate_enemy_damage(player, combat)
+            heavy_dmg = max(1, int(base_dmg * 1.3))
+            player.stats["health"] = player.stats.get("health", 100) - heavy_dmg
+            result += f"\n  The {combat.enemy_name} strikes hard! ({heavy_dmg} damage)"
+        else:
+            # Enemy hesitates / weak attack
+            weak_dmg = max(1, calculate_enemy_damage(player, combat) // 2)
+            player.stats["health"] = player.stats.get("health", 100) - weak_dmg
+            result += f"\n  The {combat.enemy_name} hesitates... (glancing blow: {weak_dmg} damage)"
+
+    return result
+
+
+def process_player_attack(player, combat):
+    """
+    Process the player's basic attack action.
+    Includes critical hits and status effect ticking.
+    """
+    combat.turn += 1
+    combat.player_defending = False
+
+    result = ""
+
+    # Tick player status effects at start of turn
+    player_status_msgs, player_dot_dmg, player_stunned = _tick_status_effects(
+        combat.player_statuses, "You"
+    )
+    if player_status_msgs:
+        result += "\n".join(player_status_msgs) + "\n"
+
+    if player_dot_dmg > 0:
+        player.stats["health"] = player.stats.get("health", 100) - player_dot_dmg
+
+    if player_stunned:
+        result += "\n  You are stunned and cannot attack this turn!"
+        # Enemy still attacks
+        enemy_result = _enemy_turn(player, combat)
+        result += enemy_result
+        return result + "\n"
+
+    # Check for critical hit
+    is_crit, crit_mult = calculate_crit(player)
+
+    # Player attacks
+    player_dmg = calculate_player_damage(player, combat, multiplier=crit_mult)
+    combat.hp -= player_dmg
+
+    if is_crit:
+        result += f"\n  ⚔️ CRITICAL HIT! You strike the {combat.enemy_name} for {player_dmg} damage!"
+    else:
+        result += f"\n  ⚔️ You strike the {combat.enemy_name} for {player_dmg} damage!"
+
+    if combat.hp <= 0:
+        combat.hp = 0
+        return result + "\n"
+
+    # Enemy turn
+    enemy_result = _enemy_turn(player, combat)
+    result += enemy_result
+
+    return result + "\n"
+
+
+def process_player_defend(player, combat):
+    """
+    Process the player's defend action.
+    - Halves incoming damage
+    - Constitution heals
+    - Counterattack chance based on class
+    - Adrenaline buff if blocking a big hit
+    """
+    combat.turn += 1
+    combat.player_defending = True
+
+    result = ""
+
+    # Tick player status effects
+    player_status_msgs, player_dot_dmg, player_stunned = _tick_status_effects(
+        combat.player_statuses, "You"
+    )
+    if player_status_msgs:
+        result += "\n".join(player_status_msgs) + "\n"
+
+    if player_dot_dmg > 0:
+        player.stats["health"] = player.stats.get("health", 100) - player_dot_dmg
+
+    if player_stunned:
+        result += "\n  You are stunned and cannot defend properly!"
+        combat.player_defending = False
+        enemy_result = _enemy_turn(player, combat)
+        result += enemy_result
+        return result + "\n"
+
+    result += "\n  🛡️ You raise your guard!"
+
+    # Enemy turn (will deal halved damage due to player_defending)
+    hp_before = player.stats.get("health", 100)
+    enemy_result = _enemy_turn(player, combat)
+    result += enemy_result
+    hp_after = player.stats.get("health", 100)
+
+    damage_taken = max(0, hp_before - hp_after)
+
+    # Constitution heal
+    con = player.stats.get("constitution", 0)
+    if con > 0:
+        heal = min(con, player.stats.get("health_max", 100) - player.stats.get("health", 0))
+        if heal > 0:
+            player.stats["health"] = player.stats.get("health", 0) + heal
+            result += f"\n  💚 Your fortitude restores {heal} HP!"
+
+    # Counterattack chance (20% base + 2% per strength for warrior, 3% per dex for rogue)
+    player_class = player.stats.get("class", "warrior")
+    str_val = player.stats.get("strength", 0)
+    dex_val = player.stats.get("dexterity", 0)
+
+    if player_class == "warrior":
+        counter_chance = min(0.45, 0.20 + str_val * 0.02)
+    elif player_class == "rogue":
+        counter_chance = min(0.50, 0.15 + dex_val * 0.03)
+    else:
+        counter_chance = min(0.30, 0.10 + str_val * 0.01)
+
+    if random.random() < counter_chance and combat.hp > 0:
+        counter_dmg = max(1, calculate_player_damage(player, combat, multiplier=0.6))
+        combat.hp -= counter_dmg
+        result += f"\n  ⚡ COUNTERATTACK! You strike back for {counter_dmg} damage!"
+
+    # Adrenaline from big blocks (damage blocked > 8)
+    if damage_taken > 0 and hp_before - hp_after < damage_taken * 2:
+        blocked_amount = damage_taken  # the halved amount
+        if blocked_amount >= 4:
+            adrenaline = min(blocked_amount, 8)
+            combat.player_adrenaline += adrenaline
+            result += f"\n  🔥 Adrenaline surges! (+{adrenaline} bonus damage on next attack)"
+
+    return result + "\n"
+
+
+def process_player_flee(player, combat):
+    """
+    Attempt to flee from combat.
+    Cannot flee from bosses. Mini-bosses have reduced flee chance.
+    """
+    combat.turn += 1
+    combat.player_defending = False
+
+    if combat.is_boss:
+        enemy_dmg = calculate_enemy_damage(player, combat)
+        player.stats["health"] = player.stats.get("health", 100) - enemy_dmg
+        return False, (
+            f"\n  You cannot flee from the {combat.enemy_name}!"
+            f"\n  It strikes you as you turn - {enemy_dmg} damage!\n"
+        )
+
+    dex = player.stats.get("dexterity", 0)
+    flee_chance = min(0.85, 0.40 + dex * 0.05)
+
+    if combat.is_mini_boss:
+        flee_chance *= 0.6  # Much harder to flee mini-bosses
+
+    if random.random() < flee_chance:
+        combat.player_fled = True
+        return True, "\n  💨 You successfully flee from combat!\n"
+    else:
+        enemy_dmg = calculate_enemy_damage(player, combat)
+        player.stats["health"] = player.stats.get("health", 100) - enemy_dmg
+        return False, (
+            f"\n  ❌ You fail to escape!"
+            f"\n  The {combat.enemy_name} strikes you - {enemy_dmg} damage!\n"
+        )
+
+
+def process_ability_in_combat(player, combat, ability_data):
+    """
+    Process a skill tree ability used in combat.
+    Handles combat_damage, combat_stun, combat_poison, etc.
+    Returns combat narrative string.
+    """
+    combat.turn += 1
+    combat.player_defending = False
+
+    result = ""
+
+    # Tick player status effects
+    status_msgs, dot_dmg, player_stunned = _tick_status_effects(
+        combat.player_statuses, "You"
+    )
+    if status_msgs:
+        result += "\n".join(status_msgs) + "\n"
+    if dot_dmg > 0:
+        player.stats["health"] = player.stats.get("health", 100) - dot_dmg
+
+    if player_stunned:
+        result += "\n  You are stunned and cannot use abilities!"
+        enemy_result = _enemy_turn(player, combat)
+        result += enemy_result
+        return result + "\n"
+
+    effect = ability_data.get("effect", "")
+    value = ability_data.get("value", 1.0)
+
+    if effect == "combat_damage":
+        # Pure damage with multiplier
+        dmg = calculate_player_damage(player, combat, multiplier=value)
+        combat.hp -= dmg
+        result += f"\n  ⚔️ You deal {dmg} damage!"
+
+    elif effect == "combat_crit_attack":
+        # Guaranteed crit with multiplier
+        dmg = calculate_player_damage(player, combat, multiplier=value)
+        combat.hp -= dmg
+        result += f"\n  ⚔️ GUARANTEED CRITICAL! You deal {dmg} damage!"
+
+    elif effect == "combat_stun":
+        # Damage + stun
+        dmg = calculate_player_damage(player, combat, multiplier=value)
+        combat.hp -= dmg
+        stun_dur = ability_data.get("duration", 1)
+        _apply_status(combat.enemy_statuses, "stun", 0, stun_dur)
+        result += f"\n  ⚔️ You deal {dmg} damage!"
+        result += f"\n  💫 The {combat.enemy_name} is STUNNED for {stun_dur} turn(s)!"
+
+    elif effect == "combat_poison":
+        # Normal damage + poison DOT
+        dmg = calculate_player_damage(player, combat, multiplier=1.0)
+        combat.hp -= dmg
+        poison_dmg = ability_data.get("value", 4)
+        poison_dur = ability_data.get("duration", 3)
+        _apply_status(combat.enemy_statuses, "poison", poison_dmg, poison_dur)
+        result += f"\n  ⚔️ You deal {dmg} damage!"
+        result += f"\n  ☠️ The {combat.enemy_name} is POISONED! ({poison_dmg}/turn for {poison_dur} turns)"
+
+    elif effect == "combat_freeze_attack":
+        # Damage + freeze debuff
+        dmg = calculate_player_damage(player, combat, multiplier=value)
+        combat.hp -= dmg
+        freeze_dur = ability_data.get("duration", 2)
+        _apply_status(combat.enemy_statuses, "freeze", 0, freeze_dur)
+        result += f"\n  ⚔️ You deal {dmg} damage!"
+        result += f"\n  ❄️ The {combat.enemy_name} is FROZEN! (-30% attack for {freeze_dur} turns)"
+
+    elif effect == "combat_damage_burn":
+        # Damage + burn DOT
+        dmg = calculate_player_damage(player, combat, multiplier=value)
+        combat.hp -= dmg
+        burn_dmg = ability_data.get("burn", 3)
+        burn_dur = ability_data.get("duration", 2)
+        _apply_status(combat.enemy_statuses, "burn", burn_dmg, burn_dur)
+        result += f"\n  ⚔️ You deal {dmg} damage!"
+        result += f"\n  🔥 The {combat.enemy_name} is BURNING! ({burn_dmg}/turn for {burn_dur} turns)"
+
+    elif effect == "combat_damage_stun":
+        # Damage + stun
+        dmg = calculate_player_damage(player, combat, multiplier=value)
+        combat.hp -= dmg
+        stun_dur = ability_data.get("duration", 1)
+        _apply_status(combat.enemy_statuses, "stun", 0, stun_dur)
+        result += f"\n  ⚔️ You deal {dmg} damage!"
+        result += f"\n  💫 The {combat.enemy_name} is STUNNED for {stun_dur} turn(s)!"
+
+    elif effect == "combat_heal":
+        # Heal the player
+        heal_val = int(value)
+        hp = player.stats.get("health", 100)
+        hp_max = player.stats.get("health_max", 100)
+        actual_heal = min(heal_val, hp_max - hp)
+        player.stats["health"] = hp + actual_heal
+        result += f"\n  💚 You heal for {actual_heal} HP!"
+
+    elif effect == "combat_execute":
+        # Instant kill below threshold, otherwise big damage
+        threshold = value  # e.g. 0.30 = 30% HP
+        enemy_hp_pct = combat.hp / combat.max_hp if combat.max_hp > 0 else 1.0
+        if enemy_hp_pct <= threshold:
+            combat.hp = 0
+            result += f"\n  💀 EXECUTE! The {combat.enemy_name} is slain instantly!"
+        else:
+            dmg = calculate_player_damage(player, combat, multiplier=3.0)
+            combat.hp -= dmg
+            result += f"\n  ⚔️ You deal {dmg} massive damage!"
+
+    elif effect == "combat_bleed_attack":
+        # Damage + bleed DOT
+        dmg = calculate_player_damage(player, combat, multiplier=value)
+        combat.hp -= dmg
+        bleed_dmg = ability_data.get("bleed", 5)
+        bleed_dur = ability_data.get("duration", 3)
+        _apply_status(combat.enemy_statuses, "bleed", bleed_dmg, bleed_dur)
+        result += f"\n  ⚔️ You deal {dmg} damage!"
+        result += f"\n  🩸 The {combat.enemy_name} is BLEEDING! ({bleed_dmg}/turn for {bleed_dur} turns)"
+
+    elif effect == "guaranteed_flee":
+        # Guaranteed flee (unless boss)
+        if combat.is_boss:
+            result += f"\n  The smoke clears... The {combat.enemy_name} cannot be escaped!"
+        else:
+            combat.player_fled = True
+            result += "\n  💨 You vanish in a cloud of smoke and escape!"
+            return result + "\n"
+
+    elif effect == "buff_attack":
+        # Temporary strength boost
+        boost = int(value)
+        duration = ability_data.get("duration", 3)
+        active_effects = player.state.get("active_effects", {})
+        active_effects["attack_boost"] = {"value": boost, "duration": duration}
+        player.state["active_effects"] = active_effects
+        player.stats["strength"] = player.stats.get("strength", 0) + boost
+        result += f"\n  ⚡ Your strength surges by {boost} for {duration} turns!"
+
+    elif effect == "extra_gold":
+        # Double gold on next kill
+        active_effects = player.state.get("active_effects", {})
+        active_effects["double_gold"] = int(value)
+        player.state["active_effects"] = active_effects
+        result += f"\n  💰 Next enemy will drop {value:.0f}x gold!"
+
+    elif effect == "temp_defense":
+        # Temporary defense boost
+        boost = int(value)
+        duration = ability_data.get("duration", 4)
+        active_effects = player.state.get("active_effects", {})
+        active_effects["defense_boost"] = {"value": boost, "duration": duration}
+        player.state["active_effects"] = active_effects
+        player.stats["defense"] = player.stats.get("defense", 0) + boost
+        result += f"\n  🛡️ Your defense surges by {boost} for {duration} turns!"
+
+    # Check if enemy died from ability
+    if combat.hp <= 0:
+        combat.hp = 0
+        return result + "\n"
+
+    # Enemy turn
+    enemy_result = _enemy_turn(player, combat)
+    result += enemy_result
+
+    return result + "\n"
+
+
+def get_combat_status(player, combat):
+    """Get the current combat status display."""
+    pct = max(0, combat.hp / combat.max_hp)
+    bar_len = 20
+    filled = int(pct * bar_len)
+    bar = "█" * filled + "░" * (bar_len - filled)
+
+    php = player.stats.get("health", 0)
+    php_max = player.stats.get("health_max", 100)
+    ppct = max(0, php / php_max) if php_max > 0 else 0
+    pfilled = int(ppct * 15)
+    pbar = "█" * pfilled + "░" * (15 - pfilled)
+
+    boss_marker = ""
+    if combat.is_boss:
+        boss_marker = "  BOSS"
+    elif combat.is_mini_boss:
+        boss_marker = "  MINI-BOSS"
+
+    result = "\n" + "-" * 50 + "\n"
+    result += f"  {combat.enemy_name} [Lv.{combat.level}]{boss_marker}\n"
+    result += f"  HP: [{bar}] {combat.hp}/{combat.max_hp}\n"
+
+    # Show enemy status effects
+    enemy_statuses = []
+    for s in combat.enemy_statuses:
+        se = STATUS_EFFECTS.get(s["type"], {})
+        icon = se.get("icon", "")
+        enemy_statuses.append(f"{icon}{se.get('name', s['type'])}({s['duration']})")
+    if enemy_statuses:
+        result += f"  Status: {' '.join(enemy_statuses)}\n"
+
+    result += f"\n  You\n"
+    result += f"  HP: [{pbar}] {php}/{php_max}\n"
+
+    # Show player status effects
+    player_statuses = []
+    for s in combat.player_statuses:
+        se = STATUS_EFFECTS.get(s["type"], {})
+        icon = se.get("icon", "")
+        player_statuses.append(f"{icon}{se.get('name', s['type'])}({s['duration']})")
+    if player_statuses:
+        result += f"  Status: {' '.join(player_statuses)}\n"
+
+    # Show adrenaline
+    if combat.player_adrenaline > 0:
+        result += f"  🔥 Adrenaline: +{combat.player_adrenaline} bonus damage\n"
+
+    result += "-" * 50 + "\n"
+    result += "  Commands: attack | defend | flee"
+    if hasattr(player, 'state') and player.state.get("unlocked_skills"):
+        result += " | ability <name>"
+    result += "\n"
+    return result
+
+
+def generate_victory_result(player, combat):
+    """Generate the victory message, award XP and loot."""
+    result = "\n" + "=" * 55 + "\n"
+    if combat.is_boss:
+        result += f"  BOSS DEFEATED: {combat.enemy_name}!\n"
+    elif combat.is_mini_boss:
+        result += f"  MINI-BOSS DEFEATED: {combat.enemy_name}!\n"
+    else:
+        result += f"  VICTORY! {combat.enemy_name} defeated!\n"
+    result += "=" * 55 + "\n"
+
+    # Gold reward
+    if isinstance(combat.gold_reward, (list, tuple)) and len(combat.gold_reward) == 2:
+        gold = random.randint(combat.gold_reward[0], combat.gold_reward[1])
+    else:
+        gold = int(combat.gold_reward) if combat.gold_reward else 0
+
+    # Check for double gold effect
+    active_effects = player.state.get("active_effects", {})
+    gold_mult = active_effects.get("double_gold", 1)
+    if gold_mult > 1:
+        gold = int(gold * gold_mult)
+        del active_effects["double_gold"]
+        result += f"  💰 Gold (x{gold_mult}): +{gold}\n"
+    elif gold > 0:
+        result += f"  💰 Gold: +{gold}\n"
+
+    if gold > 0:
+        player.stats["gold"] = player.stats.get("gold", 0) + gold
+
+    # Loot drops
+    dropped = []
+    for item_id, chance in combat.loot:
+        if random.random() < chance:
+            player.inventory[item_id] = player.inventory.get(item_id, 0) + 1
+            nice = item_id.replace("_", " ")
+            dropped.append(nice)
+    if dropped:
+        result += "  Loot:\n"
+        for d in dropped:
+            result += f"     - {d}\n"
+
+    result += "=" * 55 + "\n"
+
+    # Clear combat status effects
+    combat.player_statuses.clear()
+    combat.enemy_statuses.clear()
+
+    return result
+
+
+def get_enemies_for_dungeon(dungeon_id, floor_num):
+    """Get a list of eligible enemy IDs for a dungeon + floor."""
+    eligible = []
+    for eid, edata in ENEMY_DATABASE.items():
+        dun = edata.get("dungeon", "any")
+        frange = edata.get("floor_range", (1, 3))
+        if (dun == dungeon_id or dun == "any") and frange[0] <= floor_num <= frange[1]:
+            eligible.append(eid)
+    for eid, edata in ENEMY_DATABASE.items():
+        if edata.get("dungeon") == "any" and eid not in eligible:
+            eligible.append(eid)
+    return eligible
+
+
+def get_boss_for_dungeon(dungeon_id):
+    """Get the boss data for a dungeon, or None."""
+    boss_id = DUNGEON_BOSS_MAP.get(dungeon_id)
+    if boss_id and boss_id in BOSS_DATABASE:
+        data = dict(BOSS_DATABASE[boss_id])
+        data["id"] = boss_id
+        return data
+    return None
+
+
+def get_mini_boss_for_dungeon(dungeon_id):
+    """Get the mini-boss data for a dungeon, or None."""
+    mb_id = DUNGEON_MINI_BOSS_MAP.get(dungeon_id)
+    if mb_id and mb_id in MINI_BOSS_DATABASE:
+        data = dict(MINI_BOSS_DATABASE[mb_id])
+        data["id"] = mb_id
+        return data
+    return None
+
+
+def should_spawn_enemy(floor_num, room_data):
+    """Decide if an enemy should spawn in a given room."""
+    if room_data.get("is_boss_room"):
+        return False
+    if room_data.get("crafting_altar"):
+        return False
+    if room_data.get("npcs"):
+        return False
+    room_id = room_data.get("_room_id", "")
+    if "entrance" in room_id or "mouth" in room_id:
+        return False
+
+    chance = ENEMY_SPAWN_CHANCE.get(floor_num, 0.30)
+    return random.random() < chance
+
+
+def create_enemy_instance(enemy_id, level=None, floor_num=1):
+    """Create a fresh enemy instance from the database with level scaling.
+    
+    Args:
+        enemy_id: The enemy template ID
+        level: Specific level (overrides floor_num calculation)
+        floor_num: Dungeon floor for level calculation (default 1)
+    """
+    template = ENEMY_DATABASE.get(enemy_id)
+    if not template:
+        return None
+    
+    # Calculate level if not specified
+    if level is None:
+        level = calculate_enemy_level(floor_num, "regular")
+    
+    # Scale stats based on level
+    data = scale_enemy_stats(dict(template), level, "regular")
+    data["id"] = enemy_id
+    
+    # Filter abilities by level
+    data["abilities"] = get_level_abilities(data["abilities"], level)
+    
+    return CombatState(data, is_boss=False, level=level)
+
+
+def create_boss_instance(dungeon_id, floor_num=3):
+    """Create a boss instance for the given dungeon with level scaling."""
+    boss_data = get_boss_for_dungeon(dungeon_id)
+    if not boss_data:
+        return None
+    
+    # Calculate boss level
+    level = calculate_enemy_level(floor_num, "boss")
+    
+    # Scale stats
+    scaled_data = scale_enemy_stats(boss_data, level, "boss")
+    scaled_data["abilities"] = get_level_abilities(scaled_data["abilities"], level)
+    
+    return CombatState(scaled_data, is_boss=True, level=level)
+
+
+def create_mini_boss_instance(dungeon_id, floor_num=2):
+    """Create a mini-boss instance for the given dungeon with level scaling."""
+    mb_data = get_mini_boss_for_dungeon(dungeon_id)
+    if not mb_data:
+        return None
+    
+    # Calculate mini-boss level
+    level = calculate_enemy_level(floor_num, "mini_boss")
+    
+    # Scale stats
+    scaled_data = scale_enemy_stats(mb_data, level, "mini_boss")
+    scaled_data["abilities"] = get_level_abilities(scaled_data["abilities"], level)
+    
+    return CombatState(scaled_data, is_boss=False, is_mini_boss=True, level=level)

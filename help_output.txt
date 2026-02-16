@@ -1,0 +1,49 @@
+
+╔════════════════════════════════════════════════════════════════╗
+║                     AVAILABLE COMMANDS                         ║
+╠════════════════════════════════════════════════════════════════╣
+║                                                                ║
+║  [MOVEMENT]                                                    ║
+║ ---------------------------------------------------------------║
+║    go <direction>       - Move (north, south, east, west)      ║
+║    n / s / e / w        - Quick movement shortcuts             ║
+║    go up / u            - Climb stairs to previous floor       ║
+║    go down / d          - Descend stairs to next floor         ║
+║    enter                - Enter building/dungeon               ║
+║    leave / exit         - Leave current location               ║
+║                                                                ║
+║  [EXPLORATION]                                                 ║
+║ ---------------------------------------------------------------║
+║    look / l             - Look around current room             ║
+║    examine <target>     - Examine something closely            ║
+║    inspect <target>     - Same as examine (inspect wall!)      ║
+║    search               - Search for hidden items/traps        ║
+║    open map             - Open live map window                 ║
+║    close map            - Close map window                     ║
+║                                                                ║
+║  [INVENTORY]                                                   ║
+║ ---------------------------------------------------------------║
+║    inventory / inv / i  - View your inventory                  ║
+║    take <item>          - Pick up an item                      ║
+║    drop <item>          - Drop an item from inventory          ║
+║    sell <item>          - Sell item for standard value         ║
+║    use <item>           - Use an item (potion, torch, etc.)    ║
+║                                                                ║║  [SYSTEM]                                                      ║
+║ ---------------------------------------------------------------║
+║    help / commands / ?  - Show this command list               ║
+║    recipes / crafting   - View all known crafting recipes      ║
+║    save                 - Save your game                       ║
+║    quit / exit          - Save and exit game                   ║
+║                                                                ║
+╠════════════════════════════════════════════════════════════════╣
+║                                                                ║
+║  [TIPS]                                                        ║
+║    • Commands are not case-sensitive                           ║
+║    • Use 'look' often to get your bearings                     ║
+║    • 'inspect wall' in boss rooms may reveal secrets!          ║
+║    • 'search' can find hidden traps before they trigger        ║
+║    • Keep the map open to track your progress                  ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+[DEBUG MODE] Type 'debug commands' to see debug menu.

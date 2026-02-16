@@ -1,0 +1,886 @@
+"""
+Quest & Journal System
+======================
+Structured quests with objectives, rewards, and NPC integration.
+Supports:
+- Multi-objective quests (kill, collect, visit, talk)
+- Quest chains (completing one unlocks the next)
+- Progress tracking with journal UI
+- NPC quest givers and turn-in
+- XP and item rewards on completion
+"""
+
+# Progression integration
+try:
+	from progression_system import award_xp, XP_AWARDS
+	PROGRESSION_AVAILABLE = True
+except ImportError:
+	PROGRESSION_AVAILABLE = False
+
+
+# =====================================================================
+# QUEST DATABASE
+# =====================================================================
+# Each quest definition:
+#   id:            unique string identifier
+#   name:          display name
+#   giver:         NPC id who gives the quest
+#   turn_in:       NPC id who completes the quest (often same as giver)
+#   description:   flavor text shown in journal
+#   objectives:    list of Objective dicts (see below)
+#   rewards:       dict with xp, gold, items
+#   prerequisite:  quest_id that must be completed first (None = always available)
+#   chain_next:    quest_id to auto-offer after completing this one (None = standalone)
+#   level_req:     minimum player level (default 1)
+#   dialogue:      dict of dialogue node overrides for giver NPC
+#
+# Objective types:
+#   kill:    {"type": "kill",    "target": "<enemy_name>",  "count": N, "description": "..."}
+#   collect: {"type": "collect", "item": "<item_name>",     "count": N, "description": "..."}
+#   visit:   {"type": "visit",  "room": "<room_id>",       "description": "..."}
+#   talk:    {"type": "talk",   "npc": "<npc_id>",          "description": "..."}
+# =====================================================================
+
+QUEST_DATABASE = {
+	# ── Chain 1: Blacksmith's Needs (Tormund) ──────────────────────────
+	"blacksmith_errand": {
+		"id": "blacksmith_errand",
+		"name": "The Blacksmith's Errand",
+		"giver": "blacksmith",
+		"turn_in": "blacksmith",
+		"description": (
+			"Tormund the blacksmith needs iron ingots to keep his forge running. "
+			"He's asked you to gather some from the surrounding area or the Iron Halls dungeon."
+		),
+		"objectives": [
+			{
+				"type": "collect",
+				"item": "iron_ingot",
+				"count": 3,
+				"description": "Collect 3 iron ingots",
+			},
+		],
+		"rewards": {"xp": 75, "gold": 50, "items": {"steel_dagger": 1}},
+		"prerequisite": None,
+		"chain_next": "blacksmith_masterwork",
+		"level_req": 1,
+	},
+	"blacksmith_masterwork": {
+		"id": "blacksmith_masterwork",
+		"name": "Masterwork Ambition",
+		"giver": "blacksmith",
+		"turn_in": "blacksmith",
+		"description": (
+			"Tormund wants to create a masterwork weapon but needs rare materials. "
+			"Venture into the Iron Halls and retrieve a mithril shard from the deep floors."
+		),
+		"objectives": [
+			{
+				"type": "collect",
+				"item": "raw_mithril",
+				"count": 1,
+				"description": "Find raw mithril in the Iron Halls",
+			},
+			{
+				"type": "collect",
+				"item": "eternal_ember",
+				"count": 1,
+				"description": "Obtain an eternal ember",
+			},
+		],
+		"rewards": {"xp": 200, "gold": 100, "items": {"mithril_blade": 1}},
+		"prerequisite": "blacksmith_errand",
+		"chain_next": None,
+		"level_req": 5,
+	},
+
+	# ── Chain 2: Swamp Witch's Request (Old Martha) ────────────────────
+	"swamp_gathering": {
+		"id": "swamp_gathering",
+		"name": "Witch's Brew",
+		"giver": "swamp_witch",
+		"turn_in": "swamp_witch",
+		"description": (
+			"Old Martha the Swamp Witch needs rare herbs and fungi from the "
+			"swamp and surrounding areas for one of her concoctions."
+		),
+		"objectives": [
+			{
+				"type": "collect",
+				"item": "swamp_moss",
+				"count": 3,
+				"description": "Gather 3 bundles of swamp moss",
+			},
+			{
+				"type": "collect",
+				"item": "glowing_mushroom",
+				"count": 2,
+				"description": "Find 2 glowing mushrooms",
+			},
+		],
+		"rewards": {"xp": 100, "gold": 30, "items": {"greater_healing_potion": 2, "antidote": 2}},
+		"prerequisite": None,
+		"chain_next": None,
+		"level_req": 2,
+	},
+
+	# ── Chain 3: Hermit's Exploration (Old Finn) ──────────────────────
+	"hermit_explore": {
+		"id": "hermit_explore",
+		"name": "The Hermit's Curiosity",
+		"giver": "hermit",
+		"turn_in": "hermit",
+		"description": (
+			"Old Finn the Hermit has heard rumours of ancient ruins deep in the forest. "
+			"He wants you to explore several remote locations and report what you find."
+		),
+		"objectives": [
+			{
+				"type": "visit",
+				"room": "forest_ruins_entrance",
+				"description": "Find the forest ruins entrance",
+			},
+			{
+				"type": "visit",
+				"room": "graveyard_crypt",
+				"description": "Visit the old crypt in the graveyard",
+			},
+			{
+				"type": "visit",
+				"room": "mountain_peak",
+				"description": "Reach the mountain peak",
+			},
+		],
+		"rewards": {"xp": 120, "gold": 40, "items": {"spyglass": 1}},
+		"prerequisite": None,
+		"chain_next": "hermit_shadow",
+		"level_req": 2,
+	},
+	"hermit_shadow": {
+		"id": "hermit_shadow",
+		"name": "Into the Shadow Depths",
+		"giver": "hermit",
+		"turn_in": "hermit",
+		"description": (
+			"Old Finn is fascinated by the Shadow Depths beneath the crypt. "
+			"He wants you to brave the dungeon, defeat its guardian, and return."
+		),
+		"objectives": [
+			{
+				"type": "kill",
+				"target": "Shadow Lord",
+				"count": 1,
+				"description": "Defeat the Shadow Lord in the Shadow Depths",
+			},
+		],
+		"rewards": {"xp": 300, "gold": 150, "items": {"enchanted_candle": 1}},
+		"prerequisite": "hermit_explore",
+		"chain_next": None,
+		"level_req": 5,
+	},
+
+	# ── Chain 4: Priest's Blessing (Father Aldric) ────────────────────
+	"priest_undead": {
+		"id": "priest_undead",
+		"name": "Cleansing the Graveyard",
+		"giver": "priest",
+		"turn_in": "priest",
+		"description": (
+			"Father Aldric is troubled by restless undead in the graveyard. "
+			"He has asked you to venture there and put the tormented souls to rest."
+		),
+		"objectives": [
+			{
+				"type": "kill",
+				"target": "Skeleton",
+				"count": 5,
+				"description": "Destroy 5 skeletons",
+			},
+			{
+				"type": "kill",
+				"target": "Ghost",
+				"count": 3,
+				"description": "Banish 3 ghosts",
+			},
+		],
+		"rewards": {"xp": 150, "gold": 60, "items": {"blessed_water": 2}},
+		"prerequisite": None,
+		"chain_next": None,
+		"level_req": 3,
+	},
+
+	# ── Chain 5: War Veteran's Trial (Gareth) ─────────────────────────
+	"veteran_trial": {
+		"id": "veteran_trial",
+		"name": "The Veteran's Trial",
+		"giver": "war_veteran",
+		"turn_in": "war_veteran",
+		"description": (
+			"Gareth the War Veteran wants to test your combat skill. "
+			"Prove yourself by defeating powerful enemies across multiple dungeons."
+		),
+		"objectives": [
+			{
+				"type": "kill",
+				"target": "any_mini_boss",
+				"count": 2,
+				"description": "Defeat 2 mini-bosses in any dungeon",
+			},
+			{
+				"type": "kill",
+				"target": "any_boss",
+				"count": 1,
+				"description": "Defeat a dungeon boss",
+			},
+		],
+		"rewards": {"xp": 400, "gold": 200, "items": {"warriors_medallion": 1}},
+		"prerequisite": None,
+		"chain_next": None,
+		"level_req": 6,
+	},
+
+	# ── Chain 6: Bartender's Favour (Bren) ────────────────────────────
+	"tavern_delivery": {
+		"id": "tavern_delivery",
+		"name": "A Round for the House",
+		"giver": "bartender",
+		"turn_in": "bartender",
+		"description": (
+			"Bren the bartender needs fresh fish for tonight's special. "
+			"He's heard the river has some fine catches — bring him a few."
+		),
+		"objectives": [
+			{
+				"type": "collect",
+				"item": "fresh_fish",
+				"count": 3,
+				"description": "Catch 3 fresh fish from the river",
+			},
+		],
+		"rewards": {"xp": 50, "gold": 30, "items": {"healing_potion": 2}},
+		"prerequisite": None,
+		"chain_next": None,
+		"level_req": 1,
+	},
+
+	# ── Chain 7: Merchant's Request (Silvia) ──────────────────────────
+	"merchant_gems": {
+		"id": "merchant_gems",
+		"name": "Precious Cargo",
+		"giver": "merchant",
+		"turn_in": "merchant",
+		"description": (
+			"Silvia the Merchant is looking for rare crystals from the Crystal Caverns. "
+			"She'll pay handsomely for any you can find."
+		),
+		"objectives": [
+			{
+				"type": "collect",
+				"item": "crystal_shard",
+				"count": 5,
+				"description": "Collect 5 crystal shards",
+			},
+		],
+		"rewards": {"xp": 100, "gold": 120, "items": {}},
+		"prerequisite": None,
+		"chain_next": None,
+		"level_req": 3,
+	},
+
+	# ── Chain 8: Town Crier's Plea (Herald Pip) ───────────────────────
+	"herald_news": {
+		"id": "herald_news",
+		"name": "Spread the Word",
+		"giver": "herald",
+		"turn_in": "herald",
+		"description": (
+			"Herald Pip wants someone brave enough to scout the dungeon entrances "
+			"and report back about what threats lurk nearby."
+		),
+		"objectives": [
+			{
+				"type": "visit",
+				"room": "dungeon_forest_entrance",
+				"description": "Scout the Crystal Caverns entrance",
+			},
+			{
+				"type": "visit",
+				"room": "mountain_dungeon_entrance",
+				"description": "Scout the Iron Halls entrance",
+			},
+			{
+				"type": "visit",
+				"room": "graveyard_crypt",
+				"description": "Scout the Shadow Depths entrance",
+			},
+		],
+		"rewards": {"xp": 80, "gold": 45, "items": {"torch": 3}},
+		"prerequisite": None,
+		"chain_next": None,
+		"level_req": 1,
+	},
+}
+
+
+# =====================================================================
+# QUEST STATE TRACKING
+# =====================================================================
+
+class QuestState:
+	"""Tracks a single quest's current progress and status."""
+
+	STATUS_AVAILABLE = "available"     # Can be accepted
+	STATUS_ACTIVE = "active"           # Currently in progress
+	STATUS_COMPLETE = "complete"       # Objectives done, ready to turn in
+	STATUS_TURNED_IN = "turned_in"     # Rewards collected, quest finished
+
+	def __init__(self, quest_id):
+		self.quest_id = quest_id
+		self.status = self.STATUS_AVAILABLE
+		# progress tracks per-objective completion: {obj_index: current_count}
+		self.progress = {}
+
+	def to_dict(self):
+		return {
+			"quest_id": self.quest_id,
+			"status": self.status,
+			"progress": {str(k): v for k, v in self.progress.items()},
+		}
+
+	@classmethod
+	def from_dict(cls, data):
+		qs = cls(data["quest_id"])
+		qs.status = data.get("status", cls.STATUS_AVAILABLE)
+		qs.progress = {int(k): v for k, v in data.get("progress", {}).items()}
+		return qs
+
+
+# =====================================================================
+# QUEST MANAGER
+# =====================================================================
+
+class QuestManager:
+	"""Central quest logic — accepts/tracks/completes quests and checks triggers."""
+
+	def __init__(self, engine):
+		self.engine = engine
+		# quest_id -> QuestState
+		self.quests = {}
+
+	# ── Serialization ────────────────────────────────────────────────
+
+	def to_dict(self):
+		return {qid: qs.to_dict() for qid, qs in self.quests.items()}
+
+	def load_from_dict(self, data):
+		"""Restore quest states from save data."""
+		self.quests = {}
+		if not data:
+			return
+		for qid, qdata in data.items():
+			try:
+				self.quests[qid] = QuestState.from_dict(qdata)
+			except Exception:
+				pass
+
+	# ── Quest availability ───────────────────────────────────────────
+
+	def get_available_quests(self, npc_id=None):
+		"""Return list of quest definitions available to accept, optionally filtered by NPC."""
+		available = []
+		player = self.engine.player
+		level = player.stats.get("level", 1) if player else 1
+
+		for qid, qdef in QUEST_DATABASE.items():
+			# Already known?
+			if qid in self.quests:
+				continue
+			# Level requirement
+			if level < qdef.get("level_req", 1):
+				continue
+			# Prerequisite
+			prereq = qdef.get("prerequisite")
+			if prereq:
+				prereq_state = self.quests.get(prereq)
+				if not prereq_state or prereq_state.status != QuestState.STATUS_TURNED_IN:
+					continue
+			# NPC filter
+			if npc_id and qdef.get("giver") != npc_id:
+				continue
+			available.append(qdef)
+		return available
+
+	def get_active_quests(self):
+		"""Return list of (quest_def, quest_state) for all active quests."""
+		result = []
+		for qid, qs in self.quests.items():
+			if qs.status in (QuestState.STATUS_ACTIVE, QuestState.STATUS_COMPLETE):
+				qdef = QUEST_DATABASE.get(qid)
+				if qdef:
+					result.append((qdef, qs))
+		return result
+
+	def get_completed_quests(self):
+		"""Return list of quest_defs that are turned in."""
+		result = []
+		for qid, qs in self.quests.items():
+			if qs.status == QuestState.STATUS_TURNED_IN:
+				qdef = QUEST_DATABASE.get(qid)
+				if qdef:
+					result.append(qdef)
+		return result
+
+	# ── Accept / progress / complete ─────────────────────────────────
+
+	def accept_quest(self, quest_id):
+		"""Accept a quest. Returns display text."""
+		qdef = QUEST_DATABASE.get(quest_id)
+		if not qdef:
+			return "Quest not found."
+
+		if quest_id in self.quests:
+			existing = self.quests[quest_id]
+			if existing.status == QuestState.STATUS_ACTIVE:
+				return f"You've already accepted \"{qdef['name']}\"."
+			if existing.status == QuestState.STATUS_TURNED_IN:
+				return f"You've already completed \"{qdef['name']}\"."
+
+		qs = QuestState(quest_id)
+		qs.status = QuestState.STATUS_ACTIVE
+		# Initialize progress counters
+		for i, obj in enumerate(qdef.get("objectives", [])):
+			if obj["type"] in ("kill", "collect"):
+				qs.progress[i] = 0
+			elif obj["type"] in ("visit", "talk"):
+				qs.progress[i] = 0  # 0 = not done, 1 = done
+		self.quests[quest_id] = qs
+
+		# Check if any objectives are already satisfied
+		self._check_all_objectives(quest_id)
+
+		result = "\n" + "═" * 55 + "\n"
+		result += f"  📜 QUEST ACCEPTED: {qdef['name']}\n"
+		result += "═" * 55 + "\n\n"
+		result += f"  {qdef['description']}\n\n"
+		result += "  Objectives:\n"
+		for i, obj in enumerate(qdef["objectives"]):
+			progress = qs.progress.get(i, 0)
+			count = obj.get("count", 1)
+			done = progress >= count
+			mark = "✅" if done else "☐"
+			if obj["type"] in ("kill", "collect"):
+				result += f"    {mark} {obj['description']} ({progress}/{count})\n"
+			else:
+				result += f"    {mark} {obj['description']}\n"
+		result += "\n  Type 'journal' to track your quests.\n"
+		return result
+
+	def turn_in_quest(self, quest_id):
+		"""Turn in a completed quest for rewards. Returns display text."""
+		qdef = QUEST_DATABASE.get(quest_id)
+		qs = self.quests.get(quest_id)
+		if not qdef or not qs:
+			return "Quest not found."
+		if qs.status != QuestState.STATUS_COMPLETE:
+			return f"\"{qdef['name']}\" is not ready to turn in yet."
+
+		qs.status = QuestState.STATUS_TURNED_IN
+		rewards = qdef.get("rewards", {})
+
+		result = "\n" + "═" * 55 + "\n"
+		result += f"  🏆 QUEST COMPLETE: {qdef['name']}\n"
+		result += "═" * 55 + "\n\n"
+
+		# Award XP
+		xp_reward = rewards.get("xp", 0)
+		if xp_reward and PROGRESSION_AVAILABLE:
+			try:
+				xp_msg = award_xp(self.engine.player, xp_reward, f"Quest: {qdef['name']}")
+				if xp_msg:
+					result += f"  {xp_msg}\n"
+			except Exception:
+				pass
+
+		# Award gold
+		gold_reward = rewards.get("gold", 0)
+		if gold_reward:
+			self.engine.player.stats["gold"] = self.engine.player.stats.get("gold", 0) + gold_reward
+			result += f"  💰 Received {gold_reward} gold\n"
+
+		# Award items
+		item_rewards = rewards.get("items", {})
+		for item_name, count in item_rewards.items():
+			inv = self.engine.player.inventory
+			inv[item_name] = inv.get(item_name, 0) + count
+			self.engine._inventory_changed = True
+			nice = item_name.replace("_", " ").title()
+			result += f"  📦 Received: {count}x {nice}\n"
+
+		result += "\n"
+
+		# Check if chain_next should be offered
+		chain_next = qdef.get("chain_next")
+		if chain_next and chain_next in QUEST_DATABASE:
+			next_def = QUEST_DATABASE[chain_next]
+			level = self.engine.player.stats.get("level", 1)
+			if level >= next_def.get("level_req", 1):
+				result += f"  💬 New quest available from {self._npc_display_name(next_def['giver'])}: \"{next_def['name']}\"\n"
+				result += f"  Talk to them to accept it!\n"
+
+		return result
+
+	# ── Event hooks (called by engine) ────────────────────────────────
+
+	def on_enemy_killed(self, enemy_name, is_boss=False, is_mini_boss=False):
+		"""Called when player kills an enemy. Updates kill objectives."""
+		for qid, qs in self.quests.items():
+			if qs.status != QuestState.STATUS_ACTIVE:
+				continue
+			qdef = QUEST_DATABASE.get(qid)
+			if not qdef:
+				continue
+			changed = False
+			for i, obj in enumerate(qdef["objectives"]):
+				if obj["type"] != "kill":
+					continue
+				target = obj["target"]
+				count = obj.get("count", 1)
+				current = qs.progress.get(i, 0)
+				if current >= count:
+					continue  # already done
+
+				# Match enemy name or special meta-targets
+				matched = False
+				if target == "any_boss" and is_boss:
+					matched = True
+				elif target == "any_mini_boss" and is_mini_boss:
+					matched = True
+				elif enemy_name.lower() == target.lower():
+					matched = True
+
+				if matched:
+					qs.progress[i] = min(current + 1, count)
+					changed = True
+
+			if changed:
+				self._check_quest_completion(qid)
+
+	def on_item_changed(self):
+		"""Called when player inventory changes. Re-checks collect objectives."""
+		for qid, qs in self.quests.items():
+			if qs.status != QuestState.STATUS_ACTIVE:
+				continue
+			self._check_all_objectives(qid)
+
+	def on_room_entered(self, room_id):
+		"""Called when player enters a room. Updates visit objectives."""
+		for qid, qs in self.quests.items():
+			if qs.status != QuestState.STATUS_ACTIVE:
+				continue
+			qdef = QUEST_DATABASE.get(qid)
+			if not qdef:
+				continue
+			changed = False
+			for i, obj in enumerate(qdef["objectives"]):
+				if obj["type"] != "visit":
+					continue
+				if obj["room"] == room_id and qs.progress.get(i, 0) == 0:
+					qs.progress[i] = 1
+					changed = True
+			if changed:
+				self._check_quest_completion(qid)
+
+	def on_npc_talked(self, npc_id):
+		"""Called when player talks to an NPC. Updates talk objectives."""
+		for qid, qs in self.quests.items():
+			if qs.status != QuestState.STATUS_ACTIVE:
+				continue
+			qdef = QUEST_DATABASE.get(qid)
+			if not qdef:
+				continue
+			changed = False
+			for i, obj in enumerate(qdef["objectives"]):
+				if obj["type"] != "talk":
+					continue
+				if obj["npc"] == npc_id and qs.progress.get(i, 0) == 0:
+					qs.progress[i] = 1
+					changed = True
+			if changed:
+				self._check_quest_completion(qid)
+
+	# ── Notification generation ──────────────────────────────────────
+
+	def get_objective_update(self, quest_id, obj_index):
+		"""Generate a progress notification string for a specific objective."""
+		qdef = QUEST_DATABASE.get(quest_id)
+		qs = self.quests.get(quest_id)
+		if not qdef or not qs:
+			return ""
+		obj = qdef["objectives"][obj_index]
+		current = qs.progress.get(obj_index, 0)
+		count = obj.get("count", 1)
+		if obj["type"] in ("kill", "collect"):
+			return f"  📜 [{qdef['name']}] {obj['description']} ({current}/{count})"
+		else:
+			status = "✅ Done" if current >= 1 else "In progress"
+			return f"  📜 [{qdef['name']}] {obj['description']} — {status}"
+
+	def get_quest_notifications(self):
+		"""Check for any quests that just became complete and return notification text."""
+		notifications = []
+		for qid, qs in self.quests.items():
+			if qs.status == QuestState.STATUS_COMPLETE:
+				qdef = QUEST_DATABASE.get(qid)
+				if qdef:
+					turn_in_name = self._npc_display_name(qdef.get("turn_in", qdef.get("giver", "???")))
+					notifications.append(
+						f"  ✨ Quest \"{qdef['name']}\" objectives complete! "
+						f"Return to {turn_in_name} to claim your reward."
+					)
+		return "\n".join(notifications)
+
+	# ── Journal display ──────────────────────────────────────────────
+
+	def get_journal_text(self):
+		"""Generate the full journal display text."""
+		active = self.get_active_quests()
+		completed = self.get_completed_quests()
+
+		result = "\n" + "╔" + "═" * 58 + "╗\n"
+		result += "║" + "QUEST JOURNAL".center(58) + "║\n"
+		result += "╠" + "═" * 58 + "╣\n"
+
+		if not active and not completed:
+			result += "║" + "  No quests yet. Talk to NPCs to find work!".ljust(58) + "║\n"
+			result += "╚" + "═" * 58 + "╝\n"
+			return result
+
+		# Active quests
+		if active:
+			result += "║" + "  ACTIVE QUESTS".ljust(58) + "║\n"
+			result += "║" + ("  " + "─" * 50).ljust(58) + "║\n"
+			for qdef, qs in active:
+				status_icon = "🔔" if qs.status == QuestState.STATUS_COMPLETE else "📜"
+				status_text = " [READY TO TURN IN]" if qs.status == QuestState.STATUS_COMPLETE else ""
+				result += "║" + f"  {status_icon} {qdef['name']}{status_text}".ljust(58) + "║\n"
+				result += "║" + f"     {qdef['description'][:50]}...".ljust(58) + "║\n" if len(qdef['description']) > 50 else ""
+				
+				# Show objectives with progress
+				for i, obj in enumerate(qdef["objectives"]):
+					progress = qs.progress.get(i, 0)
+					count = obj.get("count", 1)
+					done = progress >= count
+					mark = "✅" if done else "☐"
+					if obj["type"] in ("kill", "collect"):
+						line = f"     {mark} {obj['description']} ({progress}/{count})"
+					else:
+						line = f"     {mark} {obj['description']}"
+					result += "║" + line.ljust(58) + "║\n"
+
+				# Show turn-in NPC if complete
+				if qs.status == QuestState.STATUS_COMPLETE:
+					turn_in = self._npc_display_name(qdef.get("turn_in", qdef.get("giver")))
+					result += "║" + f"     → Return to {turn_in}".ljust(58) + "║\n"
+				result += "║" + " ".ljust(58) + "║\n"
+
+		# Completed quests
+		if completed:
+			result += "║" + "  COMPLETED QUESTS".ljust(58) + "║\n"
+			result += "║" + ("  " + "─" * 50).ljust(58) + "║\n"
+			for qdef in completed:
+				result += "║" + f"  ✅ {qdef['name']}".ljust(58) + "║\n"
+
+		result += "╚" + "═" * 58 + "╝\n"
+		return result
+
+	# ── NPC integration ──────────────────────────────────────────────
+
+	def get_npc_quest_dialogue(self, npc_id):
+		"""
+		Generate quest-specific dialogue options for an NPC.
+		Returns list of option dicts: [{"label": ..., "quest_action": ...}, ...]
+		"""
+		options = []
+		player_level = self.engine.player.stats.get("level", 1) if self.engine.player else 1
+
+		# Available quests to accept from this NPC
+		for qdef in self.get_available_quests(npc_id):
+			options.append({
+				"label": f"📜 [Quest] {qdef['name']}",
+				"quest_action": ("offer", qdef["id"]),
+			})
+
+		# Active quests that turn in to this NPC
+		for qid, qs in self.quests.items():
+			qdef = QUEST_DATABASE.get(qid)
+			if not qdef:
+				continue
+			if qdef.get("turn_in") != npc_id:
+				continue
+			if qs.status == QuestState.STATUS_COMPLETE:
+				options.append({
+					"label": f"🏆 [Turn in] {qdef['name']}",
+					"quest_action": ("turn_in", qdef["id"]),
+				})
+			elif qs.status == QuestState.STATUS_ACTIVE:
+				options.append({
+					"label": f"📋 [Progress] {qdef['name']}",
+					"quest_action": ("progress", qdef["id"]),
+				})
+
+		return options
+
+	def handle_quest_dialogue(self, action_type, quest_id):
+		"""
+		Handle a quest-related dialogue action.
+		Returns display text.
+		"""
+		if action_type == "offer":
+			return self._quest_offer_text(quest_id)
+		elif action_type == "accept":
+			return self.accept_quest(quest_id)
+		elif action_type == "turn_in":
+			return self.turn_in_quest(quest_id)
+		elif action_type == "progress":
+			return self._quest_progress_text(quest_id)
+		return ""
+
+	# ── Internal helpers ─────────────────────────────────────────────
+
+	def _check_all_objectives(self, quest_id):
+		"""Re-check all objectives for a quest (useful for collect/visit on accept)."""
+		qdef = QUEST_DATABASE.get(quest_id)
+		qs = self.quests.get(quest_id)
+		if not qdef or not qs or qs.status != QuestState.STATUS_ACTIVE:
+			return
+
+		player = self.engine.player
+		for i, obj in enumerate(qdef["objectives"]):
+			if obj["type"] == "collect":
+				item = obj["item"]
+				needed = obj.get("count", 1)
+				have = player.inventory.get(item, 0)
+				qs.progress[i] = min(have, needed)
+			elif obj["type"] == "visit":
+				room = obj["room"]
+				if room in player.visited_rooms:
+					qs.progress[i] = 1
+			# kill/talk objectives only update on events
+
+		self._check_quest_completion(quest_id)
+
+	def _check_quest_completion(self, quest_id):
+		"""Check if all objectives are met and update status to COMPLETE."""
+		qdef = QUEST_DATABASE.get(quest_id)
+		qs = self.quests.get(quest_id)
+		if not qdef or not qs or qs.status != QuestState.STATUS_ACTIVE:
+			return
+
+		all_done = True
+		for i, obj in enumerate(qdef["objectives"]):
+			count = obj.get("count", 1)
+			current = qs.progress.get(i, 0)
+			if current < count:
+				all_done = False
+				break
+
+		if all_done:
+			qs.status = QuestState.STATUS_COMPLETE
+			# Notify the player
+			if self.engine.gui:
+				qdef_name = qdef['name']
+				turn_in = self._npc_display_name(qdef.get("turn_in", qdef.get("giver")))
+				notification = (
+					f"\n  ✨ Quest \"{qdef_name}\" objectives complete!\n"
+					f"  Return to {turn_in} to claim your reward.\n"
+				)
+				try:
+					self.engine.gui.append(notification)
+				except Exception:
+					pass
+
+	def _quest_offer_text(self, quest_id):
+		"""Generate the quest offer dialogue with accept prompt."""
+		qdef = QUEST_DATABASE.get(quest_id)
+		if not qdef:
+			return "Quest not found."
+
+		giver_name = self._npc_display_name(qdef.get("giver"))
+
+		result = "\n" + "═" * 55 + "\n"
+		result += f"  📜 {giver_name} offers you a quest:\n"
+		result += f"  \"{qdef['name']}\"\n"
+		result += "═" * 55 + "\n\n"
+		result += f"  {qdef['description']}\n\n"
+		result += "  Objectives:\n"
+		for obj in qdef["objectives"]:
+			count = obj.get("count", 1)
+			if obj["type"] in ("kill", "collect"):
+				result += f"    ☐ {obj['description']} (0/{count})\n"
+			else:
+				result += f"    ☐ {obj['description']}\n"
+
+		# Show rewards
+		rewards = qdef.get("rewards", {})
+		result += "\n  Rewards:\n"
+		if rewards.get("xp"):
+			result += f"    ⭐ {rewards['xp']} XP\n"
+		if rewards.get("gold"):
+			result += f"    💰 {rewards['gold']} gold\n"
+		for item, count in rewards.get("items", {}).items():
+			nice = item.replace("_", " ").title()
+			result += f"    📦 {count}x {nice}\n"
+
+		result += "\n  Accept this quest? (yes/no)\n"
+
+		# Set pending state
+		self.engine.pending_quest_action = ("accept", quest_id)
+
+		return result
+
+	def _quest_progress_text(self, quest_id):
+		"""Show current progress for an active quest."""
+		qdef = QUEST_DATABASE.get(quest_id)
+		qs = self.quests.get(quest_id)
+		if not qdef or not qs:
+			return "Quest not found."
+
+		# Re-check collect objectives
+		self._check_all_objectives(quest_id)
+
+		giver_name = self._npc_display_name(qdef.get("giver"))
+
+		result = "\n" + "─" * 55 + "\n"
+		result += f"  📋 Quest Progress: {qdef['name']}\n"
+		result += "─" * 55 + "\n\n"
+
+		for i, obj in enumerate(qdef["objectives"]):
+			progress = qs.progress.get(i, 0)
+			count = obj.get("count", 1)
+			done = progress >= count
+			mark = "✅" if done else "☐"
+			if obj["type"] in ("kill", "collect"):
+				result += f"    {mark} {obj['description']} ({progress}/{count})\n"
+			else:
+				result += f"    {mark} {obj['description']}\n"
+
+		if qs.status == QuestState.STATUS_COMPLETE:
+			turn_in = self._npc_display_name(qdef.get("turn_in", qdef.get("giver")))
+			result += f"\n  ✨ All objectives complete! Talk to {turn_in} to turn in.\n"
+		else:
+			result += "\n  Keep going — you're making progress!\n"
+
+		return result
+
+	def _npc_display_name(self, npc_id):
+		"""Get the display name for an NPC id."""
+		if not npc_id:
+			return "Unknown"
+		try:
+			from npc_system import NPC_DATABASE
+			npc = NPC_DATABASE.get(npc_id)
+			if npc:
+				return f"{npc['name']} ({npc['title']})"
+		except ImportError:
+			pass
+		return npc_id.replace("_", " ").title()

@@ -167,6 +167,28 @@ class Shop:
         """Return formatted inventory display for UI."""
         return self.get_inventory()
 
+    def to_dict(self):
+        """Serialize shop state for saving."""
+        return {
+            "shop_id": self.shop_id,
+            "inventory": self.inventory,
+            "last_rotation_hour": self.last_rotation_hour,
+        }
+
+    def load_from_dict(self, data):
+        """Restore shop state from saved data."""
+        if isinstance(data, dict):
+            self.shop_id = data.get("shop_id", self.shop_id)
+            self.inventory = data.get("inventory", {})
+            self.last_rotation_hour = data.get("last_rotation_hour", self._get_current_hour())
+            # Rebuild modern interface from inventory
+            self.shop_inventory = {}
+            for item_id, item_data in self.inventory.items():
+                self.shop_inventory[item_id] = {
+                    "quantity": item_data["quantity"],
+                    "price": item_data["value"]
+                }
+
 
 class ShopUI:
     """Beautiful ASCII art UI for the shop system."""
@@ -197,6 +219,20 @@ class ShopUI:
                 else:
                     del player.inventory[item_id]
     
+    def _get_charisma_discount(self, player):
+        """Get buy price multiplier based on player charisma (lower = cheaper buys)."""
+        charisma = 0
+        if hasattr(player, 'stats') and isinstance(player.stats, dict):
+            charisma = player.stats.get("charisma", 0)
+        return max(0.70, 1.0 - charisma * 0.02)  # Up to 30% off at charisma 15
+
+    def _get_charisma_sell_bonus(self, player):
+        """Get sell price multiplier based on player charisma (higher = better sell prices)."""
+        charisma = 0
+        if hasattr(player, 'stats') and isinstance(player.stats, dict):
+            charisma = player.stats.get("charisma", 0)
+        return min(1.30, 1.0 + charisma * 0.015)  # Up to 30% bonus at charisma 20
+
     def display(self, message):
         """
         Display a message to the player.
@@ -354,7 +390,9 @@ class ShopUI:
         
         name = item_data.get("name", item_id)
         icon = item_data.get("icon", "📦")
-        price = stock.get("price", 0)
+        base_price = stock.get("price", 0)
+        # Apply charisma discount
+        price = max(1, int(base_price * self._get_charisma_discount(player)))
         quantity = stock.get("quantity", 0)
         
         # Check if in stock
@@ -479,7 +517,7 @@ class ShopUI:
         
         # LOWBALL - Counter offer
         elif percentage <= 50:
-            counter_offer = int(asking_price * 0.75)
+            counter_offer = int(asking_price * 0.75 * self._get_charisma_sell_bonus(player))
             self.display(f"""
 ┌─────────────────────────────────────────────┐
 │  🤝 COUNTER-OFFER                           │
@@ -504,7 +542,7 @@ Accept counter-offer? (yes/no)
         
         # FAIR DEAL - Accepted with slight reduction
         elif percentage <= 85:
-            final_price = int(asking_price * 0.80)
+            final_price = int(asking_price * 0.80 * self._get_charisma_sell_bonus(player))
             self.display(f"""
 ┌─────────────────────────────────────────────┐
 │  ✨ FAIR DEAL - ACCEPTED!                   │
@@ -528,7 +566,7 @@ Accept counter-offer? (yes/no)
         
         # PREMIUM - Accepted at high percentage
         elif percentage <= 100:
-            final_price = int(asking_price * 0.95)
+            final_price = int(asking_price * 0.95 * self._get_charisma_sell_bonus(player))
             self.display(f"""
 ┌───────────────────────────────────────────────┐
 │  💎 PREMIUM DEAL - ACCEPTED!                  │
@@ -552,7 +590,7 @@ Accept counter-offer? (yes/no)
         
         # OUTRAGEOUS - Merchant laughs, low counter
         else:
-            counter_offer = int(true_value * 0.65)
+            counter_offer = int(true_value * 0.65 * self._get_charisma_sell_bonus(player))
             self.display(f"""
 ┌───────────────────────────────────────────────┐
 │  😂 OUTRAGEOUS OFFER                          │

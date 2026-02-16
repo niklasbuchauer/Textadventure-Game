@@ -389,6 +389,7 @@
       "name": "Blacksmith's Forge",
       "description": "The heat from the forge is intense. The blacksmith hammers away at red-hot metal on an anvil. Weapons and armor hang on the walls.",
       "location_type": "building",
+      "crafting_station": "forge",
       "coordinates": [
         2,
         -1
@@ -647,6 +648,11 @@
       },
       "exits": {
         "outside": {
+          "target": "graveyard",
+          "type": "named",
+          "display": "Graveyard"
+        },
+        "leave": {
           "target": "graveyard",
           "type": "named",
           "display": "Graveyard"
@@ -1269,7 +1275,19 @@
   },
   "default_stats": {
     "gold": 0,
-    "health": 100
+    "health": 100,
+    "health_max": 100,
+    "level": 1,
+    "xp": 0,
+    "xp_to_next": 100,
+    "skill_points": 0,
+    "class": "none",
+    "strength": 0,
+    "defense": 0,
+    "dexterity": 0,
+    "perception": 0,
+    "charisma": 0,
+    "constitution": 0
   },
   "item_worth": {
     "gold_coin": 2,

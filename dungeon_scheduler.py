@@ -244,6 +244,30 @@ class DungeonScheduler:
         """
         return schedule
 
+    def to_dict(self):
+        """
+        Serialize dungeon scheduler state for saving.
+        Most state is derived from current time, so we only save debug overrides.
+        """
+        data = {}
+        # Save debug force-open overrides if they exist
+        if self.game_engine and hasattr(self.game_engine, 'debug_force_open_dungeons'):
+            data["debug_force_open"] = list(self.game_engine.debug_force_open_dungeons)
+        return data
+
+    def load_from_dict(self, data):
+        """
+        Restore dungeon scheduler state from saved data.
+        Restores debug force-open overrides.
+        """
+        if isinstance(data, dict):
+            # Restore debug overrides
+            debug_open = data.get("debug_force_open", [])
+            if debug_open and self.game_engine:
+                if not hasattr(self.game_engine, 'debug_force_open_dungeons'):
+                    self.game_engine.debug_force_open_dungeons = set()
+                self.game_engine.debug_force_open_dungeons.update(debug_open)
+
 
 # Global scheduler instance
 _global_scheduler = None

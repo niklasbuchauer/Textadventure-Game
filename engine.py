@@ -72,6 +72,137 @@ try:
 except ImportError:
 	DEBUG_AVAILABLE = False
 
+# =====================================================================
+# ITEM EFFECTS SYSTEM INITIALIZATION
+# =====================================================================
+try:
+	from item_effects import ItemEffects
+	ITEM_EFFECTS_AVAILABLE = True
+except Exception as e:
+	ITEM_EFFECTS_AVAILABLE = False
+	print(f"[INIT] ⚠ Item effects system DISABLED: {e}")
+
+# =====================================================================
+# CRAFTING SYSTEM INITIALIZATION
+# =====================================================================
+try:
+	from crafting_system import CraftingSystem
+	CRAFTING_AVAILABLE = True
+except Exception as e:
+	CRAFTING_AVAILABLE = False
+	print(f"[INIT] ⚠ Crafting system DISABLED: {e}")
+
+# =====================================================================
+# PROGRESSION SYSTEM INITIALIZATION
+# =====================================================================
+try:
+	from progression_system import (
+		award_xp, check_level_up, apply_class, get_class_selection_text,
+		get_stat_modifier, XP_AWARDS, CLASS_DEFINITIONS
+	)
+	from skill_tree import (
+		SkillTreeWindow, get_tree_for_class, get_unlocked_skills,
+		get_available_skills, get_active_abilities, unlock_skill,
+		use_ability, tick_effects, has_active_effect
+	)
+	PROGRESSION_AVAILABLE = True
+except Exception as e:
+	PROGRESSION_AVAILABLE = False
+	print(f"[INIT] Warning: Progression system DISABLED: {e}")
+
+# =====================================================================
+# EQUIPMENT SYSTEM INITIALIZATION
+# =====================================================================
+try:
+	from equipment_system import (
+		EQUIPMENT_DATABASE, EQUIPMENT_SLOTS,
+		equip_item, unequip_item, get_equipment_display,
+		get_total_equipment_bonuses, get_attack_power, get_defense_power
+	)
+	EQUIPMENT_AVAILABLE = True
+except Exception as e:
+	EQUIPMENT_AVAILABLE = False
+	print(f"[INIT] ⚠ Equipment system DISABLED: {e}")
+
+# =====================================================================
+# COMBAT SYSTEM INITIALIZATION
+# =====================================================================
+try:
+	from combat_system import (
+		CombatState, ENEMY_DATABASE, BOSS_DATABASE, MINI_BOSS_DATABASE,
+		process_player_attack, process_player_defend, process_player_flee,
+		process_ability_in_combat,
+		get_combat_status, generate_victory_result,
+		get_enemies_for_dungeon, get_boss_for_dungeon, get_mini_boss_for_dungeon,
+		should_spawn_enemy, create_enemy_instance, create_boss_instance,
+		create_mini_boss_instance,
+		ENEMY_SPAWN_CHANCE, DUNGEON_BOSS_MAP, DUNGEON_MINI_BOSS_MAP
+	)
+	COMBAT_AVAILABLE = True
+except Exception as e:
+	COMBAT_AVAILABLE = False
+	print(f"[INIT] ⚠ Combat system DISABLED: {e}")
+
+# =====================================================================
+# NPC SYSTEM INITIALIZATION
+# =====================================================================
+try:
+	from npc_system import NPCManager
+	NPC_AVAILABLE = True
+except Exception as e:
+	NPC_AVAILABLE = False
+	print(f"[INIT] ⚠ NPC system DISABLED: {e}")
+
+# =====================================================================
+# QUEST SYSTEM INITIALIZATION
+# =====================================================================
+try:
+	from quest_system import QuestManager, QUEST_DATABASE
+	QUEST_AVAILABLE = True
+except Exception as e:
+	QUEST_AVAILABLE = False
+	print(f"[INIT] ⚠ Quest system DISABLED: {e}")
+
+# =====================================================================
+# NPC REPUTATION SYSTEM INITIALIZATION
+# =====================================================================
+try:
+	from npc_reputation import ReputationManager
+	NPC_REP_AVAILABLE = True
+except Exception as e:
+	NPC_REP_AVAILABLE = False
+	print(f"[INIT] ⚠ NPC reputation system DISABLED: {e}")
+
+# =====================================================================
+# OVERWORLD ENCOUNTER SYSTEM INITIALIZATION
+# =====================================================================
+try:
+	from overworld_encounters import OverworldEncounterManager
+	OVERWORLD_AVAILABLE = True
+except Exception as e:
+	OVERWORLD_AVAILABLE = False
+	print(f"[INIT] ⚠ Overworld encounters DISABLED: {e}")
+
+# =====================================================================
+# FISHING SYSTEM INITIALIZATION
+# =====================================================================
+try:
+	from fishing_system import FishingMinigame, COOKED_FOOD_EFFECTS, FISH_COOKING_RECIPES, BAIT_TYPES
+	FISHING_AVAILABLE = True
+except Exception as e:
+	FISHING_AVAILABLE = False
+	print(f"[INIT] ⚠ Fishing system DISABLED: {e}")
+
+# =====================================================================
+# ENCHANTING SYSTEM INITIALIZATION
+# =====================================================================
+try:
+	from enchanting_system import EnchantingSystem
+	ENCHANTING_AVAILABLE = True
+except Exception as e:
+	ENCHANTING_AVAILABLE = False
+	print(f"[INIT] ⚠ Enchanting system DISABLED: {e}")
+
 WORLD_FILE = os.path.join(os.path.dirname(__file__), "world.json")
 SAVE_FILE = os.path.join(os.path.dirname(__file__), "savegame.json")
 
@@ -88,10 +219,26 @@ class Room:
 		self.actions = data.get("actions", {})
 		self.coordinates = data.get("coordinates", [0, 0])
 		self.location_type = data.get("location_type", "wilderness")
+		self.npcs = data.get("npcs", [])
+		self.crafting_station = data.get("crafting_station", None)
+		self.shop = data.get("shop", False)
 
 	def describe(self):
 		"""Return room description with aggregated item counts (e.g. '3 bronze coins')."""
 		desc = f"{self.name}\n{self.description}\n"
+		# Show NPCs if any
+		if self.npcs and NPC_AVAILABLE:
+			try:
+				from npc_system import NPC_DATABASE
+				npc_names = []
+				for npc_id in self.npcs:
+					npc = NPC_DATABASE.get(npc_id)
+					if npc:
+						npc_names.append(f"{npc['name']} ({npc['title']})")
+				if npc_names:
+					desc += "People here: " + ", ".join(npc_names) + "\n"
+			except ImportError:
+				pass
 		if self.items:
 			# aggregate counts
 			counts = {}
@@ -186,10 +333,18 @@ class CommandHandler:
 		if not cmd:
 			return ""
 		
+		# CRITICAL: Check if we're waiting for class selection
+		if PROGRESSION_AVAILABLE and getattr(self.engine, 'pending_class_selection', False):
+			return self._handle_class_selection(cmd)
+		
 		# CRITICAL: Check if we're waiting for yes/no response to dungeon entry
 		if self.engine.pending_dungeon_entry is not None:
 			# Player is answering yes/no question
 			return self.confirm_dungeon_entry(cmd)
+		
+		# Check if we're waiting for quest accept/decline
+		if QUEST_AVAILABLE and getattr(self.engine, 'pending_quest_action', None) is not None:
+			return self._handle_quest_accept(cmd)
 		
 		# Check if we're waiting for yes/no response to shop negotiation
 		if SHOP_AVAILABLE and self.engine.shop_ui and self.engine.shop_ui.pending_negotiation:
@@ -202,6 +357,49 @@ class CommandHandler:
 			if result is not None:
 				return result
 		
+		# Check if we're in an NPC dialogue
+		if self.engine.pending_dialogue is not None:
+			if NPC_AVAILABLE and self.engine.npc_manager:
+				return self.engine.npc_manager.handle_dialogue_choice(cmd)
+			else:
+				self.engine.pending_dialogue = None
+		
+		# Check if we're in a crafting menu
+		if self.engine.pending_crafting is not None:
+			if CRAFTING_AVAILABLE and self.engine.crafting_system:
+				return self.engine.crafting_system.handle_crafting_choice(cmd)
+			else:
+				self.engine.pending_crafting = None
+
+		# Check if we're in an experiment session
+		if getattr(self.engine, 'pending_experiment', None) is not None:
+			if CRAFTING_AVAILABLE and self.engine.crafting_system:
+				return self.engine.crafting_system.handle_experiment_choice(cmd)
+			else:
+				self.engine.pending_experiment = None
+
+		# Check if we're in an enchanting menu
+		if getattr(self.engine, 'pending_enchant', None) is not None:
+			if ENCHANTING_AVAILABLE and self.engine.enchanting_system:
+				pending = self.engine.pending_enchant
+				if pending.get("choosing_slot"):
+					return self.engine.enchanting_system.handle_slot_choice(cmd)
+				else:
+					return self.engine.enchanting_system.handle_enchant_choice(cmd)
+			else:
+				self.engine.pending_enchant = None
+		
+		# Check if we're in combat — restrict available commands
+		if COMBAT_AVAILABLE and getattr(self.engine, 'pending_combat', None):
+			combat_cmds = {"attack", "defend", "flee", "ability", "abilities", "ab", "stats", "equipment", "help", "?", "commands", "save", "inventory", "inv", "i"}
+			test_verb = cmd.strip().split()[0].lower() if cmd.strip() else ""
+			if test_verb not in combat_cmds:
+				combat = self.engine.pending_combat
+				return (
+					f"You're in combat with {combat.enemy_name}!\n"
+					"Available commands: attack | defend | flee | ability <name>\n"
+				)
+
 		parts = cmd.split()
 		verb = parts[0].lower()
 		args = parts[1:]
@@ -281,8 +479,16 @@ class CommandHandler:
 			return self._disarm_trap()
 		if verb in ("craft", "forge", "altar"):
 			return self._use_crafting_altar()
-		if verb == "use" and args and args[0].lower() == "altar":
-			return self._use_crafting_altar()
+		if verb == "experiment":
+			if CRAFTING_AVAILABLE and self.engine.crafting_system:
+				return self.engine.crafting_system.start_experiment()
+			return "Crafting system not available."
+		if verb == "use":
+			if args and args[0].lower() == "altar":
+				return self._use_crafting_altar()
+			if not args:
+				return "Use what? (e.g. 'use healing_potion')"
+			return self._use_item(" ".join(args))
 		if verb == "leave":
 			return self._go("leave")
 		if verb in ("quit", "exit"):
@@ -291,10 +497,15 @@ class CommandHandler:
 			return "Goodbye."
 		if verb in ("help", "?"):
 			return self._show_commands()
+		if verb in ("recipes", "crafting"):
+			return self._show_recipes()
 		if verb in ("examine", "inspect", "x"):
 			if not args:
 				return "Examine what?"
 			return self._examine(" ".join(args))
+		# Quest / Journal commands
+		if verb in ("journal", "quests", "quest", "j"):
+			return self._show_journal()
 		# add sell verb handling
 		if verb == "sell":
 			if not args:
@@ -330,13 +541,70 @@ class CommandHandler:
 				return self._shop_help()
 		
 		if verb == "talk":
-			if len(args) >= 2 and args[0].lower() == "to" and args[1].lower() == "shopkeeper":
-				return self._shop_talk()
+			if len(args) >= 2 and args[0].lower() == "to":
+				target = " ".join(args[1:]).lower()
+				# Try shopkeeper first (in shop rooms)
+				if target == "shopkeeper":
+					return self._shop_talk()
+				# Try NPC system
+				if NPC_AVAILABLE and self.engine.npc_manager:
+					return self.engine.npc_manager.start_conversation(target)
+				return "There's nobody here by that name."
+			if not args:
+				return "Talk to whom? (e.g. 'talk to bartender')"
+			# Also support "talk bartender" (without "to")
+			target = " ".join(args).lower()
+			if NPC_AVAILABLE and self.engine.npc_manager:
+				return self.engine.npc_manager.start_conversation(target)
 			return "Talk to whom?"
+
+		# Gift command: gift <npc> <item>
+		if verb == "gift" or verb == "give":
+			if not args:
+				return "Gift what to whom? (e.g. 'gift bartender health_potion')"
+			if len(args) < 2:
+				return "Usage: gift <npc_name> <item_name>\nExample: gift bartender health_potion"
+			npc_target = args[0].lower()
+			item_target = "_".join(args[1:]).lower()
+			if NPC_AVAILABLE and self.engine.npc_manager:
+				return self.engine.npc_manager.handle_gift(npc_target, item_target)
+			return "The NPC system is not available."
+
+		# Reputation command
+		if verb in ("reputation", "rep"):
+			if not NPC_REP_AVAILABLE or not self.engine.reputation_manager:
+				return "The reputation system is not available."
+			if args:
+				# Show specific NPC reputation
+				npc_target = args[0].lower()
+				return self.engine.reputation_manager.get_summary(npc_target)
+			# Show all NPC reputations
+			return self.engine.reputation_manager.get_all_summaries()
 		
 		# Search command
 		if verb == "search":
 			return self._search_room()
+
+		# Fishing commands
+		if verb == "fish":
+			if not FISHING_AVAILABLE or not self.engine.fishing_system:
+				return "The fishing system is not available."
+			bait_id = args[0].lower() if args else None
+			return self.engine.fishing_system.start_fishing(bait_id)
+		if verb == "bait":
+			if not FISHING_AVAILABLE or not self.engine.fishing_system:
+				return "The fishing system is not available."
+			return self.engine.fishing_system.show_bait_info()
+
+		# Enchanting command — use an altar to enchant equipment
+		if verb == "enchant":
+			if not ENCHANTING_AVAILABLE or not self.engine.enchanting_system:
+				return "The enchanting system is not available."
+			return self.engine.enchanting_system.show_enchanting_menu()
+
+		# Fight command — engage visible overworld enemy
+		if verb == "fight":
+			return self._fight_visible_enemy()
 		
 		# Map commands
 		if verb == "open":
@@ -357,7 +625,679 @@ class CommandHandler:
 				return self._show_debug_menu()
 			return self._handle_debug_command(args)
 
+		# Progression commands
+		if verb in ("stats", "level", "class"):
+			return self._show_player_stats()
+		if verb in ("skills", "skilltree", "skill"):
+			if args and args[0].lower() == "list":
+				return self._show_skills_text()
+			return self._open_skill_tree()
+		if verb in ("ability", "abilities", "ab"):
+			if not args:
+				return self._show_abilities()
+			return self._use_ability(" ".join(args))
+
+		# Equipment commands
+		if verb == "equip":
+			if not args:
+				return "Equip what? (e.g. 'equip iron_sword')"
+			return self._equip_item(" ".join(args))
+		if verb == "unequip":
+			if not args:
+				return "Unequip what? (e.g. 'unequip weapon' or 'unequip iron_sword')"
+			return self._unequip_item(" ".join(args))
+		if verb == "equipment":
+			return self._show_equipment()
+
+		# Combat commands
+		if verb == "attack":
+			return self._combat_attack()
+		if verb == "defend":
+			return self._combat_defend()
+		if verb == "flee":
+			return self._combat_flee()
+
 		return "I don't understand that."
+
+	# ========== CLASS SELECTION ==========
+
+	def _handle_class_selection(self, cmd):
+		"""Handle the player's class choice during new game setup."""
+		cmd = cmd.strip()
+		class_map = {"1": "warrior", "2": "rogue", "3": "mage"}
+		# Also accept class names
+		for cid in ("warrior", "rogue", "mage"):
+			if cmd.lower() == cid:
+				class_map[cmd.lower()] = cid
+
+		choice = class_map.get(cmd.lower() if cmd.lower() in class_map else cmd)
+		if not choice:
+			return "Invalid choice. Type 1 (Warrior), 2 (Rogue), or 3 (Mage):"
+
+		# Apply the chosen class
+		apply_class(self.engine.player, choice)
+		self.engine.pending_class_selection = False
+
+		class_name = CLASS_DEFINITIONS[choice]["name"]
+		icon = CLASS_DEFINITIONS[choice]["icon"]
+
+		result = "\n" + "=" * 60 + "\n"
+		result += f"  You have chosen: {class_name.upper()}\n"
+		result += "=" * 60 + "\n"
+		result += icon.rstrip() + "\n\n"
+		result += f"  Your {class_name} skills are now available.\n"
+		result += "  Type 'skills' to view your skill tree.\n"
+		result += "  Type 'stats' to see your attributes.\n"
+		result += "=" * 60 + "\n\n"
+
+		# Show the starting room
+		room = self.engine.get_room_data(self.engine.player.current_room)
+		if room:
+			result += room.describe()
+
+		return result
+
+	# ========== QUEST COMMANDS ==========
+
+	def _handle_quest_accept(self, cmd):
+		"""Handle yes/no response to a quest offer."""
+		action = self.engine.pending_quest_action
+		self.engine.pending_quest_action = None
+		if not action:
+			return ""
+		action_type, quest_id = action
+		answer = cmd.strip().lower()
+		if answer in ("yes", "y", "accept", "1"):
+			if QUEST_AVAILABLE and self.engine.quest_manager:
+				return self.engine.quest_manager.accept_quest(quest_id)
+			return "Quest system not available."
+		elif answer in ("no", "n", "decline", "2"):
+			return "You declined the quest."
+		else:
+			# Re-set pending so they can answer
+			self.engine.pending_quest_action = action
+			return "Accept the quest? (yes/no)"
+
+	def _show_journal(self):
+		"""Show the quest journal."""
+		if not QUEST_AVAILABLE or not self.engine.quest_manager:
+			return "Quest system not available."
+		return self.engine.quest_manager.get_journal_text()
+
+	# ========== PROGRESSION COMMANDS ==========
+
+	def _show_player_stats(self):
+		"""Show detailed player stats in console."""
+		if not PROGRESSION_AVAILABLE:
+			# Fallback: show basic stats
+			stats = self.engine.player.stats
+			parts = [f"  {k}: {v}" for k, v in sorted(stats.items())]
+			return "\n" + "\n".join(parts)
+
+		stats = self.engine.player.stats
+		class_id = stats.get("class", "none")
+		class_name = CLASS_DEFINITIONS.get(class_id, {}).get("name", "None") if class_id != "none" else "None"
+
+		result = "\n" + "=" * 50 + "\n"
+		result += "  CHARACTER STATS\n"
+		result += "=" * 50 + "\n"
+		result += f"  Class:    {class_name}\n"
+		result += f"  Level:    {stats.get('level', 1)}\n"
+
+		# XP bar
+		xp = stats.get("xp", 0)
+		xp_to_next = stats.get("xp_to_next", 0)
+		if xp_to_next > 0:
+			from progression_system import XP_TABLE
+			level = stats.get("level", 1)
+			if level < len(XP_TABLE):
+				xp_for_level = XP_TABLE[level]
+				xp_prev = XP_TABLE[level - 1] if level > 1 else 0
+				progress = xp - xp_prev
+				total_needed = xp_for_level - xp_prev
+				if total_needed > 0:
+					bar_len = 20
+					filled = int((progress / total_needed) * bar_len)
+					bar = "#" * filled + "-" * (bar_len - filled)
+					result += f"  XP:       [{bar}] {xp}/{xp_for_level}\n"
+				else:
+					result += f"  XP:       {xp}\n"
+			else:
+				result += f"  XP:       {xp} (MAX LEVEL)\n"
+		else:
+			result += f"  XP:       {xp} (MAX LEVEL)\n"
+
+		result += f"  SP:       {stats.get('skill_points', 0)} skill points\n"
+		result += "\n  --- Vitals ---\n"
+		result += f"  Health:   {stats.get('health', 100)}/{stats.get('health_max', 100)}\n"
+		result += f"  Gold:     {stats.get('gold', 0)}\n"
+		result += "\n  --- Attributes ---\n"
+
+		for stat_name in ["strength", "defense", "dexterity", "perception", "charisma", "constitution"]:
+			val = stats.get(stat_name, 0)
+			result += f"  {stat_name.capitalize():14s} {val}\n"
+
+		# Show active effects
+		active_effects = self.engine.player.state.get("active_effects", {})
+		if active_effects:
+			result += "\n  --- Active Effects ---\n"
+			for eff, val in active_effects.items():
+				nice = eff.replace("_", " ").title()
+				if isinstance(val, dict):
+					result += f"  {nice}: {val.get('duration', '?')} moves\n"
+				elif isinstance(val, int) and val > 0:
+					result += f"  {nice}: {val} moves\n"
+
+		# Show equipment
+		if EQUIPMENT_AVAILABLE:
+			equip = self.engine.player.state.get("equipment", {})
+			has_equip = any(v for v in equip.values()) if equip else False
+			if has_equip:
+				result += "\n  --- Equipment ---\n"
+				slot_icons = {"weapon": "⚔️", "armor": "🛡️", "shield": "🔰", "accessory": "💍"}
+				for slot in EQUIPMENT_SLOTS:
+					item = equip.get(slot)
+					if item:
+						nice = item.replace("_", " ").title()
+						icon = slot_icons.get(slot, "•")
+						result += f"  {icon} {slot.capitalize():12s} {nice}\n"
+				bonuses = get_total_equipment_bonuses(self.engine.player)
+				if bonuses:
+					result += f"  Attack Power:  {get_attack_power(self.engine.player)}\n"
+					result += f"  Defense Power: {get_defense_power(self.engine.player)}\n"
+
+		result += "=" * 50 + "\n"
+		return result
+
+	# ========== EQUIPMENT COMMANDS ==========
+
+	def _equip_item(self, item_name):
+		"""Equip an item from inventory."""
+		if not EQUIPMENT_AVAILABLE:
+			return "Equipment system not available."
+		# Block if in combat
+		if COMBAT_AVAILABLE and getattr(self.engine, 'pending_combat', None):
+			return "You can't change equipment during combat!"
+		# Determine target slot for enchantment handling
+		item_id = item_name.lower().replace(" ", "_")
+		eq_data = EQUIPMENT_DATABASE.get(item_id, {})
+		target_slot = eq_data.get("slot")
+		success, message = equip_item(self.engine.player, item_name)
+		if success:
+			self.engine._inventory_changed = True
+			# Remove enchantment from slot (old item was auto-unequipped)
+			if target_slot and ENCHANTING_AVAILABLE and self.engine.enchanting_system:
+				self.engine.enchanting_system.on_unequip(target_slot, None)
+		return message
+
+	def _unequip_item(self, target):
+		"""Unequip an item by slot name or item name."""
+		if not EQUIPMENT_AVAILABLE:
+			return "Equipment system not available."
+		if COMBAT_AVAILABLE and getattr(self.engine, 'pending_combat', None):
+			return "You can't change equipment during combat!"
+		# Determine slot for enchantment handling
+		target_lower = target.lower().replace(" ", "_")
+		enchant_slot = None
+		if target_lower in EQUIPMENT_SLOTS:
+			enchant_slot = target_lower
+		else:
+			# Find slot by item id
+			equip = self.engine.player.state.get("equipment", {})
+			for s, eid in equip.items():
+				if eid and (eid == target_lower or eid.replace("_", " ") == target_lower.replace("_", " ")):
+					enchant_slot = s
+					break
+		success, message = unequip_item(self.engine.player, target)
+		if success:
+			self.engine._inventory_changed = True
+			# Remove enchantment from slot
+			if enchant_slot and ENCHANTING_AVAILABLE and self.engine.enchanting_system:
+				self.engine.enchanting_system.on_unequip(enchant_slot, None)
+		return message
+
+	def _show_equipment(self):
+		"""Show current equipment."""
+		if not EQUIPMENT_AVAILABLE:
+			return "Equipment system not available."
+		return get_equipment_display(self.engine.player)
+
+	# ========== COMBAT COMMANDS ==========
+
+	def _combat_attack(self):
+		"""Handle attack command during combat."""
+		if not COMBAT_AVAILABLE:
+			return "Combat system not available."
+		combat = getattr(self.engine, 'pending_combat', None)
+		if not combat:
+			return "You're not in combat. There's nothing to attack."
+
+		result = process_player_attack(self.engine.player, combat)
+
+		# Check if enemy is dead
+		if combat.hp <= 0:
+			victory_msg = generate_victory_result(self.engine.player, combat)
+			# Award XP through progression system
+			xp_msg = ""
+			if PROGRESSION_AVAILABLE:
+				try:
+					xp_msg = award_xp(self.engine.player, combat.xp_reward, f"defeating {combat.enemy_name}")
+					level_msg = check_level_up(self.engine.player)
+					if level_msg:
+						xp_msg += "\n" + level_msg
+				except Exception:
+					pass
+			self.engine.pending_combat = None
+			self.engine._inventory_changed = True
+			# Notify quest system of enemy kill
+			if QUEST_AVAILABLE and self.engine.quest_manager:
+				self.engine.quest_manager.on_enemy_killed(
+					combat.enemy_name,
+					is_boss=getattr(combat, 'is_boss', False),
+					is_mini_boss=getattr(combat, 'is_mini_boss', False)
+				)
+				self.engine.quest_manager.on_item_changed()
+			return result + victory_msg + xp_msg
+
+		# Check if player died
+		death_msg = self._check_player_death()
+		if death_msg:
+			self.engine.pending_combat = None
+			return result + death_msg
+
+		# Show combat status
+		return result + get_combat_status(self.engine.player, combat)
+
+	def _combat_defend(self):
+		"""Handle defend command during combat."""
+		if not COMBAT_AVAILABLE:
+			return "Combat system not available."
+		combat = getattr(self.engine, 'pending_combat', None)
+		if not combat:
+			return "You're not in combat."
+
+		result = process_player_defend(self.engine.player, combat)
+
+		# Check if player died
+		death_msg = self._check_player_death()
+		if death_msg:
+			self.engine.pending_combat = None
+			return result + death_msg
+
+		return result + get_combat_status(self.engine.player, combat)
+
+	def _combat_flee(self):
+		"""Handle flee command during combat."""
+		if not COMBAT_AVAILABLE:
+			return "Combat system not available."
+		combat = getattr(self.engine, 'pending_combat', None)
+		if not combat:
+			return "You're not in combat."
+
+		success, msg = process_player_flee(self.engine.player, combat)
+
+		if success:
+			self.engine.pending_combat = None
+			return msg
+
+		# Check if player died from the failed flee hit
+		death_msg = self._check_player_death()
+		if death_msg:
+			self.engine.pending_combat = None
+			return msg + death_msg
+
+		return msg + get_combat_status(self.engine.player, combat)
+
+	def _start_combat_encounter(self, enemy_id=None, boss_dungeon=None, floor_num=None):
+		"""
+		Start a combat encounter. Called from room entry.
+		Returns the intro text, or empty string if no combat.
+		"""
+		if not COMBAT_AVAILABLE:
+			return ""
+
+		# Extract floor_num from current room if not provided
+		if floor_num is None:
+			import re
+			floor_match = re.search(r'_floor(\d+)', self.engine.player.current_room)
+			floor_num = int(floor_match.group(1)) if floor_match else 1
+
+		if boss_dungeon:
+			combat = create_boss_instance(boss_dungeon, floor_num)
+			if not combat:
+				return ""
+			self.engine.pending_combat = combat
+			intro = combat.intro_text if combat.intro_text else (
+				f"\n⚔️ A powerful {combat.enemy_name} blocks your path!\n"
+			)
+			return intro + get_combat_status(self.engine.player, combat)
+
+		if enemy_id:
+			combat = create_enemy_instance(enemy_id, floor_num=floor_num)
+			if not combat:
+				return ""
+			self.engine.pending_combat = combat
+			result = f"\n⚔️ A {combat.enemy_name} appears!\n"
+			result += f"  {combat.enemy_description}\n"
+			return result + get_combat_status(self.engine.player, combat)
+
+		return ""
+
+	def _fight_visible_enemy(self):
+		"""Engage a visible overworld enemy in the current room."""
+		if not OVERWORLD_AVAILABLE or not self.engine.encounter_manager:
+			return "There's nothing to fight here."
+		if getattr(self.engine, 'pending_combat', None):
+			return "You're already in combat!"
+
+		room_id = self.engine.player.current_room
+		enemy_data = self.engine.encounter_manager.engage_visible_enemy(room_id)
+		if not enemy_data:
+			return "There's nothing to fight here."
+
+		return self._start_overworld_combat(enemy_data)
+
+	def _start_overworld_combat(self, enemy_data):
+		"""Start combat with an overworld enemy (from scaled data dict)."""
+		if not COMBAT_AVAILABLE:
+			return "Combat system not available."
+
+		# Create CombatState from the pre-scaled data
+		combat = CombatState(enemy_data, is_boss=False, level=self.engine.player.stats.get("level", 1))
+		self.engine.pending_combat = combat
+
+		result = f"\n⚔️ A {combat.enemy_name} attacks!\n"
+		result += f"  {combat.enemy_description}\n"
+		return result + get_combat_status(self.engine.player, combat)
+
+	def _check_player_death(self):
+		"""Check if the player has died and handle respawn."""
+		hp = self.engine.player.stats.get("health", 1)
+		if hp > 0:
+			return ""
+
+		# Player is dead!
+		result = "\n" + "=" * 55 + "\n"
+		result += "  💀 YOU HAVE FALLEN! 💀\n"
+		result += "=" * 55 + "\n"
+
+		# Gold penalty: lose 25% of gold
+		gold = self.engine.player.stats.get("gold", 0)
+		gold_lost = gold // 4
+		self.engine.player.stats["gold"] = gold - gold_lost
+		if gold_lost > 0:
+			result += f"  You lost {gold_lost} gold...\n"
+
+		# Find respawn location: village or chapel, fallback to start
+		respawn_room = self.engine.start_room
+		for room_id, room in self.engine.rooms.items():
+			lt = getattr(room, 'location_type', '') or ''
+			name = getattr(room, 'name', '') or ''
+			if 'chapel' in name.lower() or 'chapel' in room_id.lower():
+				respawn_room = room_id
+				break
+			elif 'village' in name.lower() or 'village_square' in room_id.lower():
+				respawn_room = room_id
+
+		# Respawn
+		self.engine.player.stats["health"] = self.engine.player.stats.get("health_max", 100) // 2
+		self.engine.player.current_room = respawn_room
+		self.engine.poison_status = None  # clear poison on death
+
+		# Leave dungeon state if in one
+		if hasattr(self.engine, 'dungeon_instance') and self.engine.dungeon_instance:
+			self.engine.dungeon_instance = None
+		if hasattr(self.engine, 'dungeon_return_room'):
+			self.engine.dungeon_return_room = None
+
+		respawn_name = respawn_room.replace("_", " ").title()
+		result += f"\n  You wake up at {respawn_name} with half health.\n"
+		result += "=" * 55 + "\n\n"
+
+		# Show respawn room
+		dest = self.engine.get_room_data(respawn_room)
+		if dest:
+			result += dest.describe()
+
+		return result
+
+	def _open_skill_tree(self):
+		"""Open the graphical skill tree window."""
+		if not PROGRESSION_AVAILABLE:
+			return "Progression system not available."
+
+		class_id = self.engine.player.stats.get("class", "none")
+		if class_id == "none":
+			return "You haven't chosen a class yet."
+
+		# Open via GUI
+		if self.engine.gui and hasattr(self.engine.gui, 'toggle_skills_window'):
+			self.engine.gui.toggle_skills_window()
+			return "Skill tree opened."
+
+		# Fallback: text-based
+		return self._show_skills_text()
+
+	def _show_skills_text(self):
+		"""Show skills as text in the console (fallback)."""
+		if not PROGRESSION_AVAILABLE:
+			return "Progression system not available."
+
+		class_id = self.engine.player.stats.get("class", "none")
+		if class_id == "none":
+			return "You haven't chosen a class yet."
+
+		tree = get_tree_for_class(class_id)
+		unlocked = set(get_unlocked_skills(self.engine.player))
+		available = {n["id"] for n in get_available_skills(self.engine.player)}
+
+		result = "\n" + "=" * 50 + "\n"
+		result += f"  SKILL TREE ({class_id.upper()})\n"
+		result += f"  Skill Points: {self.engine.player.stats.get('skill_points', 0)}\n"
+		result += "=" * 50 + "\n\n"
+
+		# Group by tier
+		tiers = {}
+		for node in tree:
+			t = node["tier"]
+			if t not in tiers:
+				tiers[t] = []
+			tiers[t].append(node)
+
+		for tier_num in sorted(tiers.keys()):
+			result += f"  --- Tier {tier_num} ---\n"
+			for node in tiers[tier_num]:
+				status = ""
+				if node["id"] in unlocked:
+					status = "[UNLOCKED]"
+				elif node["id"] in available:
+					status = "[AVAILABLE]"
+				else:
+					status = "[LOCKED]"
+
+				type_tag = "(Active)" if node["type"] == "active" else "(Passive)"
+				result += f"  {status} {node['name']} {type_tag} - {node['cost']}SP\n"
+				result += f"    {node['description'].split(chr(10))[0]}\n"
+			result += "\n"
+
+		result += "Use 'skills' to open the graphical skill tree.\n"
+		result += "=" * 50 + "\n"
+		return result
+
+	def _show_abilities(self):
+		"""Show active abilities and their cooldowns."""
+		if not PROGRESSION_AVAILABLE:
+			return "Progression system not available."
+
+		abilities = get_active_abilities(self.engine.player)
+		if not abilities:
+			return "You don't have any active abilities yet.\nUnlock active skills in your skill tree ('skills')."
+
+		cooldowns = self.engine.player.state.get("cooldowns", {})
+
+		result = "\n" + "=" * 50 + "\n"
+		result += "  ACTIVE ABILITIES\n"
+		result += "=" * 50 + "\n\n"
+
+		for ab in abilities:
+			cd_remaining = cooldowns.get(ab["skill_id"], 0)
+			status = "READY" if cd_remaining == 0 else f"Cooldown: {cd_remaining} moves"
+			name = ab.get("name", "Unknown")
+			cmd_name = name.lower().replace(" ", "_")
+
+			result += f"  {name} [{status}]\n"
+			result += f"    Cooldown: {ab.get('cooldown', 0)} moves\n"
+			result += f"    Use: ability {cmd_name}\n\n"
+
+		result += "=" * 50 + "\n"
+		return result
+
+	def _use_ability(self, ability_name):
+		"""Use an active ability. Handles both exploration and combat abilities."""
+		if not PROGRESSION_AVAILABLE:
+			return "Progression system not available."
+
+		success, msg, ability_data = use_ability(self.engine.player, ability_name)
+
+		if not success:
+			return msg
+
+		effect = ability_data.get("effect", "") if ability_data else ""
+
+		# If in combat and this is a combat ability, process it through combat system
+		combat = getattr(self.engine, 'pending_combat', None)
+		if combat and COMBAT_AVAILABLE and effect.startswith("combat_"):
+			combat_result = process_ability_in_combat(self.engine.player, combat, ability_data)
+			result = msg + "\n" + combat_result
+
+			# Check if enemy died
+			if combat.hp <= 0:
+				victory_msg = generate_victory_result(self.engine.player, combat)
+				xp_msg = ""
+				if PROGRESSION_AVAILABLE:
+					try:
+						xp_msg = award_xp(self.engine.player, combat.xp_reward, f"defeating {combat.enemy_name}")
+						level_msg = check_level_up(self.engine.player)
+						if level_msg:
+							xp_msg += "\n" + level_msg
+					except Exception:
+						pass
+				self.engine.pending_combat = None
+				self.engine._inventory_changed = True
+				# Notify quest system of enemy kill
+				if QUEST_AVAILABLE and self.engine.quest_manager:
+					self.engine.quest_manager.on_enemy_killed(
+						combat.enemy_name,
+						is_boss=getattr(combat, 'is_boss', False),
+						is_mini_boss=getattr(combat, 'is_mini_boss', False)
+					)
+					self.engine.quest_manager.on_item_changed()
+				return result + victory_msg + xp_msg
+
+			# Check if player died
+			death_msg = self._check_player_death()
+			if death_msg:
+				self.engine.pending_combat = None
+				return result + death_msg
+
+			# Check if player fled (smoke bomb / guaranteed_flee)
+			if combat.player_fled:
+				self.engine.pending_combat = None
+				return result
+
+			return result + get_combat_status(self.engine.player, combat)
+
+		# Handle combat abilities used in combat that don't start with combat_
+		if combat and COMBAT_AVAILABLE and effect in ("guaranteed_flee", "buff_attack", "extra_gold", "temp_defense"):
+			combat_result = process_ability_in_combat(self.engine.player, combat, ability_data)
+			result = msg + "\n" + combat_result
+
+			if combat.player_fled:
+				self.engine.pending_combat = None
+				return result
+
+			death_msg = self._check_player_death()
+			if death_msg:
+				self.engine.pending_combat = None
+				return result + death_msg
+
+			return result + get_combat_status(self.engine.player, combat)
+
+		# Non-combat ability effects (exploration/utility)
+		if effect == "reveal_floor" and hasattr(self.engine, 'current_dungeon_instance'):
+			msg += self._handle_reveal_floor()
+		elif effect == "reveal_adjacent_traps":
+			msg += self._handle_reveal_adjacent_traps()
+		elif effect == "heal" and not combat:
+			hp = self.engine.player.stats.get("health", 100)
+			hp_max = self.engine.player.stats.get("health_max", 100)
+			msg += f"\n  Health: {hp}/{hp_max}\n"
+
+		return msg
+
+	def _handle_reveal_floor(self):
+		"""Handle the Reveal Floor ability effect — mark all traps on current floor as detected and reveal secrets."""
+		di = self.engine.current_dungeon_instance
+		if not di or not di.dungeon_data:
+			return "\n  (No dungeon floor to reveal.)\n"
+
+		# Determine which floor the player is on
+		room_id = self.engine.player.current_room
+		traps_found = 0
+		secrets_found = 0
+		for _fnum, fdata in di.dungeon_data.get("floors", {}).items():
+			rooms = fdata.get("rooms", {})
+			if room_id in rooms:
+				# This is the player's current floor — reveal everything
+				for rid, rdata in rooms.items():
+					for trap in rdata.get("traps", []):
+						if not trap.get("triggered") and not trap.get("disarmed"):
+							trap["detected"] = True
+							traps_found += 1
+					# Reveal secret rooms
+					if rdata.get("has_secret") and not rdata.get("secret_discovered"):
+						rdata["secret_discovered"] = True
+						secrets_found += 1
+				break
+
+		result = "\n  All traps and secrets on this floor are now visible!\n"
+		if traps_found:
+			result += f"  Traps revealed: {traps_found}\n"
+		if secrets_found:
+			result += f"  Secret passages revealed: {secrets_found}\n"
+		if not traps_found and not secrets_found:
+			result += "  (Nothing hidden was found on this floor.)\n"
+		return result
+
+	def _handle_reveal_adjacent_traps(self):
+		"""Handle revealing traps in adjacent rooms — mark traps in connected rooms as detected."""
+		di = self.engine.current_dungeon_instance
+		if not di or not di.dungeon_data:
+			return "\n  You sense the traps in nearby rooms!\n"
+
+		room_id = self.engine.player.current_room
+		# Find current room and its exits
+		for _fnum, fdata in di.dungeon_data.get("floors", {}).items():
+			rooms = fdata.get("rooms", {})
+			if room_id in rooms:
+				current_room = rooms[room_id]
+				exits = current_room.get("exits", {})
+				traps_found = 0
+				for _dir, exit_data in exits.items():
+					target = exit_data.get("target") if isinstance(exit_data, dict) else exit_data
+					if target and target in rooms:
+						for trap in rooms[target].get("traps", []):
+							if not trap.get("triggered") and not trap.get("disarmed"):
+								trap["detected"] = True
+								traps_found += 1
+				result = "\n  You sense the traps in nearby rooms!\n"
+				if traps_found:
+					result += f"  Traps detected in adjacent rooms: {traps_found}\n"
+				else:
+					result += "  (No traps sensed nearby.)\n"
+				return result
+
+		return "\n  You sense the traps in nearby rooms!\n"
 
 	def _perform_action(self, effect, room, invoked_cmd):
 		# effect is a dict possibly containing keys: text/response, add_item, remove_item, move_to, effects, conditions
@@ -573,11 +1513,44 @@ class CommandHandler:
 		# Move player
 		self.engine.player.current_room = target_room_id
 		
+		# Tick ability effects and cooldowns on movement
+		effect_msgs = ""
+		if PROGRESSION_AVAILABLE:
+			try:
+				msgs = tick_effects(self.engine.player)
+				if msgs:
+					effect_msgs = "\n".join(msgs) + "\n"
+			except Exception:
+				pass
+		
+		# Award exploration XP on first visit
+		xp_msg = ""
+		if PROGRESSION_AVAILABLE:
+			try:
+				is_first_visit = target_room_id not in self.engine.player.visited_rooms
+				if is_first_visit:
+					xp_msg = award_xp(self.engine.player, XP_AWARDS.get("first_visit_room", 3), "exploring new room")
+			except Exception:
+				pass
+		
 		# Check for traps in the new room
 		trap_msg = self._check_room_traps(target_room_id)
 		
 		# Tick poison damage on movement
 		poison_msg = self._tick_poison()
+
+		# Check for combat encounter in rooms (dungeon + overworld)
+		combat_msg = ""
+		if COMBAT_AVAILABLE and not getattr(self.engine, 'pending_combat', None):
+			combat_msg = self._check_room_enemy(target_room_id, dest_room)
+
+		# Get visible enemy text (if any visible enemy lingers but didn't trigger random combat)
+		visible_enemy_msg = ""
+		if OVERWORLD_AVAILABLE and self.engine.encounter_manager and not combat_msg:
+			visible_enemy_msg = self.engine.encounter_manager.get_visible_enemy_text(target_room_id)
+
+		# Check for death from traps/poison
+		death_msg = self._check_player_death()
 		
 		# Show transition text if available
 		if exit_info and isinstance(exit_info, dict):
@@ -589,6 +1562,16 @@ class CommandHandler:
 					result += "\n" + trap_msg
 				if poison_msg:
 					result += poison_msg
+				if xp_msg:
+					result += xp_msg
+				if effect_msgs:
+					result += effect_msgs
+				if death_msg:
+					result += death_msg
+				elif combat_msg:
+					result += combat_msg
+				elif visible_enemy_msg:
+					result += visible_enemy_msg
 				self._update_map_on_move(target_room_id)
 				return result
 		
@@ -598,6 +1581,16 @@ class CommandHandler:
 			result += "\n" + trap_msg
 		if poison_msg:
 			result += poison_msg
+		if xp_msg:
+			result += xp_msg
+		if effect_msgs:
+			result += effect_msgs
+		if death_msg:
+			result += death_msg
+		elif combat_msg:
+			result += combat_msg
+		elif visible_enemy_msg:
+			result += visible_enemy_msg
 		return result
 	
 	def _update_map_on_move(self, new_room_id):
@@ -606,6 +1599,10 @@ class CommandHandler:
 			# Mark room as visited
 			if hasattr(self.engine.player, 'visited_rooms'):
 				self.engine.player.visited_rooms.add(new_room_id)
+			
+			# Notify quest system of room entry
+			if QUEST_AVAILABLE and hasattr(self.engine, 'quest_manager') and self.engine.quest_manager:
+				self.engine.quest_manager.on_room_entered(new_room_id)
 			
 			# Update map if it's open
 			if hasattr(self.engine, 'map_window') and self.engine.map_window:
@@ -638,6 +1635,106 @@ class CommandHandler:
 			result += dest.describe()
 		return result
 
+	def _check_room_enemy(self, room_id, dest_room):
+		"""Check for enemy encounter when entering a room.
+		Handles both dungeon and overworld encounters.
+		Returns combat intro text or empty string."""
+		if not COMBAT_AVAILABLE:
+			return ""
+
+		# Don't spawn if already in combat
+		if getattr(self.engine, 'pending_combat', None):
+			return ""
+
+		# Check for dungeon encounters first
+		in_dungeon = (room_id.startswith("dungeon_") and "_floor" in room_id) or room_id in self.engine.fixed_dungeon_room_ids
+		if in_dungeon:
+			return self._check_dungeon_enemy(room_id, dest_room)
+
+		# Check for overworld encounters
+		overworld_msg = ""
+		if OVERWORLD_AVAILABLE and self.engine.encounter_manager:
+			# Roll for visible enemy (only on first visit)
+			vis_msg = self.engine.encounter_manager.roll_visible_enemy(room_id)
+
+			# Roll for random encounter
+			should_fight, enemy_data = self.engine.encounter_manager.check_random_encounter(room_id)
+			if should_fight and enemy_data:
+				overworld_msg = self._start_overworld_combat(enemy_data)
+			elif vis_msg:
+				overworld_msg = vis_msg
+
+		return overworld_msg
+
+	def _check_dungeon_enemy(self, room_id, dest_room):
+		"""Check for enemy encounter in dungeon rooms specifically."""
+
+		# Check for already-cleared rooms (track by room id)
+		cleared = self.engine.player.state.get("cleared_rooms", [])
+		if not isinstance(cleared, list):
+			cleared = list(cleared)
+			self.engine.player.state["cleared_rooms"] = cleared
+		if room_id in cleared:
+			return ""
+
+		# Determine dungeon ID
+		dungeon_id = None
+		di = getattr(self.engine, 'current_dungeon_instance', None)
+		if di:
+			dungeon_id = getattr(di, 'dungeon_id', None) or getattr(di, 'template_id', None)
+
+		# Check for boss room
+		raw_room = None
+		if di and hasattr(di, 'floors'):
+			for floor in di.floors:
+				for rid, rdata in floor.get("rooms", {}).items():
+					if rid == room_id:
+						raw_room = rdata
+						break
+		is_boss_room = False
+		if raw_room:
+			is_boss_room = raw_room.get("is_boss_room", False) or raw_room.get("boss_room", False)
+		elif hasattr(dest_room, 'name') and dest_room.name:
+			is_boss_room = "boss" in dest_room.name.lower()
+
+		if is_boss_room and dungeon_id:
+			# Mark room as cleared so boss doesn't respawn
+			cleared.append(room_id)
+			# Extract floor number for level scaling
+			import re
+			floor_num = 1
+			floor_match = re.search(r'_floor(\d+)', room_id)
+			if floor_match:
+				floor_num = int(floor_match.group(1))
+			return self._start_combat_encounter(boss_dungeon=dungeon_id, floor_num=floor_num)
+
+		# Regular enemy spawn
+		# Determine current floor number
+		floor_num = 1
+		import re
+		floor_match = re.search(r'_floor(\d+)', room_id)
+		if floor_match:
+			floor_num = int(floor_match.group(1))
+
+		# Build room_data dict for spawn check
+		room_data_dict = {}
+		if raw_room:
+			room_data_dict = raw_room
+		elif hasattr(dest_room, '__dict__'):
+			room_data_dict = dest_room.__dict__
+		room_data_dict["_room_id"] = room_id
+
+		if should_spawn_enemy(floor_num, room_data_dict):
+			enemies = get_enemies_for_dungeon(dungeon_id or "any", floor_num)
+			if enemies:
+				import random
+				chosen = random.choice(enemies)
+				# Mark room as cleared
+				cleared.append(room_id)
+				return self._start_combat_encounter(enemy_id=chosen, floor_num=floor_num)
+
+		return ""
+
 	def _check_room_traps(self, room_id):
 		"""Check for traps when entering a room. Returns message string or empty.
 		
@@ -664,8 +1761,30 @@ class CommandHandler:
 				if trap.get("triggered") or trap.get("disarmed"):
 					continue
 
+				# Check for active ability effects
+				if PROGRESSION_AVAILABLE:
+					# Sneak / Phantom: bypass the trap entirely
+					if has_active_effect(self.engine.player, "sneak_active"):
+						continue
+					# Trap immunity / Arcane Shield: won't trigger
+					if has_active_effect(self.engine.player, "trap_immune"):
+						continue
+					# Trap stunned via Shield Bash
+					if has_active_effect(self.engine.player, "trap_stunned"):
+						continue
+
 				# Chance to fully detect the trap
 				detect = trap.get("detection_chance", 0.40)
+				# Already revealed by ability (Reveal / War Cry)
+				if trap.get("detected"):
+					detect = 1.0
+				# Perception bonus: +3% per point
+				elif PROGRESSION_AVAILABLE:
+					perception = get_stat_modifier(self.engine.player, "perception")
+					detect = min(0.95, detect + perception * 0.03)
+					# Guaranteed detection from ability
+					if has_active_effect(self.engine.player, "guaranteed_detection"):
+						detect = 1.0
 				if _rng.random() < detect:
 					trap_name = trap.get("name", trap.get("type", "trap").replace("_", " "))
 					warning = trap.get("warning_signs", "Something feels off about this room.")
@@ -727,6 +1846,26 @@ class CommandHandler:
 	def _trigger_trap(self, trap):
 		"""Trigger a trap and deal damage. Applies poison if applicable."""
 		import random as _rng
+
+		# Check for trap immunity from abilities
+		if PROGRESSION_AVAILABLE and has_active_effect(self.engine.player, "trap_immune"):
+			trap["triggered"] = True
+			trap_name = trap.get("name", trap.get("type", "trap").replace("_", " "))
+			result = "\n" + "-" * 50 + "\n"
+			result += f"  A {trap_name} activates, but your magical protection absorbs it!\n"
+			result += "  You take no damage!\n"
+			result += "-" * 50 + "\n"
+			# Clear one-shot immunity
+			active = self.engine.player.state.get("active_effects", {})
+			if "trap_immune" in active:
+				active["trap_immune"] = 0
+			xp_msg = ""
+			try:
+				xp_msg = award_xp(self.engine.player, XP_AWARDS.get("survive_trap", 5), "survived trap (immunity)")
+			except Exception:
+				pass
+			return result + xp_msg
+
 		trap["triggered"] = True
 
 		dmg_spec = trap.get("damage", (10, 20))
@@ -736,6 +1875,15 @@ class CommandHandler:
 			damage = int(dmg_spec)
 		else:
 			damage = 15
+
+		# Defense stat reduces damage (min 30% of original)
+		if PROGRESSION_AVAILABLE:
+			defense = get_stat_modifier(self.engine.player, "defense")
+			damage_reduction = defense * 0.02
+			damage = int(damage * max(0.30, 1 - damage_reduction))
+			# Archmage mode: 50% damage reduction
+			if has_active_effect(self.engine.player, "archmage_mode"):
+				damage = damage // 2
 
 		trap_name = trap.get("name", trap.get("type", "trap").replace("_", " "))
 		desc = trap.get("description", "A trap activates!")
@@ -756,6 +1904,10 @@ class CommandHandler:
 		poison_dmg = trap.get("poison_damage")
 		poison_dur = trap.get("poison_duration", 0)
 		if poison_dmg and poison_dur > 0:
+			# Constitution reduces poison duration
+			if PROGRESSION_AVAILABLE:
+				con = get_stat_modifier(self.engine.player, "constitution")
+				poison_dur = max(1, int(poison_dur - con * 0.5))
 			self.engine.poison_status = {
 				"damage_per_move": poison_dmg,
 				"moves_remaining": poison_dur,
@@ -765,7 +1917,16 @@ class CommandHandler:
 			result += f"   {poison_dmg} damage per move for {poison_dur} moves.\n"
 
 		result += "=" * 50 + "\n"
-		return result
+
+		# Award XP for surviving a trap
+		xp_msg = ""
+		if PROGRESSION_AVAILABLE:
+			try:
+				xp_msg = award_xp(self.engine.player, XP_AWARDS.get("survive_trap", 5), "survived trap")
+			except Exception:
+				pass
+
+		return result + xp_msg
 
 	def _tick_poison(self):
 		"""Apply poison damage when player moves. Returns message or empty string."""
@@ -800,52 +1961,36 @@ class CommandHandler:
 
 	def _use_crafting_altar(self):
 		"""
-		Interact with a crafting altar in the current room.
-		Crafting altars exist at the deepest floor of each fixed dungeon.
-		Currently a placeholder — full crafting system will be added later.
+		Interact with a crafting altar/station in the current room.
+		Delegates to the crafting system for menu display and crafting.
+		Also works at the village blacksmith (forge station).
 		"""
-		room_id = self.engine.player.current_room
+		# Try crafting system first
+		if CRAFTING_AVAILABLE and self.engine.crafting_system:
+			return self.engine.crafting_system.use_station()
 		
-		# Check if this room has a crafting altar in the raw dungeon data
-		raw_room = None
-		if self.engine.current_dungeon_instance:
-			raw_room = TrapSystem.find_raw_room(
-				self.engine.current_dungeon_instance, room_id
-			) if TRAP_AVAILABLE else None
-			# Also check the fixed dungeon data directly
-			if not raw_room and self.engine.current_fixed_dungeon:
-				for _fnum, fdata in self.engine.current_fixed_dungeon.get("floors", {}).items():
-					if room_id in fdata.get("rooms", {}):
-						raw_room = fdata["rooms"][room_id]
-						break
-		
-		if not raw_room or not raw_room.get("crafting_altar"):
-			return "There is no crafting altar here."
-		
-		altar_name = raw_room.get("altar_name", "Crafting Altar")
-		altar_desc = raw_room.get("altar_description", "An ancient altar pulses with energy.")
-		
-		result = "\n" + "=" * 60 + "\n"
-		result += f"  ⚒️  {altar_name}\n"
-		result += "=" * 60 + "\n\n"
-		result += f"{altar_desc}\n\n"
-		result += "You place your hands upon the altar. Ancient runes flare\n"
-		result += "with brilliant light, and you feel raw creative energy\n"
-		result += "coursing through the surface...\n\n"
-		result += "But the knowledge of how to use this power eludes you.\n"
-		result += "Perhaps in time, you will learn the art of crafting.\n\n"
-		result += "  [Crafting system coming soon!]\n"
-		result += "  The altar remembers your visit.\n"
-		result += "=" * 60 + "\n"
-		
-		# Mark in player state that they've found this altar
-		found_altars = self.engine.player.state.get("found_altars", [])
-		if altar_name not in found_altars:
-			found_altars.append(altar_name)
-			self.engine.player.state["found_altars"] = found_altars
-			result += f"\n✦ New altar discovered: {altar_name}!\n"
-		
-		return result
+		# Fallback if crafting system unavailable
+		return "The crafting system is not available."
+
+	def _use_item(self, item_name):
+		"""Use an item from inventory."""
+		# Check for cooked food from fishing system
+		if FISHING_AVAILABLE and self.engine.fishing_system:
+			item_key = item_name.replace(" ", "_").lower()
+			result = self.engine.fishing_system.use_cooked_food(item_key)
+			if result:
+				# Consume the food item
+				inv = self.engine.player.inventory
+				if inv.get(item_key, 0) > 0:
+					inv[item_key] -= 1
+					if inv[item_key] <= 0:
+						del inv[item_key]
+					self.engine._inventory_changed = True
+				return result
+
+		if ITEM_EFFECTS_AVAILABLE and self.engine.item_effects:
+			return self.engine.item_effects.use_item(item_name)
+		return "You can't use items right now."
 
 	def _disarm_trap(self):
 		"""Attempt to disarm a trap in the current room."""
@@ -868,10 +2013,20 @@ class CommandHandler:
 		difficulty = trap.get("disarm_difficulty", "medium")
 		success_rate = TrapSystem.DISARM_SUCCESS_RATES.get(difficulty, 0.50) if TRAP_AVAILABLE else 0.50
 
+		# Dexterity bonus: +2% per point
+		if PROGRESSION_AVAILABLE:
+			dex = get_stat_modifier(self.engine.player, "dexterity")
+			success_rate = min(0.95, success_rate + dex * 0.02)
+			# Locksmith bonus: flat +15% from r_locksmith skill
+			disarm_bonus = self.engine.player.stats.get("disarm_bonus", 0)
+			if disarm_bonus > 0:
+				success_rate = min(0.95, success_rate + disarm_bonus)
+
 		required_tools = trap.get("disarm_tools", ["lockpick_set"])
 		has_tool = any(t in self.engine.player.inventory for t in required_tools)
 
-		if not has_tool:
+		# Debug mode: bypass tool requirement
+		if not has_tool and not self.engine.debug_disarm_free:
 			return f"You need one of these tools: {', '.join(required_tools)}"
 
 		trap_name = trap.get("name", trap.get("type", "trap").replace("_", " "))
@@ -952,6 +2107,15 @@ class CommandHandler:
 			else:
 				result += "Despite a rough approach, you managed to disable it through sheer luck!\n"
 			result += "=" * 50 + "\n"
+			# Award XP based on difficulty
+			if PROGRESSION_AVAILABLE:
+				try:
+					difficulty = trap.get("disarm_difficulty", "medium")
+					xp_key = f"disarm_trap_{difficulty}"
+					xp_amount = XP_AWARDS.get(xp_key, XP_AWARDS.get("disarm_trap_medium", 25))
+					result += award_xp(self.engine.player, xp_amount, f"disarmed {trap_name}")
+				except Exception:
+					pass
 			return result
 		else:
 			# Failed — chance to trigger
@@ -1527,7 +2691,13 @@ Do you wish to enter? (yes/no)
 		room = self.engine.get_room_data(self.engine.player.current_room)
 		if not room:
 			return "[Current room not found]"
-		return room.describe()
+		result = room.describe()
+		# Show visible overworld enemies
+		if OVERWORLD_AVAILABLE and self.engine.encounter_manager:
+			vis = self.engine.encounter_manager.get_visible_enemy_text(self.engine.player.current_room)
+			if vis:
+				result += vis
+		return result
 
 	# helper inventory modifiers
 	def _add_to_inventory(self, item_name, count=1):
@@ -1602,6 +2772,9 @@ Do you wish to enter? (yes/no)
 			self.engine._inventory_changed = True
 		except Exception:
 			pass
+		# Notify quest system of inventory change
+		if QUEST_AVAILABLE and hasattr(self.engine, 'quest_manager') and self.engine.quest_manager:
+			self.engine.quest_manager.on_item_changed()
 		if removed == 1:
 			return f"collected `{item}`"
 		else:
@@ -1642,13 +2815,121 @@ Do you wish to enter? (yes/no)
 
 	def _inventory(self):
 		inv = self.engine.player.inventory
-		if inv:
-			parts = []
-			for k, v in inv.items():
-				parts.append(f"{k} x{v}")
-			return "You are carrying: " + ", ".join(parts)
-		else:
+		if not inv:
 			return "You are carrying nothing."
+
+		# Categorize items
+		equipment_items = {}
+		consumables = {}
+		materials = {}
+		misc = {}
+
+		for item_id, qty in inv.items():
+			# Check if it's equipment
+			if EQUIPMENT_AVAILABLE and item_id in EQUIPMENT_DATABASE:
+				equipment_items[item_id] = qty
+			elif ITEM_EFFECTS_AVAILABLE and self.engine.item_effects and self.engine.item_effects.get_item_info(item_id):
+				consumables[item_id] = qty
+			elif CRAFTING_AVAILABLE and self._is_crafting_material(item_id):
+				materials[item_id] = qty
+			else:
+				misc[item_id] = qty
+
+		result = "\n" + "═" * 55 + "\n"
+		result += "  🎒 INVENTORY\n"
+		result += "═" * 55 + "\n"
+
+		def _nice(item_id):
+			"""Get display name from various databases."""
+			if EQUIPMENT_AVAILABLE and item_id in EQUIPMENT_DATABASE:
+				return EQUIPMENT_DATABASE[item_id].get("name", item_id.replace("_", " ").title())
+			if ITEM_EFFECTS_AVAILABLE and self.engine.item_effects:
+				info = self.engine.item_effects.get_item_info(item_id)
+				if info and info.get("description"):
+					pass  # Just use item_id formatting below
+			if SHOP_AVAILABLE:
+				try:
+					from shop_system import ITEM_DATABASE
+					if item_id in ITEM_DATABASE:
+						return ITEM_DATABASE[item_id].get("name", item_id.replace("_", " ").title())
+				except ImportError:
+					pass
+			return item_id.replace("_", " ").title()
+
+		def _icon(item_id):
+			"""Get icon for item."""
+			if SHOP_AVAILABLE:
+				try:
+					from shop_system import ITEM_DATABASE
+					if item_id in ITEM_DATABASE:
+						return ITEM_DATABASE[item_id].get("icon", "•")
+				except ImportError:
+					pass
+			if EQUIPMENT_AVAILABLE and item_id in EQUIPMENT_DATABASE:
+				slot = EQUIPMENT_DATABASE[item_id].get("slot", "")
+				icons = {"weapon": "⚔️", "armor": "🛡️", "shield": "🛡️", "accessory": "💍"}
+				return icons.get(slot, "•")
+			return "•"
+
+		if equipment_items:
+			result += "\n  ⚔️  EQUIPMENT\n"
+			for iid, qty in equipment_items.items():
+				eq = EQUIPMENT_DATABASE.get(iid, {})
+				name = eq.get("name", iid.replace("_", " ").title())
+				stats = eq.get("stats", {})
+				stat_str = ", ".join(f"+{v} {k[:3].upper()}" for k, v in stats.items())
+				result += f"    {name} x{qty}"
+				if stat_str:
+					result += f"  ({stat_str})"
+				result += "\n"
+
+		if consumables:
+			result += "\n  🧪 CONSUMABLES\n"
+			for iid, qty in consumables.items():
+				name = _nice(iid)
+				result += f"    {name} x{qty}\n"
+
+		if materials:
+			result += "\n  🔧 MATERIALS\n"
+			for iid, qty in materials.items():
+				name = _nice(iid)
+				result += f"    {name} x{qty}\n"
+
+		if misc:
+			result += "\n  📦 OTHER\n"
+			for iid, qty in misc.items():
+				name = _nice(iid)
+				result += f"    {name} x{qty}\n"
+
+		# Gold
+		gold = self.engine.player.state.get("gold", 0)
+		result += f"\n  💰 Gold: {gold}\n"
+		result += "\n  Tip: 'inspect <item>' for details\n"
+		result += "═" * 55 + "\n"
+		return result
+
+	def _is_crafting_material(self, item_id):
+		"""Check if an item is used as a crafting ingredient."""
+		if not CRAFTING_AVAILABLE:
+			return False
+		try:
+			from crafting_system import RECIPE_DATABASE
+			for recipe in RECIPE_DATABASE.values():
+				if item_id in recipe.get("ingredients", {}):
+					return True
+		except ImportError:
+			pass
+		# Check enchanting materials
+		if ENCHANTING_AVAILABLE:
+			try:
+				from enchanting_system import ENCHANTMENTS
+				for altar_enchants in ENCHANTMENTS.values():
+					for ench in altar_enchants.values():
+						if item_id in ench.get("materials", {}):
+							return True
+			except ImportError:
+				pass
+		return False
 
 	def _help(self):
 		return "Commands: go [dir], look, collect [item], drop [item], inventory, save, load, quit\nRooms may also define custom actions (try commands specific to the room)."
@@ -1725,14 +3006,189 @@ Do you wish to enter? (yes/no)
 					return "You examine the ground.\nNothing interesting on the floor."
 		
 		# Regular inventory/item examination
-		if target in self.engine.player.inventory:
-			item_qty = self.engine.player.inventory[target]
-			return f"You examine your {target}.\nQuantity: {item_qty}\nIt looks like it could be useful or valuable."
+		target_id = target.replace(" ", "_")
+		if target_id in self.engine.player.inventory or target in self.engine.player.inventory:
+			item_id = target_id if target_id in self.engine.player.inventory else target
+			return self._examine_item(item_id)
 		if not room:
 			return "You don't see that here."
 		if target in room.items:
 			return f"You examine the {target} in the room.\nIt looks useful. Type 'take {target}' to pick it up."
+		# Also try snake_case version for room items
+		if target_id in room.items:
+			return f"You examine the {target} in the room.\nIt looks useful. Type 'take {target_id}' to pick it up."
 		return f"You don't see any '{target}' here to examine.\n\nTry examining:\n  - wall (look for secrets)\n  - chest (examine containers)\n  - ground (search the floor)\n  - <item_name> (inspect items)"
+
+	def _examine_item(self, item_id):
+		"""Show detailed info about an inventory item, pulling from all databases."""
+		qty = self.engine.player.inventory.get(item_id, 0)
+		nice_name = item_id.replace("_", " ").title()
+
+		result = "\n" + "═" * 55 + "\n"
+
+		# ── Equipment ──
+		if EQUIPMENT_AVAILABLE and item_id in EQUIPMENT_DATABASE:
+			eq = EQUIPMENT_DATABASE[item_id]
+			result += f"  ⚔️  {eq.get('name', nice_name)}\n"
+			result += "═" * 55 + "\n"
+			result += f"  {eq.get('description', 'No description.')}\n\n"
+			result += f"  Type: Equipment ({eq.get('slot', '?').title()})\n"
+			result += f"  Quantity: {qty}\n"
+			if eq.get("stats"):
+				result += "\n  Stats when equipped:\n"
+				for stat, val in eq["stats"].items():
+					nice_stat = stat.replace("_", " ").capitalize()
+					result += f"    +{val} {nice_stat}\n"
+			# Show current player stat comparison
+			equipment = self.engine.player.state.get("equipment", {})
+			current_in_slot = equipment.get(eq.get("slot"))
+			if current_in_slot and current_in_slot != item_id:
+				cur_data = EQUIPMENT_DATABASE.get(current_in_slot, {})
+				result += f"\n  Currently equipped: {cur_data.get('name', current_in_slot)}\n"
+				result += "  Comparison:\n"
+				all_stats = set(list(eq.get("stats", {}).keys()) + list(cur_data.get("stats", {}).keys()))
+				for stat in sorted(all_stats):
+					new_val = eq.get("stats", {}).get(stat, 0)
+					old_val = cur_data.get("stats", {}).get(stat, 0)
+					diff = new_val - old_val
+					nice_stat = stat.replace("_", " ").capitalize()
+					if diff > 0:
+						result += f"    {nice_stat}: +{new_val} (▲ +{diff})\n"
+					elif diff < 0:
+						result += f"    {nice_stat}: +{new_val} (▼ {diff})\n"
+					else:
+						result += f"    {nice_stat}: +{new_val} (=)\n"
+			elif not current_in_slot:
+				result += f"\n  Slot is empty — equip with 'equip {item_id}'\n"
+			# Show worth
+			try:
+				from crafting_system import CRAFTED_ITEM_WORTH
+				if item_id in CRAFTED_ITEM_WORTH:
+					result += f"\n  Worth: {CRAFTED_ITEM_WORTH[item_id]} gold\n"
+			except ImportError:
+				pass
+			result += "═" * 55 + "\n"
+			return result
+
+		# ── Consumable / Usable ──
+		item_info = None
+		if ITEM_EFFECTS_AVAILABLE and self.engine.item_effects:
+			item_info = self.engine.item_effects.get_item_info(item_id)
+		if item_info:
+			result += f"  🧪 {nice_name}\n"
+			result += "═" * 55 + "\n"
+			desc = item_info.get("description", "No description.")
+			result += f"  {desc}\n\n"
+			result += f"  Type: {item_info.get('type', 'item').title()}\n"
+			result += f"  Effect: {item_info.get('effect', 'none').replace('_', ' ').title()}\n"
+			if item_info.get("value"):
+				result += f"  Power: {item_info['value']}\n"
+			result += f"  Quantity: {qty}\n"
+			result += f"\n  Use with 'use {item_id}'\n"
+			result += "═" * 55 + "\n"
+			return result
+
+		# ── Cooked food ──
+		if FISHING_AVAILABLE:
+			try:
+				from fishing_system import COOKED_FOOD_EFFECTS
+				if item_id in COOKED_FOOD_EFFECTS:
+					food = COOKED_FOOD_EFFECTS[item_id]
+					result += f"  🍳 {nice_name}\n"
+					result += "═" * 55 + "\n"
+					result += f"  Type: Cooked Food\n"
+					result += f"  Quantity: {qty}\n\n"
+					effects = []
+					if food.get("heal"):
+						effects.append(f"Heals {food['heal']} HP")
+					if food.get("cure_poison"):
+						effects.append("Cures poison")
+					if food.get("temp_stats"):
+						for stat, val in food["temp_stats"].items():
+							effects.append(f"+{val} {stat.upper()} (temporary)")
+					if food.get("xp"):
+						effects.append(f"+{food['xp']} XP")
+					if effects:
+						result += "  Effects:\n"
+						for e in effects:
+							result += f"    • {e}\n"
+					result += f"\n  Use with 'use {item_id}'\n"
+					result += "═" * 55 + "\n"
+					return result
+			except ImportError:
+				pass
+
+		# ── Shop database ──
+		if SHOP_AVAILABLE:
+			try:
+				from shop_system import ITEM_DATABASE
+				if item_id in ITEM_DATABASE:
+					idata = ITEM_DATABASE[item_id]
+					result += f"  {idata.get('icon', '📦')} {idata.get('name', nice_name)}\n"
+					result += "═" * 55 + "\n"
+					result += f"  {idata.get('desc', 'No description.')}\n\n"
+					result += f"  Rarity: {idata.get('rarity', 'common').title()}\n"
+					result += f"  Value: {idata.get('value', '?')} gold\n"
+					result += f"  Quantity: {qty}\n"
+					result += "═" * 55 + "\n"
+					return result
+			except ImportError:
+				pass
+
+		# ── Crafting recipes that produce this item ──
+		recipe_info = ""
+		if CRAFTING_AVAILABLE:
+			try:
+				from crafting_system import RECIPE_DATABASE, CRAFTED_ITEM_WORTH
+				for rid, recipe in RECIPE_DATABASE.items():
+					res_id = recipe.get("result", (None,))[0]
+					if res_id == item_id:
+						recipe_info = f"\n  Crafted from: {recipe.get('name', rid)}\n"
+						recipe_info += f"  {recipe.get('description', '')}\n"
+						break
+				worth = CRAFTED_ITEM_WORTH.get(item_id)
+				if worth:
+					recipe_info += f"  Worth: {worth} gold\n"
+			except ImportError:
+				pass
+
+		# ── Generic fallback ──
+		result += f"  📦 {nice_name}\n"
+		result += "═" * 55 + "\n"
+		result += f"  Quantity: {qty}\n"
+
+		# Check if it's used in any recipe
+		used_in = []
+		if CRAFTING_AVAILABLE:
+			try:
+				from crafting_system import RECIPE_DATABASE
+				for rid, recipe in RECIPE_DATABASE.items():
+					if item_id in recipe.get("ingredients", {}):
+						used_in.append(recipe.get("name", rid))
+			except ImportError:
+				pass
+		if ENCHANTING_AVAILABLE:
+			try:
+				from enchanting_system import ENCHANTMENTS
+				for altar_enchants in ENCHANTMENTS.values():
+					for ench in altar_enchants.values():
+						if item_id in ench.get("materials", {}):
+							used_in.append(f"{ench['name']} (enchant)")
+			except ImportError:
+				pass
+
+		if used_in:
+			result += "\n  Used in:\n"
+			for u in used_in[:6]:
+				result += f"    • {u}\n"
+			if len(used_in) > 6:
+				result += f"    ... and {len(used_in)-6} more\n"
+
+		if recipe_info:
+			result += recipe_info
+
+		result += "═" * 55 + "\n"
+		return result
 
 	def _search_room(self):
 		"""Actively search the current room for hidden traps and items."""
@@ -1833,8 +3289,18 @@ Do you wish to enter? (yes/no)
 		
 		got_something = False
 		
+		# Check for double loot ability (Rogue Plunder)
+		loot_multiplier = 1
+		if PROGRESSION_AVAILABLE and has_active_effect(self.engine.player, "double_loot"):
+			loot_multiplier = 2
+			result += "\n  ** PLUNDER ACTIVE — Double loot! **\n"
+			# Clear the one-shot effect
+			active = self.engine.player.state.get("active_effects", {})
+			if "double_loot" in active:
+				active["double_loot"] = 0
+
 		# Add gold
-		gold = contents.get("gold", 0)
+		gold = contents.get("gold", 0) * loot_multiplier
 		if gold > 0:
 			got_something = True
 			self.engine.player.stats["gold"] = self.engine.player.stats.get("gold", 0) + gold
@@ -1847,10 +3313,10 @@ Do you wish to enter? (yes/no)
 			result += "\nItems found:\n"
 			for item_name, item_data in items.items():
 				if isinstance(item_data, dict):
-					qty = item_data.get("quantity", 1)
+					qty = item_data.get("quantity", 1) * loot_multiplier
 					value = item_data.get("value", 10)
 				else:
-					qty = 1
+					qty = 1 * loot_multiplier
 					value = 10
 				
 				self._add_to_inventory(item_name, qty)
@@ -1864,6 +3330,16 @@ Do you wish to enter? (yes/no)
 			result += "\nThe chest is empty!\n"
 		
 		result += "\n" + "=" * 50 + "\n"
+		
+		# Award XP for opening chest
+		if PROGRESSION_AVAILABLE:
+			try:
+				chest_raw = chest.get("type", "wooden")
+				xp_key = f"open_chest_{chest_raw}"
+				xp_amount = XP_AWARDS.get(xp_key, XP_AWARDS.get("open_chest_wooden", 10))
+				result += award_xp(self.engine.player, xp_amount, f"opened {chest_type}")
+			except Exception:
+				pass
 		
 		# Notify UI of inventory change
 		try:
@@ -1910,6 +3386,13 @@ Do you wish to enter? (yes/no)
 					"type": "secret"
 				}
 		
+		xp_msg = ""
+		if PROGRESSION_AVAILABLE:
+			try:
+				xp_msg = award_xp(self.engine.player, XP_AWARDS.get("discover_secret_room", 50), "discovered secret room!")
+			except Exception:
+				pass
+		
 		return ("\n" + "="*80 + "\n"
 				"You carefully examine the walls...\n"
 				"\n"
@@ -1924,7 +3407,8 @@ Do you wish to enter? (yes/no)
 				"A secret passage is revealed!\n"
 				"="*80 + "\n"
 				"\n"
-				"You can now 'go secret' to enter the hidden passage!\n")
+				"You can now 'go secret' to enter the hidden passage!\n"
+				+ xp_msg)
 
 	def _enter_secret_room(self, secret_room_id):
 		"""Enter and display the secret chamber with ASCII art easter egg."""
@@ -2010,7 +3494,14 @@ Do you wish to enter? (yes/no)
 			self.engine._inventory_changed = True
 		except Exception:
 			pass
-		return f"You sold 1 {item_name} for {price} gold."
+		result = f"You sold 1 {item_name} for {price} gold."
+		# Award XP for selling
+		if PROGRESSION_AVAILABLE:
+			try:
+				result += award_xp(self.engine.player, XP_AWARDS.get("sell_item", 2), "sold item")
+			except Exception:
+				pass
+		return result
 
 	# ========== SHOP SYSTEM METHODS ==========
 	
@@ -2163,7 +3654,7 @@ Do you wish to enter? (yes/no)
 ╠════════════════════════════════════════════════════════════════╣
 ║                                                                ║
 ║  [MOVEMENT]                                                    ║
-║  ---------------------------------------------------------------║
+║ ---------------------------------------------------------------║
 ║    go <direction>       - Move (north, south, east, west)      ║
 ║    n / s / e / w        - Quick movement shortcuts             ║
 ║    go up / u            - Climb stairs to previous floor       ║
@@ -2172,50 +3663,118 @@ Do you wish to enter? (yes/no)
 ║    leave / exit         - Leave current location               ║
 ║                                                                ║
 ║  [EXPLORATION]                                                 ║
-║  ---------------------------------------------------------------║
+║ ---------------------------------------------------------------║
 ║    look / l             - Look around current room             ║
 ║    examine <target>     - Examine something closely            ║
 ║    inspect <target>     - Same as examine (inspect wall!)      ║
 ║    search               - Search for hidden items/traps        ║
+║    fight                - Engage a visible enemy in the room   ║
 ║    open map             - Open live map window                 ║
 ║    close map            - Close map window                     ║
 ║                                                                ║
 ║  [INVENTORY]                                                   ║
-║  ---------------------------------------------------------------║
+║ ---------------------------------------------------------------║
 ║    inventory / inv / i  - View your inventory                  ║
 ║    take <item>          - Pick up an item                      ║
 ║    drop <item>          - Drop an item from inventory          ║
 ║    sell <item>          - Sell item for standard value         ║
-║                                                                ║"""
+║    use <item>           - Use an item (potion, torch, etc.)    ║
+║                                                                ║
+"""
+
+		# Fishing commands (show near water)
+		if FISHING_AVAILABLE:
+			from fishing_system import WATER_ROOMS as FISH_WATER_ROOMS
+			if self.engine.player.current_room in FISH_WATER_ROOMS:
+				result += """║  [FISHING]                                                     ║
+║ ---------------------------------------------------------------║
+║    fish                 - Cast your line (no bait)             ║
+║    fish <bait>          - Fish with specific bait              ║
+║    bait                 - View your bait inventory             ║
+║                                                                ║
+"""
+		
+		# NPC commands (show when NPCs are present)
+		if NPC_AVAILABLE:
+			room_obj = self.engine.get_room_data(self.engine.player.current_room)
+			has_npcs = hasattr(room_obj, 'npcs') and room_obj.npcs
+			if has_npcs:
+				result += """║  [NPC INTERACTION]                                             ║
+║ ---------------------------------------------------------------║
+║    talk to <name>       - Start conversation with an NPC       ║
+║    gift <npc> <item>    - Give an item as a gift to an NPC     ║
+║    reputation / rep     - View NPC relationship standings      ║
+║    rep <npc_name>       - View specific NPC relationship       ║
+║                                                                ║
+"""
 		
 		# Context-specific commands
 		if in_dungeon:
-			result += """║  [DUNGEON ACTIONS]                                             ║
-║  ---------------------------------------------------------------║
+			result += """║  [DUNGEON ACTIONS]                                            ║
+║ ---------------------------------------------------------------║
 ║    open chest           - Open a treasure chest                ║
 ║    disarm / disarm trap - Attempt to disarm a trap             ║
 ║    go secret            - Enter secret passage (if discovered) ║
 ║    craft / forge        - Use crafting altar (if present)      ║
+║    experiment           - Experiment with items to discover    ║
 ║    use altar            - Same as craft                        ║
-║                                                                ║"""
+║                                                                ║
+"""
 		
 		if SHOP_AVAILABLE and in_shop:
-			result += """║  [SHOP COMMANDS]                                               ║
-║  ---------------------------------------------------------------║
+			result += """║  [SHOP COMMANDS]                                              ║
+║ ---------------------------------------------------------------║
 ║    shop browse          - View items for sale                  ║
 ║    shop buy <item>      - Purchase an item                     ║
 ║    shop sell <item> <price> - Sell item to merchant            ║
 ║    shop info            - Trading tips and pricing guide       ║
 ║    shop talk            - Chat with merchant                   ║
-║                                                                ║"""
+║                                                                ║
+"""
 		
 		result += """║  [SYSTEM]                                                      ║
-║  ---------------------------------------------------------------║
+║ ---------------------------------------------------------------║
 ║    help / commands / ?  - Show this command list               ║
+║    recipes / crafting   - View all known crafting recipes      ║
+║    journal / quests / j - View quest journal                   ║
 ║    save                 - Save your game                       ║
 ║    quit / exit          - Save and exit game                   ║
 ║                                                                ║
-╠════════════════════════════════════════════════════════════════╣
+"""
+		
+		# Progression commands
+		if PROGRESSION_AVAILABLE:
+			result += """║  [PROGRESSION]                                                 ║
+║ ---------------------------------------------------------------║
+║    stats / level        - View stats, level, and XP            ║
+║    skills / skilltree   - Open graphical skill tree            ║
+║    abilities / ab       - List your active abilities           ║
+║    ability <name>       - Use an active ability                ║
+║                                                                ║
+"""
+		
+		# Equipment commands
+		if EQUIPMENT_AVAILABLE:
+			result += """║  [EQUIPMENT]                                                   ║
+║ ---------------------------------------------------------------║
+║    equip <item>         - Equip a weapon/armor/accessory       ║
+║    unequip <slot/item>  - Remove equipment (e.g. weapon)       ║
+║    equipment            - View current equipment               ║
+║    enchant              - Enchant equipment at an altar        ║
+║                                                                ║
+"""
+		
+		# Combat commands (show when in combat or in dungeon)
+		if COMBAT_AVAILABLE and (in_dungeon or getattr(self.engine, 'pending_combat', None)):
+			result += """║  [COMBAT]                                                      ║
+║ ---------------------------------------------------------------║
+║    attack               - Attack the enemy                     ║
+║    defend               - Reduce incoming damage this turn     ║
+║    flee                  - Attempt to escape (can't flee boss) ║
+║                                                                ║
+"""
+		
+		result += """╠════════════════════════════════════════════════════════════════╣
 ║                                                                ║
 ║  [TIPS]                                                        ║
 ║    • Commands are not case-sensitive                           ║
@@ -2235,6 +3794,59 @@ Do you wish to enter? (yes/no)
 		# Add debug commands note if available
 		if DEBUG_AVAILABLE:
 			result += "\n[DEBUG MODE] Type 'debug commands' to see debug menu.\n"
+		
+		return result
+
+	def _show_recipes(self):
+		"""Display all learned crafting recipes."""
+		if not CRAFTING_AVAILABLE or not self.engine.crafting_system:
+			return "The crafting system is not available."
+		
+		# Get known recipes
+		known_recipe_ids = self.engine.crafting_system.get_known_recipes()
+		
+		if not known_recipe_ids:
+			return "\nYou haven't learned any crafting recipes yet.\n\nTalk to NPCs like the Blacksmith, Hermit, Priest, or Swamp Witch to learn recipes!\n"
+		
+		# Import recipe database
+		try:
+			from crafting_system import RECIPE_DATABASE, STATION_NAMES
+		except ImportError:
+			return "Could not load recipe database."
+		
+		result = "\n" + "=" * 65 + "\n"
+		result += "  📚 KNOWN CRAFTING RECIPES\n"
+		result += "=" * 65 + "\n\n"
+		
+		for idx, recipe_id in enumerate(known_recipe_ids, 1):
+			recipe = RECIPE_DATABASE.get(recipe_id)
+			if not recipe:
+				continue
+			
+			result += f"[{idx}] {recipe['name']}\n"
+			
+			# Ingredients
+			result += "    Materials: "
+			ingredients = []
+			for item_name, count in recipe['ingredients'].items():
+				nice_name = item_name.replace("_", " ").title()
+				ingredients.append(f"{count}x {nice_name}")
+			result += ", ".join(ingredients) + "\n"
+			
+			# Station
+			station_type = recipe['station']
+			if station_type == "any":
+				result += "    Location: Any Crafting Station (Forge or Altar)\n"
+			else:
+				station_name = STATION_NAMES.get(station_type, station_type)
+				result += f"    Location: {station_name}\n"
+			
+			# Description
+			result += f"    {recipe['description']}\n\n"
+		
+		result += "=" * 65 + "\n"
+		result += "Use 'craft' command at a crafting station to make items.\n"
+		result += "=" * 65 + "\n"
 		
 		return result
 
@@ -2332,9 +3944,26 @@ class GameEngine:
 		self.pending_disarm = None
 		# Track poison status
 		self.poison_status = None
+		# Track pending NPC dialogue
+		self.pending_dialogue = None
+		# Track pending crafting menu
+		self.pending_crafting = None
+		# Track pending crafting experiment
+		self.pending_experiment = None
+		# Track pending enchanting menu
+		self.pending_enchant = None
+		# Track pending combat encounter
+		self.pending_combat = None
+		
+		# Track pending class selection (progression system)
+		self.pending_class_selection = False
+		# Track pending quest action (accept/decline)
+		self.pending_quest_action = None
 		
 		# Debug overrides for dungeons
 		self.debug_force_open_dungeons = set()  # Stores dungeon_ids that are force-opened
+		# Debug mode: free disarm (no items required)
+		self.debug_disarm_free = False
 		
 		# Fixed dungeon tracking
 		self.current_fixed_dungeon = None  # Loaded fixed dungeon JSON data
@@ -2368,6 +3997,54 @@ class GameEngine:
 		else:
 			self.dungeon_scheduler = None
 			self.current_dungeon_instance = None
+		
+		# Initialize NPC system
+		if NPC_AVAILABLE:
+			self.npc_manager = NPCManager(self)
+		else:
+			self.npc_manager = None
+		
+		# Initialize quest system
+		if QUEST_AVAILABLE:
+			self.quest_manager = QuestManager(self)
+		else:
+			self.quest_manager = None
+
+		# Initialize NPC reputation system
+		if NPC_REP_AVAILABLE:
+			self.reputation_manager = ReputationManager(self)
+		else:
+			self.reputation_manager = None
+
+		# Initialize overworld encounter system
+		if OVERWORLD_AVAILABLE:
+			self.encounter_manager = OverworldEncounterManager(self)
+		else:
+			self.encounter_manager = None
+
+		# Initialize fishing system
+		if FISHING_AVAILABLE:
+			self.fishing_system = FishingMinigame(self)
+		else:
+			self.fishing_system = None
+		
+		# Initialize crafting system
+		if CRAFTING_AVAILABLE:
+			self.crafting_system = CraftingSystem(self)
+		else:
+			self.crafting_system = None
+		
+		# Initialize item effects system
+		if ITEM_EFFECTS_AVAILABLE:
+			self.item_effects = ItemEffects(self)
+		else:
+			self.item_effects = None
+		
+		# Initialize enchanting system
+		if ENCHANTING_AVAILABLE:
+			self.enchanting_system = EnchantingSystem(self)
+		else:
+			self.enchanting_system = None
 		
 		self.load_world()
 		# Set up graceful shutdown handler if root provided
@@ -2592,6 +4269,49 @@ class GameEngine:
 		# ensure item_worth exists even if not in file
 		self.item_worth = getattr(self, "item_worth", {}) or {}
 
+	CURRENT_SAVE_VERSION = 2
+
+	def _migrate_save(self, state, from_version):
+		"""Migrate old save formats to current version.
+		Returns (state, notes) where notes is a list of migration descriptions."""
+		notes = []
+		if from_version >= self.CURRENT_SAVE_VERSION:
+			return state, notes
+
+		# ── v1 → v2 migration ──
+		if from_version < 2:
+			player = state.get("player", {})
+			p_state = player.get("state", {})
+
+			# Ensure health_max exists (older saves may lack it)
+			if "health_max" not in p_state:
+				# Calculate from constitution
+				stats = player.get("stats", {})
+				con = stats.get("constitution", 0)
+				base_hp = 100
+				p_state["health_max"] = base_hp + (con * 5)
+				notes.append("added health_max")
+
+			# Ensure enchantments dict exists
+			if "enchantments" not in p_state:
+				p_state["enchantments"] = {}
+
+			# Ensure equipment dict exists
+			if "equipment" not in p_state:
+				p_state["equipment"] = {}
+
+			# Ensure gold exists
+			if "gold" not in p_state:
+				p_state["gold"] = 0
+
+			player["state"] = p_state
+			state["player"] = player
+			state["save_version"] = 2
+			if notes:
+				notes.insert(0, "v1→v2")
+
+		return state, notes
+
 	def on_closing(self):
 		"""
 		Called when user clicks X button on window.
@@ -2752,6 +4472,17 @@ class GameEngine:
 		self.player = Player(self.start_room)
 		# initialize player stats with defaults from world
 		self.player.stats = dict(self.default_stats)
+		# Initialize progression state
+		if PROGRESSION_AVAILABLE:
+			self.player.state["unlocked_skills"] = []
+			self.player.state["cooldowns"] = {}
+			self.player.state["active_effects"] = {}
+		# Initialize equipment slots
+		if EQUIPMENT_AVAILABLE:
+			self.player.state["equipment"] = {slot: None for slot in EQUIPMENT_SLOTS}
+		# Initialize combat state
+		self.pending_combat = None
+		self.player.state["cleared_rooms"] = []
 		# initialize player inventory from default_inventory (dict counts)
 		inv = {}
 		for it, cnt in (self.default_inventory or {}).items():
@@ -2770,7 +4501,13 @@ class GameEngine:
 			pass  # Map will be created when 'open map' command is used
 		out = []
 		out.append("Starting new game...")
-		out.append(self.rooms[self.player.current_room].describe())
+		# Trigger class selection if progression system is available
+		if PROGRESSION_AVAILABLE:
+			self.pending_class_selection = True
+			out.append("")
+			out.append(get_class_selection_text())
+		else:
+			out.append(self.rooms[self.player.current_room].describe())
 		return "\n".join(out)
 
 	def save_game(self, path=SAVE_FILE):
@@ -2782,6 +4519,7 @@ class GameEngine:
 
 		# Build a save structure containing only runtime-modified state (player + room items)
 		state = {
+			"save_version": 2,  # Save format version for migration
 			"player": self.player.to_dict(),  # inventory serialized as dict by Player.to_dict()
 			"rooms": {}
 		}
@@ -2796,6 +4534,63 @@ class GameEngine:
 			state["rooms"][name] = {"items": item_counts}
 		# persist item worth mapping so save contains current worth table (helps editors/changes)
 		state["item_worth"] = {str(k): int(v) for k, v in (self.item_worth or {}).items()}
+
+		# persist quest progress
+		if QUEST_AVAILABLE and self.quest_manager:
+			state["quests"] = self.quest_manager.to_dict()
+
+		# persist NPC reputation data
+		if NPC_REP_AVAILABLE and self.reputation_manager:
+			state["npc_reputation"] = self.reputation_manager.to_dict()
+
+		# persist overworld encounter state
+		if OVERWORLD_AVAILABLE and self.encounter_manager:
+			state["overworld_encounters"] = self.encounter_manager.to_dict()
+
+		# persist fishing stats
+		if FISHING_AVAILABLE and self.fishing_system:
+			state["fishing"] = self.fishing_system.to_dict()
+
+		# persist enchantment data
+		enchants = self.player.state.get("enchantments", {})
+		if enchants:
+			state["enchantments"] = enchants
+
+		# persist dungeon state (CRITICAL: allows player to reload inside dungeons)
+		if self.player and self.player.current_room:
+			cr = self.player.current_room
+			# Check if player is in a dungeon
+			in_procedural = cr.startswith("dungeon_") and "_floor" in cr
+			in_fixed = cr in self.fixed_dungeon_room_ids
+			
+			if in_procedural and self.current_dungeon_instance:
+				# Save procedural dungeon state
+				state["dungeon"] = {
+					"type": "procedural",
+					"dungeon_id": self.current_dungeon_instance.dungeon_id,
+					"seed": self.current_dungeon_instance.seed,
+					"entrance_room_id": self.current_dungeon_instance.entrance_room_id,
+					"dungeon_data": self.current_dungeon_instance.dungeon_data,
+				}
+			elif in_fixed and self.current_fixed_dungeon:
+				# Save fixed dungeon state
+				state["dungeon"] = {
+					"type": "fixed",
+					"dungeon_id": self.current_fixed_dungeon.get("dungeon_id"),
+					"entrance_room_id": self.current_fixed_dungeon.get("entrance_room_id"),
+				}
+
+		# persist NPC dialogue progress
+		if NPC_AVAILABLE and self.npc_manager and hasattr(self.npc_manager, 'to_dict'):
+			state["npc_dialogue"] = self.npc_manager.to_dict()
+
+		# persist shop inventory state
+		if SHOP_AVAILABLE and self.shop and hasattr(self.shop, 'to_dict'):
+			state["shop"] = self.shop.to_dict()
+
+		# persist dungeon scheduler state
+		if DUNGEON_AVAILABLE and self.dungeon_scheduler and hasattr(self.dungeon_scheduler, 'to_dict'):
+			state["dungeon_scheduler"] = self.dungeon_scheduler.to_dict()
 
 		# Write atomically
 		tmp_path = f"{path}.tmp"
@@ -2829,6 +4624,10 @@ class GameEngine:
 		except Exception as e:
 			return f"Failed to load save: {e}"
 
+		# ── Save format migration ──
+		save_ver = state.get("save_version", 1)
+		state, migration_notes = self._migrate_save(state, save_ver)
+
 		# Validate and restore player (supports both dict and legacy list formats)
 		player_data = state.get("player")
 		if not isinstance(player_data, dict):
@@ -2852,6 +4651,57 @@ class GameEngine:
 			self.item_worth = wmap
 		# ensure item_worth exists
 		self.item_worth = getattr(self, "item_worth", {}) or {}
+
+		# ── RESTORE DUNGEON STATE (must happen BEFORE room items restore) ──
+		dungeon_state = state.get("dungeon")
+		if dungeon_state and isinstance(dungeon_state, dict):
+			dtype = dungeon_state.get("type")
+			if dtype == "procedural":
+				# Recreate procedural dungeon instance
+				try:
+					seed = dungeon_state.get("seed")
+					dungeon_id = dungeon_state.get("dungeon_id")
+					entrance_room_id = dungeon_state.get("entrance_room_id", "dungeon_forest_entrance")
+					dungeon_data = dungeon_state.get("dungeon_data")
+					
+					if DUNGEON_AVAILABLE and seed and dungeon_data:
+						# Create a wrapper object that mimics DungeonInstance
+						class SavedDungeonInstance:
+							def __init__(self, seed, dungeon_id, entrance_room_id, dungeon_data, scheduler):
+								self.seed = seed
+								self.dungeon_id = dungeon_id
+								self.entrance_room_id = entrance_room_id
+								self.dungeon_data = dungeon_data
+								self.scheduler = scheduler
+								self.active = True
+						
+						self.current_dungeon_instance = SavedDungeonInstance(
+							seed, dungeon_id, entrance_room_id, dungeon_data, self.dungeon_scheduler
+						)
+						
+						# Register all dungeon rooms
+						for room_id, room_data in dungeon_data.get("rooms", {}).items():
+							self.rooms[room_id] = Room(room_data)
+				except Exception as e:
+					print(f"[WARN] Failed to restore procedural dungeon: {e}")
+					
+			elif dtype == "fixed":
+				# Recreate fixed dungeon
+				try:
+					dungeon_id = dungeon_state.get("dungeon_id")
+					if dungeon_id:
+						dungeon_data = self._load_fixed_dungeon(dungeon_id)
+						if dungeon_data:
+							self.current_fixed_dungeon = dungeon_data
+							self.fixed_dungeon_room_ids.clear()
+							
+							# Register all fixed dungeon rooms
+							for floor_data in dungeon_data.get("floors", {}).values():
+								for room_id, room_data in floor_data.get("rooms", {}).items():
+									self.rooms[room_id] = Room(room_data)
+									self.fixed_dungeon_room_ids.add(room_id)
+				except Exception as e:
+					print(f"[WARN] Failed to restore fixed dungeon: {e}")
 
 		# Apply saved per-room item lists without touching other room metadata.
 		rooms_state = state.get("rooms", {})
@@ -2878,18 +4728,97 @@ class GameEngine:
 						expanded = [str(it) for it in raw_items]
 					# Apply expanded list if available
 					if isinstance(expanded, list):
-						if expanded:
-							self.rooms[name].items = expanded
-						else:
-							# saved empty => preserve world items if present
-							if not self.rooms[name].items:
-								self.rooms[name].items = []
+						# FIX: Always apply saved state (even if empty)
+						# This ensures collected items stay collected
+						self.rooms[name].items = expanded
 		# Ensure flags
 		self.should_quit = False
 		# signal that inventory changed so UI may refresh
 		self._inventory_changed = True
 
+		# Migrate old saves: add missing progression fields
+		if PROGRESSION_AVAILABLE and self.player:
+			defaults = {"level": 1, "xp": 0, "xp_to_next": 100, "skill_points": 0,
+						"class": "none", "strength": 0, "defense": 0, "dexterity": 0,
+						"perception": 0, "charisma": 0, "constitution": 0}
+			for k, v in defaults.items():
+				if k not in self.player.stats:
+					self.player.stats[k] = v
+			# Initialize skill/ability tracking if missing
+			if not hasattr(self.player, 'state'):
+				self.player.state = {}
+			if "unlocked_skills" not in self.player.state:
+				self.player.state["unlocked_skills"] = []
+			if "cooldowns" not in self.player.state:
+				self.player.state["cooldowns"] = {}
+			if "active_effects" not in self.player.state:
+				self.player.state["active_effects"] = {}
+			# If class not chosen yet, prompt selection
+			if self.player.stats.get("class", "none") == "none":
+				self.pending_class_selection = True
+
+		# Migrate old saves: add equipment slots if missing
+		if EQUIPMENT_AVAILABLE and self.player:
+			if "equipment" not in self.player.state:
+				self.player.state["equipment"] = {slot: None for slot in EQUIPMENT_SLOTS}
+		# Migrate old saves: add cleared rooms tracking if missing
+		if self.player and "cleared_rooms" not in self.player.state:
+			self.player.state["cleared_rooms"] = []
+		# Reset combat state on load
+		self.pending_combat = None
+
+		# Restore quest progress from save
+		if QUEST_AVAILABLE and self.quest_manager:
+			quest_data = state.get("quests", {})
+			self.quest_manager.load_from_dict(quest_data)
+
+		# Restore NPC reputation data from save
+		if NPC_REP_AVAILABLE and self.reputation_manager:
+			rep_data = state.get("npc_reputation", {})
+			self.reputation_manager.load_from_dict(rep_data)
+
+		# Restore overworld encounter state from save
+		if OVERWORLD_AVAILABLE and self.encounter_manager:
+			enc_data = state.get("overworld_encounters", {})
+			self.encounter_manager.load_from_dict(enc_data)
+
+		# Restore fishing stats from save
+		if FISHING_AVAILABLE and self.fishing_system:
+			fish_data = state.get("fishing", {})
+			self.fishing_system.load_from_dict(fish_data)
+
+		# Restore enchantment data
+		enchant_data = state.get("enchantments", {})
+		if enchant_data:
+			self.player.state["enchantments"] = enchant_data
+			# Reapply enchantment stat bonuses for equipped items
+			equipment = self.player.state.get("equipment", {})
+			for slot, ench in enchant_data.items():
+				if equipment.get(slot) and ench.get("stats"):
+					for stat, val in ench["stats"].items():
+						self.player.stats[stat] = self.player.stats.get(stat, 0) + val
+
+		# Restore NPC dialogue progress
+		if NPC_AVAILABLE and self.npc_manager and hasattr(self.npc_manager, 'load_from_dict'):
+			npc_data = state.get("npc_dialogue", {})
+			if npc_data:
+				self.npc_manager.load_from_dict(npc_data)
+
+		# Restore shop inventory
+		if SHOP_AVAILABLE and self.shop and hasattr(self.shop, 'load_from_dict'):
+			shop_data = state.get("shop", {})
+			if shop_data:
+				self.shop.load_from_dict(shop_data)
+
+		# Restore dungeon scheduler state
+		if DUNGEON_AVAILABLE and self.dungeon_scheduler and hasattr(self.dungeon_scheduler, 'load_from_dict'):
+			scheduler_data = state.get("dungeon_scheduler", {})
+			if scheduler_data:
+				self.dungeon_scheduler.load_from_dict(scheduler_data)
+
 		out = [f"Loaded game from {path}."]
+		if migration_notes:
+			out.append("📋 Save migrated: " + "; ".join(migration_notes))
 		# If player's current room exists in world, show its description; otherwise choose a fallback
 		cur = getattr(self.player, "current_room", None)
 		if cur and cur in self.rooms:
@@ -2901,6 +4830,10 @@ class GameEngine:
 				out.append(self.rooms[self.start_room].describe())
 			else:
 				out.append("Loaded game, but current room not found in world.")
+		# Show class selection if needed for migrated save
+		if self.pending_class_selection and PROGRESSION_AVAILABLE:
+			out.append("")
+			out.append(get_class_selection_text())
 		return "\n".join(out)
 
 	def process_command(self, cmd: str):
@@ -2945,6 +4878,14 @@ class AdventureGUI:
 		# Debug toggle button (placed beside Stats)
 		self.debug_button = tk.Button(self.controls, text="Debug", command=self.toggle_debug_window)
 		self.debug_button.pack(side="left", padx=(0,6))
+		# Skills toggle button (placed beside Debug) - for skill tree window
+		if PROGRESSION_AVAILABLE:
+			self.skills_button = tk.Button(self.controls, text="⚔ Skills", command=self.toggle_skills_window)
+			self.skills_button.pack(side="left", padx=(0,6))
+		# Quest Journal toggle button
+		if QUEST_AVAILABLE:
+			self.journal_button = tk.Button(self.controls, text="📜 Journal", command=self.toggle_journal_window)
+			self.journal_button.pack(side="left", padx=(0,6))
 		# Small status label (optional) to match UI style
 		self.status_label = tk.Label(self.controls, text="", font=self.font)
 		self.status_label.pack(side="left")
@@ -2983,6 +4924,13 @@ class AdventureGUI:
 		# Debug window references
 		self.debug_win = None
 		self.debug_listbox = None
+
+		# Skill tree window reference
+		self.skill_tree_win = None
+
+		# Quest journal window references
+		self.journal_win = None
+		self.journal_text_widget = None
 
 		# Show a minimal welcome immediately
 		self.append("Welcome to the Unitopia-style adventure!")
@@ -3235,7 +5183,7 @@ class AdventureGUI:
 		win.protocol("WM_DELETE_WINDOW", lambda: (setattr(self, "stats_win", None), setattr(self, "stats_listbox", None), win.destroy()))
 
 	def refresh_stats_display(self):
-		"""Refresh the stats listbox (if open)."""
+		"""Refresh the stats listbox (if open) with enhanced progression display."""
 		try:
 			if not (self.engine and self.engine.player):
 				# nothing to show
@@ -3243,16 +5191,77 @@ class AdventureGUI:
 					self.stats_listbox.delete(0, "end")
 				return
 			stats = self.engine.player.stats or {}
-			# ensure at least default stats keys appear (gold, health)
 			# merge defaults -> current to show sensible fields
 			for k, v in (self.engine.default_stats or {}).items():
 				stats.setdefault(k, v)
 			if not self.stats_listbox:
 				return
 			self.stats_listbox.delete(0, "end")
-			# show sorted for consistency
-			for k in sorted(stats.keys(), key=lambda s: s.lower()):
-				self.stats_listbox.insert("end", f"{k}: {stats.get(k)}")
+
+			# Show progression info prominently if available
+			if PROGRESSION_AVAILABLE and stats.get("class", "none") != "none":
+				class_name = stats.get("class", "none").capitalize()
+				level = stats.get("level", 1)
+				xp = stats.get("xp", 0)
+				sp = stats.get("skill_points", 0)
+
+				# Calculate XP progress using XP_TABLE
+				from progression_system import XP_TABLE, MAX_LEVEL
+				if level < MAX_LEVEL:
+					xp_threshold = XP_TABLE[level]  # XP needed for next level
+					xp_prev = XP_TABLE[level - 1] if level > 1 else 0
+					progress = xp - xp_prev
+					total_needed = xp_threshold - xp_prev
+					pct = min(1.0, progress / total_needed) if total_needed > 0 else 1.0
+					xp_display = f"{xp}/{xp_threshold}"
+				else:
+					pct = 1.0
+					xp_display = f"{xp} (MAX)"
+				filled = int(pct * 15)
+				bar = "█" * filled + "░" * (15 - filled)
+
+				self.stats_listbox.insert("end", f"═══ {class_name} ═══")
+				self.stats_listbox.insert("end", f"Level: {level}")
+				self.stats_listbox.insert("end", f"XP: {xp_display}")
+				self.stats_listbox.insert("end", f"[{bar}] {pct*100:.0f}%")
+				self.stats_listbox.insert("end", f"Skill Points: {sp}")
+				self.stats_listbox.insert("end", "───────────────────")
+				# Core stats
+				self.stats_listbox.insert("end", f"❤️ Health: {stats.get('health', 100)}")
+				self.stats_listbox.insert("end", f"💰 Gold: {stats.get('gold', 0)}")
+				self.stats_listbox.insert("end", "───────────────────")
+				# RPG stats
+				rpg_stats = ["strength", "defense", "dexterity", "perception", "charisma", "constitution"]
+				icons = {"strength": "⚔️", "defense": "🛡️", "dexterity": "🏃", "perception": "👁️", "charisma": "💬", "constitution": "💪"}
+				for s in rpg_stats:
+					val = stats.get(s, 0)
+					if val > 0:
+						self.stats_listbox.insert("end", f"{icons.get(s, '•')} {s.capitalize()}: {val}")
+				# Active effects
+				effects = self.engine.player.state.get("active_effects", {})
+				if effects:
+					self.stats_listbox.insert("end", "───────────────────")
+					self.stats_listbox.insert("end", "Active Effects:")
+					for eff, dur in effects.items():
+						self.stats_listbox.insert("end", f"  ✦ {eff} ({dur} moves)")
+				# Equipment display
+				if EQUIPMENT_AVAILABLE:
+					equip = self.engine.player.state.get("equipment", {})
+					has_equip = any(v for v in equip.values()) if equip else False
+					if has_equip:
+						self.stats_listbox.insert("end", "───────────────────")
+						self.stats_listbox.insert("end", "Equipment:")
+						slot_icons = {"weapon": "⚔️", "armor": "🛡️", "shield": "🔰", "accessory": "💍"}
+						for slot in EQUIPMENT_SLOTS:
+							item = equip.get(slot)
+							if item:
+								nice = item.replace("_", " ").title()
+								icon = slot_icons.get(slot, "•")
+								self.stats_listbox.insert("end", f"  {icon} {nice}")
+			else:
+				# Fallback: show sorted stats
+				for k in sorted(stats.keys(), key=lambda s: s.lower()):
+					self.stats_listbox.insert("end", f"{k}: {stats.get(k)}")
 		except Exception:
 			# ignore UI errors
 			pass
@@ -3410,6 +5419,76 @@ class AdventureGUI:
 		except Exception as e:
 			messagebox.showerror("Error", str(e))
 
+	# Quest Journal window management
+	def toggle_journal_window(self):
+		"""Open or close the Quest Journal Toplevel window."""
+		if self.journal_win and tk.Toplevel.winfo_exists(self.journal_win):
+			try:
+				self.journal_win.destroy()
+			except Exception:
+				pass
+			self.journal_win = None
+			self.journal_text_widget = None
+			return
+		self.build_journal_window()
+
+	def build_journal_window(self):
+		"""Create the Quest Journal Toplevel window."""
+		if self.journal_win and tk.Toplevel.winfo_exists(self.journal_win):
+			return
+		win = tk.Toplevel(self.root)
+		win.title("Quest Journal")
+		win.geometry("500x550")
+		win.resizable(True, True)
+		frame = tk.Frame(win, padx=6, pady=6)
+		frame.pack(fill="both", expand=True)
+
+		tk.Label(frame, text="📜 Quest Journal", font=self.font).pack(anchor="w")
+
+		# Scrollable text widget for journal content
+		text_frame = tk.Frame(frame)
+		text_frame.pack(fill="both", expand=True, pady=(4, 6))
+		scrollbar = tk.Scrollbar(text_frame)
+		scrollbar.pack(side="right", fill="y")
+		journal_text = tk.Text(text_frame, wrap="word", font=self.font, bg="#1e1e1e", fg="#dcdcdc",
+							   state="disabled", yscrollcommand=scrollbar.set)
+		journal_text.pack(fill="both", expand=True)
+		scrollbar.config(command=journal_text.yview)
+
+		# Refresh button
+		btn_frame = tk.Frame(frame)
+		btn_frame.pack(fill="x", pady=4)
+		tk.Button(btn_frame, text="Refresh", width=12, command=self.refresh_journal_display).pack(side="left", padx=4)
+
+		self.journal_win = win
+		self.journal_text_widget = journal_text
+
+		# Populate
+		self.refresh_journal_display()
+
+		# Clear references when closed
+		win.protocol("WM_DELETE_WINDOW", lambda: (
+			setattr(self, "journal_win", None),
+			setattr(self, "journal_text_widget", None),
+			win.destroy()
+		))
+
+	def refresh_journal_display(self):
+		"""Refresh the journal text widget with current quest data."""
+		if not self.journal_text_widget:
+			return
+		try:
+			if not (self.engine and self.engine.quest_manager):
+				content = "\n  No quest system available.\n"
+			else:
+				content = self.engine.quest_manager.get_journal_text()
+			self.journal_text_widget.config(state="normal")
+			self.journal_text_widget.delete("1.0", "end")
+			self.journal_text_widget.insert("end", content)
+			self.journal_text_widget.config(state="disabled")
+		except Exception:
+			pass
+
 	# Debug window management
 	def toggle_debug_window(self):
 		"""Open or close the Debug Toplevel window."""
@@ -3473,6 +5552,40 @@ class AdventureGUI:
 					self.debug_listbox.insert("end", f"{k}: {state.get(k)}")
 		except Exception:
 			pass
+
+	def toggle_skills_window(self):
+		"""Open or close the Skill Tree graphical window."""
+		if not PROGRESSION_AVAILABLE:
+			return
+		# If window exists and is open, bring it to focus
+		if self.skill_tree_win:
+			try:
+				if self.skill_tree_win.window and tk.Toplevel.winfo_exists(self.skill_tree_win.window):
+					self.skill_tree_win.window.lift()
+					self.skill_tree_win.window.focus_force()
+					return
+			except Exception:
+				pass
+			self.skill_tree_win = None
+		# Create new skill tree window
+		if not (self.engine and self.engine.player):
+			return
+		player = self.engine.player
+		player_class = player.stats.get("class", "none")
+		if player_class == "none":
+			try:
+				self.append("⚠️ You must choose a class first! Type 1, 2, or 3.")
+			except Exception:
+				pass
+			return
+		try:
+			self.skill_tree_win = SkillTreeWindow(self.root, player, self.engine)
+			self.skill_tree_win.create_window()
+		except Exception as e:
+			try:
+				self.append(f"⚠️ Could not open skill tree: {e}")
+			except Exception:
+				pass
 
 	def _debug_reset_save(self):
 		"""Delete the save file and restart a fresh game."""
