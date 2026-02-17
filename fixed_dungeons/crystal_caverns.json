@@ -7,6 +7,10 @@
   "num_floors": 3,
   "theme": "crystal_magic",
   "difficulty": "hard",
+  "requirements": {
+    "min_level": 5,
+    "description": "The crystalline barrier responds only to those with proven combat prowess."
+  },
   "floors": {
     "1": {
       "floor_number": 1,

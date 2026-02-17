@@ -3,17 +3,17 @@ Character Progression System
 =============================
 Handles XP, leveling, class definitions, and stat growth.
 Classes: Warrior, Rogue, Mage — each with unique starting bonuses.
-Level range: 1-15, medium pacing.
+Level range: 1-60, extended pacing with radial skill tree.
 """
-
-# =====================================================================
-# XP TABLE — XP required to reach each level (cumulative)
-# =====================================================================
-# Level 1 = starting (0 XP needed)
+import math
 # Level 15 = endgame (~3000+ total XP from all sources)
 # =====================================================================
 
-XP_TABLE = [
+# Levels 1-15: original hand-tuned values
+# Levels 16-30: +200 XP/level growth
+# Levels 31-45: +400 XP/level growth
+# Levels 46-60: +600 XP/level growth
+_BASE_XP = [
     0,      # Level 1  (start)
     100,    # Level 2
     250,    # Level 3
@@ -28,8 +28,24 @@ XP_TABLE = [
     4000,   # Level 12
     4800,   # Level 13
     5700,   # Level 14
-    6800,   # Level 15 (max)
+    6800,   # Level 15
 ]
+
+def _build_xp_table():
+    table = list(_BASE_XP)
+    last = table[-1]
+    for lvl in range(16, 61):
+        if lvl <= 30:
+            increment = 200 * (lvl - 15) + 800
+        elif lvl <= 45:
+            increment = 400 * (lvl - 30) + 3800
+        else:
+            increment = 600 * (lvl - 45) + 9800
+        last = last + increment
+        table.append(last)
+    return table
+
+XP_TABLE = _build_xp_table()
 
 MAX_LEVEL = len(XP_TABLE)
 
@@ -159,13 +175,11 @@ XP_AWARDS = {
     "catch_fish":               5,
 }
 
-# Skill points awarded per level up
-SKILL_POINTS_PER_LEVEL = {
-    2: 1, 3: 1, 4: 1, 5: 2,
-    6: 1, 7: 1, 8: 2, 9: 1,
-    10: 2, 11: 1, 12: 2, 13: 1,
-    14: 2, 15: 3,
-}
+# Skill points awarded per level up — flat 3 SP/level for 200+ node tree
+SKILL_POINTS_PER_LEVEL = {level: 3 for level in range(2, 61)}
+
+# Save version for migration (incremented on tree redesign)
+SAVE_VERSION = 3
 
 
 def get_xp_for_next_level(current_level):
@@ -207,11 +221,15 @@ def check_level_up(player):
         xp_needed = XP_TABLE[current_level]  # XP to reach current_level + 1
         if total_xp >= xp_needed:
             current_level += 1
-            sp = SKILL_POINTS_PER_LEVEL.get(current_level, 1)
+            sp = SKILL_POINTS_PER_LEVEL.get(current_level, 3)
             stats["level"] = current_level
             stats["skill_points"] = stats.get("skill_points", 0) + sp
-            # Increase health_max slightly per level
-            stats["health_max"] = stats.get("health_max", 100) + 5
+            # Health growth: +5 base, diminishing past 40
+            if current_level <= 40:
+                hp_gain = 5
+            else:
+                hp_gain = max(2, int(5 * math.sqrt(40 / current_level)))
+            stats["health_max"] = stats.get("health_max", 100) + hp_gain
             stats["health"] = stats.get("health_max", 100)  # Full heal on level up
             level_ups.append((current_level, sp))
         else:
@@ -310,6 +328,16 @@ def apply_class(player, class_id):
         player.state["unlocked_skills"] = []
     if "cooldowns" not in player.state:
         player.state["cooldowns"] = {}
+
+    # Auto-unlock the tier 0 center node for the chosen class
+    center_nodes = {
+        "warrior": "w_origin",
+        "rogue": "r_origin",
+        "mage": "m_origin",
+    }
+    center = center_nodes.get(class_id)
+    if center and center not in player.state["unlocked_skills"]:
+        player.state["unlocked_skills"].append(center)
 
 
 def get_class_selection_text():

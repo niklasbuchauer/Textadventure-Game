@@ -1,0 +1,306 @@
+{
+  "dungeon_id": "frozen_spire",
+  "name": "The Frozen Spire",
+  "description": "A tower of living ice erupts from the mountain peak, its walls shifting and reforming with each gust of wind. Inside, temperatures plunge far below freezing. Only those who have mastered their craft dare enter — the Spire does not forgive the unprepared.",
+  "entrance_room_id": "mountain_peak",
+  "always_open": true,
+  "num_floors": 4,
+  "theme": "frost_elite",
+  "difficulty": "extreme",
+  "requirements": {
+    "min_level": 15,
+    "skills_any": ["w_ber_undying_rage", "r_phm_shadow_step", "m_ice_blizzard"],
+    "description": "The Spire's icy wards repel all but the most powerful. Only a master of rage, shadow, or frost may pass."
+  },
+  "floors": {
+    "1": {
+      "floor_number": 1,
+      "num_rooms": 6,
+      "entrance_room": "fs_f1_frozen_gate",
+      "exit_stairs_down": "fs_f1_ice_shaft",
+      "rooms": {
+        "fs_f1_frozen_gate": {
+          "name": "Frozen Gate",
+          "description": "A massive archway of blue ice guards the entrance. Icicles hang like fangs from the ceiling, and the floor is slick with hoarfrost. Your breath crystallizes instantly.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"frost_shard": {"quantity": 2, "value": 45}},
+          "exits": {
+            "leave": {
+              "target": "mountain_peak",
+              "type": "leave_dungeon",
+              "transition_text": "You stumble back onto the mountain peak, gasping as warmth slowly returns to your limbs..."
+            },
+            "north": {"target": "fs_f1_crystal_corridor", "type": "direction"},
+            "east": {"target": "fs_f1_wind_chamber", "type": "direction"}
+          }
+        },
+        "fs_f1_crystal_corridor": {
+          "name": "Crystal Corridor",
+          "description": "The passage is lined with enormous ice crystals that refract light into dazzling rainbow patterns. The beauty is deceptive — razor-sharp edges line every surface.",
+          "coordinates": [0, 1],
+          "location_type": "dungeon",
+          "items": {"prismatic_crystal": {"quantity": 1, "value": 80}},
+          "traps": [{"type": "ice_spike", "triggered": false, "detected": false, "disarmed": false, "damage": 25}],
+          "exits": {
+            "south": {"target": "fs_f1_frozen_gate", "type": "direction"},
+            "north": {"target": "fs_f1_frost_forge", "type": "direction"},
+            "east": {"target": "fs_f1_frozen_library", "type": "direction"}
+          }
+        },
+        "fs_f1_wind_chamber": {
+          "name": "Howling Wind Chamber",
+          "description": "Violent gusts blast through this open chamber, carrying shards of ice that cut like daggers. Visibility is near zero in the swirling white-out.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"wind_essence": {"quantity": 1, "value": 60}},
+          "traps": [{"type": "wind_blast", "triggered": false, "detected": false, "disarmed": false, "damage": 20}],
+          "exits": {
+            "west": {"target": "fs_f1_frozen_gate", "type": "direction"},
+            "north": {"target": "fs_f1_frozen_library", "type": "direction"}
+          }
+        },
+        "fs_f1_frozen_library": {
+          "name": "Frozen Library",
+          "description": "Shelves of ice hold perfectly preserved scrolls and tomes, frozen mid-page. The knowledge of an ancient civilization lies trapped in ice, tantalizingly readable through the transparent walls.",
+          "coordinates": [1, 1],
+          "location_type": "dungeon",
+          "items": {"frozen_tome": {"quantity": 1, "value": 100}, "ancient_scroll": {"quantity": 2, "value": 40}},
+          "exits": {
+            "west": {"target": "fs_f1_crystal_corridor", "type": "direction"},
+            "south": {"target": "fs_f1_wind_chamber", "type": "direction"},
+            "north": {"target": "fs_f1_frost_forge", "type": "direction"}
+          }
+        },
+        "fs_f1_frost_forge": {
+          "name": "Frost Forge",
+          "description": "An impossible sight — a forge burning with blue-white flames that freeze rather than heat. Weapons and armor of ice lie scattered on workbenches, harder than steel and cold as death.",
+          "coordinates": [0, 2],
+          "location_type": "dungeon",
+          "items": {"frostforged_ingot": {"quantity": 1, "value": 120}},
+          "exits": {
+            "south": {"target": "fs_f1_crystal_corridor", "type": "direction"},
+            "east": {"target": "fs_f1_ice_shaft", "type": "direction"}
+          }
+        },
+        "fs_f1_ice_shaft": {
+          "name": "Glacial Shaft",
+          "description": "A vertical shaft descends into deeper levels of the Spire. The walls are perfectly smooth ice, and cold air rushes upward from below. A spiral staircase of ice winds downward.",
+          "coordinates": [1, 2],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "west": {"target": "fs_f1_frost_forge", "type": "direction"},
+            "down": {"target": "fs_f2_avalanche_hall", "type": "stairs_down"}
+          }
+        }
+      }
+    },
+    "2": {
+      "floor_number": 2,
+      "num_rooms": 6,
+      "entrance_room": "fs_f2_avalanche_hall",
+      "exit_stairs_down": "fs_f2_permafrost_pit",
+      "rooms": {
+        "fs_f2_avalanche_hall": {
+          "name": "Avalanche Hall",
+          "description": "The ceiling here is unstable — massive chunks of ice periodically break free and crash to the floor. Timing your movements between falls is essential.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"glacial_dust": {"quantity": 3, "value": 30}},
+          "traps": [{"type": "avalanche", "triggered": false, "detected": false, "disarmed": false, "damage": 35}],
+          "exits": {
+            "up": {"target": "fs_f1_ice_shaft", "type": "stairs_up"},
+            "east": {"target": "fs_f2_mirror_maze", "type": "direction"},
+            "south": {"target": "fs_f2_frozen_throne", "type": "direction"}
+          }
+        },
+        "fs_f2_mirror_maze": {
+          "name": "Mirror Maze",
+          "description": "Walls of perfectly reflective ice create an endless labyrinth of reflections. Your own image surrounds you from every angle, making it impossible to tell real from illusion.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"mirror_shard": {"quantity": 2, "value": 55}},
+          "exits": {
+            "west": {"target": "fs_f2_avalanche_hall", "type": "direction"},
+            "south": {"target": "fs_f2_ice_prison", "type": "direction"}
+          }
+        },
+        "fs_f2_frozen_throne": {
+          "name": "Frozen Throne Room",
+          "description": "A massive throne carved from a single glacier dominates this chamber. The air is so cold that your joints stiffen with every breath. Something powerful once sat here.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"royal_ice_gem": {"quantity": 1, "value": 150}},
+          "exits": {
+            "north": {"target": "fs_f2_avalanche_hall", "type": "direction"},
+            "east": {"target": "fs_f2_ice_prison", "type": "direction"}
+          }
+        },
+        "fs_f2_ice_prison": {
+          "name": "Ice Prison",
+          "description": "Cells of solid ice line the walls, each one containing a perfectly preserved prisoner from ages past. Their frozen expressions of terror are haunting. Some cells appear recently occupied.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"captive_soul_gem": {"quantity": 1, "value": 200}},
+          "traps": [{"type": "frost_rune", "triggered": false, "detected": false, "disarmed": false, "damage": 30}],
+          "exits": {
+            "west": {"target": "fs_f2_frozen_throne", "type": "direction"},
+            "north": {"target": "fs_f2_mirror_maze", "type": "direction"},
+            "south": {"target": "fs_f2_blizzard_bridge", "type": "direction"}
+          }
+        },
+        "fs_f2_blizzard_bridge": {
+          "name": "Blizzard Bridge",
+          "description": "A narrow bridge of ice spans a bottomless chasm. A perpetual blizzard rages through the gap, threatening to sweep you into the abyss with every step.",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {},
+          "traps": [{"type": "wind_blast", "triggered": false, "detected": false, "disarmed": false, "damage": 40}],
+          "exits": {
+            "north": {"target": "fs_f2_ice_prison", "type": "direction"},
+            "south": {"target": "fs_f2_permafrost_pit", "type": "direction"}
+          }
+        },
+        "fs_f2_permafrost_pit": {
+          "name": "Permafrost Pit",
+          "description": "The deepest point of this floor. Ancient permafrost, millions of years old, forms the walls. Strange shapes are visible deep within the ice — creatures from a forgotten age.",
+          "coordinates": [1, -3],
+          "location_type": "dungeon",
+          "items": {"ancient_amber": {"quantity": 1, "value": 180}},
+          "exits": {
+            "north": {"target": "fs_f2_blizzard_bridge", "type": "direction"},
+            "down": {"target": "fs_f3_glacial_heart", "type": "stairs_down"}
+          }
+        }
+      }
+    },
+    "3": {
+      "floor_number": 3,
+      "num_rooms": 6,
+      "entrance_room": "fs_f3_glacial_heart",
+      "exit_stairs_down": "fs_f3_descent",
+      "rooms": {
+        "fs_f3_glacial_heart": {
+          "name": "Glacial Heart",
+          "description": "The core of the Spire pulses with blue light. Veins of magical ice thread through the walls like a living circulatory system. The temperature here is beyond cold — it burns.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"glacial_core_fragment": {"quantity": 1, "value": 250}},
+          "exits": {
+            "up": {"target": "fs_f2_permafrost_pit", "type": "stairs_up"},
+            "east": {"target": "fs_f3_ice_elemental_den", "type": "direction"},
+            "south": {"target": "fs_f3_frozen_waterfall", "type": "direction"}
+          }
+        },
+        "fs_f3_ice_elemental_den": {
+          "name": "Ice Elemental Den",
+          "description": "Chunks of animate ice patrol this chamber. The elementals are born from the Spire itself, reforming endlessly from the walls and floor.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"elemental_core": {"quantity": 1, "value": 200}},
+          "exits": {
+            "west": {"target": "fs_f3_glacial_heart", "type": "direction"},
+            "south": {"target": "fs_f3_cryogenic_lab", "type": "direction"}
+          }
+        },
+        "fs_f3_frozen_waterfall": {
+          "name": "Frozen Waterfall",
+          "description": "A magnificent waterfall, frozen in time mid-cascade. Behind the curtain of ice, a hidden alcove contains ancient treasures.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"frozen_tear": {"quantity": 2, "value": 120}, "waterfall_sapphire": {"quantity": 1, "value": 300}},
+          "exits": {
+            "north": {"target": "fs_f3_glacial_heart", "type": "direction"},
+            "east": {"target": "fs_f3_cryogenic_lab", "type": "direction"}
+          }
+        },
+        "fs_f3_cryogenic_lab": {
+          "name": "Cryogenic Laboratory",
+          "description": "An ancient laboratory where forbidden experiments in frost magic were conducted. Broken equipment and shattered vials litter the floor. Notes describe attempts to achieve absolute zero.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"cryogenic_formula": {"quantity": 1, "value": 350}},
+          "traps": [{"type": "flash_freeze", "triggered": false, "detected": false, "disarmed": false, "damage": 45}],
+          "exits": {
+            "north": {"target": "fs_f3_ice_elemental_den", "type": "direction"},
+            "west": {"target": "fs_f3_frozen_waterfall", "type": "direction"},
+            "south": {"target": "fs_f3_descent", "type": "direction"}
+          }
+        },
+        "fs_f3_descent": {
+          "name": "The Final Descent",
+          "description": "A spiraling staircase of black ice descends into absolute darkness. The temperature drops with each step. This is the point of no return.",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "north": {"target": "fs_f3_cryogenic_lab", "type": "direction"},
+            "down": {"target": "fs_f4_absolute_zero", "type": "stairs_down"}
+          }
+        }
+      }
+    },
+    "4": {
+      "floor_number": 4,
+      "num_rooms": 4,
+      "entrance_room": "fs_f4_absolute_zero",
+      "rooms": {
+        "fs_f4_absolute_zero": {
+          "name": "Chamber of Absolute Zero",
+          "description": "The temperature has reached impossible depths. Even light seems frozen here, moving sluggishly through the air. Your very thoughts slow as the cold seeps into your mind.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"void_ice": {"quantity": 1, "value": 500}},
+          "traps": [{"type": "absolute_freeze", "triggered": false, "detected": false, "disarmed": false, "damage": 60}],
+          "exits": {
+            "up": {"target": "fs_f3_descent", "type": "stairs_up"},
+            "north": {"target": "fs_f4_frost_wyrm_nest", "type": "direction"}
+          }
+        },
+        "fs_f4_frost_wyrm_nest": {
+          "name": "Frost Wyrm's Nest",
+          "description": "A cavern of immense proportions, littered with frozen bones and treasure. The nest of an ancient frost wyrm, its eggs still glowing with cold blue light.",
+          "coordinates": [0, 1],
+          "location_type": "dungeon",
+          "items": {"wyrm_egg": {"quantity": 1, "value": 750}, "frozen_treasure_hoard": {"quantity": 1, "value": 400}},
+          "exits": {
+            "south": {"target": "fs_f4_absolute_zero", "type": "direction"},
+            "east": {"target": "fs_f4_spire_altar", "type": "direction"}
+          }
+        },
+        "fs_f4_spire_altar": {
+          "name": "Spire Altar",
+          "description": "At the very heart of the Spire, a crafting altar of pure enchanted ice stands alone. It radiates power beyond comprehension. Items forged here gain the essence of eternal winter.",
+          "coordinates": [1, 1],
+          "location_type": "dungeon",
+          "items": {"eternal_frost_essence": {"quantity": 1, "value": 1000}},
+          "exits": {
+            "west": {"target": "fs_f4_frost_wyrm_nest", "type": "direction"},
+            "south": {"target": "fs_f4_boss_chamber", "type": "direction"}
+          }
+        },
+        "fs_f4_boss_chamber": {
+          "name": "Throne of the Frost Sovereign",
+          "description": "The final chamber. A throne of living ice dominates the room, and upon it sits the Frost Sovereign — an ancient being of pure cold. Its eyes open as you enter, and the temperature drops to lethal levels.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"sovereign_crown": {"quantity": 1, "value": 2000}},
+          "boss": {
+            "name": "Frost Sovereign",
+            "level": 20,
+            "hp": 500,
+            "attack": 45,
+            "defense": 30,
+            "xp_reward": 800,
+            "gold_reward": [200, 500],
+            "abilities": ["frost_nova", "ice_armor", "blizzard"]
+          },
+          "exits": {
+            "north": {"target": "fs_f4_spire_altar", "type": "direction"}
+          }
+        }
+      }
+    }
+  }
+}

@@ -722,6 +722,53 @@ DUNGEON_BOSS_MAP = {
     "iron_halls": "iron_forgemaster",
     "shadow_depths": "shadow_sovereign",
     "sunken_catacombs": "lich_king",
+    "frozen_spire": "frost_sovereign",
+    "verdant_labyrinth": "verdant_guardian",
+}
+
+# Elite dungeon bosses
+BOSS_DATABASE["frost_sovereign"] = {
+    "name": "Frost Sovereign",
+    "description": "An ancient being of pure cold, enthroned on living ice.",
+    "hp": 200, "attack": 22, "defense": 14,
+    "xp_reward": 350, "gold_reward": (150, 350),
+    "loot": [("sovereign_crown", 0.90), ("eternal_frost_essence", 0.70),
+             ("frost_wyrm_scale", 0.50), ("void_ice", 0.30)],
+    "abilities": ["frost_nova", "ice_armor", "crystal_shard", "drain_life"],
+    "dungeon": "frozen_spire",
+    "intro_text": (
+        "\n" + "=" * 55 + "\n"
+        "  👑 BOSS ENCOUNTER: FROST SOVEREIGN 👑\n"
+        "=" * 55 + "\n"
+        "  Upon a throne of living ice sits a being of terrible\n"
+        "  beauty. Its skin is translucent crystal, and its eyes\n"
+        "  burn with the cold light of dying stars. The temperature\n"
+        "  plummets as it rises, and the very air freezes.\n"
+        '  "You have come far... but winter is eternal."\n'
+        "=" * 55 + "\n"
+    ),
+}
+
+BOSS_DATABASE["verdant_guardian"] = {
+    "name": "Verdant Guardian",
+    "description": "An ancient treant fused with the World Tree. Nature given terrible form.",
+    "hp": 220, "attack": 20, "defense": 16,
+    "xp_reward": 380, "gold_reward": (180, 400),
+    "loot": [("guardian_heartwood", 0.90), ("world_tree_bark", 0.70),
+             ("creation_seed_shard", 0.50), ("eden_flower", 0.40)],
+    "abilities": ["regenerate", "iron_slam", "darkness", "petrify_gaze"],
+    "dungeon": "verdant_labyrinth",
+    "intro_text": (
+        "\n" + "=" * 55 + "\n"
+        "  👑 BOSS ENCOUNTER: VERDANT GUARDIAN 👑\n"
+        "=" * 55 + "\n"
+        "  The ground splits open as an ancient treant rises,\n"
+        "  its body woven from the roots of the World Tree itself.\n"
+        "  Eyes of blazing green fire regard you with ancient\n"
+        "  wisdom and terrible resolve.\n"
+        '  "The Seed must not be disturbed. Turn back or perish."\n'
+        "=" * 55 + "\n"
+    ),
 }
 
 ENEMY_SPAWN_CHANCE = {
@@ -766,6 +813,10 @@ class CombatState:
         # Adrenaline buff from blocking big hits
         self.player_adrenaline = 0  # bonus damage next attack
 
+        # Boss phase system (phase 1 = full health, 2 = below 50%, 3 = below 25%)
+        self.boss_phase = 1
+        self.phase_transitions_done = set()  # tracks which phases have triggered
+
     def to_dict(self):
         return {
             "enemy_id": self.enemy_id,
@@ -788,6 +839,8 @@ class CombatState:
             "player_statuses": self.player_statuses,
             "enemy_statuses": self.enemy_statuses,
             "player_adrenaline": self.player_adrenaline,
+            "boss_phase": getattr(self, 'boss_phase', 1),
+            "phase_transitions_done": list(getattr(self, 'phase_transitions_done', set())),
         }
 
     @classmethod
@@ -815,6 +868,8 @@ class CombatState:
         cs.player_statuses = data.get("player_statuses", [])
         cs.enemy_statuses = data.get("enemy_statuses", [])
         cs.player_adrenaline = data.get("player_adrenaline", 0)
+        cs.boss_phase = data.get("boss_phase", 1)
+        cs.phase_transitions_done = set(data.get("phase_transitions_done", []))
         return cs
 
 
@@ -1028,6 +1083,75 @@ def _process_enemy_ability(player, combat):
     return result
 
 
+# Boss phase transition messages and effects
+BOSS_PHASE_TRANSITIONS = {
+    2: {  # Below 50% HP
+        "message": (
+            "\n" + "!" * 50 + "\n"
+            "  ⚠️  PHASE TRANSITION ⚠️\n"
+            "  The {name} roars with fury as its wounds mount!\n"
+            "  It enters a frenzied state — attacks grow more vicious!\n"
+            + "!" * 50 + "\n"
+        ),
+        "attack_bonus": 3,
+        "defense_bonus": 0,
+        "heal_pct": 0.05,  # heals 5% on phase transition
+    },
+    3: {  # Below 25% HP
+        "message": (
+            "\n" + "!" * 50 + "\n"
+            "  💀  FINAL PHASE 💀\n"
+            "  The {name} unleashes its full power in desperation!\n"
+            "  Its eyes burn with unholy energy — this is its last stand!\n"
+            + "!" * 50 + "\n"
+        ),
+        "attack_bonus": 5,
+        "defense_bonus": 2,
+        "heal_pct": 0.0,
+    },
+}
+
+
+def _check_boss_phase_transition(combat):
+    """Check if a boss should enter a new phase based on HP percentage.
+    Returns phase transition message or empty string."""
+    if not combat.is_boss:
+        return ""
+
+    hp_pct = combat.hp / combat.max_hp if combat.max_hp > 0 else 1.0
+    result = ""
+
+    if hp_pct <= 0.25 and 3 not in getattr(combat, 'phase_transitions_done', set()):
+        if not hasattr(combat, 'phase_transitions_done'):
+            combat.phase_transitions_done = set()
+        combat.phase_transitions_done.add(3)
+        combat.boss_phase = 3
+        transition = BOSS_PHASE_TRANSITIONS[3]
+        result += transition["message"].format(name=combat.enemy_name)
+        combat.attack += transition["attack_bonus"]
+        combat.defense += transition["defense_bonus"]
+        if transition["heal_pct"] > 0:
+            heal_amt = int(combat.max_hp * transition["heal_pct"])
+            combat.hp = min(combat.max_hp, combat.hp + heal_amt)
+            result += f"  The {combat.enemy_name} recovers {heal_amt} HP!\n"
+
+    elif hp_pct <= 0.50 and 2 not in getattr(combat, 'phase_transitions_done', set()):
+        if not hasattr(combat, 'phase_transitions_done'):
+            combat.phase_transitions_done = set()
+        combat.phase_transitions_done.add(2)
+        combat.boss_phase = 2
+        transition = BOSS_PHASE_TRANSITIONS[2]
+        result += transition["message"].format(name=combat.enemy_name)
+        combat.attack += transition["attack_bonus"]
+        combat.defense += transition["defense_bonus"]
+        if transition["heal_pct"] > 0:
+            heal_amt = int(combat.max_hp * transition["heal_pct"])
+            combat.hp = min(combat.max_hp, combat.hp + heal_amt)
+            result += f"  The {combat.enemy_name} recovers {heal_amt} HP!\n"
+
+    return result
+
+
 def _enemy_turn(player, combat):
     """
     Process the enemy's turn with AI decision-making.
@@ -1036,8 +1160,16 @@ def _enemy_turn(player, combat):
     Enemy AI chances:
       Bosses/Mini-bosses: 35% basic attack, 40% ability, 15% heavy attack, 10% defend
       Regular enemies:    40% basic attack, 30% ability, 20% heavy attack, 10% nothing special
+    
+    Bosses have phase transitions at 50% and 25% HP that boost their stats.
+    In phase 2+, bosses use abilities more often and hit harder.
     """
     result = ""
+
+    # Check boss phase transitions
+    phase_msg = _check_boss_phase_transition(combat)
+    if phase_msg:
+        result += phase_msg
 
     # Check if enemy is stunned
     enemy_stun_msgs, _, enemy_stunned = _tick_status_effects(
@@ -1060,12 +1192,24 @@ def _enemy_turn(player, combat):
     roll = random.random()
 
     if combat.is_boss or combat.is_mini_boss:
-        if roll < 0.35:
+        # Adjust AI based on boss phase (more aggressive in later phases)
+        phase = getattr(combat, 'boss_phase', 1)
+        if phase >= 3:
+            # Final phase: 20% basic, 50% ability, 25% heavy, 5% defend
+            basic_thresh, ability_thresh, heavy_thresh = 0.20, 0.70, 0.95
+        elif phase >= 2:
+            # Enraged phase: 25% basic, 45% ability, 20% heavy, 10% defend
+            basic_thresh, ability_thresh, heavy_thresh = 0.25, 0.70, 0.90
+        else:
+            # Normal: 35% basic, 40% ability, 15% heavy, 10% defend
+            basic_thresh, ability_thresh, heavy_thresh = 0.35, 0.75, 0.90
+
+        if roll < basic_thresh:
             # Basic attack
             enemy_dmg = calculate_enemy_damage(player, combat)
             player.stats["health"] = player.stats.get("health", 100) - enemy_dmg
             result += f"\n  The {combat.enemy_name} attacks you for {enemy_dmg} damage!"
-        elif roll < 0.75:
+        elif roll < ability_thresh:
             # Use ability
             ab_msg = _process_enemy_ability(player, combat)
             if ab_msg:
@@ -1074,12 +1218,16 @@ def _enemy_turn(player, combat):
                 enemy_dmg = calculate_enemy_damage(player, combat)
                 player.stats["health"] = player.stats.get("health", 100) - enemy_dmg
                 result += f"\n  The {combat.enemy_name} attacks you for {enemy_dmg} damage!"
-        elif roll < 0.90:
-            # Heavy attack (1.5x damage)
+        elif roll < heavy_thresh:
+            # Heavy attack (1.5x damage, 2x in final phase)
             base_dmg = calculate_enemy_damage(player, combat)
-            heavy_dmg = max(1, int(base_dmg * 1.5))
+            heavy_mult = 2.0 if phase >= 3 else 1.5
+            heavy_dmg = max(1, int(base_dmg * heavy_mult))
             player.stats["health"] = player.stats.get("health", 100) - heavy_dmg
-            result += f"\n  The {combat.enemy_name} winds up a HEAVY attack! ({heavy_dmg} damage!)"
+            if phase >= 3:
+                result += f"\n  💥 The {combat.enemy_name} unleashes a DEVASTATING attack! ({heavy_dmg} damage!)"
+            else:
+                result += f"\n  The {combat.enemy_name} winds up a HEAVY attack! ({heavy_dmg} damage!)"
         else:
             # Defend / heal
             if combat.hp < combat.max_hp * 0.5:
@@ -1445,57 +1593,133 @@ def process_ability_in_combat(player, combat, ability_data):
 
 
 def get_combat_status(player, combat):
-    """Get the current combat status display."""
-    pct = max(0, combat.hp / combat.max_hp)
+    """Get the current combat status display with enhanced visuals."""
+    # Enemy HP bar
+    pct = max(0, combat.hp / combat.max_hp) if combat.max_hp > 0 else 0
     bar_len = 20
     filled = int(pct * bar_len)
     bar = "█" * filled + "░" * (bar_len - filled)
 
+    # Player HP bar
     php = player.stats.get("health", 0)
     php_max = player.stats.get("health_max", 100)
     ppct = max(0, php / php_max) if php_max > 0 else 0
     pfilled = int(ppct * 15)
     pbar = "█" * pfilled + "░" * (15 - pfilled)
 
+    # HP urgency indicators
+    if pct <= 0.25:
+        enemy_hp_icon = "💀"
+    elif pct <= 0.50:
+        enemy_hp_icon = "⚠️"
+    else:
+        enemy_hp_icon = "❤️"
+
+    if ppct <= 0.25:
+        player_hp_icon = "💀 CRITICAL"
+    elif ppct <= 0.50:
+        player_hp_icon = "⚠️ WOUNDED"
+    else:
+        player_hp_icon = "❤️"
+
     boss_marker = ""
     if combat.is_boss:
-        boss_marker = "  BOSS"
+        phase = getattr(combat, 'boss_phase', 1)
+        if phase >= 3:
+            boss_marker = "  👑 BOSS — 💀 FINAL PHASE"
+        elif phase >= 2:
+            boss_marker = "  👑 BOSS — ⚠️ ENRAGED"
+        else:
+            boss_marker = "  👑 BOSS"
     elif combat.is_mini_boss:
-        boss_marker = "  MINI-BOSS"
+        boss_marker = "  ⚔️ MINI-BOSS"
 
-    result = "\n" + "-" * 50 + "\n"
+    result = "\n" + "═" * 50 + "\n"
     result += f"  {combat.enemy_name} [Lv.{combat.level}]{boss_marker}\n"
-    result += f"  HP: [{bar}] {combat.hp}/{combat.max_hp}\n"
+    result += f"  {enemy_hp_icon} [{bar}] {combat.hp}/{combat.max_hp}\n"
 
-    # Show enemy status effects
+    # Show enemy status effects with duration bars
     enemy_statuses = []
     for s in combat.enemy_statuses:
         se = STATUS_EFFECTS.get(s["type"], {})
         icon = se.get("icon", "")
-        enemy_statuses.append(f"{icon}{se.get('name', s['type'])}({s['duration']})")
+        dur = s.get("duration", 0)
+        dur_bar = "●" * min(dur, 5) + "○" * max(0, 5 - dur)
+        enemy_statuses.append(f"  {icon} {se.get('name', s['type'])} [{dur_bar}] {dur}T")
     if enemy_statuses:
-        result += f"  Status: {' '.join(enemy_statuses)}\n"
+        result += "  Afflictions:\n"
+        for es in enemy_statuses:
+            result += f"  {es}\n"
 
-    result += f"\n  You\n"
+    result += "─" * 50 + "\n"
+    result += f"  You  {player_hp_icon}\n"
     result += f"  HP: [{pbar}] {php}/{php_max}\n"
 
-    # Show player status effects
+    # Show player status effects with detail
     player_statuses = []
     for s in combat.player_statuses:
         se = STATUS_EFFECTS.get(s["type"], {})
         icon = se.get("icon", "")
-        player_statuses.append(f"{icon}{se.get('name', s['type'])}({s['duration']})")
+        dur = s.get("duration", 0)
+        dur_bar = "●" * min(dur, 5) + "○" * max(0, 5 - dur)
+        effect_type = se.get("type", "")
+        if effect_type == "dot":
+            detail = f"(dmg/turn)"
+        elif effect_type == "disable":
+            detail = f"(can't act)"
+        elif effect_type == "debuff":
+            reduction = se.get("reduction", 0)
+            detail = f"(-{reduction:.0%} atk)"
+        else:
+            detail = ""
+        player_statuses.append(f"  {icon} {se.get('name', s['type'])} [{dur_bar}] {dur}T {detail}")
     if player_statuses:
-        result += f"  Status: {' '.join(player_statuses)}\n"
+        result += "  Afflictions:\n"
+        for ps in player_statuses:
+            result += f"  {ps}\n"
 
-    # Show adrenaline
+    # Show active buffs from abilities
+    if hasattr(player, 'state'):
+        active_effects = player.state.get("active_effects", {})
+        if active_effects:
+            buff_list = []
+            for eff_name, eff_data in active_effects.items():
+                if isinstance(eff_data, dict):
+                    dur = eff_data.get("duration", 0)
+                    if dur > 0:
+                        buff_list.append(f"✨ {eff_name.replace('_', ' ').title()} ({dur}T)")
+                elif isinstance(eff_data, (int, float)) and eff_data > 0:
+                    buff_list.append(f"✨ {eff_name.replace('_', ' ').title()} ({eff_data}T)")
+            if buff_list:
+                result += "  Buffs: " + " | ".join(buff_list) + "\n"
+
+    # Show adrenaline with visual bar
     if combat.player_adrenaline > 0:
-        result += f"  🔥 Adrenaline: +{combat.player_adrenaline} bonus damage\n"
+        adr = combat.player_adrenaline
+        adr_bar = "🔥" * min(adr, 5)
+        result += f"  {adr_bar} Adrenaline: +{adr} bonus damage\n"
 
-    result += "-" * 50 + "\n"
+    result += "═" * 50 + "\n"
     result += "  Commands: attack | defend | flee"
     if hasattr(player, 'state') and player.state.get("unlocked_skills"):
         result += " | ability <name>"
+        # Show ready abilities with hotbar numbers
+        try:
+            from skill_tree import get_active_abilities
+            abilities = get_active_abilities(player)
+            cooldowns = player.state.get("cooldowns", {})
+            ready = []
+            for i, ab in enumerate(abilities):
+                cd = cooldowns.get(ab["skill_id"], 0)
+                if cd > 0:
+                    ready.append(f"[{i+1}] {ab['name']} ({cd}T cd)")
+                else:
+                    ready.append(f"[{i+1}] {ab['name']} ✦")
+            if ready:
+                result += "\n" + "─" * 50 + "\n"
+                result += "  Abilities: " + " | ".join(ready)
+        except Exception:
+            pass
     result += "\n"
     return result
 

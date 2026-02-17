@@ -1,690 +1,148 @@
 """
 Skill Tree System
 =================
-Class-based skill trees with tiered nodes:
-  - Passive nodes: permanent stat bonuses (most nodes - small +1/+2 increments)
-  - Active nodes: usable abilities with cooldowns (combat, exploration, crafting, trap)
+Class-based skill trees with tiered nodes (radial layout):
+  - Passive nodes: permanent stat bonuses
+  - Active nodes: usable abilities with cooldowns
 
-Each class (Warrior, Rogue, Mage) has its own tree with ~55 nodes
-across 10 tiers. Nodes require prerequisite nodes and cost skill points.
+Each class (Warrior, Rogue, Mage) has 200+ nodes across 5 tiers,
+arranged in branches radiating from a center origin node.
 
 The graphical skill tree window is built using Tkinter Canvas with
-horizontal scrolling to accommodate the large tree.
+a radial constellation layout supporting pan/zoom.
 """
 
 import tkinter as tk
 from tkinter import font as tkfont
+import math
+
+from skill_tree_data import (
+    WARRIOR_TREE, ROGUE_TREE, MAGE_TREE,
+    SKILL_TREES_DATA, CLASS_BRANCHES,
+    WARRIOR_BRANCHES, ROGUE_BRANCHES, MAGE_BRANCHES,
+)
 
 # =====================================================================
-# SKILL NODE SCHEMA
+# SYNERGY / SET BONUSES
 # =====================================================================
-# {
-#   "id":            unique string
-#   "name":          display name
-#   "description":   tooltip / details
-#   "tier":          1-10 (determines position)
-#   "type":          "passive" or "active"
-#   "cost":          skill points to unlock
-#   "prerequisites": list of node IDs that must be unlocked first
-#   "stat_bonuses":  dict of stat_name -> value (for passive nodes)
-#   "ability":       dict defining the active ability (for active nodes):
-#       "name":       ability name
-#       "cooldown":   number of moves/turns before it can be used again
-#       "effect":     what it does (parsed by ability system)
-#       "use_text":   message shown when used
-#       "combat":     True if usable in combat, False for out-of-combat
-# }
-# =====================================================================
+# When a player unlocks enough skills in the same branch, they receive
+# cumulative branch-mastery bonuses (3 / 5 / 8 / 12 node thresholds).
 
-
-# =====================================================================
-# WARRIOR SKILL TREE  (55 nodes: ~47 passive, ~8 active)
-# =====================================================================
-# Branches: LEFT = Tank/Defense path, RIGHT = Offense/Strength path
-# Abilities are combat-focused: power strikes, stuns, war cries, etc.
-# =====================================================================
-
-WARRIOR_TREE = [
-    # =========== TIER 1 - Entry (6 nodes) ===========
-    {"id": "w_thick_skin", "name": "Thick Skin", "tier": 1, "type": "passive", "cost": 1,
-     "prerequisites": [], "stat_bonuses": {"defense": 1},
-     "description": "Your skin is tougher than average.\n+1 Defense"},
-    {"id": "w_strong_arm", "name": "Strong Arm", "tier": 1, "type": "passive", "cost": 1,
-     "prerequisites": [], "stat_bonuses": {"strength": 1},
-     "description": "Raw physical power fills your muscles.\n+1 Strength"},
-    {"id": "w_endurance", "name": "Endurance", "tier": 1, "type": "passive", "cost": 1,
-     "prerequisites": [], "stat_bonuses": {"constitution": 1},
-     "description": "You can endure more than most.\n+1 Constitution"},
-    {"id": "w_battle_stance", "name": "Battle Stance", "tier": 1, "type": "passive", "cost": 1,
-     "prerequisites": [], "stat_bonuses": {"strength": 1},
-     "description": "Proper fighting form.\n+1 Strength"},
-    {"id": "w_sturdy_build", "name": "Sturdy Build", "tier": 1, "type": "passive", "cost": 1,
-     "prerequisites": [], "stat_bonuses": {"health_max_bonus": 5},
-     "description": "A solid frame that takes punishment.\n+5 Max Health"},
-    {"id": "w_grit", "name": "Grit", "tier": 1, "type": "passive", "cost": 1,
-     "prerequisites": [], "stat_bonuses": {"defense": 1},
-     "description": "Sheer determination keeps you standing.\n+1 Defense"},
-
-    # =========== TIER 2 - Foundation (7 nodes, 1 ability) ===========
-    {"id": "w_iron_grip", "name": "Iron Grip", "tier": 2, "type": "passive", "cost": 1,
-     "prerequisites": ["w_strong_arm"], "stat_bonuses": {"strength": 1},
-     "description": "Your grip never falters.\n+1 Strength"},
-    {"id": "w_toughened_body", "name": "Toughened Body", "tier": 2, "type": "passive", "cost": 1,
-     "prerequisites": ["w_thick_skin"], "stat_bonuses": {"defense": 1, "constitution": 1},
-     "description": "Battle scars have made you harder.\n+1 Defense, +1 Constitution"},
-    {"id": "w_conditioning", "name": "Conditioning", "tier": 2, "type": "passive", "cost": 1,
-     "prerequisites": ["w_endurance"], "stat_bonuses": {"health_max_bonus": 5, "constitution": 1},
-     "description": "Rigorous training pays off.\n+5 Max Health, +1 Constitution"},
-    {"id": "w_sharp_eye", "name": "Sharp Eye", "tier": 2, "type": "passive", "cost": 1,
-     "prerequisites": ["w_battle_stance"], "stat_bonuses": {"perception": 1},
-     "description": "A warrior must read the battlefield.\n+1 Perception"},
-    {"id": "w_heavy_blows", "name": "Heavy Blows", "tier": 2, "type": "passive", "cost": 1,
-     "prerequisites": ["w_battle_stance"], "stat_bonuses": {"strength": 2},
-     "description": "Your strikes land with crushing force.\n+2 Strength"},
-    {"id": "w_resilience", "name": "Resilience", "tier": 2, "type": "passive", "cost": 1,
-     "prerequisites": ["w_sturdy_build", "w_grit"], "stat_bonuses": {"health_max_bonus": 5},
-     "description": "You bounce back from anything.\n+5 Max Health"},
-    {"id": "w_power_strike", "name": "Power Strike", "tier": 2, "type": "active", "cost": 1,
-     "prerequisites": ["w_strong_arm"],
-     "stat_bonuses": {},
-     "ability": {"name": "Power Strike", "cooldown": 3, "effect": "combat_damage",
-                 "value": 1.6, "combat": True,
-                 "use_text": "You wind up and deliver a devastating blow!"},
-     "description": "A mighty overhead strike.\nDeals 1.6x damage. Cooldown: 3 turns"},
-
-    # =========== TIER 3 - Branching (7 nodes, 1 ability) ===========
-    {"id": "w_shield_wall", "name": "Shield Wall", "tier": 3, "type": "passive", "cost": 1,
-     "prerequisites": ["w_toughened_body"], "stat_bonuses": {"defense": 2},
-     "description": "You use your shield like an extension of yourself.\n+2 Defense"},
-    {"id": "w_vitality", "name": "Vitality", "tier": 3, "type": "passive", "cost": 1,
-     "prerequisites": ["w_conditioning"], "stat_bonuses": {"health_max_bonus": 10, "constitution": 1},
-     "description": "Life force surges through you.\n+10 Max Health, +1 Constitution"},
-    {"id": "w_weapon_focus", "name": "Weapon Focus", "tier": 3, "type": "passive", "cost": 1,
-     "prerequisites": ["w_iron_grip", "w_heavy_blows"], "stat_bonuses": {"strength": 2},
-     "description": "Mastering a single weapon style.\n+2 Strength"},
-    {"id": "w_armor_training", "name": "Armor Training", "tier": 3, "type": "passive", "cost": 1,
-     "prerequisites": ["w_toughened_body", "w_resilience"], "stat_bonuses": {"defense": 1, "dexterity": 1},
-     "description": "Move naturally in heavy armor.\n+1 Defense, +1 Dexterity"},
-    {"id": "w_intimidate", "name": "Intimidating Presence", "tier": 3, "type": "passive", "cost": 1,
-     "prerequisites": ["w_heavy_blows"], "stat_bonuses": {"charisma": 1, "strength": 1},
-     "description": "Your sheer size unnerves others.\n+1 Charisma, +1 Strength"},
-    {"id": "w_scouts_sense", "name": "Scout's Sense", "tier": 3, "type": "passive", "cost": 1,
-     "prerequisites": ["w_sharp_eye"], "stat_bonuses": {"perception": 1, "dexterity": 1},
-     "description": "Awareness honed by many ambushes.\n+1 Perception, +1 Dexterity"},
-    {"id": "w_shield_bash", "name": "Shield Bash", "tier": 3, "type": "active", "cost": 1,
-     "prerequisites": ["w_shield_wall"],
-     "stat_bonuses": {},
-     "ability": {"name": "Shield Bash", "cooldown": 4, "effect": "combat_stun",
-                 "value": 0.8, "duration": 1, "combat": True,
-                 "use_text": "You slam your shield into the enemy, stunning them!"},
-     "description": "Bash with your shield.\nDeals 0.8x damage and stuns enemy for 1 turn.\nCooldown: 4 turns"},
-
-    # =========== TIER 4 - Specialization (6 nodes, 1 ability) ===========
-    {"id": "w_iron_will", "name": "Iron Will", "tier": 4, "type": "passive", "cost": 1,
-     "prerequisites": ["w_vitality"], "stat_bonuses": {"constitution": 2},
-     "description": "Your willpower sustains your body.\n+2 Constitution"},
-    {"id": "w_fortress", "name": "Fortress", "tier": 4, "type": "passive", "cost": 2,
-     "prerequisites": ["w_shield_wall", "w_armor_training"], "stat_bonuses": {"defense": 2, "health_max_bonus": 10},
-     "description": "You ARE the wall.\n+2 Defense, +10 Max Health"},
-    {"id": "w_brutal_strikes", "name": "Brutal Strikes", "tier": 4, "type": "passive", "cost": 1,
-     "prerequisites": ["w_weapon_focus"], "stat_bonuses": {"strength": 2, "crit_chance_bonus": 0.05},
-     "description": "Find weaknesses in enemy armor.\n+2 Strength, +5% Crit Chance"},
-    {"id": "w_battle_scarred", "name": "Battle Scarred", "tier": 4, "type": "passive", "cost": 1,
-     "prerequisites": ["w_armor_training"], "stat_bonuses": {"defense": 1, "constitution": 1},
-     "description": "Every scar is a lesson learned.\n+1 Defense, +1 Constitution"},
-    {"id": "w_commanding_voice", "name": "Commanding Voice", "tier": 4, "type": "passive", "cost": 1,
-     "prerequisites": ["w_intimidate", "w_scouts_sense"], "stat_bonuses": {"charisma": 2, "perception": 1},
-     "description": "Your voice carries authority.\n+2 Charisma, +1 Perception"},
-    {"id": "w_war_cry", "name": "War Cry", "tier": 4, "type": "active", "cost": 2,
-     "prerequisites": ["w_intimidate"],
-     "stat_bonuses": {},
-     "ability": {"name": "War Cry", "cooldown": 6, "effect": "buff_attack",
-                 "value": 4, "duration": 3, "combat": True,
-                 "use_text": "You let out a thundering war cry! Your attacks surge with power!"},
-     "description": "A mighty shout that boosts your attack.\n+4 Strength for 3 turns. Cooldown: 6 turns"},
-
-    # =========== TIER 5 - Mid-Tree (6 nodes, 1 ability) ===========
-    {"id": "w_bulwark", "name": "Bulwark", "tier": 5, "type": "passive", "cost": 2,
-     "prerequisites": ["w_fortress"], "stat_bonuses": {"defense": 3},
-     "description": "An unbreakable defensive stance.\n+3 Defense"},
-    {"id": "w_bloodlust", "name": "Bloodlust", "tier": 5, "type": "passive", "cost": 2,
-     "prerequisites": ["w_brutal_strikes"], "stat_bonuses": {"strength": 3, "health_max_bonus": 5},
-     "description": "The thrill of battle empowers you.\n+3 Strength, +5 Max Health"},
-    {"id": "w_troll_blood", "name": "Troll Blood", "tier": 5, "type": "passive", "cost": 2,
-     "prerequisites": ["w_iron_will", "w_battle_scarred"], "stat_bonuses": {"constitution": 2, "health_max_bonus": 10},
-     "description": "Unnatural regenerative ability.\n+2 Constitution, +10 Max Health"},
-    {"id": "w_trap_breaker", "name": "Trap Breaker", "tier": 5, "type": "passive", "cost": 1,
-     "prerequisites": ["w_commanding_voice"], "stat_bonuses": {"perception": 2, "disarm_bonus": 0.10},
-     "description": "You smash traps with brute force.\n+2 Perception, +10% Disarm Bonus"},
-    {"id": "w_deep_wounds", "name": "Deep Wounds", "tier": 5, "type": "passive", "cost": 2,
-     "prerequisites": ["w_brutal_strikes"], "stat_bonuses": {"strength": 2, "crit_chance_bonus": 0.05},
-     "description": "Your strikes leave lingering wounds.\n+2 Strength, +5% Crit Chance"},
-    {"id": "w_fortify", "name": "Fortify", "tier": 5, "type": "active", "cost": 2,
-     "prerequisites": ["w_bulwark"],
-     "stat_bonuses": {},
-     "ability": {"name": "Fortify", "cooldown": 8, "effect": "temp_defense",
-                 "value": 6, "duration": 4, "combat": True,
-                 "use_text": "You plant your feet and brace yourself! Defense surges!"},
-     "description": "Temporarily boost defense by 6 for 4 turns.\nCooldown: 8 turns"},
-
-    # =========== TIER 6 - Advanced (5 nodes, 1 ability) ===========
-    {"id": "w_juggernaut", "name": "Juggernaut", "tier": 6, "type": "passive", "cost": 2,
-     "prerequisites": ["w_bulwark", "w_troll_blood"], "stat_bonuses": {"defense": 2, "constitution": 2},
-     "description": "An unstoppable force.\n+2 Defense, +2 Constitution"},
-    {"id": "w_berserker", "name": "Berserker", "tier": 6, "type": "passive", "cost": 2,
-     "prerequisites": ["w_bloodlust", "w_deep_wounds"], "stat_bonuses": {"strength": 3, "crit_chance_bonus": 0.05},
-     "description": "Rage fuels impossible strength.\n+3 Strength, +5% Crit Chance"},
-    {"id": "w_second_wind", "name": "Second Wind", "tier": 6, "type": "passive", "cost": 2,
-     "prerequisites": ["w_troll_blood"], "stat_bonuses": {"health_max_bonus": 15, "constitution": 1},
-     "description": "When others fall, you rise.\n+15 Max Health, +1 Constitution"},
-    {"id": "w_sunder_armor", "name": "Sunder Armor", "tier": 6, "type": "passive", "cost": 2,
-     "prerequisites": ["w_deep_wounds"], "stat_bonuses": {"strength": 2},
-     "description": "Your attacks reduce enemy defense.\nPassive: basic attacks have -1 enemy defense."},
-    {"id": "w_cleave", "name": "Cleave", "tier": 6, "type": "active", "cost": 2,
-     "prerequisites": ["w_berserker"],
-     "stat_bonuses": {},
-     "ability": {"name": "Cleave", "cooldown": 5, "effect": "combat_damage",
-                 "value": 2.0, "combat": True,
-                 "use_text": "You swing a devastating cleave!"},
-     "description": "A massive 2.0x damage strike.\nCooldown: 5 turns"},
-
-    # =========== TIER 7 - High (4 nodes, 1 ability) ===========
-    {"id": "w_living_fortress", "name": "Living Fortress", "tier": 7, "type": "passive", "cost": 2,
-     "prerequisites": ["w_juggernaut"], "stat_bonuses": {"defense": 3, "health_max_bonus": 10},
-     "description": "Your body is harder than castle walls.\n+3 Defense, +10 Max Health"},
-    {"id": "w_weapon_master", "name": "Weapon Master", "tier": 7, "type": "passive", "cost": 2,
-     "prerequisites": ["w_berserker", "w_sunder_armor"], "stat_bonuses": {"strength": 3, "dexterity": 1},
-     "description": "Every weapon is an extension of your will.\n+3 Strength, +1 Dexterity"},
-    {"id": "w_unbreakable", "name": "Unbreakable", "tier": 7, "type": "passive", "cost": 2,
-     "prerequisites": ["w_second_wind", "w_juggernaut"], "stat_bonuses": {"constitution": 3, "defense": 1},
-     "description": "Nothing can break you.\n+3 Constitution, +1 Defense"},
-    {"id": "w_rallying_cry", "name": "Rallying Cry", "tier": 7, "type": "active", "cost": 2,
-     "prerequisites": ["w_second_wind"],
-     "stat_bonuses": {},
-     "ability": {"name": "Rallying Cry", "cooldown": 10, "effect": "combat_heal",
-                 "value": 30, "combat": True,
-                 "use_text": "Your battle cry rallies your spirit! You heal your wounds!"},
-     "description": "Heal 30 HP through sheer willpower.\nCooldown: 10 turns"},
-
-    # =========== TIER 8 - Elite (4 nodes, 1 ability) ===========
-    {"id": "w_warlord", "name": "Warlord", "tier": 8, "type": "passive", "cost": 2,
-     "prerequisites": ["w_weapon_master"], "stat_bonuses": {"strength": 3, "charisma": 2},
-     "description": "You command the battlefield.\n+3 Strength, +2 Charisma"},
-    {"id": "w_steel_body", "name": "Steel Body", "tier": 8, "type": "passive", "cost": 2,
-     "prerequisites": ["w_living_fortress", "w_unbreakable"], "stat_bonuses": {"defense": 3, "constitution": 2},
-     "description": "Your body is forged steel.\n+3 Defense, +2 Constitution"},
-    {"id": "w_death_dealer", "name": "Death Dealer", "tier": 8, "type": "passive", "cost": 2,
-     "prerequisites": ["w_weapon_master"], "stat_bonuses": {"strength": 2, "crit_chance_bonus": 0.08},
-     "description": "Every strike could be the last.\n+2 Strength, +8% Crit Chance"},
-    {"id": "w_earthquake", "name": "Earthquake", "tier": 8, "type": "active", "cost": 3,
-     "prerequisites": ["w_living_fortress", "w_weapon_master"],
-     "stat_bonuses": {},
-     "ability": {"name": "Earthquake", "cooldown": 8, "effect": "combat_damage_stun",
-                 "value": 1.8, "duration": 2, "combat": True,
-                 "use_text": "You SLAM the ground! The earth itself trembles!"},
-     "description": "Ground-shaking blow: 1.8x damage + stun 2 turns.\nCooldown: 8 turns"},
-
-    # =========== TIER 9 - Master (3 nodes) ===========
-    {"id": "w_titan_body", "name": "Titan's Body", "tier": 9, "type": "passive", "cost": 3,
-     "prerequisites": ["w_steel_body"], "stat_bonuses": {"defense": 4, "constitution": 3, "health_max_bonus": 25},
-     "description": "The body of a mythical titan.\n+4 Defense, +3 Constitution, +25 Max Health"},
-    {"id": "w_executioner", "name": "Executioner", "tier": 9, "type": "passive", "cost": 3,
-     "prerequisites": ["w_death_dealer", "w_warlord"], "stat_bonuses": {"strength": 4, "crit_chance_bonus": 0.10},
-     "description": "Judge, jury, and executioner.\n+4 Strength, +10% Crit Chance"},
-    {"id": "w_undying", "name": "Undying", "tier": 9, "type": "passive", "cost": 3,
-     "prerequisites": ["w_steel_body", "w_warlord"], "stat_bonuses": {"health_max_bonus": 30, "constitution": 2, "defense": 2},
-     "description": "No wound can keep you down.\n+30 Max Health, +2 Constitution, +2 Defense"},
-
-    # =========== TIER 10 - Ultimate (2 nodes) ===========
-    {"id": "w_titan_slam", "name": "Titan Slam", "tier": 10, "type": "active", "cost": 3,
-     "prerequisites": ["w_executioner", "w_titan_body"],
-     "stat_bonuses": {},
-     "ability": {"name": "Titan Slam", "cooldown": 12, "effect": "combat_damage",
-                 "value": 3.0, "combat": True,
-                 "use_text": "You channel the power of a TITAN and bring your weapon down with CATACLYSMIC FORCE!"},
-     "description": "ULTIMATE: A blow of godlike power.\n3.0x damage. Cooldown: 12 turns"},
-    {"id": "w_immortal", "name": "Immortal", "tier": 10, "type": "passive", "cost": 3,
-     "prerequisites": ["w_undying", "w_titan_body"],
-     "stat_bonuses": {"strength": 5, "defense": 5, "constitution": 4, "health_max_bonus": 40},
-     "description": "ULTIMATE PASSIVE: Transcend mortality.\n+5 Str, +5 Def, +4 Con, +40 Max HP"},
+SYNERGY_THRESHOLDS = [
+    (3,  "Initiate",    {"attack": 1, "defense": 1}),
+    (5,  "Adept",       {"attack": 2, "defense": 1, "health_max_bonus": 5}),
+    (8,  "Expert",      {"attack": 3, "defense": 2, "health_max_bonus": 10, "crit_chance_bonus": 0.02}),
+    (12, "Master",      {"attack": 5, "defense": 3, "health_max_bonus": 20, "crit_chance_bonus": 0.05}),
 ]
 
-
-# =====================================================================
-# ROGUE SKILL TREE  (55 nodes: ~47 passive, ~8 active)
-# =====================================================================
-# Branches: LEFT = Stealth/Evasion, RIGHT = Precision/Damage
-# Abilities: backstab, poison, pickpocket, smoke bomb, assassinate, etc.
-# =====================================================================
-
-ROGUE_TREE = [
-    # =========== TIER 1 - Entry (6 nodes) ===========
-    {"id": "r_quick_hands", "name": "Quick Hands", "tier": 1, "type": "passive", "cost": 1,
-     "prerequisites": [], "stat_bonuses": {"dexterity": 1},
-     "description": "Fast fingers for fast work.\n+1 Dexterity"},
-    {"id": "r_keen_eye", "name": "Keen Eye", "tier": 1, "type": "passive", "cost": 1,
-     "prerequisites": [], "stat_bonuses": {"perception": 1},
-     "description": "You notice what others miss.\n+1 Perception"},
-    {"id": "r_light_step", "name": "Light Step", "tier": 1, "type": "passive", "cost": 1,
-     "prerequisites": [], "stat_bonuses": {"dexterity": 1},
-     "description": "Move without making a sound.\n+1 Dexterity"},
-    {"id": "r_sharp_blade", "name": "Sharp Blade", "tier": 1, "type": "passive", "cost": 1,
-     "prerequisites": [], "stat_bonuses": {"strength": 1},
-     "description": "A well-maintained edge cuts deep.\n+1 Strength"},
-    {"id": "r_street_smarts", "name": "Street Smarts", "tier": 1, "type": "passive", "cost": 1,
-     "prerequisites": [], "stat_bonuses": {"charisma": 1},
-     "description": "You know how the underworld works.\n+1 Charisma"},
-    {"id": "r_survivalist", "name": "Survivalist", "tier": 1, "type": "passive", "cost": 1,
-     "prerequisites": [], "stat_bonuses": {"constitution": 1},
-     "description": "You know when to duck.\n+1 Constitution"},
-
-    # =========== TIER 2 - Foundation (7 nodes, 1 ability) ===========
-    {"id": "r_nimble_fingers", "name": "Nimble Fingers", "tier": 2, "type": "passive", "cost": 1,
-     "prerequisites": ["r_quick_hands"], "stat_bonuses": {"dexterity": 1, "disarm_bonus": 0.05},
-     "description": "Perfect finger control.\n+1 Dexterity, +5% Disarm"},
-    {"id": "r_awareness", "name": "Awareness", "tier": 2, "type": "passive", "cost": 1,
-     "prerequisites": ["r_keen_eye"], "stat_bonuses": {"perception": 1, "dexterity": 1},
-     "description": "Always alert, always ready.\n+1 Perception, +1 Dexterity"},
-    {"id": "r_silent_movement", "name": "Silent Movement", "tier": 2, "type": "passive", "cost": 1,
-     "prerequisites": ["r_light_step"], "stat_bonuses": {"dexterity": 2},
-     "description": "Ghost-like movement.\n+2 Dexterity"},
-    {"id": "r_precise_strikes", "name": "Precise Strikes", "tier": 2, "type": "passive", "cost": 1,
-     "prerequisites": ["r_sharp_blade"], "stat_bonuses": {"strength": 1, "crit_chance_bonus": 0.05},
-     "description": "Strike where it hurts most.\n+1 Strength, +5% Crit Chance"},
-    {"id": "r_silver_tongue", "name": "Silver Tongue", "tier": 2, "type": "passive", "cost": 1,
-     "prerequisites": ["r_street_smarts"], "stat_bonuses": {"charisma": 2},
-     "description": "Charm and deception flow naturally.\n+2 Charisma"},
-    {"id": "r_dodge_roll", "name": "Dodge Roll", "tier": 2, "type": "passive", "cost": 1,
-     "prerequisites": ["r_survivalist", "r_light_step"], "stat_bonuses": {"dexterity": 1, "defense": 1},
-     "description": "Roll away from danger.\n+1 Dexterity, +1 Defense"},
-    {"id": "r_backstab", "name": "Backstab", "tier": 2, "type": "active", "cost": 1,
-     "prerequisites": ["r_sharp_blade"],
-     "stat_bonuses": {},
-     "ability": {"name": "Backstab", "cooldown": 3, "effect": "combat_crit_attack",
-                 "value": 2.0, "combat": True,
-                 "use_text": "You strike from the shadows - a critical hit!"},
-     "description": "Guaranteed critical hit dealing 2.0x damage.\nCooldown: 3 turns"},
-
-    # =========== TIER 3 - Branching (7 nodes, 1 ability) ===========
-    {"id": "r_locksmith", "name": "Locksmith", "tier": 3, "type": "passive", "cost": 1,
-     "prerequisites": ["r_nimble_fingers"], "stat_bonuses": {"dexterity": 1, "disarm_bonus": 0.10},
-     "description": "Locks are just suggestions.\n+1 Dexterity, +10% Disarm Bonus"},
-    {"id": "r_shadow_step", "name": "Shadow Step", "tier": 3, "type": "passive", "cost": 1,
-     "prerequisites": ["r_silent_movement", "r_awareness"], "stat_bonuses": {"dexterity": 2, "perception": 1},
-     "description": "Step through shadows like doorways.\n+2 Dexterity, +1 Perception"},
-    {"id": "r_deadly_precision", "name": "Deadly Precision", "tier": 3, "type": "passive", "cost": 1,
-     "prerequisites": ["r_precise_strikes"], "stat_bonuses": {"strength": 2, "crit_chance_bonus": 0.05},
-     "description": "Every strike finds vital spots.\n+2 Strength, +5% Crit Chance"},
-    {"id": "r_haggler", "name": "Haggler", "tier": 3, "type": "passive", "cost": 1,
-     "prerequisites": ["r_silver_tongue"], "stat_bonuses": {"charisma": 2},
-     "description": "Better prices everywhere.\n+2 Charisma"},
-    {"id": "r_acrobatics", "name": "Acrobatics", "tier": 3, "type": "passive", "cost": 1,
-     "prerequisites": ["r_dodge_roll"], "stat_bonuses": {"dexterity": 2, "defense": 1},
-     "description": "Flip, roll, and tumble past danger.\n+2 Dexterity, +1 Defense"},
-    {"id": "r_trap_sense", "name": "Trap Sense", "tier": 3, "type": "passive", "cost": 1,
-     "prerequisites": ["r_awareness"], "stat_bonuses": {"perception": 2},
-     "description": "An instinctive feel for hidden dangers.\n+2 Perception"},
-    {"id": "r_poison_strike", "name": "Poison Strike", "tier": 3, "type": "active", "cost": 1,
-     "prerequisites": ["r_precise_strikes"],
-     "stat_bonuses": {},
-     "ability": {"name": "Poison Strike", "cooldown": 4, "effect": "combat_poison",
-                 "value": 4, "duration": 3, "combat": True,
-                 "use_text": "Your envenomed blade bites deep! Poison courses through the enemy!"},
-     "description": "Strike with a poisoned blade.\nDeals normal damage + 4 poison/turn for 3 turns.\nCooldown: 4 turns"},
-
-    # =========== TIER 4 - Specialization (6 nodes, 1 ability) ===========
-    {"id": "r_master_lockpick", "name": "Master Lockpick", "tier": 4, "type": "passive", "cost": 2,
-     "prerequisites": ["r_locksmith"], "stat_bonuses": {"disarm_bonus": 0.15, "dexterity": 1},
-     "description": "You can pick any lock.\n+15% Disarm Bonus, +1 Dexterity"},
-    {"id": "r_shadow_dancer", "name": "Shadow Dancer", "tier": 4, "type": "passive", "cost": 2,
-     "prerequisites": ["r_shadow_step"], "stat_bonuses": {"dexterity": 2, "defense": 2},
-     "description": "Dance between the shadows.\n+2 Dexterity, +2 Defense"},
-    {"id": "r_executioners_mark", "name": "Executioner's Mark", "tier": 4, "type": "passive", "cost": 2,
-     "prerequisites": ["r_deadly_precision"], "stat_bonuses": {"strength": 2, "crit_chance_bonus": 0.05},
-     "description": "Mark your targets for death.\n+2 Strength, +5% Crit Chance"},
-    {"id": "r_fence", "name": "Fence", "tier": 4, "type": "passive", "cost": 1,
-     "prerequisites": ["r_haggler"], "stat_bonuses": {"charisma": 2, "perception": 1},
-     "description": "You know all the best fences.\n+2 Charisma, +1 Perception"},
-    {"id": "r_ghost_walk", "name": "Ghost Walk", "tier": 4, "type": "passive", "cost": 1,
-     "prerequisites": ["r_acrobatics", "r_trap_sense"], "stat_bonuses": {"dexterity": 1, "perception": 1},
-     "description": "Walk through trapped halls undetected.\n+1 Dexterity, +1 Perception"},
-    {"id": "r_smoke_bomb", "name": "Smoke Bomb", "tier": 4, "type": "active", "cost": 2,
-     "prerequisites": ["r_shadow_step"],
-     "stat_bonuses": {},
-     "ability": {"name": "Smoke Bomb", "cooldown": 8, "effect": "guaranteed_flee",
-                 "combat": True,
-                 "use_text": "You hurl a smoke bomb! The room fills with thick smoke!"},
-     "description": "Guaranteed escape from any non-boss combat.\nCooldown: 8 turns"},
-
-    # =========== TIER 5 - Mid-Tree (6 nodes, 1 ability) ===========
-    {"id": "r_vault_cracker", "name": "Vault Cracker", "tier": 5, "type": "passive", "cost": 2,
-     "prerequisites": ["r_master_lockpick"], "stat_bonuses": {"disarm_bonus": 0.10, "perception": 2},
-     "description": "No vault is safe from you.\n+10% Disarm, +2 Perception"},
-    {"id": "r_blade_dancer", "name": "Blade Dancer", "tier": 5, "type": "passive", "cost": 2,
-     "prerequisites": ["r_shadow_dancer", "r_executioners_mark"], "stat_bonuses": {"strength": 2, "dexterity": 2},
-     "description": "A deadly dance of blades.\n+2 Strength, +2 Dexterity"},
-    {"id": "r_lethality", "name": "Lethality", "tier": 5, "type": "passive", "cost": 2,
-     "prerequisites": ["r_executioners_mark"], "stat_bonuses": {"strength": 3, "crit_chance_bonus": 0.05},
-     "description": "Your strikes are lethal.\n+3 Strength, +5% Crit"},
-    {"id": "r_con_artist", "name": "Con Artist", "tier": 5, "type": "passive", "cost": 1,
-     "prerequisites": ["r_fence"], "stat_bonuses": {"charisma": 3},
-     "description": "A master of deception.\n+3 Charisma"},
-    {"id": "r_evasion", "name": "Evasion", "tier": 5, "type": "passive", "cost": 2,
-     "prerequisites": ["r_ghost_walk", "r_shadow_dancer"], "stat_bonuses": {"dexterity": 3, "defense": 2},
-     "description": "Untouchable.\n+3 Dexterity, +2 Defense"},
-    {"id": "r_pickpocket", "name": "Pickpocket", "tier": 5, "type": "active", "cost": 2,
-     "prerequisites": ["r_fence"],
-     "stat_bonuses": {},
-     "ability": {"name": "Pickpocket", "cooldown": 6, "effect": "extra_gold",
-                 "value": 2.0, "duration": 1, "combat": True,
-                 "use_text": "Your nimble fingers find extra treasures!"},
-     "description": "Next enemy drops 2x gold.\nCooldown: 6 turns"},
-
-    # =========== TIER 6 - Advanced (5 nodes, 1 ability) ===========
-    {"id": "r_phantom_stride", "name": "Phantom Stride", "tier": 6, "type": "passive", "cost": 2,
-     "prerequisites": ["r_evasion"], "stat_bonuses": {"dexterity": 3, "defense": 1, "perception": 1},
-     "description": "You exist between moments.\n+3 Dexterity, +1 Defense, +1 Perception"},
-    {"id": "r_assassins_edge", "name": "Assassin's Edge", "tier": 6, "type": "passive", "cost": 2,
-     "prerequisites": ["r_lethality", "r_blade_dancer"], "stat_bonuses": {"strength": 3, "crit_chance_bonus": 0.08},
-     "description": "The edge between life and death.\n+3 Strength, +8% Crit Chance"},
-    {"id": "r_treasure_hunter", "name": "Treasure Hunter", "tier": 6, "type": "passive", "cost": 2,
-     "prerequisites": ["r_vault_cracker", "r_con_artist"], "stat_bonuses": {"perception": 3, "charisma": 2},
-     "description": "You find treasure everywhere.\n+3 Perception, +2 Charisma"},
-    {"id": "r_vital_strike", "name": "Vital Strike", "tier": 6, "type": "passive", "cost": 2,
-     "prerequisites": ["r_lethality"], "stat_bonuses": {"strength": 2, "crit_chance_bonus": 0.05},
-     "description": "Aim for vital organs.\n+2 Strength, +5% Crit"},
-    {"id": "r_vanish", "name": "Vanish", "tier": 6, "type": "active", "cost": 2,
-     "prerequisites": ["r_phantom_stride"],
-     "stat_bonuses": {},
-     "ability": {"name": "Vanish", "cooldown": 10, "effect": "bypass_trap",
-                 "duration": 3,
-                 "use_text": "You melt into the shadows, becoming invisible!"},
-     "description": "Bypass all traps for 3 moves.\nCooldown: 10 moves"},
-
-    # =========== TIER 7 - High (4 nodes, 1 ability) ===========
-    {"id": "r_death_from_shadows", "name": "Death From Shadows", "tier": 7, "type": "passive", "cost": 2,
-     "prerequisites": ["r_assassins_edge", "r_phantom_stride"], "stat_bonuses": {"strength": 3, "dexterity": 2},
-     "description": "Emerge from darkness to deliver death.\n+3 Strength, +2 Dexterity"},
-    {"id": "r_untouchable", "name": "Untouchable", "tier": 7, "type": "passive", "cost": 2,
-     "prerequisites": ["r_phantom_stride"], "stat_bonuses": {"dexterity": 3, "defense": 3},
-     "description": "They can never hit you.\n+3 Dexterity, +3 Defense"},
-    {"id": "r_kingpin", "name": "Kingpin", "tier": 7, "type": "passive", "cost": 2,
-     "prerequisites": ["r_treasure_hunter"], "stat_bonuses": {"charisma": 3, "perception": 2},
-     "description": "You run the underworld.\n+3 Charisma, +2 Perception"},
-    {"id": "r_ambush", "name": "Ambush", "tier": 7, "type": "active", "cost": 2,
-     "prerequisites": ["r_vital_strike", "r_assassins_edge"],
-     "stat_bonuses": {},
-     "ability": {"name": "Ambush", "cooldown": 5, "effect": "combat_bleed_attack",
-                 "value": 1.5, "bleed": 5, "duration": 3, "combat": True,
-                 "use_text": "You strike from hiding - the enemy bleeds profusely!"},
-     "description": "Deal 1.5x damage + 5 bleed/turn for 3 turns.\nCooldown: 5 turns"},
-
-    # =========== TIER 8 - Elite (4 nodes) ===========
-    {"id": "r_shadow_lord", "name": "Shadow Lord", "tier": 8, "type": "passive", "cost": 2,
-     "prerequisites": ["r_death_from_shadows", "r_untouchable"],
-     "stat_bonuses": {"dexterity": 3, "strength": 2, "defense": 2},
-     "description": "Lord of the shadows.\n+3 Dexterity, +2 Strength, +2 Defense"},
-    {"id": "r_grand_larceny", "name": "Grand Larceny", "tier": 8, "type": "passive", "cost": 2,
-     "prerequisites": ["r_kingpin"], "stat_bonuses": {"charisma": 3, "dexterity": 2},
-     "description": "The greatest heist of all.\n+3 Charisma, +2 Dexterity"},
-    {"id": "r_death_mark", "name": "Death Mark", "tier": 8, "type": "passive", "cost": 3,
-     "prerequisites": ["r_death_from_shadows"], "stat_bonuses": {"strength": 3, "crit_chance_bonus": 0.10},
-     "description": "Mark of certain death.\n+3 Strength, +10% Crit"},
-    {"id": "r_perfect_evasion", "name": "Perfect Evasion", "tier": 8, "type": "passive", "cost": 3,
-     "prerequisites": ["r_untouchable"], "stat_bonuses": {"dexterity": 4, "defense": 3},
-     "description": "Absolute evasion mastery.\n+4 Dexterity, +3 Defense"},
-
-    # =========== TIER 9 - Master (3 nodes) ===========
-    {"id": "r_master_assassin", "name": "Master Assassin", "tier": 9, "type": "passive", "cost": 3,
-     "prerequisites": ["r_death_mark", "r_shadow_lord"],
-     "stat_bonuses": {"strength": 4, "dexterity": 3, "crit_chance_bonus": 0.10},
-     "description": "Apex predator of the shadows.\n+4 Str, +3 Dex, +10% Crit"},
-    {"id": "r_crime_lord", "name": "Crime Lord", "tier": 9, "type": "passive", "cost": 3,
-     "prerequisites": ["r_grand_larceny", "r_shadow_lord"],
-     "stat_bonuses": {"charisma": 4, "perception": 3, "dexterity": 2},
-     "description": "The underworld bows to you.\n+4 Cha, +3 Perc, +2 Dex"},
-    {"id": "r_ghost", "name": "Ghost", "tier": 9, "type": "passive", "cost": 3,
-     "prerequisites": ["r_perfect_evasion"],
-     "stat_bonuses": {"dexterity": 4, "defense": 4, "perception": 2},
-     "description": "You don't exist.\n+4 Dex, +4 Def, +2 Perception"},
-
-    # =========== TIER 10 - Ultimate (2 nodes) ===========
-    {"id": "r_assassinate", "name": "Assassinate", "tier": 10, "type": "active", "cost": 3,
-     "prerequisites": ["r_master_assassin"],
-     "stat_bonuses": {},
-     "ability": {"name": "Assassinate", "cooldown": 12, "effect": "combat_execute",
-                 "value": 0.30, "combat": True,
-                 "use_text": "You find the perfect opening and strike with lethal precision!"},
-     "description": "ULTIMATE: Instant kill if enemy below 30% HP.\nOtherwise deals 3.0x damage.\nCooldown: 12 turns"},
-    {"id": "r_phantom", "name": "Phantom", "tier": 10, "type": "passive", "cost": 3,
-     "prerequisites": ["r_ghost", "r_master_assassin"],
-     "stat_bonuses": {"dexterity": 5, "strength": 4, "perception": 4, "crit_chance_bonus": 0.15},
-     "description": "ULTIMATE PASSIVE: Pure shadow given lethal form.\n+5 Dex, +4 Str, +4 Perc, +15% Crit"},
-]
-
-
-# =====================================================================
-# MAGE SKILL TREE  (55 nodes: ~47 passive, ~8 active)
-# =====================================================================
-# Branches: LEFT = Defense/Healing, RIGHT = Offensive magic
-# Abilities: fireball, ice shard, heal, arcane shield, thunder, reveal, etc.
-# =====================================================================
-
-MAGE_TREE = [
-    # =========== TIER 1 - Entry (6 nodes) ===========
-    {"id": "m_arcane_mind", "name": "Arcane Mind", "tier": 1, "type": "passive", "cost": 1,
-     "prerequisites": [], "stat_bonuses": {"perception": 1},
-     "description": "Your mind touches the arcane.\n+1 Perception"},
-    {"id": "m_mana_well", "name": "Mana Well", "tier": 1, "type": "passive", "cost": 1,
-     "prerequisites": [], "stat_bonuses": {"constitution": 1},
-     "description": "A deep reservoir of magical energy.\n+1 Constitution"},
-    {"id": "m_spark", "name": "Spark", "tier": 1, "type": "passive", "cost": 1,
-     "prerequisites": [], "stat_bonuses": {"strength": 1},
-     "description": "Even a spark can start a fire.\n+1 Strength (magic damage)"},
-    {"id": "m_focus", "name": "Focus", "tier": 1, "type": "passive", "cost": 1,
-     "prerequisites": [], "stat_bonuses": {"perception": 1},
-     "description": "Mental clarity sharpens your magic.\n+1 Perception"},
-    {"id": "m_mystic_charm", "name": "Mystic Charm", "tier": 1, "type": "passive", "cost": 1,
-     "prerequisites": [], "stat_bonuses": {"charisma": 1},
-     "description": "An aura of magical charisma.\n+1 Charisma"},
-    {"id": "m_tough_robes", "name": "Tough Robes", "tier": 1, "type": "passive", "cost": 1,
-     "prerequisites": [], "stat_bonuses": {"defense": 1},
-     "description": "Enchanted robes that protect you.\n+1 Defense"},
-
-    # =========== TIER 2 - Foundation (7 nodes, 1 ability) ===========
-    {"id": "m_deep_pool", "name": "Deep Pool", "tier": 2, "type": "passive", "cost": 1,
-     "prerequisites": ["m_mana_well"], "stat_bonuses": {"constitution": 1, "health_max_bonus": 5},
-     "description": "Your life force deepens.\n+1 Constitution, +5 Max HP"},
-    {"id": "m_arcane_attunement", "name": "Arcane Attunement", "tier": 2, "type": "passive", "cost": 1,
-     "prerequisites": ["m_arcane_mind"], "stat_bonuses": {"perception": 2},
-     "description": "Deeper connection to magical currents.\n+2 Perception"},
-    {"id": "m_fire_affinity", "name": "Fire Affinity", "tier": 2, "type": "passive", "cost": 1,
-     "prerequisites": ["m_spark"], "stat_bonuses": {"strength": 2},
-     "description": "Flames answer your call eagerly.\n+2 Strength (magic damage)"},
-    {"id": "m_concentration", "name": "Concentration", "tier": 2, "type": "passive", "cost": 1,
-     "prerequisites": ["m_focus"], "stat_bonuses": {"perception": 1, "constitution": 1},
-     "description": "Unwavering mental focus.\n+1 Perception, +1 Constitution"},
-    {"id": "m_mystic_aura", "name": "Mystic Aura", "tier": 2, "type": "passive", "cost": 1,
-     "prerequisites": ["m_mystic_charm"], "stat_bonuses": {"charisma": 2},
-     "description": "Your magical presence impresses others.\n+2 Charisma"},
-    {"id": "m_ward", "name": "Ward", "tier": 2, "type": "passive", "cost": 1,
-     "prerequisites": ["m_tough_robes", "m_mana_well"], "stat_bonuses": {"defense": 1, "constitution": 1},
-     "description": "A simple protective ward.\n+1 Defense, +1 Constitution"},
-    {"id": "m_fireball", "name": "Fireball", "tier": 2, "type": "active", "cost": 1,
-     "prerequisites": ["m_fire_affinity"],
-     "stat_bonuses": {},
-     "ability": {"name": "Fireball", "cooldown": 3, "effect": "combat_damage_burn",
-                 "value": 1.5, "burn": 3, "duration": 2, "combat": True,
-                 "use_text": "You hurl a blazing fireball! Flames engulf the enemy!"},
-     "description": "Hurl a ball of fire.\n1.5x damage + 3 burn/turn for 2 turns.\nCooldown: 3 turns"},
-
-    # =========== TIER 3 - Branching (7 nodes, 1 ability) ===========
-    {"id": "m_arcane_shield", "name": "Arcane Shield", "tier": 3, "type": "passive", "cost": 1,
-     "prerequisites": ["m_ward"], "stat_bonuses": {"defense": 2},
-     "description": "A persistent magical barrier.\n+2 Defense"},
-    {"id": "m_elemental_mastery", "name": "Elemental Mastery", "tier": 3, "type": "passive", "cost": 1,
-     "prerequisites": ["m_fire_affinity"], "stat_bonuses": {"strength": 2},
-     "description": "Command over the elements grows.\n+2 Strength (magic damage)"},
-    {"id": "m_third_eye", "name": "Third Eye", "tier": 3, "type": "passive", "cost": 1,
-     "prerequisites": ["m_arcane_attunement", "m_concentration"], "stat_bonuses": {"perception": 2, "dexterity": 1},
-     "description": "See beyond the physical.\n+2 Perception, +1 Dexterity"},
-    {"id": "m_enchanted_touch", "name": "Enchanted Touch", "tier": 3, "type": "passive", "cost": 1,
-     "prerequisites": ["m_mystic_aura"], "stat_bonuses": {"charisma": 2, "crafting_bonus": 1},
-     "description": "Your touched items gain magical properties.\n+2 Charisma, +1 Crafting Bonus"},
-    {"id": "m_life_force", "name": "Life Force", "tier": 3, "type": "passive", "cost": 1,
-     "prerequisites": ["m_deep_pool"], "stat_bonuses": {"constitution": 2, "health_max_bonus": 5},
-     "description": "Deep reserves of life energy.\n+2 Constitution, +5 Max HP"},
-    {"id": "m_flame_weave", "name": "Flame Weave", "tier": 3, "type": "passive", "cost": 1,
-     "prerequisites": ["m_fire_affinity", "m_concentration"], "stat_bonuses": {"strength": 1, "perception": 1},
-     "description": "Weave fire with precision.\n+1 Strength, +1 Perception"},
-    {"id": "m_ice_shard", "name": "Ice Shard", "tier": 3, "type": "active", "cost": 1,
-     "prerequisites": ["m_elemental_mastery"],
-     "stat_bonuses": {},
-     "ability": {"name": "Ice Shard", "cooldown": 4, "effect": "combat_freeze_attack",
-                 "value": 1.2, "duration": 2, "combat": True,
-                 "use_text": "You launch a razor-sharp ice shard! The cold seeps into the enemy!"},
-     "description": "Ice projectile: 1.2x damage + freeze enemy (-30% attack) 2 turns.\nCooldown: 4 turns"},
-
-    # =========== TIER 4 - Specialization (6 nodes, 1 ability) ===========
-    {"id": "m_barrier", "name": "Barrier", "tier": 4, "type": "passive", "cost": 2,
-     "prerequisites": ["m_arcane_shield", "m_life_force"], "stat_bonuses": {"defense": 2, "health_max_bonus": 10},
-     "description": "A strong magical barrier.\n+2 Defense, +10 Max HP"},
-    {"id": "m_pyromaniac", "name": "Pyromaniac", "tier": 4, "type": "passive", "cost": 2,
-     "prerequisites": ["m_elemental_mastery", "m_flame_weave"], "stat_bonuses": {"strength": 3},
-     "description": "Absolute mastery of fire.\n+3 Strength (magic damage)"},
-    {"id": "m_divination", "name": "Divination", "tier": 4, "type": "passive", "cost": 1,
-     "prerequisites": ["m_third_eye"], "stat_bonuses": {"perception": 3},
-     "description": "See what is hidden from mortal eyes.\n+3 Perception"},
-    {"id": "m_enchanting", "name": "Enchanting", "tier": 4, "type": "passive", "cost": 1,
-     "prerequisites": ["m_enchanted_touch"], "stat_bonuses": {"charisma": 2, "crafting_bonus": 1},
-     "description": "Imbue items with magic.\n+2 Charisma, +1 Crafting Bonus"},
-    {"id": "m_resilient_ward", "name": "Resilient Ward", "tier": 4, "type": "passive", "cost": 1,
-     "prerequisites": ["m_arcane_shield"], "stat_bonuses": {"defense": 1, "constitution": 2},
-     "description": "Wards that strengthen over time.\n+1 Defense, +2 Constitution"},
-    {"id": "m_heal", "name": "Heal", "tier": 4, "type": "active", "cost": 2,
-     "prerequisites": ["m_life_force"],
-     "stat_bonuses": {},
-     "ability": {"name": "Heal", "cooldown": 5, "effect": "combat_heal",
-                 "value": 35, "combat": True,
-                 "use_text": "Golden light flows through you, mending your wounds!"},
-     "description": "Restore 35 HP.\nCooldown: 5 turns"},
-
-    # =========== TIER 5 - Mid-Tree (6 nodes, 1 ability) ===========
-    {"id": "m_mage_armor", "name": "Mage Armor", "tier": 5, "type": "passive", "cost": 2,
-     "prerequisites": ["m_barrier"], "stat_bonuses": {"defense": 3, "constitution": 1},
-     "description": "Arcane energy reinforces your body.\n+3 Defense, +1 Constitution"},
-    {"id": "m_inferno", "name": "Inferno", "tier": 5, "type": "passive", "cost": 2,
-     "prerequisites": ["m_pyromaniac"], "stat_bonuses": {"strength": 3, "crit_chance_bonus": 0.05},
-     "description": "Unleash devastating flames.\n+3 Strength, +5% Crit"},
-    {"id": "m_seer", "name": "Seer", "tier": 5, "type": "passive", "cost": 2,
-     "prerequisites": ["m_divination"], "stat_bonuses": {"perception": 2, "dexterity": 2},
-     "description": "See moments before they happen.\n+2 Perception, +2 Dexterity"},
-    {"id": "m_master_enchanter", "name": "Master Enchanter", "tier": 5, "type": "passive", "cost": 2,
-     "prerequisites": ["m_enchanting"], "stat_bonuses": {"charisma": 3, "crafting_bonus": 1},
-     "description": "A master of magical crafting.\n+3 Charisma, +1 Crafting Bonus"},
-    {"id": "m_vitality_surge", "name": "Vitality Surge", "tier": 5, "type": "passive", "cost": 2,
-     "prerequisites": ["m_barrier", "m_resilient_ward"], "stat_bonuses": {"health_max_bonus": 15, "constitution": 2},
-     "description": "Life energy overflows.\n+15 Max HP, +2 Constitution"},
-    {"id": "m_reveal", "name": "Reveal", "tier": 5, "type": "active", "cost": 2,
-     "prerequisites": ["m_divination"],
-     "stat_bonuses": {},
-     "ability": {"name": "Reveal", "cooldown": 12, "effect": "reveal_floor",
-                 "use_text": "Arcane symbols pulse outward... The floor's secrets are laid bare!"},
-     "description": "Reveal ALL traps and secrets on current floor.\nCooldown: 12 moves"},
-
-    # =========== TIER 6 - Advanced (5 nodes, 1 ability) ===========
-    {"id": "m_arcane_fortress", "name": "Arcane Fortress", "tier": 6, "type": "passive", "cost": 2,
-     "prerequisites": ["m_mage_armor", "m_vitality_surge"], "stat_bonuses": {"defense": 3, "health_max_bonus": 10},
-     "description": "A fortress of pure magic.\n+3 Defense, +10 Max HP"},
-    {"id": "m_firestorm", "name": "Firestorm", "tier": 6, "type": "passive", "cost": 2,
-     "prerequisites": ["m_inferno"], "stat_bonuses": {"strength": 3, "crit_chance_bonus": 0.05},
-     "description": "Rain fire from the sky.\n+3 Strength, +5% Crit"},
-    {"id": "m_oracle", "name": "Oracle", "tier": 6, "type": "passive", "cost": 2,
-     "prerequisites": ["m_seer"], "stat_bonuses": {"perception": 3, "dexterity": 1, "charisma": 1},
-     "description": "The all-seeing oracle.\n+3 Perception, +1 Dexterity, +1 Charisma"},
-    {"id": "m_grand_enchanter", "name": "Grand Enchanter", "tier": 6, "type": "passive", "cost": 2,
-     "prerequisites": ["m_master_enchanter", "m_oracle"], "stat_bonuses": {"charisma": 3, "crafting_bonus": 2},
-     "description": "Legendary enchanting prowess.\n+3 Charisma, +2 Crafting Bonus"},
-    {"id": "m_thunder_strike", "name": "Thunder Strike", "tier": 6, "type": "active", "cost": 2,
-     "prerequisites": ["m_firestorm"],
-     "stat_bonuses": {},
-     "ability": {"name": "Thunder Strike", "cooldown": 5, "effect": "combat_damage_stun",
-                 "value": 2.0, "duration": 1, "combat": True,
-                 "use_text": "LIGHTNING crashes down from above, striking the enemy!"},
-     "description": "Lightning bolt: 2.0x damage + stun 1 turn.\nCooldown: 5 turns"},
-
-    # =========== TIER 7 - High (4 nodes, 1 ability) ===========
-    {"id": "m_spell_fortress", "name": "Spell Fortress", "tier": 7, "type": "passive", "cost": 2,
-     "prerequisites": ["m_arcane_fortress"], "stat_bonuses": {"defense": 3, "constitution": 3},
-     "description": "Impregnable magical defenses.\n+3 Defense, +3 Constitution"},
-    {"id": "m_cataclysm", "name": "Cataclysm", "tier": 7, "type": "passive", "cost": 2,
-     "prerequisites": ["m_firestorm"], "stat_bonuses": {"strength": 4, "crit_chance_bonus": 0.08},
-     "description": "Apocalyptic magical power.\n+4 Strength, +8% Crit"},
-    {"id": "m_sage", "name": "Sage's Wisdom", "tier": 7, "type": "passive", "cost": 2,
-     "prerequisites": ["m_oracle", "m_grand_enchanter"], "stat_bonuses": {"perception": 3, "charisma": 2, "constitution": 2},
-     "description": "Wisdom beyond mortal ken.\n+3 Perception, +2 Charisma, +2 Constitution"},
-    {"id": "m_greater_heal", "name": "Greater Heal", "tier": 7, "type": "active", "cost": 2,
-     "prerequisites": ["m_vitality_surge", "m_arcane_fortress"],
-     "stat_bonuses": {},
-     "ability": {"name": "Greater Heal", "cooldown": 8, "effect": "combat_heal",
-                 "value": 60, "combat": True,
-                 "use_text": "Brilliant golden light envelops you - your wounds close instantly!"},
-     "description": "Restore 60 HP.\nCooldown: 8 turns"},
-
-    # =========== TIER 8 - Elite (4 nodes) ===========
-    {"id": "m_arcane_supremacy", "name": "Arcane Supremacy", "tier": 8, "type": "passive", "cost": 3,
-     "prerequisites": ["m_spell_fortress", "m_cataclysm"],
-     "stat_bonuses": {"strength": 3, "defense": 3, "constitution": 2},
-     "description": "Supreme magical mastery.\n+3 Str, +3 Def, +2 Con"},
-    {"id": "m_annihilation", "name": "Annihilation", "tier": 8, "type": "passive", "cost": 3,
-     "prerequisites": ["m_cataclysm"], "stat_bonuses": {"strength": 4, "crit_chance_bonus": 0.10},
-     "description": "Destructive power beyond measure.\n+4 Strength, +10% Crit"},
-    {"id": "m_omniscience", "name": "Omniscience", "tier": 8, "type": "passive", "cost": 3,
-     "prerequisites": ["m_sage"], "stat_bonuses": {"perception": 4, "charisma": 3, "dexterity": 2},
-     "description": "Know all, see all.\n+4 Perception, +3 Charisma, +2 Dexterity"},
-    {"id": "m_eternal_ward", "name": "Eternal Ward", "tier": 8, "type": "passive", "cost": 3,
-     "prerequisites": ["m_spell_fortress"],
-     "stat_bonuses": {"defense": 4, "constitution": 3, "health_max_bonus": 25},
-     "description": "A ward that will never falter.\n+4 Defense, +3 Con, +25 Max HP"},
-
-    # =========== TIER 9 - Master (3 nodes) ===========
-    {"id": "m_divine_shield", "name": "Divine Shield", "tier": 9, "type": "passive", "cost": 3,
-     "prerequisites": ["m_eternal_ward", "m_arcane_supremacy"],
-     "stat_bonuses": {"defense": 5, "constitution": 4, "health_max_bonus": 30},
-     "description": "God-like protection.\n+5 Defense, +4 Constitution, +30 Max HP"},
-    {"id": "m_world_ender", "name": "World Ender", "tier": 9, "type": "passive", "cost": 3,
-     "prerequisites": ["m_annihilation"],
-     "stat_bonuses": {"strength": 5, "crit_chance_bonus": 0.12},
-     "description": "Power to end worlds.\n+5 Strength, +12% Crit"},
-    {"id": "m_all_knowing", "name": "All-Knowing", "tier": 9, "type": "passive", "cost": 3,
-     "prerequisites": ["m_omniscience", "m_arcane_supremacy"],
-     "stat_bonuses": {"perception": 4, "charisma": 3, "crafting_bonus": 3},
-     "description": "Knowledge of all things.\n+4 Perc, +3 Cha, +3 Crafting"},
-
-    # =========== TIER 10 - Ultimate (2 nodes) ===========
-    {"id": "m_meteor", "name": "Meteor", "tier": 10, "type": "active", "cost": 3,
-     "prerequisites": ["m_world_ender", "m_divine_shield"],
-     "stat_bonuses": {},
-     "ability": {"name": "Meteor", "cooldown": 12, "effect": "combat_damage_burn",
-                 "value": 3.0, "burn": 8, "duration": 3, "combat": True,
-                 "use_text": "You call down a METEOR FROM THE HEAVENS! The sky tears open with CATACLYSMIC FIRE!"},
-     "description": "ULTIMATE: Call down a meteor.\n3.0x damage + 8 burn/turn for 3 turns.\nCooldown: 12 turns"},
-    {"id": "m_transcendence", "name": "Transcendence", "tier": 10, "type": "passive", "cost": 3,
-     "prerequisites": ["m_divine_shield", "m_all_knowing"],
-     "stat_bonuses": {"strength": 5, "defense": 5, "constitution": 4, "perception": 4, "health_max_bonus": 40},
-     "description": "ULTIMATE PASSIVE: Transcend mortal limits.\n+5 Str, +5 Def, +4 Con, +4 Perc, +40 Max HP"},
-]
-
-
-# =====================================================================
-# SKILL TREES REGISTRY
-# =====================================================================
-
-SKILL_TREES = {
-    "warrior": WARRIOR_TREE,
-    "rogue": ROGUE_TREE,
-    "mage": MAGE_TREE,
+# Branch-specific extra bonuses layered on top of the generic thresholds
+BRANCH_SYNERGY_EXTRAS = {
+    # Warrior
+    "berserker":    {3: {"attack": 1}, 5: {"attack": 2},  8: {"crit_chance_bonus": 0.03}},
+    "tank":         {3: {"defense": 2}, 5: {"defense": 3}, 8: {"health_max_bonus": 15}},
+    "archer":       {3: {"attack": 1}, 5: {"crit_chance_bonus": 0.02}, 8: {"attack": 3}},
+    "commander":    {3: {"defense": 1}, 5: {"attack": 1, "defense": 1}, 8: {"health_max_bonus": 10}},
+    "weaponmaster": {3: {"attack": 2}, 5: {"attack": 2}, 8: {"crit_chance_bonus": 0.04}},
+    "gladiator":    {3: {"health_max_bonus": 5}, 5: {"attack": 2}, 8: {"defense": 3}},
+    # Rogue
+    "assassin":     {3: {"attack": 2}, 5: {"crit_chance_bonus": 0.03}, 8: {"attack": 4}},
+    "trickster":    {3: {"defense": 1}, 5: {"defense": 2}, 8: {"attack": 2, "defense": 2}},
+    "thief":        {3: {"crit_chance_bonus": 0.01}, 5: {"crit_chance_bonus": 0.02}, 8: {"attack": 2}},
+    "bounty_hunter":{3: {"attack": 1}, 5: {"attack": 2}, 8: {"health_max_bonus": 10}},
+    "phantom":      {3: {"defense": 1}, 5: {"attack": 2}, 8: {"crit_chance_bonus": 0.03}},
+    # Mage
+    "fire":         {3: {"attack": 2}, 5: {"attack": 3}, 8: {"crit_chance_bonus": 0.03}},
+    "ice":          {3: {"defense": 1}, 5: {"defense": 2}, 8: {"health_max_bonus": 10}},
+    "earth":        {3: {"defense": 2}, 5: {"health_max_bonus": 10}, 8: {"defense": 4}},
+    "wind":         {3: {"attack": 1}, 5: {"crit_chance_bonus": 0.02}, 8: {"attack": 3}},
+    "lightning":    {3: {"attack": 2}, 5: {"attack": 2}, 8: {"crit_chance_bonus": 0.04}},
+    "arcane":       {3: {"attack": 1, "defense": 1}, 5: {"attack": 2}, 8: {"health_max_bonus": 10}},
+    "healer":       {3: {"health_max_bonus": 5}, 5: {"health_max_bonus": 10}, 8: {"defense": 3}},
+    "shadow":       {3: {"attack": 1}, 5: {"crit_chance_bonus": 0.02}, 8: {"attack": 3}},
 }
+
+
+def get_branch_counts(player):
+    """Return {branch_name: count} of unlocked skills per branch."""
+    class_id = player.stats.get("class", "")
+    tree = get_tree_for_class(class_id)
+    unlocked = set(get_unlocked_skills(player))
+    counts = {}
+    for node in tree:
+        if node["id"] in unlocked and node.get("branch", "origin") != "origin":
+            branch = node["branch"]
+            counts[branch] = counts.get(branch, 0) + 1
+    return counts
+
+
+def get_synergy_bonuses(player):
+    """
+    Calculate total synergy bonuses from all branches.
+    Returns (total_bonuses_dict, list_of_active_synergy_descriptions).
+    """
+    counts = get_branch_counts(player)
+    total = {}
+    descriptions = []
+
+    for branch, count in counts.items():
+        # Generic thresholds
+        for threshold, rank, bonuses in SYNERGY_THRESHOLDS:
+            if count >= threshold:
+                for stat, val in bonuses.items():
+                    total[stat] = total.get(stat, 0) + val
+                if count < (SYNERGY_THRESHOLDS[SYNERGY_THRESHOLDS.index((threshold, rank, bonuses)) + 1][0]
+                            if SYNERGY_THRESHOLDS.index((threshold, rank, bonuses)) + 1 < len(SYNERGY_THRESHOLDS)
+                            else 999):
+                    descriptions.append(f"{branch.replace('_', ' ').title()} {rank} ({count} nodes)")
+            else:
+                break
+
+        # Branch-specific extras
+        extras = BRANCH_SYNERGY_EXTRAS.get(branch, {})
+        for thresh, bonus in sorted(extras.items()):
+            if count >= thresh:
+                for stat, val in bonus.items():
+                    total[stat] = total.get(stat, 0) + val
+
+    return total, descriptions
+
+
+def apply_synergy_bonuses(player):
+    """
+    Recalculate and apply synergy bonuses, storing the previous values
+    to properly update stats (removing old and adding new).
+    """
+    old_synergy = player.state.get("_synergy_bonuses", {})
+    new_synergy, descriptions = get_synergy_bonuses(player)
+
+    # Remove old synergy bonuses
+    for stat, val in old_synergy.items():
+        if stat == "health_max_bonus":
+            player.stats["health_max"] = player.stats.get("health_max", 100) - val
+            player.stats["health"] = min(player.stats.get("health", 100), player.stats.get("health_max", 100))
+        else:
+            player.stats[stat] = player.stats.get(stat, 0) - val
+
+    # Apply new synergy bonuses
+    for stat, val in new_synergy.items():
+        if stat == "health_max_bonus":
+            player.stats["health_max"] = player.stats.get("health_max", 100) + val
+            player.stats["health"] = min(player.stats.get("health", 100) + val, player.stats.get("health_max", 100))
+        else:
+            player.stats[stat] = player.stats.get(stat, 0) + val
+
+    # Store for next recalculation
+    player.state["_synergy_bonuses"] = new_synergy
+    player.state["_synergy_descriptions"] = descriptions
+
+    return new_synergy, descriptions
+
+
+# =====================================================================
+# SKILL TREES REGISTRY (imported from skill_tree_data.py)
+# =====================================================================
+
+SKILL_TREES = SKILL_TREES_DATA
 
 
 # =====================================================================
@@ -694,6 +152,7 @@ SKILL_TREES = {
 def get_tree_for_class(class_id):
     """Get the skill tree node list for a class."""
     return SKILL_TREES.get(class_id, [])
+
 
 
 def get_node_by_id(class_id, node_id):
@@ -818,6 +277,30 @@ def unlock_skill(player, skill_id):
                 result += f"    {nice.capitalize()}: +{val}\n"
 
     result += f"\n  Remaining skill points: {player.stats.get('skill_points', 0)}\n"
+
+    # Recalculate synergy bonuses
+    synergy_bonuses, synergy_descs = apply_synergy_bonuses(player)
+    if synergy_descs:
+        branch = node.get("branch", "origin")
+        branch_count = get_branch_counts(player).get(branch, 0)
+        # Check if this unlock triggered a new synergy threshold
+        for threshold, rank, _ in SYNERGY_THRESHOLDS:
+            if branch_count == threshold and branch != "origin":
+                result += f"\n  ★ SYNERGY BONUS: {branch.replace('_', ' ').title()} {rank}!\n"
+                result += f"    ({branch_count} nodes in {branch.replace('_', ' ').title()} branch)\n"
+                extras = BRANCH_SYNERGY_EXTRAS.get(branch, {}).get(threshold, {})
+                bonus_list = dict(SYNERGY_THRESHOLDS[[t[0] for t in SYNERGY_THRESHOLDS].index(threshold)][2])
+                for s, v in extras.items():
+                    bonus_list[s] = bonus_list.get(s, 0) + v
+                for stat, val in bonus_list.items():
+                    nice = stat.replace("_", " ").replace("health max bonus", "Max HP")
+                    nice = nice.replace("crit chance bonus", "Crit%")
+                    if isinstance(val, float):
+                        result += f"    +{val:.0%} {nice}\n"
+                    else:
+                        result += f"    +{val} {nice}\n"
+                break
+
     result += "=" * 50 + "\n"
 
     return True, result
@@ -1008,33 +491,28 @@ def has_active_effect(player, effect_name):
 
 
 # =====================================================================
-# GRAPHICAL SKILL TREE WINDOW (Tkinter Canvas with scrolling)
+# GRAPHICAL SKILL TREE WINDOW — Radial Constellation Layout
 # =====================================================================
 
-NODE_WIDTH = 100
-NODE_HEIGHT = 42
-TIER_SPACING_X = 145
-NODE_SPACING_Y = 60
-PADDING = 50
+NODE_R = 18            # base node radius (logical)
+RING_GAP = 110         # distance between tier rings (logical)
+LOGICAL_SIZE = 3000    # logical canvas extent
+LCENTER = LOGICAL_SIZE // 2
+MINIMAP_W = 180        # minimap size in pixels
 
-COLOR_LOCKED = "#555555"
-COLOR_AVAILABLE = "#2196F3"
-COLOR_UNLOCKED = "#4CAF50"
-COLOR_ACTIVE_ABILITY = "#FF9800"
-COLOR_BG = "#1e1e1e"
-COLOR_TEXT = "#ffffff"
-COLOR_LINE = "#888888"
-COLOR_LINE_UNLOCKED = "#4CAF50"
-COLOR_TOOLTIP_BG = "#333333"
-COLOR_TIER_LABEL = "#666666"
+# Per-class canvas background
+CLASS_BG = {
+    "warrior": "#0f0d08",
+    "rogue":   "#080d0f",
+    "mage":    "#0d080f",
+}
 
 
 class SkillTreeWindow:
-    """
-    Graphical skill tree window using Tkinter Canvas.
-    Shows skill nodes as rectangles connected by lines,
-    organized by tier (left to right) with scrollbars.
-    """
+    """Radial constellation skill tree with pan, zoom, minimap and
+    class-themed visuals (hexagons / diamonds / circles)."""
+
+    # ── construction ──
 
     def __init__(self, root, player, engine=None):
         self.root = root
@@ -1042,17 +520,29 @@ class SkillTreeWindow:
         self.engine = engine
         self.window = None
         self.canvas = None
-        self.node_items = {}
-        self.node_rects = {}
-        self.tooltip = None
-        self.tooltip_text = None
-        self.info_frame = None
-        self.info_label = None
-        self.sp_label = None
-        self._font = None
+        self.minimap = None
+        self._node_items = {}      # canvas_item_id  -> node_id
+        self._positions = {}       # node_id -> (lx, ly) logical
+        self._zoom = 1.0
+        self._tip_ids = []
+        self._pan_origin = None
+        self._did_drag = False
+        self._sp_lbl = None
+        self._det_lbl = None
+        self._fonts = {}
+        self._search_var = None    # tk.StringVar for search entry
+        self._search_matches = set()   # set of node_ids matching search
+        self._path_nodes = set()       # set of node_ids on highlighted path
+        self._path_edges = set()       # set of (from_id, to_id) tuples on path
+        self._search_entry = None
+        self._pulse_phase = 0       # 0..7 animation phase for available node glow
+        self._pulse_timer = None    # after() ID for pulse animation
+        self._hidden_branches = set()  # branch names hidden by filter
 
     def is_open(self):
-        return self.window is not None and tk.Toplevel.winfo_exists(self.window)
+        return self.window is not None and self.window.winfo_exists()
+
+    # ── window lifecycle ──
 
     def create_window(self):
         if self.is_open():
@@ -1060,88 +550,134 @@ class SkillTreeWindow:
             self.window.focus_force()
             return
 
+        cls_id = self.player.stats.get("class", "warrior")
+        cls_name = cls_id.capitalize()
+        bg = CLASS_BG.get(cls_id, "#0d0d0d")
+
         self.window = tk.Toplevel(self.root)
-        class_id = self.player.stats.get("class", "warrior")
-        class_name = class_id.capitalize()
-        self.window.title(f"Skill Tree - {class_name}")
-        self.window.geometry("1200x750")
-        self.window.configure(bg=COLOR_BG)
+        self.window.title(f"Skill Tree \u2014 {cls_name}")
+        self.window.geometry("1600x900")
+        self.window.configure(bg="#1a1a1a")
         self.window.resizable(True, True)
 
-        self._font = tkfont.Font(family="Courier New", size=8)
-        self._font_bold = tkfont.Font(family="Courier New", size=9, weight="bold")
-        self._font_small = tkfont.Font(family="Courier New", size=7)
+        self._fonts = {
+            "title":  tkfont.Font(family="Segoe UI", size=12, weight="bold"),
+            "bold":   tkfont.Font(family="Segoe UI", size=10, weight="bold"),
+            "normal": tkfont.Font(family="Segoe UI", size=9),
+            "small":  tkfont.Font(family="Segoe UI", size=7),
+            "tiny":   tkfont.Font(family="Segoe UI", size=6),
+        }
 
-        # Top info bar
-        self.info_frame = tk.Frame(self.window, bg="#2a2a2a", padx=10, pady=6)
-        self.info_frame.pack(fill="x")
+        # --- top bar ---
+        top = tk.Frame(self.window, bg="#222222", padx=12, pady=6)
+        top.pack(fill="x")
+        tk.Label(top, text=f"{cls_name} Skill Tree",
+                 font=self._fonts["title"], bg="#222222", fg="#FFD700"
+                 ).pack(side="left")
+        tk.Label(top, text=f"Level {self.player.stats.get('level', 1)}",
+                 font=self._fonts["bold"], bg="#222222", fg="#999999"
+                 ).pack(side="left", padx=20)
+        self._sp_lbl = tk.Label(top, font=self._fonts["bold"],
+                                bg="#222222", fg="#FFD700")
+        self._sp_lbl.pack(side="right")
+        self._update_sp()
 
-        class_label = tk.Label(
-            self.info_frame,
-            text=f"Class: {class_name}  |  Level: {self.player.stats.get('level', 1)}",
-            font=self._font_bold, bg="#2a2a2a", fg=COLOR_TEXT
-        )
-        class_label.pack(side="left")
-
-        self.sp_label = tk.Label(
-            self.info_frame,
-            text=f"Skill Points: {self.player.stats.get('skill_points', 0)}",
-            font=self._font_bold, bg="#2a2a2a", fg="#FFD700"
-        )
-        self.sp_label.pack(side="right")
-
-        # Legend
-        legend_frame = tk.Frame(self.window, bg=COLOR_BG, padx=10, pady=4)
-        legend_frame.pack(fill="x")
-        for color, label in [
-            (COLOR_LOCKED, "Locked"),
-            (COLOR_AVAILABLE, "Available"),
-            (COLOR_UNLOCKED, "Passive"),
-            (COLOR_ACTIVE_ABILITY, "Active Ability"),
+        # --- legend + zoom ---
+        bar = tk.Frame(self.window, bg="#1a1a1a", padx=10, pady=3)
+        bar.pack(fill="x")
+        legend_items = [
+            ("#2a2a2a", "#444444", "Locked"),
+            ("#1a3a5a", "#42A5F5", "Available"),
+            ("#1a4a1a", "#66BB6A", "Unlocked"),
+            ("#4a2a00", "#FF9800", "Active"),
+        ]
+        for fill, out, label in legend_items:
+            c = tk.Canvas(bar, width=14, height=14, bg="#1a1a1a",
+                          highlightthickness=0)
+            c.create_oval(1, 1, 13, 13, fill=fill, outline=out, width=1)
+            c.pack(side="left", padx=(8, 2))
+            tk.Label(bar, text=label, font=self._fonts["tiny"],
+                     bg="#1a1a1a", fg="#888888").pack(side="left", padx=(0, 6))
+        # zoom buttons (right side, reversed so order is − + ⊙)
+        for txt, cmd in [
+            ("\u2299", self._zoom_home),
+            ("+", lambda: self._apply_zoom(1.20)),
+            ("\u2212", lambda: self._apply_zoom(1 / 1.20)),
         ]:
-            tk.Canvas(legend_frame, width=12, height=12, bg=color,
-                      highlightthickness=0).pack(side="left", padx=(6, 2))
-            tk.Label(legend_frame, text=label, font=self._font_small,
-                     bg=COLOR_BG, fg=COLOR_TEXT).pack(side="left", padx=(0, 4))
+            tk.Button(bar, text=txt, width=2, command=cmd,
+                      bg="#333333", fg="white", relief="flat",
+                      font=self._fonts["small"]).pack(side="right", padx=1)
+        tk.Label(bar, text="Zoom:", font=self._fonts["tiny"],
+                 bg="#1a1a1a", fg="#666666").pack(side="right", padx=4)
 
-        # Scrollable canvas frame
-        canvas_frame = tk.Frame(self.window, bg=COLOR_BG)
-        canvas_frame.pack(fill="both", expand=True, padx=6, pady=6)
+        # --- search bar ---
+        sep = tk.Frame(bar, width=2, bg="#444444")
+        sep.pack(side="left", fill="y", padx=8, pady=2)
+        tk.Label(bar, text="🔍", font=self._fonts["small"],
+                 bg="#1a1a1a", fg="#888888").pack(side="left", padx=(4, 2))
+        self._search_var = tk.StringVar()
+        self._search_var.trace_add("write", lambda *_: self._search_nodes())
+        self._search_entry = tk.Entry(bar, textvariable=self._search_var,
+                                       width=18, bg="#2a2a2a", fg="#e0e0e0",
+                                       insertbackground="#e0e0e0",
+                                       font=self._fonts["small"],
+                                       relief="flat", bd=2)
+        self._search_entry.pack(side="left", padx=2)
+        tk.Button(bar, text="✕", width=2, command=self._clear_search,
+                  bg="#333333", fg="#FF5555", relief="flat",
+                  font=self._fonts["small"]).pack(side="left", padx=1)
 
-        self.canvas = tk.Canvas(canvas_frame, bg=COLOR_BG, highlightthickness=0)
+        # --- canvas ---
+        frame = tk.Frame(self.window, bg=bg)
+        frame.pack(fill="both", expand=True)
+        self.canvas = tk.Canvas(frame, bg=bg, highlightthickness=0,
+                                xscrollincrement=1, yscrollincrement=1)
+        self.canvas.pack(fill="both", expand=True)
 
-        h_scroll = tk.Scrollbar(canvas_frame, orient="horizontal", command=self.canvas.xview)
-        v_scroll = tk.Scrollbar(canvas_frame, orient="vertical", command=self.canvas.yview)
-        self.canvas.configure(xscrollcommand=h_scroll.set, yscrollcommand=v_scroll.set)
+        # minimap overlay
+        self.minimap = tk.Canvas(frame, width=MINIMAP_W, height=MINIMAP_W,
+                                 bg="#111111", highlightthickness=1,
+                                 highlightbackground="#333333")
+        self.minimap.place(relx=1.0, rely=1.0, x=-8, y=-8, anchor="se")
+        self.minimap.bind("<Button-1>", self._minimap_click)
 
-        h_scroll.pack(side="bottom", fill="x")
-        v_scroll.pack(side="right", fill="y")
-        self.canvas.pack(side="left", fill="both", expand=True)
+        # --- detail bar ---
+        det = tk.Frame(self.window, bg="#222222", padx=12, pady=8)
+        det.pack(fill="x")
+        self._det_lbl = tk.Label(
+            det,
+            text="Drag to pan  \u00b7  Scroll to zoom  \u00b7  Click a node to view or unlock",
+            font=self._fonts["normal"], bg="#222222", fg="#777777",
+            wraplength=1500, justify="left", anchor="w")
+        self._det_lbl.pack(fill="x")
 
-        # Mouse wheel scrolling
-        self.canvas.bind("<MouseWheel>",
-                         lambda e: self.canvas.yview_scroll(-1 * (e.delta // 120), "units"))
-        self.canvas.bind("<Shift-MouseWheel>",
-                         lambda e: self.canvas.xview_scroll(-1 * (e.delta // 120), "units"))
+        # compute & draw
+        self._compute_positions()
+        self._full_draw()
+        self.window.update_idletasks()
+        self._center_on_origin()
 
-        # Detail panel at bottom
-        self.detail_frame = tk.Frame(self.window, bg="#2a2a2a", padx=10, pady=8)
-        self.detail_frame.pack(fill="x")
-        self.detail_label = tk.Label(
-            self.detail_frame,
-            text="Click a skill node for details. Click an available (blue) node to unlock it.",
-            font=self._font, bg="#2a2a2a", fg="#aaaaaa",
-            wraplength=1100, justify="left"
-        )
-        self.detail_label.pack(fill="x")
-
-        self._draw_tree()
-
-        self.canvas.bind("<Button-1>", self._on_click)
+        # bindings
+        self.canvas.bind("<ButtonPress-1>", self._on_press)
+        self.canvas.bind("<B1-Motion>", self._on_drag)
+        self.canvas.bind("<ButtonRelease-1>", self._on_release)
+        self.canvas.bind("<MouseWheel>", self._on_scroll)
         self.canvas.bind("<Motion>", self._on_hover)
+        self.canvas.bind("<Button-3>", self._on_right_click)
+        self.window.bind("<Control-f>", lambda e: self._focus_search())
+        self.window.bind("<Escape>", lambda e: self._clear_search())
         self.window.protocol("WM_DELETE_WINDOW", self.close_window)
 
+        # start pulse animation
+        self._start_pulse()
+
     def close_window(self):
+        if self._pulse_timer and self.window:
+            try:
+                self.window.after_cancel(self._pulse_timer)
+            except Exception:
+                pass
+            self._pulse_timer = None
         if self.window:
             try:
                 self.window.destroy()
@@ -1149,231 +685,1038 @@ class SkillTreeWindow:
                 pass
         self.window = None
         self.canvas = None
+        self.minimap = None
 
-    def _draw_tree(self):
+    def _update_sp(self):
+        sp = self.player.stats.get("skill_points", 0)
+        if self._sp_lbl:
+            self._sp_lbl.config(text=f"Skill Points: {sp}")
+
+    # ── position computation ──
+
+    def _compute_positions(self):
+        """Place every node in logical (world) coordinates using a radial
+        layout: origin at center, branches fan outward by angle, tiers
+        map to concentric rings."""
+        cls_id = self.player.stats.get("class", "warrior")
+        tree = get_tree_for_class(cls_id)
+        branches = CLASS_BRANCHES.get(cls_id, {})
+
+        # group by (branch, tier)
+        groups = {}
+        for node in tree:
+            key = (node.get("branch", "origin"), node["tier"])
+            groups.setdefault(key, []).append(node)
+
+        self._positions = {}
+        for (branch, tier), nodes in groups.items():
+            if tier == 0:
+                for n in nodes:
+                    self._positions[n["id"]] = (float(LCENTER), float(LCENTER))
+                continue
+
+            bdef = branches.get(branch, {"angle_start": 0, "angle_end": 60})
+            a0 = math.radians(bdef["angle_start"])
+            a1 = math.radians(bdef["angle_end"])
+            radius = tier * RING_GAP
+            count = len(nodes)
+
+            if count == 1:
+                a = (a0 + a1) / 2
+                self._positions[nodes[0]["id"]] = (
+                    LCENTER + radius * math.cos(a),
+                    LCENTER + radius * math.sin(a))
+            else:
+                pad = (a1 - a0) * 0.08
+                span = (a1 - a0) - 2 * pad
+                for i, n in enumerate(nodes):
+                    a = a0 + pad + span * i / (count - 1)
+                    self._positions[n["id"]] = (
+                        LCENTER + radius * math.cos(a),
+                        LCENTER + radius * math.sin(a))
+
+    # ── coordinate helpers ──
+
+    def _l2c(self, lx, ly):
+        """Logical → canvas coordinates (apply zoom)."""
+        return lx * self._zoom, ly * self._zoom
+
+    def _c2l(self, cx, cy):
+        """Canvas → logical coordinates."""
+        return cx / self._zoom, cy / self._zoom
+
+    # ── drawing ──
+
+    def _full_draw(self):
+        """Redraw the entire tree at current zoom level."""
         if not self.canvas:
             return
 
         self.canvas.delete("all")
-        self.node_items.clear()
-        self.node_rects.clear()
+        self._node_items.clear()
 
-        class_id = self.player.stats.get("class", "warrior")
-        tree = get_tree_for_class(class_id)
+        cls_id = self.player.stats.get("class", "warrior")
+        tree = get_tree_for_class(cls_id)
         unlocked = set(get_unlocked_skills(self.player))
-        available_ids = {n["id"] for n in get_available_skills(self.player)}
+        avail = {n["id"] for n in get_available_skills(self.player)}
+        branches = CLASS_BRANCHES.get(cls_id, {})
+        z = self._zoom
 
         if not tree:
-            self.canvas.create_text(400, 300, text="No skill tree available.",
-                                    font=self._font_bold, fill=COLOR_TEXT)
+            self.canvas.create_text(800, 450, text="No skill tree available.",
+                                    font=self._fonts["bold"], fill="#ffffff")
             return
 
-        # Group by tier
-        tiers = {}
+        max_t = max(n["tier"] for n in tree)
+        ccx, ccy = self._l2c(LCENTER, LCENTER)
+
+        # --- ring guides ---
+        for t in range(1, max_t + 1):
+            r = t * RING_GAP * z
+            self.canvas.create_oval(ccx - r, ccy - r, ccx + r, ccy + r,
+                                    outline="#161616", width=1, dash=(3, 8))
+
+        # --- branch separators & labels ---
+        # Count nodes per branch for labels
+        branch_counts = {}
+        branch_unlocked_counts = {}
         for node in tree:
-            t = node["tier"]
-            if t not in tiers:
-                tiers[t] = []
-            tiers[t].append(node)
-
-        max_tier = max(tiers.keys()) if tiers else 1
-        max_nodes_in_tier = max(len(v) for v in tiers.values()) if tiers else 1
-
-        canvas_width = PADDING * 2 + max_tier * TIER_SPACING_X + NODE_WIDTH
-        canvas_height = PADDING * 2 + max_nodes_in_tier * NODE_SPACING_Y + 40
-
-        # Calculate positions
-        positions = {}
-        for tier_num, nodes in sorted(tiers.items()):
-            x = PADDING + (tier_num - 1) * TIER_SPACING_X
-            n_nodes = len(nodes)
-            total_height = (n_nodes - 1) * NODE_SPACING_Y
-            start_y = PADDING + 30 + (canvas_height - PADDING * 2 - 30 - total_height) / 2
-
-            # Tier label
-            self.canvas.create_text(
-                x + NODE_WIDTH // 2, PADDING,
-                text=f"T{tier_num}",
-                font=self._font_small, fill=COLOR_TIER_LABEL
-            )
-
-            for i, node in enumerate(nodes):
-                cx = x + NODE_WIDTH // 2
-                cy = start_y + i * NODE_SPACING_Y + NODE_HEIGHT // 2
-                positions[node["id"]] = (cx, cy)
-
-        self.canvas.configure(scrollregion=(0, 0, canvas_width, canvas_height))
-
-        # Draw connections
-        for node in tree:
-            if node["id"] not in positions:
+            b = node.get("branch", "origin")
+            if b == "origin":
                 continue
-            cx, cy = positions[node["id"]]
-            for prereq_id in node.get("prerequisites", []):
-                if prereq_id in positions:
-                    px, py = positions[prereq_id]
-                    both_unlocked = node["id"] in unlocked and prereq_id in unlocked
-                    line_color = COLOR_LINE_UNLOCKED if both_unlocked else COLOR_LINE
-                    self.canvas.create_line(
-                        px + NODE_WIDTH // 2 - 3, py,
-                        cx - NODE_WIDTH // 2 + 3, cy,
-                        fill=line_color, width=2, arrow=tk.LAST
-                    )
-
-        # Draw nodes
-        for node in tree:
-            if node["id"] not in positions:
-                continue
-            cx, cy = positions[node["id"]]
-            x1 = cx - NODE_WIDTH // 2
-            y1 = cy - NODE_HEIGHT // 2
-            x2 = cx + NODE_WIDTH // 2
-            y2 = cy + NODE_HEIGHT // 2
-
+            branch_counts[b] = branch_counts.get(b, 0) + 1
             if node["id"] in unlocked:
-                color = COLOR_ACTIVE_ABILITY if node["type"] == "active" else COLOR_UNLOCKED
-            elif node["id"] in available_ids:
-                color = COLOR_AVAILABLE
+                branch_unlocked_counts[b] = branch_unlocked_counts.get(b, 0) + 1
+
+        for bname, bdef in branches.items():
+            if bname == "origin":
+                continue
+            a_line = math.radians(bdef["angle_start"])
+            outer = (max_t + 0.5) * RING_GAP * z
+            ex = ccx + outer * math.cos(a_line)
+            ey = ccy + outer * math.sin(a_line)
+            # Dim separator for hidden branches
+            sep_color = "#181818" if bname not in self._hidden_branches else "#0d0d0d"
+            self.canvas.create_line(ccx, ccy, ex, ey,
+                                    fill=sep_color, width=1, dash=(2, 8))
+            mid = math.radians((bdef["angle_start"] + bdef["angle_end"]) / 2)
+            lr = (max_t + 1.3) * RING_GAP * z
+            lx = ccx + lr * math.cos(mid)
+            ly = ccy + lr * math.sin(mid)
+            # Label with node counts
+            bc = branch_counts.get(bname, 0)
+            buc = branch_unlocked_counts.get(bname, 0)
+            label_text = bdef["label"]
+            if z >= 0.4:
+                label_text += f" ({buc}/{bc})"
+            label_color = bdef["color"] if bname not in self._hidden_branches else "#333333"
+            self.canvas.create_text(lx, ly, text=label_text,
+                                    font=self._fonts["small"],
+                                    fill=label_color)
+
+        # --- connections ---
+        for node in tree:
+            nid = node["id"]
+            if nid not in self._positions:
+                continue
+            ncx, ncy = self._l2c(*self._positions[nid])
+            for pid in node.get("prerequisites", []):
+                if pid not in self._positions:
+                    continue
+                pcx, pcy = self._l2c(*self._positions[pid])
+                both = nid in unlocked and pid in unlocked
+                # Check if this edge is on the highlighted path
+                on_path = (pid, nid) in self._path_edges or (nid, pid) in self._path_edges
+                if on_path:
+                    color = "#FFD700"
+                    w = 3
+                elif both:
+                    color = "#3a7a3a"
+                    w = 2
+                else:
+                    color = "#2a2a2a"
+                    w = 1
+                mx, my = (pcx + ncx) / 2, (pcy + ncy) / 2
+                pull = 0.08
+                mx += (ccx - mx) * pull
+                my += (ccy - my) * pull
+                self.canvas.create_line(pcx, pcy, mx, my, ncx, ncy,
+                                        fill=color, width=w, smooth=True)
+
+        # --- nodes ---
+        nr = NODE_R * z
+        # Pulse intensity for available node glow (0.3 → 1.0 → 0.3)
+        pulse_t = abs((self._pulse_phase % 16) - 8) / 8.0  # 0..1
+        pulse_alpha = 0.3 + 0.7 * pulse_t
+        # Convert pulse to a color intensity
+        pulse_r = int(66 * pulse_alpha)
+        pulse_g = int(165 * pulse_alpha)
+        pulse_b = int(245 * pulse_alpha)
+        pulse_color = f"#{pulse_r:02x}{pulse_g:02x}{pulse_b:02x}"
+
+        for node in tree:
+            nid = node["id"]
+            if nid not in self._positions:
+                continue
+            sx, sy = self._l2c(*self._positions[nid])
+            branch = node.get("branch", "origin")
+            bdef = branches.get(branch, {})
+
+            # Hide nodes in filtered-out branches
+            branch_hidden = branch in self._hidden_branches and branch != "origin"
+
+            # dim non-matching nodes when search is active
+            is_search_match = nid in self._search_matches if self._search_matches else False
+            is_on_path = nid in self._path_nodes if self._path_nodes else False
+            dimmed = (bool(self._search_matches) and not is_search_match and not is_on_path) or branch_hidden
+
+            # state colours
+            if nid in unlocked:
+                if node["type"] == "active":
+                    fill, out = "#4a2a00", "#FF9800"
+                else:
+                    fill, out = "#1a4a1a", "#66BB6A"
+            elif nid in avail:
+                fill, out = "#1a3a5a", "#42A5F5"
             else:
-                color = COLOR_LOCKED
+                fill, out = "#2a2a2a", "#444444"
 
-            rect_id = self.canvas.create_rectangle(
-                x1, y1, x2, y2,
-                fill=color, outline="#ffffff", width=1, tags=("node",)
-            )
+            # dim non-matching nodes
+            if dimmed:
+                fill = "#1a1a1a"
+                out = "#2a2a2a"
 
-            display_name = node["name"]
-            if len(display_name) > 13:
-                words = display_name.split()
-                if len(words) > 1:
-                    mid = len(words) // 2
-                    display_name = " ".join(words[:mid]) + "\n" + " ".join(words[mid:])
+            # search match highlight (bright golden glow)
+            if is_search_match:
+                gr = nr + 7
+                self.canvas.create_oval(sx - gr, sy - gr, sx + gr, sy + gr,
+                                        outline="#FFD700", width=3)
 
-            text_id = self.canvas.create_text(
-                cx, cy - 4,
-                text=display_name,
-                font=self._font_small, fill=COLOR_TEXT,
-                width=NODE_WIDTH - 8, justify="center", tags=("node",)
-            )
+            # path highlight (cyan glow)
+            if is_on_path and not is_search_match:
+                gr = nr + 5
+                self.canvas.create_oval(sx - gr, sy - gr, sx + gr, sy + gr,
+                                        outline="#00E5FF", width=2, dash=(4, 3))
 
-            type_text = "A" if node["type"] == "active" else "P"
-            cost_text = f"[{type_text}] {node['cost']}SP"
-            self.canvas.create_text(
-                cx, y2 - 8,
-                text=cost_text,
-                font=self._font_small, fill="#cccccc", tags=("node",)
-            )
+            # animated glow ring for available nodes
+            if nid in avail and not dimmed:
+                gr = nr + 4 + pulse_t * 2  # glow size pulses slightly
+                self.canvas.create_oval(sx - gr, sy - gr, sx + gr, sy + gr,
+                                        outline=pulse_color, width=2, dash=(3, 3))
 
-            self.node_items[rect_id] = node["id"]
-            self.node_items[text_id] = node["id"]
-            self.node_rects[node["id"]] = (rect_id, text_id)
+            # origin node is larger
+            r = nr * 1.6 if node["tier"] == 0 else nr
 
-    def _on_click(self, event):
+            # class-specific shape
+            shape_id = self._draw_node_shape(cls_id, sx, sy, r, fill, out)
+            self._node_items[shape_id] = nid
+
+            # name label
+            if z >= 0.35:
+                name = node["name"]
+                if z < 0.7 and len(name) > 10:
+                    name = name[:8] + ".."
+                text_fill = "#e0e0e0"
+                if dimmed:
+                    text_fill = "#555555"
+                elif is_search_match:
+                    text_fill = "#FFD700"
+                tid = self.canvas.create_text(
+                    sx, sy, text=name,
+                    font=self._fonts["tiny"],
+                    fill=text_fill, width=r * 2 - 4,
+                    justify="center", tags=("node",))
+                self._node_items[tid] = nid
+
+            # active-ability lightning bolt
+            if node["type"] == "active" and z >= 0.5:
+                self.canvas.create_text(
+                    sx, sy + r + 6 * z,
+                    text="\u26a1", font=self._fonts["tiny"],
+                    fill="#FF9800")
+
+        # scroll region
+        margin = 100 * z
+        extent = (max_t + 2) * RING_GAP * z
+        lo = LCENTER * z - extent
+        hi = LCENTER * z + extent
+        self.canvas.configure(scrollregion=(
+            lo - margin, lo - margin, hi + margin, hi + margin))
+
+        self._draw_minimap()
+
+    def _draw_node_shape(self, cls_id, cx, cy, r, fill, outline):
+        """Draw a node shape appropriate for the class."""
+        if cls_id == "warrior":
+            # hexagon
+            pts = []
+            for i in range(6):
+                a = math.radians(60 * i - 30)
+                pts.extend([cx + r * math.cos(a), cy + r * math.sin(a)])
+            return self.canvas.create_polygon(
+                pts, fill=fill, outline=outline, width=2, tags=("node",))
+        elif cls_id == "rogue":
+            # diamond
+            return self.canvas.create_polygon(
+                cx, cy - r, cx + r, cy, cx, cy + r, cx - r, cy,
+                fill=fill, outline=outline, width=2, tags=("node",))
+        else:
+            # circle (mage & fallback)
+            return self.canvas.create_oval(
+                cx - r, cy - r, cx + r, cy + r,
+                fill=fill, outline=outline, width=2, tags=("node",))
+
+    # ── minimap ──
+
+    def _draw_minimap(self):
+        if not self.minimap:
+            return
+        self.minimap.delete("all")
+
+        cls_id = self.player.stats.get("class", "warrior")
+        tree = get_tree_for_class(cls_id)
+        unlocked = set(get_unlocked_skills(self.player))
+        branches = CLASS_BRANCHES.get(cls_id, {})
+
+        max_t = max((n["tier"] for n in tree), default=1)
+        world_ext = (max_t + 1.5) * RING_GAP * 2
+        scale = MINIMAP_W / world_ext
+        half = MINIMAP_W / 2
+
+        for node in tree:
+            nid = node["id"]
+            if nid not in self._positions:
+                continue
+            lx, ly = self._positions[nid]
+            mx_pos = (lx - LCENTER) * scale + half
+            my_pos = (ly - LCENTER) * scale + half
+            branch = node.get("branch", "origin")
+            bdef = branches.get(branch, {})
+            # Highlight search matches and path nodes on minimap
+            if nid in self._search_matches:
+                color = "#FFD700"
+                dr = 4
+            elif nid in self._path_nodes:
+                color = "#00E5FF"
+                dr = 3
+            elif nid in unlocked:
+                color = "#66BB6A"
+                dr = 2
+            else:
+                color = bdef.get("color", "#555555")
+                dr = 2
+            self.minimap.create_oval(mx_pos - dr, my_pos - dr,
+                                     mx_pos + dr, my_pos + dr,
+                                     fill=color, outline="")
+
+        # viewport rectangle
+        try:
+            sr_str = self.canvas.cget("scrollregion")
+            if sr_str:
+                sr = [float(x) for x in sr_str.split()]
+                sw, sh = sr[2] - sr[0], sr[3] - sr[1]
+                xf = self.canvas.xview()
+                yf = self.canvas.yview()
+                z = self._zoom
+                vx0 = (sr[0] + xf[0] * sw) / z
+                vy0 = (sr[1] + yf[0] * sh) / z
+                vx1 = (sr[0] + xf[1] * sw) / z
+                vy1 = (sr[1] + yf[1] * sh) / z
+                rx0 = (vx0 - LCENTER) * scale + half
+                ry0 = (vy0 - LCENTER) * scale + half
+                rx1 = (vx1 - LCENTER) * scale + half
+                ry1 = (vy1 - LCENTER) * scale + half
+                self.minimap.create_rectangle(
+                    rx0, ry0, rx1, ry1,
+                    outline="#FFD700", width=1)
+        except Exception:
+            pass
+
+    # ── pan / zoom ──
+
+    def _on_press(self, event):
+        self._pan_origin = (event.x, event.y)
+        self._did_drag = False
+        self.canvas.scan_mark(event.x, event.y)
+
+    def _on_drag(self, event):
+        if self._pan_origin:
+            dx = abs(event.x - self._pan_origin[0])
+            dy = abs(event.y - self._pan_origin[1])
+            if dx > 5 or dy > 5:
+                self._did_drag = True
+        self.canvas.scan_dragto(event.x, event.y, gain=1)
+        self._draw_minimap()
+
+    def _on_release(self, event):
+        if not self._did_drag:
+            self._handle_click(event)
+        self._pan_origin = None
+
+    def _on_scroll(self, event):
+        factor = 1.15 if event.delta > 0 else 1 / 1.15
+        self._apply_zoom(factor, event.x, event.y)
+
+    def _apply_zoom(self, factor, sx=None, sy=None):
+        new_z = self._zoom * factor
+        if new_z < 0.2 or new_z > 3.0:
+            return
+        if sx is None:
+            sx = (self.canvas.winfo_width() or 1600) // 2
+            sy = (self.canvas.winfo_height() or 900) // 2
+
+        # logical point under mouse before zoom
+        old_cx = self.canvas.canvasx(sx)
+        old_cy = self.canvas.canvasy(sy)
+        lx, ly = old_cx / self._zoom, old_cy / self._zoom
+
+        self._zoom = new_z
+        self._full_draw()
+
+        # scroll so the same logical point stays under the mouse
+        new_cx = lx * self._zoom
+        new_cy = ly * self._zoom
+        sr_str = self.canvas.cget("scrollregion")
+        if sr_str:
+            sr = [float(v) for v in sr_str.split()]
+            sw, sh = sr[2] - sr[0], sr[3] - sr[1]
+            if sw > 0:
+                self.canvas.xview_moveto(
+                    max(0, min(1, (new_cx - sx - sr[0]) / sw)))
+            if sh > 0:
+                self.canvas.yview_moveto(
+                    max(0, min(1, (new_cy - sy - sr[1]) / sh)))
+        self._draw_minimap()
+
+    def _zoom_home(self):
+        self._zoom = 1.0
+        self._full_draw()
+        self._center_on_origin()
+
+    def _center_on_origin(self):
+        """Scroll the canvas so the origin node is centered in the window."""
+        self.canvas.update_idletasks()
+        sr_str = self.canvas.cget("scrollregion")
+        if not sr_str:
+            return
+        sr = [float(v) for v in sr_str.split()]
+        sw, sh = sr[2] - sr[0], sr[3] - sr[1]
+        cw = self.canvas.winfo_width() or 1600
+        ch = self.canvas.winfo_height() or 900
+        target_cx = LCENTER * self._zoom
+        target_cy = LCENTER * self._zoom
+        if sw > 0:
+            self.canvas.xview_moveto(
+                max(0, (target_cx - cw / 2 - sr[0]) / sw))
+        if sh > 0:
+            self.canvas.yview_moveto(
+                max(0, (target_cy - ch / 2 - sr[1]) / sh))
+        self._draw_minimap()
+
+    # ── pulse animation ──
+
+    def _start_pulse(self):
+        """Start the pulse animation for available nodes."""
+        if not self.is_open():
+            return
+        self._pulse_phase = (self._pulse_phase + 1) % 16
+        # Only redraw the glow rings, not the full tree (efficient update)
+        self._update_pulse_glows()
+        self._pulse_timer = self.window.after(150, self._start_pulse)
+
+    def _update_pulse_glows(self):
+        """Update only the available-node glow rings without full redraw."""
+        if not self.canvas:
+            return
+        # Delete old pulse glows
+        self.canvas.delete("pulse_glow")
+        z = self._zoom
+        nr = NODE_R * z
+        pulse_t = abs((self._pulse_phase % 16) - 8) / 8.0
+        pulse_r = int(66 * (0.3 + 0.7 * pulse_t))
+        pulse_g = int(165 * (0.3 + 0.7 * pulse_t))
+        pulse_b = int(245 * (0.3 + 0.7 * pulse_t))
+        pulse_color = f"#{pulse_r:02x}{pulse_g:02x}{pulse_b:02x}"
+
+        avail = {n["id"] for n in get_available_skills(self.player)}
+        for nid in avail:
+            if nid not in self._positions:
+                continue
+            if nid in self._search_matches or nid in self._path_nodes:
+                continue
+            branch = None
+            cls_id = self.player.stats.get("class", "warrior")
+            node = get_node_by_id(cls_id, nid)
+            if node:
+                branch = node.get("branch", "origin")
+            if branch in self._hidden_branches:
+                continue
+            sx, sy = self._l2c(*self._positions[nid])
+            gr = nr + 4 + pulse_t * 2
+            self.canvas.create_oval(sx - gr, sy - gr, sx + gr, sy + gr,
+                                    outline=pulse_color, width=2, dash=(3, 3),
+                                    tags=("pulse_glow",))
+
+    # ── right-click context menu ──
+
+    def _on_right_click(self, event):
+        """Show context menu on right-click near a node."""
         cx = self.canvas.canvasx(event.x)
         cy = self.canvas.canvasy(event.y)
-        items = self.canvas.find_overlapping(cx - 2, cy - 2, cx + 2, cy + 2)
-        node_id = None
-        for item_id in items:
-            if item_id in self.node_items:
-                node_id = self.node_items[item_id]
-                break
 
-        if not node_id:
+        best_id = None
+        best_d = float("inf")
+        threshold = NODE_R * self._zoom * 2
+
+        for nid, (lx, ly) in self._positions.items():
+            nx, ny = self._l2c(lx, ly)
+            d = math.hypot(cx - nx, cy - ny)
+            if d < best_d and d < threshold:
+                best_d = d
+                best_id = nid
+
+        if not best_id:
+            # Right-click on empty space: show branch filter menu
+            self._show_branch_filter_menu(event)
             return
 
-        class_id = self.player.stats.get("class", "warrior")
-        node = get_node_by_id(class_id, node_id)
+        cls_id = self.player.stats.get("class", "warrior")
+        node = get_node_by_id(cls_id, best_id)
+        if not node:
+            return
+
+        menu = tk.Menu(self.canvas, tearoff=0, bg="#2a2a2a", fg="#e0e0e0",
+                       activebackground="#42A5F5", activeforeground="white",
+                       font=self._fonts.get("small"))
+
+        unlocked = set(get_unlocked_skills(self.player))
+
+        # View details
+        menu.add_command(
+            label=f"📋 {node['name']} — Details",
+            command=lambda: self._show_node_details(best_id))
+
+        # Show path to node (if not unlocked)
+        if best_id not in unlocked:
+            menu.add_command(
+                label="🔗 Show Path to Node",
+                command=lambda: self._show_path_to(best_id))
+
+        # Navigate to node
+        menu.add_command(
+            label="🎯 Center on Node",
+            command=lambda nid=best_id: self._center_on_node(nid))
+
+        menu.add_separator()
+
+        # Show branch info
+        branch = node.get("branch", "origin")
+        if branch != "origin":
+            menu.add_command(
+                label=f"🌿 Filter: Show only '{branch}'",
+                command=lambda b=branch: self._filter_branch_only(b))
+            menu.add_command(
+                label="👁 Show All Branches",
+                command=self._show_all_branches)
+
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+
+    def _show_node_details(self, node_id):
+        """Show detailed info about a node in the detail bar."""
+        cls_id = self.player.stats.get("class", "warrior")
+        node = get_node_by_id(cls_id, node_id)
+        if not node:
+            return
+
+        unlocked = set(get_unlocked_skills(self.player))
+        avail_ids = {n["id"] for n in get_available_skills(self.player)}
+
+        status = "UNLOCKED ✅" if node_id in unlocked else ("AVAILABLE 🔓" if node_id in avail_ids else "LOCKED 🔒")
+        info = f"{node['name']} [{status}]  |  {node['description']}"
+        info += f"\n  Type: {node['type'].capitalize()}  |  Tier: {node['tier']}  |  Cost: {node['cost']} SP  |  Branch: {node.get('branch', 'origin')}"
+
+        # Show stat bonuses
+        bonuses = []
+        for key, val in node.items():
+            if key in ("attack", "defense", "health_max") and val:
+                bonuses.append(f"+{val} {key.replace('_', ' ').title()}")
+        if bonuses:
+            info += f"\n  Bonuses: {', '.join(bonuses)}"
+
+        # Show prerequisites
+        prereqs = node.get("prerequisites", [])
+        if prereqs:
+            prereq_names = []
+            for pid in prereqs:
+                pn = get_node_by_id(cls_id, pid)
+                if pn:
+                    met = "✅" if pid in unlocked else "❌"
+                    prereq_names.append(f"{pn['name']} {met}")
+                else:
+                    prereq_names.append(pid)
+            info += f"\n  Requires: {', '.join(prereq_names)}"
+
+        # Show ability details for active nodes
+        if node["type"] == "active":
+            ab = node.get("ability", {})
+            if ab:
+                cd = ab.get("cooldown", "?")
+                dur = ab.get("duration", 0)
+                val = ab.get("value", 0)
+                info += f"\n  ⚡ Ability: CD {cd} turns"
+                if dur:
+                    info += f"  |  Duration: {dur} turns"
+                if val:
+                    info += f"  |  Value: {val}"
+
+        fg_color = "#66BB6A" if node_id in unlocked else ("#42A5F5" if node_id in avail_ids else "#FF5555")
+        self._det_lbl.config(text=info, fg=fg_color)
+
+    def _show_path_to(self, target_id):
+        """Highlight the BFS path from unlocked nodes to the target."""
+        cls_id = self.player.stats.get("class", "warrior")
+        tree = get_tree_for_class(cls_id)
+        unlocked = set(get_unlocked_skills(self.player))
+        self._path_nodes.clear()
+        self._path_edges.clear()
+        self._search_matches.clear()
+        self._search_matches.add(target_id)
+        self._find_path_to_node(cls_id, tree, unlocked, target_id)
+        self._full_draw()
+        node = get_node_by_id(cls_id, target_id)
+        path_len = len(self._path_nodes)
+        name = node["name"] if node else target_id
+        self._det_lbl.config(
+            text=f"🔗 Path to {name}: {path_len} node{'s' if path_len != 1 else ''} required",
+            fg="#00E5FF")
+
+    def _center_on_node(self, node_id):
+        """Center the canvas view on a specific node."""
+        if node_id in self._positions:
+            lx, ly = self._positions[node_id]
+            self._scroll_to_logical(lx, ly)
+            self._draw_minimap()
+
+    def _show_branch_filter_menu(self, event):
+        """Show a menu for filtering branches on right-click on empty space."""
+        cls_id = self.player.stats.get("class", "warrior")
+        branches = CLASS_BRANCHES.get(cls_id, {})
+
+        menu = tk.Menu(self.canvas, tearoff=0, bg="#2a2a2a", fg="#e0e0e0",
+                       activebackground="#42A5F5", activeforeground="white",
+                       font=self._fonts.get("small"))
+
+        menu.add_command(label="👁 Show All Branches",
+                         command=self._show_all_branches)
+        menu.add_separator()
+
+        for bname, bdef in branches.items():
+            if bname == "origin":
+                continue
+            label = bdef.get("label", bname)
+            hidden = bname in self._hidden_branches
+            prefix = "◻️" if hidden else "✅"
+            menu.add_command(
+                label=f"{prefix} {label}",
+                command=lambda b=bname: self._toggle_branch(b))
+
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+
+    def _toggle_branch(self, branch_name):
+        """Toggle visibility of a branch."""
+        if branch_name in self._hidden_branches:
+            self._hidden_branches.discard(branch_name)
+        else:
+            self._hidden_branches.add(branch_name)
+        self._full_draw()
+
+    def _filter_branch_only(self, branch_name):
+        """Show only a single branch, hiding all others."""
+        cls_id = self.player.stats.get("class", "warrior")
+        branches = CLASS_BRANCHES.get(cls_id, {})
+        self._hidden_branches = {b for b in branches if b != "origin" and b != branch_name}
+        self._full_draw()
+
+    def _show_all_branches(self):
+        """Show all branches (clear filter)."""
+        self._hidden_branches.clear()
+        self._full_draw()
+
+    # ── click handling ──
+
+    def _handle_click(self, event):
+        cx = self.canvas.canvasx(event.x)
+        cy = self.canvas.canvasy(event.y)
+
+        best_id = None
+        best_d = float("inf")
+        threshold = NODE_R * self._zoom * 2
+
+        for nid, (lx, ly) in self._positions.items():
+            nx, ny = self._l2c(lx, ly)
+            d = math.hypot(cx - nx, cy - ny)
+            if d < best_d and d < threshold:
+                best_d = d
+                best_id = nid
+
+        if not best_id:
+            return
+
+        cls_id = self.player.stats.get("class", "warrior")
+        node = get_node_by_id(cls_id, best_id)
         if not node:
             return
 
         unlocked = set(get_unlocked_skills(self.player))
 
-        if node_id in unlocked:
-            info = f"[UNLOCKED] {node['name']}\n{node['description']}"
+        if best_id in unlocked:
+            info = f"[UNLOCKED] {node['name']}  \u2014  {node['description']}"
             if node["type"] == "active":
                 ab = node.get("ability", {})
-                cd = self.player.state.get("cooldowns", {}).get(node_id, 0)
+                cd = self.player.state.get("cooldowns", {}).get(best_id, 0)
                 info += f"\nCooldown: {'Ready!' if cd == 0 else f'{cd} turns'}"
                 if ab.get("combat"):
                     info += "  |  Combat ability"
-            self.detail_label.config(text=info)
+            self._det_lbl.config(text=info, fg="#66BB6A")
             return
 
-        available_ids = {n["id"] for n in get_available_skills(self.player)}
-        if node_id not in available_ids:
-            unmet_prereqs = []
-            for prereq_id in node.get("prerequisites", []):
-                if prereq_id not in unlocked:
-                    prereq_node = get_node_by_id(class_id, prereq_id)
-                    unmet_prereqs.append(prereq_node["name"] if prereq_node else prereq_id)
+        avail_ids = {n["id"] for n in get_available_skills(self.player)}
+        if best_id not in avail_ids:
+            unmet = []
+            for pid in node.get("prerequisites", []):
+                if pid not in unlocked:
+                    pn = get_node_by_id(cls_id, pid)
+                    unmet.append(pn["name"] if pn else pid)
             sp = self.player.stats.get("skill_points", 0)
-            info = f"[LOCKED] {node['name']}\n{node['description']}\n"
-            if unmet_prereqs:
-                info += f"Requires: {', '.join(unmet_prereqs)}\n"
+            info = f"[LOCKED] {node['name']}  \u2014  {node['description']}\n"
+            if unmet:
+                info += f"Requires: {', '.join(unmet)}  "
             if sp < node["cost"]:
-                info += f"Need {node['cost']} SP (have {sp})"
-            self.detail_label.config(text=info)
+                info += f"(Need {node['cost']} SP, have {sp})"
+            self._det_lbl.config(text=info, fg="#FF5555")
             return
 
-        success, msg = unlock_skill(self.player, node_id)
+        # attempt to unlock
+        success, msg = unlock_skill(self.player, best_id)
         if success:
-            self.detail_label.config(text=f"UNLOCKED: {node['name']}!")
-            self._draw_tree()
-            self.sp_label.config(
-                text=f"Skill Points: {self.player.stats.get('skill_points', 0)}"
-            )
+            self._det_lbl.config(
+                text=f"UNLOCKED: {node['name']}!", fg="#FFD700")
+            self._full_draw()
+            self._update_sp()
             if self.engine and hasattr(self.engine, 'display_message'):
                 self.engine.display_message(msg)
         else:
-            self.detail_label.config(text=msg)
+            self._det_lbl.config(text=msg, fg="#FF5555")
+
+    # ── hover / tooltip ──
 
     def _on_hover(self, event):
+        for tid in self._tip_ids:
+            try:
+                self.canvas.delete(tid)
+            except Exception:
+                pass
+        self._tip_ids.clear()
+
         cx = self.canvas.canvasx(event.x)
         cy = self.canvas.canvasy(event.y)
-        items = self.canvas.find_overlapping(cx - 2, cy - 2, cx + 2, cy + 2)
-        node_id = None
-        for item_id in items:
-            if item_id in self.node_items:
-                node_id = self.node_items[item_id]
-                break
 
-        if self.tooltip:
-            self.canvas.delete(self.tooltip)
-            self.canvas.delete(self.tooltip_text)
-            self.tooltip = None
-            self.tooltip_text = None
+        best_id = None
+        best_d = float("inf")
+        threshold = NODE_R * self._zoom * 2
 
-        if not node_id:
+        for nid, (lx, ly) in self._positions.items():
+            nx, ny = self._l2c(lx, ly)
+            d = math.hypot(cx - nx, cy - ny)
+            if d < best_d and d < threshold:
+                best_d = d
+                best_id = nid
+
+        if not best_id:
             return
 
-        class_id = self.player.stats.get("class", "warrior")
-        node = get_node_by_id(class_id, node_id)
+        cls_id = self.player.stats.get("class", "warrior")
+        node = get_node_by_id(cls_id, best_id)
         if not node:
             return
 
         unlocked = set(get_unlocked_skills(self.player))
-        available = {n["id"] for n in get_available_skills(self.player)}
-        status = "UNLOCKED" if node_id in unlocked else "AVAILABLE" if node_id in available else "LOCKED"
+        avail = {n["id"] for n in get_available_skills(self.player)}
+        if best_id in unlocked:
+            status = "✅ UNLOCKED"
+        elif best_id in avail:
+            status = "🔓 AVAILABLE"
+        else:
+            status = "🔒 LOCKED"
+
         tip = f"{node['name']} [{status}]"
+        if node["type"] == "active":
+            tip += "  \u26a1"
+        tip += f"\n{node['cost']} SP  \u00b7  Tier {node['tier']}  \u00b7  {node.get('branch', 'origin')}"
 
-        tx = cx + 15
-        ty = cy - 15
-        self.tooltip_text = self.canvas.create_text(
-            tx, ty, text=tip, anchor="nw",
-            font=self._font_small, fill=COLOR_TEXT
-        )
-        bbox = self.canvas.bbox(self.tooltip_text)
+        # Show stat bonuses in tooltip
+        bonuses = []
+        for key in ("attack", "defense", "health_max", "dexterity", "perception"):
+            val = node.get(key)
+            if val:
+                bonuses.append(f"+{val} {key.replace('_', ' ').title()}")
+        if bonuses:
+            tip += f"\n{', '.join(bonuses)}"
+
+        # Show prerequisites for locked nodes
+        if best_id not in unlocked:
+            prereqs = node.get("prerequisites", [])
+            if prereqs:
+                prereq_names = []
+                for pid in prereqs:
+                    pn = get_node_by_id(cls_id, pid)
+                    met = "✅" if pid in unlocked else "❌"
+                    prereq_names.append(f"{pn['name'] if pn else pid} {met}")
+                tip += f"\nReqs: {', '.join(prereq_names)}"
+
+        # draw tooltip near mouse in canvas coords
+        dcx = self.canvas.canvasx(event.x + 18)
+        dcy = self.canvas.canvasy(event.y - 10)
+        text_id = self.canvas.create_text(
+            dcx, dcy, text=tip, anchor="nw",
+            font=self._fonts["small"], fill="#e0e0e0")
+        bbox = self.canvas.bbox(text_id)
         if bbox:
-            self.tooltip = self.canvas.create_rectangle(
-                bbox[0] - 4, bbox[1] - 2, bbox[2] + 4, bbox[3] + 2,
-                fill=COLOR_TOOLTIP_BG, outline="#555555"
-            )
-            self.canvas.tag_raise(self.tooltip_text)
+            bg_id = self.canvas.create_rectangle(
+                bbox[0] - 5, bbox[1] - 3, bbox[2] + 5, bbox[3] + 3,
+                fill="#2a2a2a", outline="#444444")
+            self.canvas.tag_raise(text_id)
+            self._tip_ids.extend([bg_id, text_id])
+        else:
+            self._tip_ids.append(text_id)
 
-    def refresh(self):
-        if not self.is_open():
+    # ── search & path highlighting ──
+
+    def _focus_search(self):
+        """Focus the search entry (Ctrl+F shortcut)."""
+        if self._search_entry:
+            self._search_entry.focus_set()
+            self._search_entry.select_range(0, "end")
+
+    def _search_nodes(self):
+        """Filter nodes by search text, highlight matches, and show path to first match."""
+        if not self.canvas or not self._search_var:
             return
-        self._draw_tree()
-        self.sp_label.config(
-            text=f"Skill Points: {self.player.stats.get('skill_points', 0)}"
-        )
+        query = self._search_var.get().strip().lower()
+        self._search_matches.clear()
+        self._path_nodes.clear()
+        self._path_edges.clear()
+
+        if not query or len(query) < 2:
+            self._full_draw()
+            self._det_lbl.config(
+                text="Drag to pan  \u00b7  Scroll to zoom  \u00b7  Click a node to view or unlock",
+                fg="#777777")
+            return
+
+        cls_id = self.player.stats.get("class", "warrior")
+        tree = get_tree_for_class(cls_id)
+        if not tree:
+            return
+
+        # Find matching nodes (name, description, branch, or id)
+        for node in tree:
+            name = node.get("name", "").lower()
+            desc = node.get("description", "").lower()
+            branch = node.get("branch", "").lower()
+            nid = node["id"].lower()
+            if query in name or query in desc or query in branch or query in nid:
+                self._search_matches.add(node["id"])
+
+        if not self._search_matches:
+            self._full_draw()
+            self._det_lbl.config(text=f"No nodes matching \"{query}\"", fg="#FF5555")
+            return
+
+        # Build path from nearest unlocked node to first match
+        unlocked = set(get_unlocked_skills(self.player))
+        # Find the "best" match to path-find to (prefer available > locked, lower tier)
+        target = None
+        best_prio = (999, 999)
+        avail_ids = {n["id"] for n in get_available_skills(self.player)}
+        for nid in self._search_matches:
+            node = get_node_by_id(cls_id, nid)
+            if not node:
+                continue
+            prio = (0 if nid in avail_ids else 1, node["tier"])
+            if prio < best_prio:
+                best_prio = prio
+                target = nid
+
+        if target and target not in unlocked:
+            self._find_path_to_node(cls_id, tree, unlocked, target)
+
+        # Scroll to center on first match
+        if target and target in self._positions:
+            lx, ly = self._positions[target]
+            self._scroll_to_logical(lx, ly)
+
+        self._full_draw()
+        count = len(self._search_matches)
+        names = []
+        for nid in sorted(self._search_matches):
+            node = get_node_by_id(cls_id, nid)
+            if node:
+                names.append(node["name"])
+        name_list = ", ".join(names[:5])
+        if len(names) > 5:
+            name_list += f" ... (+{len(names) - 5} more)"
+        self._det_lbl.config(
+            text=f"🔍 Found {count} node{'s' if count != 1 else ''}: {name_list}",
+            fg="#FFD700")
+
+    def _clear_search(self):
+        """Clear search highlights and reset view."""
+        if self._search_var:
+            self._search_var.set("")
+        self._search_matches.clear()
+        self._path_nodes.clear()
+        self._path_edges.clear()
+        if self.canvas:
+            self._full_draw()
+        if self._det_lbl:
+            self._det_lbl.config(
+                text="Drag to pan  \u00b7  Scroll to zoom  \u00b7  Click a node to view or unlock",
+                fg="#777777")
+
+    def _find_path_to_node(self, cls_id, tree, unlocked, target_id):
+        """BFS from all unlocked nodes to find the shortest prerequisite
+        path to the target node. Populates _path_nodes and _path_edges."""
+        # Build adjacency: node -> list of nodes it unlocks (children)
+        # and reverse: node -> prerequisites (parents)
+        parents = {}  # node_id -> list of prerequisite node_ids
+        for node in tree:
+            parents[node["id"]] = node.get("prerequisites", [])
+
+        # BFS backward from target through prerequisite chains
+        # We want: target <- prereq <- prereq <- ... <- unlocked_node
+        from collections import deque
+        queue = deque()
+        queue.append(target_id)
+        visited = {target_id}
+        came_from = {target_id: None}
+
+        found_start = None
+        while queue:
+            current = queue.popleft()
+            if current in unlocked:
+                found_start = current
+                break
+            for pid in parents.get(current, []):
+                if pid not in visited:
+                    visited.add(pid)
+                    came_from[pid] = current
+                    queue.append(pid)
+
+        if found_start is None:
+            # Also try forward BFS: from unlocked nodes forward through the tree
+            # Build children map
+            children = {}
+            for node in tree:
+                for pid in node.get("prerequisites", []):
+                    children.setdefault(pid, []).append(node["id"])
+
+            queue = deque()
+            visited.clear()
+            came_from.clear()
+            for nid in unlocked:
+                queue.append(nid)
+                visited.add(nid)
+                came_from[nid] = None
+
+            while queue:
+                current = queue.popleft()
+                if current == target_id:
+                    found_start = target_id
+                    break
+                for child_id in children.get(current, []):
+                    if child_id not in visited:
+                        visited.add(child_id)
+                        came_from[child_id] = current
+                        queue.append(child_id)
+
+            if found_start == target_id:
+                # Reconstruct forward path
+                path = []
+                cur = target_id
+                while cur is not None:
+                    path.append(cur)
+                    cur = came_from.get(cur)
+                path.reverse()
+                # Remove unlocked nodes from path display (except endpoints)
+                for nid in path:
+                    if nid not in unlocked or nid == path[0]:
+                        self._path_nodes.add(nid)
+                    else:
+                        self._path_nodes.add(nid)  # show full chain
+                for i in range(len(path) - 1):
+                    self._path_edges.add((path[i], path[i + 1]))
+                return
+
+            return
+
+        # Reconstruct backward path
+        path = []
+        cur = found_start
+        while cur is not None:
+            path.append(cur)
+            cur = came_from.get(cur)
+        # path goes: unlocked_node -> ... -> target
+        for nid in path:
+            self._path_nodes.add(nid)
+        for i in range(len(path) - 1):
+            self._path_edges.add((path[i], path[i + 1]))
+
+    def _scroll_to_logical(self, lx, ly):
+        """Scroll the canvas to center on a logical coordinate."""
+        if not self.canvas:
+            return
+        cx, cy = self._l2c(lx, ly)
+        # Get canvas visible area
+        try:
+            sr_str = self.canvas.cget("scrollregion")
+            if not sr_str:
+                return
+            sr = [float(x) for x in sr_str.split()]
+            sw, sh = sr[2] - sr[0], sr[3] - sr[1]
+            cw = self.canvas.winfo_width()
+            ch = self.canvas.winfo_height()
+            # Target fraction to place the point at center
+            fx = (cx - sr[0] - cw / 2) / sw if sw > 0 else 0
+            fy = (cy - sr[1] - ch / 2) / sh if sh > 0 else 0
+            self.canvas.xview_moveto(max(0, min(1, fx)))
+            self.canvas.yview_moveto(max(0, min(1, fy)))
+        except Exception:
+            pass
+
+    def _minimap_click(self, event):
+        """Click on minimap to navigate the main canvas to that position."""
+        if not self.canvas or not self.minimap:
+            return
+        cls_id = self.player.stats.get("class", "warrior")
+        tree = get_tree_for_class(cls_id)
+        if not tree:
+            return
+        max_t = max((n["tier"] for n in tree), default=1)
+        world_ext = (max_t + 1.5) * RING_GAP * 2
+        scale = MINIMAP_W / world_ext
+        half = MINIMAP_W / 2
+        # Convert minimap click to logical coords
+        lx = (event.x - half) / scale + LCENTER
+        ly = (event.y - half) / scale + LCENTER
+        self._scroll_to_logical(lx, ly)
+        self._draw_minimap()
+
+        self._full_draw()
+        self._update_sp()

@@ -7,6 +7,11 @@
   "num_floors": 3,
   "theme": "dwarven_fortress",
   "difficulty": "very_hard",
+  "requirements": {
+    "min_level": 10,
+    "skills_any": ["w_tank_iron_will", "r_bh_iron_will", "m_earth_fortress"],
+    "description": "The ancient dwarven locks require a seasoned warrior's fortitude, a rogue's nimble reflexes, or a mage's arcane shielding to open."
+  },
   "floors": {
     "1": {
       "floor_number": 1,

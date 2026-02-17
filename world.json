@@ -208,6 +208,12 @@
         "east": {
           "target": "hermit_cabin",
           "type": "direction"
+        },
+        "enter": {
+          "target": "FIXED",
+          "type": "fixed_dungeon",
+          "dungeon_id": "verdant_labyrinth",
+          "transition_text": "The ancient roots part before you, revealing a passage into the living depths beneath the World Tree..."
         }
       }
     },
@@ -788,6 +794,12 @@
         "south": {
           "target": "mountain_path",
           "type": "direction"
+        },
+        "enter": {
+          "target": "FIXED",
+          "type": "fixed_dungeon",
+          "dungeon_id": "frozen_spire",
+          "transition_text": "You approach the tower of living ice. The wards shimmer and part before you, revealing a passage into the frozen heart of the Spire..."
         }
       }
     },

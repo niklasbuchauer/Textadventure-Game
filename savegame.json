@@ -1,138 +1,59 @@
 {
-  "save_version": 2,
+  "save_version": 3,
   "player": {
-    "current_room": "village_blacksmith",
+    "current_room": "dungeon_2026021718_floor1_room4",
     "inventory": {
-      "shadow_blade": 1,
-      "crystal_shard": 5,
-      "iron_ingot": 3,
-      "steel_dagger": 1
+      "raw_meat": 1
     },
     "state": {
       "unlocked_skills": [
-        "w_toughened_skin",
-        "w_iron_grip",
-        "w_shield_bash",
-        "w_heavy_lifter",
-        "w_fortify",
-        "w_battle_hardened",
-        "w_iron_will",
-        "w_armor_mastery",
-        "w_war_cry",
-        "w_unstoppable",
-        "w_titan",
-        "w_thick_skin",
-        "w_toughened_body",
-        "w_shield_wall",
-        "w_sturdy_build",
-        "w_battle_stance",
-        "w_heavy_blows",
-        "w_sharp_eye",
-        "w_weapon_focus",
-        "w_intimidate",
-        "w_brutal_strikes",
-        "w_deep_wounds",
-        "w_sunder_armor",
-        "w_bloodlust",
-        "w_berserker",
-        "w_weapon_master",
-        "w_death_dealer",
-        "w_warlord",
-        "w_executioner",
-        "w_cleave",
-        "w_scouts_sense",
-        "w_grit",
-        "w_commanding_voice",
-        "w_resilience",
-        "w_armor_training",
-        "w_strong_arm",
-        "w_endurance",
-        "w_power_strike",
-        "w_conditioning",
-        "w_vitality",
-        "w_battle_scarred",
-        "w_trap_breaker",
-        "w_troll_blood",
-        "w_fortress",
-        "w_second_wind",
-        "w_bulwark",
-        "w_juggernaut",
-        "w_rallying_cry",
-        "w_unbreakable",
-        "w_living_fortress",
-        "w_steel_body",
-        "w_earthquake",
-        "w_undying",
-        "w_titan_body",
-        "w_immortal",
-        "w_titan_slam"
+        "w_origin"
       ],
       "cooldowns": {},
       "active_effects": {},
       "equipment": {
-        "weapon": "shadow_blade",
+        "weapon": null,
         "armor": null,
         "shield": null,
         "accessory": null
       },
       "cleared_rooms": [
-        "sd_f1_obsidian_gallery",
-        "sd_f1_shadow_well",
-        "sd_f2_void_landing"
+        "dungeon_2026021718_floor1_room4"
       ],
-      "known_recipes": [
-        "shadow_blade",
-        "void_amulet",
-        "sovereign_cloak",
-        "steel_dagger",
-        "iron_sword",
-        "refined_iron"
+      "achievements": [
+        "first_skill",
+        "first_blood"
       ],
-      "health_max": 265,
-      "enchantments": {},
-      "gold": 0
+      "achievement_tracking": {
+        "kills": 1,
+        "total_gold": 4
+      }
     },
     "stats": {
-      "gold": 210,
-      "health": 325,
-      "health_max": 325,
-      "level": 4,
-      "xp": 553,
-      "xp_to_next": 147,
-      "skill_points": 110,
+      "gold": 5,
+      "health": 105,
+      "health_max": 105,
+      "level": 2,
+      "xp": 105,
+      "xp_to_next": 145,
+      "skill_points": 3,
       "class": "warrior",
-      "strength": 55,
-      "defense": 44,
-      "dexterity": 7,
-      "perception": 6,
-      "charisma": 5,
-      "constitution": 33,
-      "crit_chance_bonus": 0.33000000000000007,
-      "disarm_bonus": 0.1
+      "strength": 4,
+      "defense": 3,
+      "dexterity": 1,
+      "perception": 1,
+      "charisma": 0,
+      "constitution": 3
     },
     "visited_rooms": [
-      "sd_f2_shadow_library",
-      "graveyard_gates",
-      "sd_f1_shadow_well",
-      "village_road",
-      "crossroads",
-      "sd_f3_shadow_sovereign_throne",
-      "sd_f3_shadowforge",
-      "sd_f2_rift_core",
-      "sd_f1_dark_threshold",
-      "sd_f3_abyssal_gate",
-      "sd_f2_dark_mirror",
-      "open_crypt",
-      "farmland",
-      "sd_f2_void_landing",
-      "sd_f1_obsidian_gallery",
-      "sd_f3_oblivion_corridor",
-      "sd_f1_plunging_shaft",
-      "village_east_end",
-      "graveyard",
-      "village_blacksmith",
+      "dungeon_2026021718_floor1_room2",
       "clearing",
-      "village_square"
+      "forest_path",
+      "dungeon_forest_entrance",
+      "dungeon_2026021718_floor1_room3",
+      "dungeon_2026021718_floor1_room1",
+      "dungeon_2026021718_floor1_room4",
+      "deep_forest"
     ]
   },
   "rooms": {
@@ -195,7 +116,9 @@
       "items": {}
     },
     "village_blacksmith": {
-      "items": {}
+      "items": {
+        "iron_ingot": 1
+      }
     },
     "village_outskirts": {
       "items": {}
@@ -339,6 +262,474 @@
     },
     "dungeon_ruins_entrance": {
       "items": {}
+    },
+    "dungeon_2026021718_floor1_room1": {
+      "items": {
+        "leather_armor_piece": 2,
+        "iron_key": 1,
+        "steel_dagger": 2,
+        "ancient_coin": 2
+      }
+    },
+    "dungeon_2026021718_floor1_room2": {
+      "items": {
+        "moldy_bread": 2,
+        "rusty_dagger": 2
+      }
+    },
+    "dungeon_2026021718_floor1_room3": {
+      "items": {
+        "steel_longsword": 2,
+        "rare_gemstone": 1,
+        "ancient_tome": 2
+      }
+    },
+    "dungeon_2026021718_floor1_room4": {
+      "items": {
+        "rusty_dagger": 1,
+        "moldy_bread": 1,
+        "cracked_skull": 1
+      }
+    },
+    "dungeon_2026021718_floor1_room5": {
+      "items": {
+        "empty_bottle": 2,
+        "cracked_skull": 2
+      }
+    },
+    "dungeon_2026021718_floor1_room6": {
+      "items": {
+        "enchanted_candle": 1,
+        "coin_pouch": 1,
+        "iron_sword": 2
+      }
+    },
+    "dungeon_2026021718_floor1_room7": {
+      "items": {
+        "silver_ring": 2,
+        "enchanted_candle": 1,
+        "coin_pouch": 4,
+        "quality_torch": 2
+      }
+    },
+    "dungeon_2026021718_floor1_room8": {
+      "items": {
+        "steel_dagger": 1,
+        "quality_torch": 2,
+        "ancient_coin": 2,
+        "craftsman_hammer": 2
+      }
+    },
+    "dungeon_2026021718_floor1_room9": {
+      "items": {
+        "torn_cloth": 1
+      }
+    },
+    "dungeon_2026021718_floor1_room10": {
+      "items": {
+        "iron_key": 1,
+        "iron_sword": 2
+      }
+    },
+    "dungeon_2026021718_floor1_room11": {
+      "items": {
+        "steel_dagger": 1,
+        "lockpick_set": 1,
+        "craftsman_hammer": 1
+      }
+    },
+    "dungeon_2026021718_floor1_room12": {
+      "items": {
+        "cracked_skull": 2,
+        "bent_fork": 1
+      }
+    },
+    "dungeon_2026021718_floor1_room13": {
+      "items": {
+        "broken_chain": 2,
+        "torch": 2,
+        "old_boot": 2
+      }
+    },
+    "dungeon_2026021718_floor1_room14": {
+      "items": {
+        "enchanted_candle": 2,
+        "lockpick_set": 2
+      }
+    },
+    "dungeon_2026021718_floor1_room15": {
+      "items": {
+        "torn_cloth": 2,
+        "empty_bottle": 1
+      }
+    },
+    "dungeon_2026021718_floor1_room16": {
+      "items": {
+        "lockpick_set": 2,
+        "silver_ring": 2
+      }
+    },
+    "dungeon_2026021718_floor1_room17": {
+      "items": {
+        "cracked_skull": 2
+      }
+    },
+    "dungeon_2026021718_floor1_room18": {
+      "items": {
+        "empty_bottle": 2
+      }
+    },
+    "dungeon_2026021718_floor1_room19": {
+      "items": {
+        "ancient_coin": 1,
+        "enchanted_candle": 1,
+        "craftsman_hammer": 1
+      }
+    },
+    "dungeon_2026021718_floor1_room20": {
+      "items": {
+        "rusty_dagger": 1,
+        "bent_fork": 2
+      }
+    },
+    "dungeon_2026021718_floor1_room21": {
+      "items": {
+        "empty_bottle": 1,
+        "bent_fork": 1
+      }
+    },
+    "dungeon_2026021718_floor1_room22": {
+      "items": {
+        "enchanted_candle": 2,
+        "iron_sword": 2
+      }
+    },
+    "dungeon_2026021718_floor1_room23": {
+      "items": {
+        "gold_chalice": 1,
+        "spell_scroll": 1
+      }
+    },
+    "dungeon_2026021718_floor1_room24": {
+      "items": {
+        "rusty_dagger": 1
+      }
+    },
+    "dungeon_2026021718_floor1_room25": {
+      "items": {
+        "moldy_bread": 2
+      }
+    },
+    "dungeon_2026021718_floor1_room26": {
+      "items": {
+        "lockpick_set": 2,
+        "ancient_coin": 1,
+        "iron_key": 2
+      }
+    },
+    "dungeon_2026021718_floor1_room27": {
+      "items": {
+        "steel_dagger": 2,
+        "silver_ring": 1,
+        "lockpick_set": 2
+      }
+    },
+    "dungeon_2026021718_floor1_room28": {
+      "items": {
+        "rat_pelt": 3,
+        "old_boot": 2
+      }
+    },
+    "dungeon_2026021718_floor1_room29": {
+      "items": {
+        "masterwork_shield": 1,
+        "spell_scroll": 2,
+        "enchanted_ring": 1,
+        "healing_potion": 2
+      }
+    },
+    "dungeon_2026021718_floor1_room30": {
+      "items": {
+        "iron_key": 1,
+        "ancient_coin": 2
+      }
+    },
+    "dungeon_2026021718_floor2_room1": {
+      "items": {
+        "iron_key": 1,
+        "lockpick_set": 2
+      }
+    },
+    "dungeon_2026021718_floor2_room2": {
+      "items": {
+        "rope_coil": 1,
+        "healing_salve": 1,
+        "iron_key": 2
+      }
+    },
+    "dungeon_2026021718_floor2_room3": {
+      "items": {
+        "enchanted_candle": 1,
+        "lockpick_set": 1,
+        "craftsman_hammer": 1
+      }
+    },
+    "dungeon_2026021718_floor2_room4": {
+      "items": {
+        "enchanted_candle": 2,
+        "lockpick_set": 1,
+        "silver_ring": 1
+      }
+    },
+    "dungeon_2026021718_floor2_room5": {
+      "items": {
+        "steel_dagger": 1,
+        "healing_salve": 2
+      }
+    },
+    "dungeon_2026021718_floor2_room6": {
+      "items": {
+        "rope_coil": 2,
+        "iron_key": 1
+      }
+    },
+    "dungeon_2026021718_floor2_room7": {
+      "items": {
+        "rope_coil": 1,
+        "healing_salve": 1,
+        "leather_armor_piece": 1,
+        "craftsman_hammer": 2
+      }
+    },
+    "dungeon_2026021718_floor2_room8": {
+      "items": {
+        "rat_pelt": 1,
+        "old_boot": 1,
+        "torch": 2
+      }
+    },
+    "dungeon_2026021718_floor2_room9": {
+      "items": {
+        "rat_pelt": 1,
+        "empty_bottle": 3
+      }
+    },
+    "dungeon_2026021718_floor2_room10": {
+      "items": {
+        "bent_fork": 1,
+        "broken_chain": 1
+      }
+    },
+    "dungeon_2026021718_floor2_room11": {
+      "items": {
+        "coin_pouch": 1,
+        "enchanted_candle": 2,
+        "iron_sword": 2,
+        "rope_coil": 1,
+        "quality_torch": 2
+      }
+    },
+    "dungeon_2026021718_floor2_room12": {
+      "items": {
+        "rat_pelt": 2,
+        "cracked_skull": 1,
+        "rusty_dagger": 1
+      }
+    },
+    "dungeon_2026021718_floor2_room13": {
+      "items": {
+        "leather_armor_piece": 3,
+        "worn_map": 2,
+        "silver_ring": 2
+      }
+    },
+    "dungeon_2026021718_floor2_room14": {
+      "items": {
+        "platinum_bar": 1,
+        "enchanted_cloak_fragment": 4,
+        "magic_amulet": 1,
+        "spell_scroll": 1
+      }
+    },
+    "dungeon_2026021718_floor2_room15": {
+      "items": {
+        "empty_bottle": 1,
+        "torch": 1
+      }
+    },
+    "dungeon_2026021718_floor2_room16": {
+      "items": {
+        "enchanted_candle": 2
+      }
+    },
+    "dungeon_2026021718_floor2_room17": {
+      "items": {
+        "cracked_skull": 2
+      }
+    },
+    "dungeon_2026021718_floor2_room18": {
+      "items": {
+        "torch": 2,
+        "moldy_bread": 1,
+        "torn_cloth": 2
+      }
+    },
+    "dungeon_2026021718_floor2_room19": {
+      "items": {
+        "rat_pelt": 3,
+        "torn_cloth": 1
+      }
+    },
+    "dungeon_2026021718_floor2_room20": {
+      "items": {
+        "ancient_coin": 1,
+        "silver_ring": 3
+      }
+    },
+    "dungeon_2026021718_floor3_room1": {
+      "items": {
+        "moldy_bread": 2
+      }
+    },
+    "dungeon_2026021718_floor3_room2": {
+      "items": {
+        "quality_torch": 2,
+        "lockpick_set": 1
+      }
+    },
+    "dungeon_2026021718_floor3_room3": {
+      "items": {
+        "moldy_bread": 2
+      }
+    },
+    "dungeon_2026021718_floor3_room4": {
+      "items": {
+        "enchanted_candle": 1,
+        "rope_coil": 2,
+        "steel_dagger": 1
+      }
+    },
+    "dungeon_2026021718_floor3_room5": {
+      "items": {
+        "ancient_tome": 3,
+        "platinum_bar": 1,
+        "healing_potion": 2,
+        "royal_signet": 1
+      }
+    },
+    "dungeon_2026021718_floor3_room6": {
+      "items": {
+        "iron_key": 2,
+        "steel_dagger": 2,
+        "enchanted_candle": 1
+      }
+    },
+    "dungeon_2026021718_floor3_room7": {
+      "items": {
+        "ancient_coin": 1,
+        "quality_torch": 2,
+        "silver_ring": 2,
+        "worn_map": 1,
+        "iron_key": 1
+      }
+    },
+    "dungeon_2026021718_floor3_room8": {
+      "items": {
+        "craftsman_hammer": 2
+      }
+    },
+    "dungeon_2026021718_floor3_room9": {
+      "items": {
+        "jeweled_dagger": 2,
+        "royal_signet": 1,
+        "masterwork_shield": 1,
+        "gold_chalice": 1
+      }
+    },
+    "dungeon_2026021718_floor3_room10": {
+      "items": {
+        "quality_torch": 2,
+        "craftsman_hammer": 1
+      }
+    },
+    "dungeon_2026021718_floor3_room11": {
+      "items": {
+        "lockpick_set": 1,
+        "quality_torch": 2,
+        "rope_coil": 1
+      }
+    },
+    "dungeon_2026021718_floor3_room12": {
+      "items": {
+        "royal_signet": 3,
+        "steel_longsword": 1,
+        "magic_amulet": 1
+      }
+    },
+    "dungeon_2026021718_floor3_room13": {
+      "items": {
+        "rare_gemstone": 1,
+        "gold_chalice": 2,
+        "royal_signet": 2,
+        "enchanted_ring": 1
+      }
+    },
+    "dungeon_2026021718_floor3_room14": {
+      "items": {
+        "bent_fork": 4,
+        "cracked_skull": 2,
+        "torn_cloth": 1
+      }
+    },
+    "dungeon_2026021718_floor3_room15": {
+      "items": {
+        "ancient_tome": 4,
+        "masterwork_shield": 2,
+        "jeweled_dagger": 2,
+        "platinum_bar": 1,
+        "steel_longsword": 1
+      }
+    },
+    "dungeon_2026021718_floor3_room16": {
+      "items": {
+        "steel_dagger": 2,
+        "enchanted_candle": 2
+      }
+    },
+    "dungeon_2026021718_floor3_room17": {
+      "items": {
+        "rusty_dagger": 1,
+        "torch": 1,
+        "rat_pelt": 1
+      }
+    },
+    "dungeon_2026021718_floor3_room18": {
+      "items": {
+        "platinum_bar": 3,
+        "enchanted_cloak_fragment": 1,
+        "magic_amulet": 3,
+        "rare_gemstone": 2
+      }
+    },
+    "dungeon_2026021718_floor3_room19": {
+      "items": {
+        "silver_ring": 2,
+        "craftsman_hammer": 3,
+        "ancient_coin": 2
+      }
+    },
+    "dungeon_2026021718_floor3_room20": {
+      "items": {
+        "lockpick_set": 2,
+        "rope_coil": 1,
+        "craftsman_hammer": 1
+      }
+    },
+    "dungeon_2026021718_floor3_room10_secret": {
+      "items": {
+        "legendary_artifact": 1,
+        "ancient_relic": 1
+      }
     }
   },
   "item_worth": {
@@ -382,88 +773,3684 @@
     "seashell": 4,
     "smooth_pebble": 1,
     "swamp_reed": 3,
-    "shadow_shard": 14,
-    "obsidian_blade_fragment": 26,
-    "dark_glass_shard": 16,
-    "void_echo_stone": 38,
-    "shadow_coin": 12,
-    "dark_offering": 30,
-    "umbral_thread": 42,
-    "void_droplet": 55,
-    "shadow_bone": 20,
-    "necrotic_dust": 8,
-    "nightmare_essence": 32,
-    "mirror_shadow_fragment": 48,
-    "entropy_crystal": 65,
-    "shadow_tome": 50,
-    "void_ink_vial": 35,
-    "dread_idol": 75,
-    "dark_altar_fragment": 55,
-    "rift_shard": 110,
-    "void_ward_seal": 42,
-    "obsidian_burial_gem": 58,
-    "oblivion_shard": 90,
-    "void_gold": 130,
-    "paradox_gemstone": 95,
-    "sovereign_shadow_crown": 200,
-    "void_heart_fragment": 150,
-    "soul_fragment": 105,
-    "spectral_essence": 140,
-    "void_pearl": 120,
-    "concentrated_void_essence": 175
+    "leather_armor_piece": 25,
+    "iron_key": 25,
+    "steel_dagger": 35,
+    "ancient_coin": 60,
+    "moldy_bread": 1,
+    "rusty_dagger": 5,
+    "steel_longsword": 110,
+    "rare_gemstone": 145,
+    "ancient_tome": 115,
+    "cracked_skull": 6,
+    "empty_bottle": 2,
+    "enchanted_candle": 55,
+    "coin_pouch": 20,
+    "iron_sword": 30,
+    "quality_torch": 15,
+    "craftsman_hammer": 38,
+    "torn_cloth": 2,
+    "lockpick_set": 50,
+    "bent_fork": 3,
+    "broken_chain": 4,
+    "old_boot": 2,
+    "gold_chalice": 100,
+    "spell_scroll": 95,
+    "rat_pelt": 4,
+    "masterwork_shield": 125,
+    "enchanted_ring": 120,
+    "healing_potion": 85,
+    "healing_salve": 42,
+    "worn_map": 54,
+    "platinum_bar": 180,
+    "enchanted_cloak_fragment": 162,
+    "magic_amulet": 156,
+    "royal_signet": 196,
+    "jeweled_dagger": 147,
+    "legendary_artifact": 10,
+    "ancient_relic": 10
   },
-  "quests": {
-    "merchant_gems": {
-      "quest_id": "merchant_gems",
-      "status": "turned_in",
-      "progress": {
-        "0": 5
+  "quests": {},
+  "npc_reputation": {},
+  "overworld_encounters": {
+    "recent_rooms": [
+      "forest_path",
+      "deep_forest",
+      "dungeon_forest_entrance"
+    ],
+    "visible_enemies": {
+      "dungeon_forest_entrance": {
+        "enemy_id": "wild_boar",
+        "enemy_data": {
+          "name": "Wild Boar",
+          "description": "A stocky boar with sharp tusks and a foul temper.",
+          "hp": 28,
+          "attack": 5,
+          "defense": 3,
+          "xp_reward": 14,
+          "gold_reward": [
+            3,
+            7
+          ],
+          "loot": [
+            [
+              "raw_meat",
+              0.5
+            ],
+            [
+              "boar_tusk",
+              0.2
+            ],
+            [
+              "leather_scrap",
+              0.25
+            ]
+          ],
+          "abilities": [
+            "charge",
+            "gore"
+          ],
+          "id": "wild_boar"
+        }
       }
     },
-    "blacksmith_errand": {
-      "quest_id": "blacksmith_errand",
-      "status": "turned_in",
-      "progress": {
-        "0": 3
-      }
-    }
-  },
-  "npc_reputation": {
-    "blacksmith": {
-      "npc_id": "blacksmith",
-      "affinity": 5,
-      "visit_count": 2,
-      "gifts_given": {},
-      "total_gifts": 0,
-      "favors_completed": [],
-      "dialogue_seen": [
-        "root",
-        "teach_forging"
-      ],
-      "rep_rewards_claimed": []
-    }
-  },
-  "overworld_encounters": {
-    "recent_rooms": [],
-    "visible_enemies": {},
-    "rooms_rolled": []
+    "rooms_rolled": [
+      "deep_forest",
+      "forest_path",
+      "dungeon_forest_entrance"
+    ]
   },
   "fishing": {
     "fish_caught_count": 0,
     "biggest_catch_value": 0
   },
+  "dungeon": {
+    "type": "procedural",
+    "dungeon_id": null,
+    "seed": 2026021718,
+    "entrance_room_id": "dungeon_forest_entrance",
+    "dungeon_data": {
+      "seed": 2026021718,
+      "generated_at": "2026-02-17T17:00:54.130205",
+      "num_floors": 3,
+      "floors": {
+        "1": {
+          "floor_number": 1,
+          "num_rooms": 30,
+          "rooms": {
+            "dungeon_2026021718_floor1_room1": {
+              "id": "dungeon_2026021718_floor1_room1",
+              "type": "smithy",
+              "name": "Underground Smithy",
+              "description": "A forge still radiates faint warmth. Tools and metal scraps litter the workbench.",
+              "quality": "medium",
+              "floor": 1,
+              "coordinates": [
+                0,
+                0
+              ],
+              "exits": {
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room2",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room7",
+                  "type": "direction"
+                },
+                "leave": {
+                  "target": "dungeon_forest_entrance",
+                  "type": "leave_dungeon",
+                  "transition_text": "You climb back towards the light... You emerge from the dungeon entrance."
+                }
+              },
+              "items": {
+                "leather_armor_piece": {
+                  "quantity": 2,
+                  "value": 25
+                },
+                "iron_key": {
+                  "quantity": 1,
+                  "value": 25
+                },
+                "steel_dagger": {
+                  "quantity": 2,
+                  "value": 35
+                },
+                "ancient_coin": {
+                  "quantity": 2,
+                  "value": 60
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room2": {
+              "id": "dungeon_2026021718_floor1_room2",
+              "type": "library",
+              "name": "Forgotten Library",
+              "description": "Moldy books line countless shelves, their pages crumbling to dust.",
+              "quality": "low",
+              "floor": 1,
+              "coordinates": [
+                1,
+                0
+              ],
+              "exits": {
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room8",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room3",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room1",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "moldy_bread": {
+                  "quantity": 2,
+                  "value": 1
+                },
+                "rusty_dagger": {
+                  "quantity": 2,
+                  "value": 5
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room3": {
+              "id": "dungeon_2026021718_floor1_room3",
+              "type": "dark_altar",
+              "name": "Dark Altar Chamber",
+              "description": "An ancient altar dominates the room, stained with centuries of ritual.",
+              "quality": "high",
+              "floor": 1,
+              "coordinates": [
+                2,
+                0
+              ],
+              "exits": {
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room2",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room9",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room4",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "steel_longsword": {
+                  "quantity": 2,
+                  "value": 110
+                },
+                "rare_gemstone": {
+                  "quantity": 1,
+                  "value": 145
+                },
+                "ancient_tome": {
+                  "quantity": 2,
+                  "value": 115
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room4": {
+              "id": "dungeon_2026021718_floor1_room4",
+              "type": "dining_hall",
+              "name": "Great Dining Hall",
+              "description": "Long tables gather dust. Decaying food still sits on some plates.",
+              "quality": "low",
+              "floor": 1,
+              "coordinates": [
+                3,
+                0
+              ],
+              "exits": {
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room3",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room10",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room5",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "rusty_dagger": {
+                  "quantity": 1,
+                  "value": 5
+                },
+                "moldy_bread": {
+                  "quantity": 1,
+                  "value": 1
+                },
+                "cracked_skull": {
+                  "quantity": 1,
+                  "value": 6
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room5": {
+              "id": "dungeon_2026021718_floor1_room5",
+              "type": "well_chamber",
+              "name": "Underground Well Room",
+              "description": "A massive well dominates the chamber, its depths lost to darkness.",
+              "quality": "low",
+              "floor": 1,
+              "coordinates": [
+                4,
+                0
+              ],
+              "exits": {
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room4",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room11",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "empty_bottle": {
+                  "quantity": 2,
+                  "value": 2
+                },
+                "cracked_skull": {
+                  "quantity": 2,
+                  "value": 6
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room6": {
+              "id": "dungeon_2026021718_floor1_room6",
+              "type": "execution_chamber",
+              "name": "Execution Chamber",
+              "description": "Stone shackles hang from the walls. An execution block sits in the center.",
+              "quality": "medium",
+              "floor": 1,
+              "coordinates": [
+                5,
+                0
+              ],
+              "exits": {
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room12",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "enchanted_candle": {
+                  "quantity": 1,
+                  "value": 55
+                },
+                "coin_pouch": {
+                  "quantity": 1,
+                  "value": 20
+                },
+                "iron_sword": {
+                  "quantity": 2,
+                  "value": 30
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room7": {
+              "id": "dungeon_2026021718_floor1_room7",
+              "type": "ritual_chamber",
+              "name": "Ritual Chamber",
+              "description": "Strange markings cover the ground in intricate patterns.",
+              "quality": "medium",
+              "floor": 1,
+              "coordinates": [
+                0,
+                1
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room1",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room8",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "silver_ring": {
+                  "quantity": 2,
+                  "value": 40
+                },
+                "enchanted_candle": {
+                  "quantity": 1,
+                  "value": 55
+                },
+                "coin_pouch": {
+                  "quantity": 4,
+                  "value": 20
+                },
+                "quality_torch": {
+                  "quantity": 2,
+                  "value": 15
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room8": {
+              "id": "dungeon_2026021718_floor1_room8",
+              "type": "ritual_chamber",
+              "name": "Ritual Chamber",
+              "description": "Strange markings cover the ground in intricate patterns.",
+              "quality": "medium",
+              "floor": 1,
+              "coordinates": [
+                1,
+                1
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room2",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room7",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room14",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room9",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "steel_dagger": {
+                  "quantity": 1,
+                  "value": 35
+                },
+                "quality_torch": {
+                  "quantity": 2,
+                  "value": 15
+                },
+                "ancient_coin": {
+                  "quantity": 2,
+                  "value": 60
+                },
+                "craftsman_hammer": {
+                  "quantity": 2,
+                  "value": 38
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room9": {
+              "id": "dungeon_2026021718_floor1_room9",
+              "type": "well_chamber",
+              "name": "Underground Well Room",
+              "description": "A massive well dominates the chamber, its depths lost to darkness.",
+              "quality": "low",
+              "floor": 1,
+              "coordinates": [
+                2,
+                1
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room3",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room8",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room15",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room10",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "torn_cloth": {
+                  "quantity": 1,
+                  "value": 2
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room10": {
+              "id": "dungeon_2026021718_floor1_room10",
+              "type": "ancient_armory",
+              "name": "Ancient Armory",
+              "description": "Rusted weapons line crumbling stone walls. The air reeks of old metal and decay.",
+              "quality": "medium",
+              "floor": 1,
+              "coordinates": [
+                3,
+                1
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room4",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room9",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room11",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room16",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "iron_key": {
+                  "quantity": 1,
+                  "value": 25
+                },
+                "iron_sword": {
+                  "quantity": 2,
+                  "value": 30
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room11": {
+              "id": "dungeon_2026021718_floor1_room11",
+              "type": "ritual_chamber",
+              "name": "Ritual Chamber",
+              "description": "Strange markings cover the ground in intricate patterns.",
+              "quality": "medium",
+              "floor": 1,
+              "coordinates": [
+                4,
+                1
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room5",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room10",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room17",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room12",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "steel_dagger": {
+                  "quantity": 1,
+                  "value": 35
+                },
+                "lockpick_set": {
+                  "quantity": 1,
+                  "value": 50
+                },
+                "craftsman_hammer": {
+                  "quantity": 1,
+                  "value": 38
+                }
+              },
+              "chests": [],
+              "traps": [
+                {
+                  "name": "Poison Gas Trap",
+                  "description": "Noxious gas fills the room!",
+                  "trigger_chance": 0.15,
+                  "damage": [
+                    8,
+                    20
+                  ],
+                  "area_effect": true,
+                  "disarm_difficulty": "hard",
+                  "warning_signs": "You smell something faint and chemical.",
+                  "disarm_tools": [
+                    "lockpick_set"
+                  ],
+                  "type": "gas_trap",
+                  "triggered": false,
+                  "disarmed": false
+                }
+              ],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room12": {
+              "id": "dungeon_2026021718_floor1_room12",
+              "type": "training_grounds",
+              "name": "Training Grounds",
+              "description": "Training dummies stand in rows, their surfaces scarred from countless practice blows.",
+              "quality": "low",
+              "floor": 1,
+              "coordinates": [
+                5,
+                1
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room6",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room11",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room18",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "cracked_skull": {
+                  "quantity": 2,
+                  "value": 6
+                },
+                "bent_fork": {
+                  "quantity": 1,
+                  "value": 3
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room13": {
+              "id": "dungeon_2026021718_floor1_room13",
+              "type": "training_grounds",
+              "name": "Training Grounds",
+              "description": "Training dummies stand in rows, their surfaces scarred from countless practice blows.",
+              "quality": "low",
+              "floor": 1,
+              "coordinates": [
+                0,
+                2
+              ],
+              "exits": {
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room19",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room14",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "broken_chain": {
+                  "quantity": 2,
+                  "value": 4
+                },
+                "torch": {
+                  "quantity": 2,
+                  "value": 3
+                },
+                "old_boot": {
+                  "quantity": 2,
+                  "value": 2
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room14": {
+              "id": "dungeon_2026021718_floor1_room14",
+              "type": "smithy",
+              "name": "Underground Smithy",
+              "description": "A forge still radiates faint warmth. Tools and metal scraps litter the workbench.",
+              "quality": "medium",
+              "floor": 1,
+              "coordinates": [
+                1,
+                2
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room8",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room13",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room15",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room20",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "enchanted_candle": {
+                  "quantity": 2,
+                  "value": 55
+                },
+                "lockpick_set": {
+                  "quantity": 2,
+                  "value": 50
+                }
+              },
+              "chests": [],
+              "traps": [
+                {
+                  "name": "Hidden Spike Trap",
+                  "description": "Sharp spikes suddenly shoot up from the floor!",
+                  "trigger_chance": 0.3,
+                  "damage": [
+                    10,
+                    25
+                  ],
+                  "disarm_difficulty": "medium",
+                  "warning_signs": "You notice scratches on the floor and suspicious holes.",
+                  "type": "spike_trap",
+                  "triggered": false,
+                  "disarmed": false
+                }
+              ],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room15": {
+              "id": "dungeon_2026021718_floor1_room15",
+              "type": "sewer_junction",
+              "name": "Flooded Sewer Junction",
+              "description": "Foul water runs through grooves in the stone floor. The smell is overwhelming.",
+              "quality": "low",
+              "floor": 1,
+              "coordinates": [
+                2,
+                2
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room9",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room16",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room14",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room21",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "torn_cloth": {
+                  "quantity": 2,
+                  "value": 2
+                },
+                "empty_bottle": {
+                  "quantity": 1,
+                  "value": 2
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room16": {
+              "id": "dungeon_2026021718_floor1_room16",
+              "type": "chapel",
+              "name": "Desecrated Chapel",
+              "description": "An altar lies toppled, surrounded by broken religious artifacts.",
+              "quality": "medium",
+              "floor": 1,
+              "coordinates": [
+                3,
+                2
+              ],
+              "exits": {
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room15",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room22",
+                  "type": "direction"
+                },
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room10",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room17",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "lockpick_set": {
+                  "quantity": 2,
+                  "value": 50
+                },
+                "silver_ring": {
+                  "quantity": 2,
+                  "value": 40
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room17": {
+              "id": "dungeon_2026021718_floor1_room17",
+              "type": "sewer_junction",
+              "name": "Flooded Sewer Junction",
+              "description": "Foul water runs through grooves in the stone floor. The smell is overwhelming.",
+              "quality": "low",
+              "floor": 1,
+              "coordinates": [
+                4,
+                2
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room11",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room16",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room23",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room18",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "cracked_skull": {
+                  "quantity": 2,
+                  "value": 6
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room18": {
+              "id": "dungeon_2026021718_floor1_room18",
+              "type": "well_chamber",
+              "name": "Underground Well Room",
+              "description": "A massive well dominates the chamber, its depths lost to darkness.",
+              "quality": "low",
+              "floor": 1,
+              "coordinates": [
+                5,
+                2
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room12",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room17",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room24",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "empty_bottle": {
+                  "quantity": 2,
+                  "value": 2
+                }
+              },
+              "chests": [],
+              "traps": [
+                {
+                  "name": "Poison Dart Trap",
+                  "description": "A dart shoots from the wall and strikes you!",
+                  "trigger_chance": 0.25,
+                  "damage": [
+                    5,
+                    15
+                  ],
+                  "poison_damage": 3,
+                  "poison_duration": 3,
+                  "disarm_difficulty": "hard",
+                  "warning_signs": "You see tiny holes in the walls.",
+                  "disarm_tools": [
+                    "lockpick_set"
+                  ],
+                  "type": "poison_dart",
+                  "triggered": false,
+                  "disarmed": false
+                }
+              ],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room19": {
+              "id": "dungeon_2026021718_floor1_room19",
+              "type": "chapel",
+              "name": "Desecrated Chapel",
+              "description": "An altar lies toppled, surrounded by broken religious artifacts.",
+              "quality": "medium",
+              "floor": 1,
+              "coordinates": [
+                0,
+                3
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room13",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room20",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "ancient_coin": {
+                  "quantity": 1,
+                  "value": 60
+                },
+                "enchanted_candle": {
+                  "quantity": 1,
+                  "value": 55
+                },
+                "craftsman_hammer": {
+                  "quantity": 1,
+                  "value": 38
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room20": {
+              "id": "dungeon_2026021718_floor1_room20",
+              "type": "sewer_junction",
+              "name": "Flooded Sewer Junction",
+              "description": "Foul water runs through grooves in the stone floor. The smell is overwhelming.",
+              "quality": "low",
+              "floor": 1,
+              "coordinates": [
+                1,
+                3
+              ],
+              "exits": {
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room19",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room26",
+                  "type": "direction"
+                },
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room14",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room21",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "rusty_dagger": {
+                  "quantity": 1,
+                  "value": 5
+                },
+                "bent_fork": {
+                  "quantity": 2,
+                  "value": 3
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room21": {
+              "id": "dungeon_2026021718_floor1_room21",
+              "type": "well_chamber",
+              "name": "Underground Well Room",
+              "description": "A massive well dominates the chamber, its depths lost to darkness.",
+              "quality": "low",
+              "floor": 1,
+              "coordinates": [
+                2,
+                3
+              ],
+              "exits": {
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room20",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room27",
+                  "type": "direction"
+                },
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room15",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room22",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "empty_bottle": {
+                  "quantity": 1,
+                  "value": 2
+                },
+                "bent_fork": {
+                  "quantity": 1,
+                  "value": 3
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room22": {
+              "id": "dungeon_2026021718_floor1_room22",
+              "type": "warden_office",
+              "name": "Warden's Office",
+              "description": "A dusty desk and filing cabinets suggest this was once a place of authority.",
+              "quality": "medium",
+              "floor": 1,
+              "coordinates": [
+                3,
+                3
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room16",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room28",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room23",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room21",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "enchanted_candle": {
+                  "quantity": 2,
+                  "value": 55
+                },
+                "iron_sword": {
+                  "quantity": 2,
+                  "value": 30
+                }
+              },
+              "chests": [
+                {
+                  "type": "wooden_chest",
+                  "opened": false,
+                  "contents": {
+                    "items": {
+                      "healing_salve": {
+                        "quantity": 1,
+                        "value": 35
+                      },
+                      "broken_chain": {
+                        "quantity": 1,
+                        "value": 4
+                      },
+                      "old_boot": {
+                        "quantity": 1,
+                        "value": 2
+                      }
+                    },
+                    "gold": 15
+                  }
+                }
+              ],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room23": {
+              "id": "dungeon_2026021718_floor1_room23",
+              "type": "map_chamber",
+              "name": "Map Chamber",
+              "description": "Old maps and charts line the walls, detailing long-forgotten lands.",
+              "quality": "high",
+              "floor": 1,
+              "coordinates": [
+                4,
+                3
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room17",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room22",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room29",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room24",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "gold_chalice": {
+                  "quantity": 1,
+                  "value": 100
+                },
+                "spell_scroll": {
+                  "quantity": 1,
+                  "value": 95
+                }
+              },
+              "chests": [],
+              "traps": [
+                {
+                  "name": "Poison Gas Trap",
+                  "description": "Noxious gas fills the room!",
+                  "trigger_chance": 0.15,
+                  "damage": [
+                    8,
+                    20
+                  ],
+                  "area_effect": true,
+                  "disarm_difficulty": "hard",
+                  "warning_signs": "You smell something faint and chemical.",
+                  "disarm_tools": [
+                    "lockpick_set"
+                  ],
+                  "type": "gas_trap",
+                  "triggered": false,
+                  "disarmed": false
+                }
+              ],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room24": {
+              "id": "dungeon_2026021718_floor1_room24",
+              "type": "crypt",
+              "name": "Musty Burial Crypt",
+              "description": "Stone sarcophagi line the walls, their occupants long undisturbed.",
+              "quality": "low",
+              "floor": 1,
+              "coordinates": [
+                5,
+                3
+              ],
+              "exits": {
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room23",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor1_room30",
+                  "type": "direction"
+                },
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room18",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "rusty_dagger": {
+                  "quantity": 1,
+                  "value": 5
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room25": {
+              "id": "dungeon_2026021718_floor1_room25",
+              "type": "collapsed_tunnel",
+              "name": "Collapsed Tunnel",
+              "description": "Part of the tunnel has caved in, leaving a precarious path through the rubble.",
+              "quality": "low",
+              "floor": 1,
+              "coordinates": [
+                0,
+                4
+              ],
+              "exits": {
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room26",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "moldy_bread": {
+                  "quantity": 2,
+                  "value": 1
+                }
+              },
+              "chests": [],
+              "traps": [
+                {
+                  "name": "Poison Dart Trap",
+                  "description": "A dart shoots from the wall and strikes you!",
+                  "trigger_chance": 0.25,
+                  "damage": [
+                    5,
+                    15
+                  ],
+                  "poison_damage": 3,
+                  "poison_duration": 3,
+                  "disarm_difficulty": "hard",
+                  "warning_signs": "You see tiny holes in the walls.",
+                  "disarm_tools": [
+                    "lockpick_set"
+                  ],
+                  "type": "poison_dart",
+                  "triggered": false,
+                  "disarmed": false
+                }
+              ],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room26": {
+              "id": "dungeon_2026021718_floor1_room26",
+              "type": "ritual_chamber",
+              "name": "Ritual Chamber",
+              "description": "Strange markings cover the ground in intricate patterns.",
+              "quality": "medium",
+              "floor": 1,
+              "coordinates": [
+                1,
+                4
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room20",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room25",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room27",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "lockpick_set": {
+                  "quantity": 2,
+                  "value": 50
+                },
+                "ancient_coin": {
+                  "quantity": 1,
+                  "value": 60
+                },
+                "iron_key": {
+                  "quantity": 2,
+                  "value": 25
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room27": {
+              "id": "dungeon_2026021718_floor1_room27",
+              "type": "trophy_hall",
+              "name": "Trophy Hall",
+              "description": "Mounted weapons and armor adorn the walls, trophies of past conquests.",
+              "quality": "medium",
+              "floor": 1,
+              "coordinates": [
+                2,
+                4
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room21",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room26",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room28",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "steel_dagger": {
+                  "quantity": 2,
+                  "value": 35
+                },
+                "silver_ring": {
+                  "quantity": 1,
+                  "value": 40
+                },
+                "lockpick_set": {
+                  "quantity": 2,
+                  "value": 50
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room28": {
+              "id": "dungeon_2026021718_floor1_room28",
+              "type": "dining_hall",
+              "name": "Great Dining Hall",
+              "description": "Long tables gather dust. Decaying food still sits on some plates.",
+              "quality": "low",
+              "floor": 1,
+              "coordinates": [
+                3,
+                4
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room22",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room27",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room29",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "rat_pelt": {
+                  "quantity": 3,
+                  "value": 4
+                },
+                "old_boot": {
+                  "quantity": 2,
+                  "value": 2
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room29": {
+              "id": "dungeon_2026021718_floor1_room29",
+              "type": "map_chamber",
+              "name": "Map Chamber",
+              "description": "Old maps and charts line the walls, detailing long-forgotten lands.",
+              "quality": "high",
+              "floor": 1,
+              "coordinates": [
+                4,
+                4
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room23",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room28",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor1_room30",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "masterwork_shield": {
+                  "quantity": 1,
+                  "value": 125
+                },
+                "spell_scroll": {
+                  "quantity": 2,
+                  "value": 95
+                },
+                "enchanted_ring": {
+                  "quantity": 1,
+                  "value": 120
+                },
+                "healing_potion": {
+                  "quantity": 2,
+                  "value": 85
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor1_room30": {
+              "id": "dungeon_2026021718_floor1_room30",
+              "type": "guard_barracks",
+              "name": "Guard Barracks",
+              "description": "Rows of bunk beds line the walls, long abandoned.",
+              "quality": "medium",
+              "floor": 1,
+              "coordinates": [
+                5,
+                4
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor1_room24",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor1_room29",
+                  "type": "direction"
+                },
+                "down": {
+                  "target": "dungeon_2026021718_floor2_room1",
+                  "type": "stairs_down",
+                  "transition_text": "You descend deeper into the dungeon... Floor 2."
+                }
+              },
+              "items": {
+                "iron_key": {
+                  "quantity": 1,
+                  "value": 25
+                },
+                "ancient_coin": {
+                  "quantity": 2,
+                  "value": 60
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            }
+          },
+          "entrance_room": "dungeon_2026021718_floor1_room1",
+          "exit_stairs_up": null,
+          "exit_stairs_down": "dungeon_2026021718_floor1_room30",
+          "boss_room": null
+        },
+        "2": {
+          "floor_number": 2,
+          "num_rooms": 20,
+          "rooms": {
+            "dungeon_2026021718_floor2_room1": {
+              "id": "dungeon_2026021718_floor2_room1",
+              "type": "warden_office",
+              "name": "Warden's Office",
+              "description": "A dusty desk and filing cabinets suggest this was once a place of authority.",
+              "quality": "medium",
+              "floor": 2,
+              "coordinates": [
+                0,
+                0
+              ],
+              "exits": {
+                "north": {
+                  "target": "dungeon_2026021718_floor2_room6",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor2_room2",
+                  "type": "direction"
+                },
+                "up": {
+                  "target": "dungeon_2026021718_floor1_room30",
+                  "type": "stairs_up",
+                  "transition_text": "You climb back up to floor 1..."
+                }
+              },
+              "items": {
+                "iron_key": {
+                  "quantity": 1,
+                  "value": 30
+                },
+                "lockpick_set": {
+                  "quantity": 2,
+                  "value": 60
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor2_room2": {
+              "id": "dungeon_2026021718_floor2_room2",
+              "type": "guard_barracks",
+              "name": "Guard Barracks",
+              "description": "Rows of bunk beds line the walls, long abandoned.",
+              "quality": "medium",
+              "floor": 2,
+              "coordinates": [
+                1,
+                0
+              ],
+              "exits": {
+                "north": {
+                  "target": "dungeon_2026021718_floor2_room7",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor2_room1",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "rope_coil": {
+                  "quantity": 1,
+                  "value": 24
+                },
+                "healing_salve": {
+                  "quantity": 1,
+                  "value": 42
+                },
+                "iron_key": {
+                  "quantity": 2,
+                  "value": 30
+                }
+              },
+              "chests": [
+                {
+                  "type": "wooden_chest",
+                  "opened": false,
+                  "contents": {
+                    "items": {
+                      "healing_potion": {
+                        "quantity": 1,
+                        "value": 85
+                      },
+                      "silver_ring": {
+                        "quantity": 1,
+                        "value": 40
+                      },
+                      "healing_salve": {
+                        "quantity": 1,
+                        "value": 35
+                      }
+                    },
+                    "gold": 42
+                  }
+                }
+              ],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor2_room3": {
+              "id": "dungeon_2026021718_floor2_room3",
+              "type": "smithy",
+              "name": "Underground Smithy",
+              "description": "A forge still radiates faint warmth. Tools and metal scraps litter the workbench.",
+              "quality": "medium",
+              "floor": 2,
+              "coordinates": [
+                2,
+                0
+              ],
+              "exits": {
+                "north": {
+                  "target": "dungeon_2026021718_floor2_room8",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor2_room4",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "enchanted_candle": {
+                  "quantity": 1,
+                  "value": 66
+                },
+                "lockpick_set": {
+                  "quantity": 1,
+                  "value": 60
+                },
+                "craftsman_hammer": {
+                  "quantity": 1,
+                  "value": 45
+                }
+              },
+              "chests": [
+                {
+                  "type": "wooden_chest",
+                  "opened": false,
+                  "contents": {
+                    "items": {
+                      "torch": {
+                        "quantity": 1,
+                        "value": 3
+                      },
+                      "silver_ring": {
+                        "quantity": 1,
+                        "value": 40
+                      },
+                      "moldy_bread": {
+                        "quantity": 1,
+                        "value": 1
+                      },
+                      "enchanted_ring": {
+                        "quantity": 1,
+                        "value": 120
+                      }
+                    },
+                    "gold": 16
+                  }
+                }
+              ],
+              "traps": [
+                {
+                  "name": "Hidden Spike Trap",
+                  "description": "Sharp spikes suddenly shoot up from the floor!",
+                  "trigger_chance": 0.3,
+                  "damage": [
+                    10,
+                    25
+                  ],
+                  "disarm_difficulty": "medium",
+                  "warning_signs": "You notice scratches on the floor and suspicious holes.",
+                  "type": "spike_trap",
+                  "triggered": false,
+                  "disarmed": false
+                }
+              ],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor2_room4": {
+              "id": "dungeon_2026021718_floor2_room4",
+              "type": "wine_cellar",
+              "name": "Ancient Wine Cellar",
+              "description": "Wine racks line the walls, holding bottles too old and precious to ever drink.",
+              "quality": "medium",
+              "floor": 2,
+              "coordinates": [
+                3,
+                0
+              ],
+              "exits": {
+                "north": {
+                  "target": "dungeon_2026021718_floor2_room9",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor2_room5",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor2_room3",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "enchanted_candle": {
+                  "quantity": 2,
+                  "value": 66
+                },
+                "lockpick_set": {
+                  "quantity": 1,
+                  "value": 60
+                },
+                "silver_ring": {
+                  "quantity": 1,
+                  "value": 48
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor2_room5": {
+              "id": "dungeon_2026021718_floor2_room5",
+              "type": "chapel",
+              "name": "Desecrated Chapel",
+              "description": "An altar lies toppled, surrounded by broken religious artifacts.",
+              "quality": "medium",
+              "floor": 2,
+              "coordinates": [
+                4,
+                0
+              ],
+              "exits": {
+                "west": {
+                  "target": "dungeon_2026021718_floor2_room4",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor2_room10",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "steel_dagger": {
+                  "quantity": 1,
+                  "value": 42
+                },
+                "healing_salve": {
+                  "quantity": 2,
+                  "value": 42
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor2_room6": {
+              "id": "dungeon_2026021718_floor2_room6",
+              "type": "smithy",
+              "name": "Underground Smithy",
+              "description": "A forge still radiates faint warmth. Tools and metal scraps litter the workbench.",
+              "quality": "medium",
+              "floor": 2,
+              "coordinates": [
+                0,
+                1
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor2_room1",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor2_room11",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor2_room7",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "rope_coil": {
+                  "quantity": 2,
+                  "value": 24
+                },
+                "iron_key": {
+                  "quantity": 1,
+                  "value": 30
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor2_room7": {
+              "id": "dungeon_2026021718_floor2_room7",
+              "type": "guard_barracks",
+              "name": "Guard Barracks",
+              "description": "Rows of bunk beds line the walls, long abandoned.",
+              "quality": "medium",
+              "floor": 2,
+              "coordinates": [
+                1,
+                1
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor2_room2",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor2_room12",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor2_room6",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor2_room8",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "rope_coil": {
+                  "quantity": 1,
+                  "value": 24
+                },
+                "healing_salve": {
+                  "quantity": 1,
+                  "value": 42
+                },
+                "leather_armor_piece": {
+                  "quantity": 1,
+                  "value": 30
+                },
+                "craftsman_hammer": {
+                  "quantity": 2,
+                  "value": 45
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor2_room8": {
+              "id": "dungeon_2026021718_floor2_room8",
+              "type": "collapsed_tunnel",
+              "name": "Collapsed Tunnel",
+              "description": "Part of the tunnel has caved in, leaving a precarious path through the rubble.",
+              "quality": "low",
+              "floor": 2,
+              "coordinates": [
+                2,
+                1
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor2_room3",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor2_room9",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor2_room7",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "rat_pelt": {
+                  "quantity": 1,
+                  "value": 4
+                },
+                "old_boot": {
+                  "quantity": 1,
+                  "value": 2
+                },
+                "torch": {
+                  "quantity": 2,
+                  "value": 3
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor2_room9": {
+              "id": "dungeon_2026021718_floor2_room9",
+              "type": "training_grounds",
+              "name": "Training Grounds",
+              "description": "Training dummies stand in rows, their surfaces scarred from countless practice blows.",
+              "quality": "low",
+              "floor": 2,
+              "coordinates": [
+                3,
+                1
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor2_room4",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor2_room8",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor2_room14",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "rat_pelt": {
+                  "quantity": 1,
+                  "value": 4
+                },
+                "empty_bottle": {
+                  "quantity": 3,
+                  "value": 2
+                }
+              },
+              "chests": [],
+              "traps": [
+                {
+                  "name": "Magical Rune Trap",
+                  "description": "Ancient runes flare to life, releasing magical energy!",
+                  "trigger_chance": 0.2,
+                  "damage": [
+                    12,
+                    28
+                  ],
+                  "magic_damage": true,
+                  "disarm_difficulty": "very_hard",
+                  "warning_signs": "Glowing symbols are carved into the floor.",
+                  "disarm_tools": [
+                    "spell_scroll"
+                  ],
+                  "type": "magic_rune",
+                  "triggered": false,
+                  "disarmed": false
+                }
+              ],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor2_room10": {
+              "id": "dungeon_2026021718_floor2_room10",
+              "type": "well_chamber",
+              "name": "Underground Well Room",
+              "description": "A massive well dominates the chamber, its depths lost to darkness.",
+              "quality": "low",
+              "floor": 2,
+              "coordinates": [
+                4,
+                1
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor2_room5",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "bent_fork": {
+                  "quantity": 1,
+                  "value": 3
+                },
+                "broken_chain": {
+                  "quantity": 1,
+                  "value": 4
+                }
+              },
+              "chests": [],
+              "traps": [
+                {
+                  "name": "Magical Rune Trap",
+                  "description": "Ancient runes flare to life, releasing magical energy!",
+                  "trigger_chance": 0.2,
+                  "damage": [
+                    12,
+                    28
+                  ],
+                  "magic_damage": true,
+                  "disarm_difficulty": "very_hard",
+                  "warning_signs": "Glowing symbols are carved into the floor.",
+                  "disarm_tools": [
+                    "spell_scroll"
+                  ],
+                  "type": "magic_rune",
+                  "triggered": false,
+                  "disarmed": false
+                }
+              ],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor2_room11": {
+              "id": "dungeon_2026021718_floor2_room11",
+              "type": "storage_vault",
+              "name": "Storage Vault",
+              "description": "Wooden shelves and stone ledges hold forgotten supplies.",
+              "quality": "medium",
+              "floor": 2,
+              "coordinates": [
+                0,
+                2
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor2_room6",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor2_room12",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "coin_pouch": {
+                  "quantity": 1,
+                  "value": 24
+                },
+                "enchanted_candle": {
+                  "quantity": 2,
+                  "value": 66
+                },
+                "iron_sword": {
+                  "quantity": 2,
+                  "value": 36
+                },
+                "rope_coil": {
+                  "quantity": 1,
+                  "value": 24
+                },
+                "quality_torch": {
+                  "quantity": 2,
+                  "value": 18
+                }
+              },
+              "chests": [
+                {
+                  "type": "wooden_chest",
+                  "opened": false,
+                  "contents": {
+                    "items": {
+                      "leather_armor_piece": {
+                        "quantity": 1,
+                        "value": 25
+                      },
+                      "iron_sword": {
+                        "quantity": 1,
+                        "value": 30
+                      }
+                    },
+                    "gold": 29
+                  }
+                }
+              ],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor2_room12": {
+              "id": "dungeon_2026021718_floor2_room12",
+              "type": "dining_hall",
+              "name": "Great Dining Hall",
+              "description": "Long tables gather dust. Decaying food still sits on some plates.",
+              "quality": "low",
+              "floor": 2,
+              "coordinates": [
+                1,
+                2
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor2_room7",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor2_room17",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor2_room11",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor2_room13",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "rat_pelt": {
+                  "quantity": 2,
+                  "value": 4
+                },
+                "cracked_skull": {
+                  "quantity": 1,
+                  "value": 7
+                },
+                "rusty_dagger": {
+                  "quantity": 1,
+                  "value": 6
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor2_room13": {
+              "id": "dungeon_2026021718_floor2_room13",
+              "type": "execution_chamber",
+              "name": "Execution Chamber",
+              "description": "Stone shackles hang from the walls. An execution block sits in the center.",
+              "quality": "medium",
+              "floor": 2,
+              "coordinates": [
+                2,
+                2
+              ],
+              "exits": {
+                "north": {
+                  "target": "dungeon_2026021718_floor2_room18",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor2_room14",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor2_room12",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "leather_armor_piece": {
+                  "quantity": 3,
+                  "value": 30
+                },
+                "worn_map": {
+                  "quantity": 2,
+                  "value": 54
+                },
+                "silver_ring": {
+                  "quantity": 2,
+                  "value": 48
+                }
+              },
+              "chests": [],
+              "traps": [
+                {
+                  "name": "Magical Rune Trap",
+                  "description": "Ancient runes flare to life, releasing magical energy!",
+                  "trigger_chance": 0.2,
+                  "damage": [
+                    12,
+                    28
+                  ],
+                  "magic_damage": true,
+                  "disarm_difficulty": "very_hard",
+                  "warning_signs": "Glowing symbols are carved into the floor.",
+                  "disarm_tools": [
+                    "spell_scroll"
+                  ],
+                  "type": "magic_rune",
+                  "triggered": false,
+                  "disarmed": false
+                }
+              ],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor2_room14": {
+              "id": "dungeon_2026021718_floor2_room14",
+              "type": "treasury_vault",
+              "name": "Collapsed Treasury Vault",
+              "description": "A massive vault door lies broken on the ground. Gleaming treasures glint in the darkness.",
+              "quality": "high",
+              "floor": 2,
+              "coordinates": [
+                3,
+                2
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor2_room9",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor2_room13",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor2_room15",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "platinum_bar": {
+                  "quantity": 1,
+                  "value": 180
+                },
+                "enchanted_cloak_fragment": {
+                  "quantity": 4,
+                  "value": 162
+                },
+                "magic_amulet": {
+                  "quantity": 1,
+                  "value": 156
+                },
+                "spell_scroll": {
+                  "quantity": 1,
+                  "value": 114
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor2_room15": {
+              "id": "dungeon_2026021718_floor2_room15",
+              "type": "sewer_junction",
+              "name": "Flooded Sewer Junction",
+              "description": "Foul water runs through grooves in the stone floor. The smell is overwhelming.",
+              "quality": "low",
+              "floor": 2,
+              "coordinates": [
+                4,
+                2
+              ],
+              "exits": {
+                "west": {
+                  "target": "dungeon_2026021718_floor2_room14",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor2_room20",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "empty_bottle": {
+                  "quantity": 1,
+                  "value": 2
+                },
+                "torch": {
+                  "quantity": 1,
+                  "value": 3
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor2_room16": {
+              "id": "dungeon_2026021718_floor2_room16",
+              "type": "trophy_hall",
+              "name": "Trophy Hall",
+              "description": "Mounted weapons and armor adorn the walls, trophies of past conquests.",
+              "quality": "medium",
+              "floor": 2,
+              "coordinates": [
+                0,
+                3
+              ],
+              "exits": {
+                "east": {
+                  "target": "dungeon_2026021718_floor2_room17",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "enchanted_candle": {
+                  "quantity": 2,
+                  "value": 66
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor2_room17": {
+              "id": "dungeon_2026021718_floor2_room17",
+              "type": "well_chamber",
+              "name": "Underground Well Room",
+              "description": "A massive well dominates the chamber, its depths lost to darkness.",
+              "quality": "low",
+              "floor": 2,
+              "coordinates": [
+                1,
+                3
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor2_room12",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor2_room16",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor2_room18",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "cracked_skull": {
+                  "quantity": 2,
+                  "value": 7
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor2_room18": {
+              "id": "dungeon_2026021718_floor2_room18",
+              "type": "guardhouse",
+              "name": "Guardhouse Station",
+              "description": "A small station where guards would rest between shifts.",
+              "quality": "low",
+              "floor": 2,
+              "coordinates": [
+                2,
+                3
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor2_room13",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor2_room17",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "torch": {
+                  "quantity": 2,
+                  "value": 3
+                },
+                "moldy_bread": {
+                  "quantity": 1,
+                  "value": 1
+                },
+                "torn_cloth": {
+                  "quantity": 2,
+                  "value": 2
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor2_room19": {
+              "id": "dungeon_2026021718_floor2_room19",
+              "type": "library",
+              "name": "Forgotten Library",
+              "description": "Moldy books line countless shelves, their pages crumbling to dust.",
+              "quality": "low",
+              "floor": 2,
+              "coordinates": [
+                3,
+                3
+              ],
+              "exits": {
+                "east": {
+                  "target": "dungeon_2026021718_floor2_room20",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "rat_pelt": {
+                  "quantity": 3,
+                  "value": 4
+                },
+                "torn_cloth": {
+                  "quantity": 1,
+                  "value": 2
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor2_room20": {
+              "id": "dungeon_2026021718_floor2_room20",
+              "type": "smithy",
+              "name": "Underground Smithy",
+              "description": "A forge still radiates faint warmth. Tools and metal scraps litter the workbench.",
+              "quality": "medium",
+              "floor": 2,
+              "coordinates": [
+                4,
+                3
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor2_room15",
+                  "type": "direction"
+                },
+                "west": {
+                  "target": "dungeon_2026021718_floor2_room19",
+                  "type": "direction"
+                },
+                "down": {
+                  "target": "dungeon_2026021718_floor3_room1",
+                  "type": "stairs_down",
+                  "transition_text": "You descend deeper into the dungeon... Floor 3."
+                }
+              },
+              "items": {
+                "ancient_coin": {
+                  "quantity": 1,
+                  "value": 72
+                },
+                "silver_ring": {
+                  "quantity": 3,
+                  "value": 48
+                }
+              },
+              "chests": [
+                {
+                  "type": "wooden_chest",
+                  "opened": false,
+                  "contents": {
+                    "items": {
+                      "old_boot": {
+                        "quantity": 1,
+                        "value": 2
+                      },
+                      "healing_salve": {
+                        "quantity": 1,
+                        "value": 35
+                      },
+                      "rusty_dagger": {
+                        "quantity": 1,
+                        "value": 5
+                      },
+                      "torch": {
+                        "quantity": 1,
+                        "value": 3
+                      }
+                    },
+                    "gold": 32
+                  }
+                }
+              ],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            }
+          },
+          "entrance_room": "dungeon_2026021718_floor2_room1",
+          "exit_stairs_up": "dungeon_2026021718_floor2_room1",
+          "exit_stairs_down": "dungeon_2026021718_floor2_room20",
+          "boss_room": null
+        },
+        "3": {
+          "floor_number": 3,
+          "num_rooms": 20,
+          "rooms": {
+            "dungeon_2026021718_floor3_room1": {
+              "id": "dungeon_2026021718_floor3_room1",
+              "type": "prison_block",
+              "name": "Abandoned Prison Block",
+              "description": "Iron bars rust on their hinges. Some cells still hold remnants of unfortunate prisoners.",
+              "quality": "low",
+              "floor": 3,
+              "coordinates": [
+                0,
+                0
+              ],
+              "exits": {
+                "east": {
+                  "target": "dungeon_2026021718_floor3_room2",
+                  "type": "direction"
+                },
+                "up": {
+                  "target": "dungeon_2026021718_floor2_room20",
+                  "type": "stairs_up",
+                  "transition_text": "You climb back up to floor 2..."
+                }
+              },
+              "items": {
+                "moldy_bread": {
+                  "quantity": 2,
+                  "value": 1
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor3_room2": {
+              "id": "dungeon_2026021718_floor3_room2",
+              "type": "chapel",
+              "name": "Desecrated Chapel",
+              "description": "An altar lies toppled, surrounded by broken religious artifacts.",
+              "quality": "medium",
+              "floor": 3,
+              "coordinates": [
+                1,
+                0
+              ],
+              "exits": {
+                "west": {
+                  "target": "dungeon_2026021718_floor3_room1",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor3_room3",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "quality_torch": {
+                  "quantity": 2,
+                  "value": 21
+                },
+                "lockpick_set": {
+                  "quantity": 1,
+                  "value": 70
+                }
+              },
+              "chests": [],
+              "traps": [
+                {
+                  "name": "Poison Gas Trap",
+                  "description": "Noxious gas fills the room!",
+                  "trigger_chance": 0.15,
+                  "damage": [
+                    8,
+                    20
+                  ],
+                  "area_effect": true,
+                  "disarm_difficulty": "hard",
+                  "warning_signs": "You smell something faint and chemical.",
+                  "disarm_tools": [
+                    "lockpick_set"
+                  ],
+                  "type": "gas_trap",
+                  "triggered": false,
+                  "disarmed": false
+                }
+              ],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor3_room3": {
+              "id": "dungeon_2026021718_floor3_room3",
+              "type": "guardhouse",
+              "name": "Guardhouse Station",
+              "description": "A small station where guards would rest between shifts.",
+              "quality": "low",
+              "floor": 3,
+              "coordinates": [
+                2,
+                0
+              ],
+              "exits": {
+                "west": {
+                  "target": "dungeon_2026021718_floor3_room2",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor3_room4",
+                  "type": "direction"
+                },
+                "south": {
+                  "target": "dungeon_2026021718_floor3_room19",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "moldy_bread": {
+                  "quantity": 2,
+                  "value": 1
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor3_room4": {
+              "id": "dungeon_2026021718_floor3_room4",
+              "type": "smithy",
+              "name": "Underground Smithy",
+              "description": "A forge still radiates faint warmth. Tools and metal scraps litter the workbench.",
+              "quality": "medium",
+              "floor": 3,
+              "coordinates": [
+                3,
+                0
+              ],
+              "exits": {
+                "west": {
+                  "target": "dungeon_2026021718_floor3_room3",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor3_room5",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor3_room11",
+                  "type": "direction"
+                },
+                "south": {
+                  "target": "dungeon_2026021718_floor3_room12",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "enchanted_candle": {
+                  "quantity": 1,
+                  "value": 77
+                },
+                "rope_coil": {
+                  "quantity": 2,
+                  "value": 28
+                },
+                "steel_dagger": {
+                  "quantity": 1,
+                  "value": 49
+                }
+              },
+              "chests": [
+                {
+                  "type": "wooden_chest",
+                  "opened": false,
+                  "contents": {
+                    "items": {
+                      "leather_armor_piece": {
+                        "quantity": 1,
+                        "value": 25
+                      },
+                      "quality_torch": {
+                        "quantity": 1,
+                        "value": 15
+                      },
+                      "iron_sword": {
+                        "quantity": 1,
+                        "value": 30
+                      }
+                    },
+                    "gold": 37
+                  }
+                }
+              ],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor3_room5": {
+              "id": "dungeon_2026021718_floor3_room5",
+              "type": "dark_altar",
+              "name": "Dark Altar Chamber",
+              "description": "An ancient altar dominates the room, stained with centuries of ritual.",
+              "quality": "high",
+              "floor": 3,
+              "coordinates": [
+                4,
+                0
+              ],
+              "exits": {
+                "west": {
+                  "target": "dungeon_2026021718_floor3_room4",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor3_room6",
+                  "type": "direction"
+                },
+                "south": {
+                  "target": "dungeon_2026021718_floor3_room18",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "ancient_tome": {
+                  "quantity": 3,
+                  "value": 161
+                },
+                "platinum_bar": {
+                  "quantity": 1,
+                  "value": 210
+                },
+                "healing_potion": {
+                  "quantity": 2,
+                  "value": 118
+                },
+                "royal_signet": {
+                  "quantity": 1,
+                  "value": 196
+                }
+              },
+              "chests": [
+                {
+                  "type": "ornate_chest",
+                  "opened": false,
+                  "contents": {
+                    "items": {
+                      "spell_scroll": {
+                        "quantity": 2,
+                        "value": 95
+                      },
+                      "steel_longsword": {
+                        "quantity": 1,
+                        "value": 110
+                      },
+                      "enchanted_ring": {
+                        "quantity": 1,
+                        "value": 120
+                      },
+                      "gold_chalice": {
+                        "quantity": 1,
+                        "value": 100
+                      },
+                      "healing_salve": {
+                        "quantity": 1,
+                        "value": 35
+                      }
+                    },
+                    "gold": 199
+                  }
+                }
+              ],
+              "traps": [
+                {
+                  "name": "Concealed Pit",
+                  "description": "The floor gives way beneath you! You fall into a pit!",
+                  "trigger_chance": 0.2,
+                  "damage": [
+                    15,
+                    30
+                  ],
+                  "disarm_difficulty": "easy",
+                  "warning_signs": "The floor sounds hollow here.",
+                  "disarm_tools": [
+                    "rope_coil"
+                  ],
+                  "blocking": true,
+                  "type": "pit_trap",
+                  "triggered": false,
+                  "disarmed": false
+                }
+              ],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor3_room6": {
+              "id": "dungeon_2026021718_floor3_room6",
+              "type": "chapel",
+              "name": "Desecrated Chapel",
+              "description": "An altar lies toppled, surrounded by broken religious artifacts.",
+              "quality": "medium",
+              "floor": 3,
+              "coordinates": [
+                5,
+                0
+              ],
+              "exits": {
+                "west": {
+                  "target": "dungeon_2026021718_floor3_room5",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor3_room7",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor3_room13",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "iron_key": {
+                  "quantity": 2,
+                  "value": 35
+                },
+                "steel_dagger": {
+                  "quantity": 2,
+                  "value": 49
+                },
+                "enchanted_candle": {
+                  "quantity": 1,
+                  "value": 77
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor3_room7": {
+              "id": "dungeon_2026021718_floor3_room7",
+              "type": "ritual_chamber",
+              "name": "Ritual Chamber",
+              "description": "Strange markings cover the ground in intricate patterns.",
+              "quality": "medium",
+              "floor": 3,
+              "coordinates": [
+                6,
+                0
+              ],
+              "exits": {
+                "west": {
+                  "target": "dungeon_2026021718_floor3_room6",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor3_room8",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "ancient_coin": {
+                  "quantity": 1,
+                  "value": 84
+                },
+                "quality_torch": {
+                  "quantity": 2,
+                  "value": 21
+                },
+                "silver_ring": {
+                  "quantity": 2,
+                  "value": 56
+                },
+                "worn_map": {
+                  "quantity": 1,
+                  "value": 62
+                },
+                "iron_key": {
+                  "quantity": 1,
+                  "value": 35
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor3_room8": {
+              "id": "dungeon_2026021718_floor3_room8",
+              "type": "ancient_armory",
+              "name": "Ancient Armory",
+              "description": "Rusted weapons line crumbling stone walls. The air reeks of old metal and decay.",
+              "quality": "medium",
+              "floor": 3,
+              "coordinates": [
+                7,
+                0
+              ],
+              "exits": {
+                "west": {
+                  "target": "dungeon_2026021718_floor3_room7",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor3_room9",
+                  "type": "direction"
+                },
+                "south": {
+                  "target": "dungeon_2026021718_floor3_room14",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor3_room16",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "craftsman_hammer": {
+                  "quantity": 2,
+                  "value": 53
+                }
+              },
+              "chests": [
+                {
+                  "type": "wooden_chest",
+                  "opened": false,
+                  "contents": {
+                    "items": {
+                      "iron_sword": {
+                        "quantity": 1,
+                        "value": 30
+                      },
+                      "old_boot": {
+                        "quantity": 1,
+                        "value": 2
+                      }
+                    },
+                    "gold": 50
+                  }
+                }
+              ],
+              "traps": [
+                {
+                  "name": "Poison Dart Trap",
+                  "description": "A dart shoots from the wall and strikes you!",
+                  "trigger_chance": 0.25,
+                  "damage": [
+                    5,
+                    15
+                  ],
+                  "poison_damage": 3,
+                  "poison_duration": 3,
+                  "disarm_difficulty": "hard",
+                  "warning_signs": "You see tiny holes in the walls.",
+                  "disarm_tools": [
+                    "lockpick_set"
+                  ],
+                  "type": "poison_dart",
+                  "triggered": false,
+                  "disarmed": false
+                }
+              ],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor3_room9": {
+              "id": "dungeon_2026021718_floor3_room9",
+              "type": "hidden_vault",
+              "name": "Hidden Vault",
+              "description": "An impossibly well-preserved chamber reveals why - it was sealed for centuries.",
+              "quality": "high",
+              "floor": 3,
+              "coordinates": [
+                8,
+                0
+              ],
+              "exits": {
+                "west": {
+                  "target": "dungeon_2026021718_floor3_room8",
+                  "type": "direction"
+                },
+                "east": {
+                  "target": "dungeon_2026021718_floor3_room10",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "jeweled_dagger": {
+                  "quantity": 2,
+                  "value": 147
+                },
+                "royal_signet": {
+                  "quantity": 1,
+                  "value": 196
+                },
+                "masterwork_shield": {
+                  "quantity": 1,
+                  "value": 175
+                },
+                "gold_chalice": {
+                  "quantity": 1,
+                  "value": 140
+                }
+              },
+              "chests": [
+                {
+                  "type": "iron_chest",
+                  "opened": false,
+                  "contents": {
+                    "items": {
+                      "iron_sword": {
+                        "quantity": 1,
+                        "value": 30
+                      },
+                      "quality_torch": {
+                        "quantity": 1,
+                        "value": 15
+                      },
+                      "leather_armor_piece": {
+                        "quantity": 1,
+                        "value": 25
+                      },
+                      "rusty_dagger": {
+                        "quantity": 1,
+                        "value": 5
+                      },
+                      "moldy_bread": {
+                        "quantity": 1,
+                        "value": 1
+                      }
+                    },
+                    "gold": 167
+                  }
+                }
+              ],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor3_room10": {
+              "id": "dungeon_2026021718_floor3_room10",
+              "type": "smithy",
+              "name": "💎 TREASURE VAULT 💎",
+              "description": "A magnificent chamber glittering with gold and jewels. Ancient treasure beyond imagination fills every corner.\n\nThe ornate walls seem to have intricate carvings that catch your eye.",
+              "quality": "high",
+              "floor": 3,
+              "coordinates": [
+                9,
+                0
+              ],
+              "exits": {
+                "west": {
+                  "target": "dungeon_2026021718_floor3_room9",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "quality_torch": {
+                  "quantity": 2,
+                  "value": 21
+                },
+                "craftsman_hammer": {
+                  "quantity": 1,
+                  "value": 53
+                }
+              },
+              "chests": [
+                {
+                  "type": "iron_chest",
+                  "opened": false,
+                  "contents": {
+                    "items": {
+                      "healing_salve": {
+                        "quantity": 1,
+                        "value": 35
+                      },
+                      "broken_chain": {
+                        "quantity": 1,
+                        "value": 4
+                      },
+                      "torch": {
+                        "quantity": 1,
+                        "value": 3
+                      }
+                    },
+                    "gold": 158
+                  }
+                }
+              ],
+              "traps": [
+                {
+                  "name": "Hidden Spike Trap",
+                  "description": "Sharp spikes suddenly shoot up from the floor!",
+                  "trigger_chance": 0.3,
+                  "damage": [
+                    10,
+                    25
+                  ],
+                  "disarm_difficulty": "medium",
+                  "warning_signs": "You notice scratches on the floor and suspicious holes.",
+                  "type": "spike_trap",
+                  "triggered": false,
+                  "disarmed": false
+                }
+              ],
+              "visited": false,
+              "location_type": "building",
+              "is_boss_room": true,
+              "has_secret": true,
+              "secret_room_id": "dungeon_2026021718_floor3_room10_secret",
+              "secret_discovered": false
+            },
+            "dungeon_2026021718_floor3_room11": {
+              "id": "dungeon_2026021718_floor3_room11",
+              "type": "storage_vault",
+              "name": "Storage Vault",
+              "description": "Wooden shelves and stone ledges hold forgotten supplies.",
+              "quality": "medium",
+              "floor": 3,
+              "coordinates": [
+                3,
+                1
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor3_room4",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "lockpick_set": {
+                  "quantity": 1,
+                  "value": 70
+                },
+                "quality_torch": {
+                  "quantity": 2,
+                  "value": 21
+                },
+                "rope_coil": {
+                  "quantity": 1,
+                  "value": 28
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor3_room12": {
+              "id": "dungeon_2026021718_floor3_room12",
+              "type": "spell_scriptorium",
+              "name": "Spell Scriptorium",
+              "description": "Shelves of dusty tomes and scattered parchments cover every surface.",
+              "quality": "high",
+              "floor": 3,
+              "coordinates": [
+                3,
+                -1
+              ],
+              "exits": {
+                "north": {
+                  "target": "dungeon_2026021718_floor3_room4",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "royal_signet": {
+                  "quantity": 3,
+                  "value": 196
+                },
+                "steel_longsword": {
+                  "quantity": 1,
+                  "value": 154
+                },
+                "magic_amulet": {
+                  "quantity": 1,
+                  "value": 182
+                }
+              },
+              "chests": [
+                {
+                  "type": "ornate_chest",
+                  "opened": false,
+                  "contents": {
+                    "items": {
+                      "iron_sword": {
+                        "quantity": 1,
+                        "value": 30
+                      },
+                      "spell_scroll": {
+                        "quantity": 1,
+                        "value": 95
+                      },
+                      "silver_ring": {
+                        "quantity": 2,
+                        "value": 40
+                      },
+                      "enchanted_ring": {
+                        "quantity": 1,
+                        "value": 120
+                      },
+                      "leather_armor_piece": {
+                        "quantity": 1,
+                        "value": 25
+                      }
+                    },
+                    "gold": 295
+                  }
+                }
+              ],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor3_room13": {
+              "id": "dungeon_2026021718_floor3_room13",
+              "type": "dark_altar",
+              "name": "Dark Altar Chamber",
+              "description": "An ancient altar dominates the room, stained with centuries of ritual.",
+              "quality": "high",
+              "floor": 3,
+              "coordinates": [
+                5,
+                1
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor3_room6",
+                  "type": "direction"
+                },
+                "north": {
+                  "target": "dungeon_2026021718_floor3_room17",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "rare_gemstone": {
+                  "quantity": 1,
+                  "value": 203
+                },
+                "gold_chalice": {
+                  "quantity": 2,
+                  "value": 140
+                },
+                "royal_signet": {
+                  "quantity": 2,
+                  "value": 196
+                },
+                "enchanted_ring": {
+                  "quantity": 1,
+                  "value": 168
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor3_room14": {
+              "id": "dungeon_2026021718_floor3_room14",
+              "type": "crypt",
+              "name": "Musty Burial Crypt",
+              "description": "Stone sarcophagi line the walls, their occupants long undisturbed.",
+              "quality": "low",
+              "floor": 3,
+              "coordinates": [
+                7,
+                -1
+              ],
+              "exits": {
+                "north": {
+                  "target": "dungeon_2026021718_floor3_room8",
+                  "type": "direction"
+                },
+                "south": {
+                  "target": "dungeon_2026021718_floor3_room15",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "bent_fork": {
+                  "quantity": 4,
+                  "value": 4
+                },
+                "cracked_skull": {
+                  "quantity": 2,
+                  "value": 8
+                },
+                "torn_cloth": {
+                  "quantity": 1,
+                  "value": 2
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor3_room15": {
+              "id": "dungeon_2026021718_floor3_room15",
+              "type": "hidden_vault",
+              "name": "Hidden Vault",
+              "description": "An impossibly well-preserved chamber reveals why - it was sealed for centuries.",
+              "quality": "high",
+              "floor": 3,
+              "coordinates": [
+                7,
+                -2
+              ],
+              "exits": {
+                "north": {
+                  "target": "dungeon_2026021718_floor3_room14",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "ancient_tome": {
+                  "quantity": 4,
+                  "value": 161
+                },
+                "masterwork_shield": {
+                  "quantity": 2,
+                  "value": 175
+                },
+                "jeweled_dagger": {
+                  "quantity": 2,
+                  "value": 147
+                },
+                "platinum_bar": {
+                  "quantity": 1,
+                  "value": 210
+                },
+                "steel_longsword": {
+                  "quantity": 1,
+                  "value": 154
+                }
+              },
+              "chests": [],
+              "traps": [
+                {
+                  "name": "Poison Dart Trap",
+                  "description": "A dart shoots from the wall and strikes you!",
+                  "trigger_chance": 0.25,
+                  "damage": [
+                    5,
+                    15
+                  ],
+                  "poison_damage": 3,
+                  "poison_duration": 3,
+                  "disarm_difficulty": "hard",
+                  "warning_signs": "You see tiny holes in the walls.",
+                  "disarm_tools": [
+                    "lockpick_set"
+                  ],
+                  "type": "poison_dart",
+                  "triggered": false,
+                  "disarmed": false
+                }
+              ],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor3_room16": {
+              "id": "dungeon_2026021718_floor3_room16",
+              "type": "ancient_armory",
+              "name": "Ancient Armory",
+              "description": "Rusted weapons line crumbling stone walls. The air reeks of old metal and decay.",
+              "quality": "medium",
+              "floor": 3,
+              "coordinates": [
+                7,
+                1
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor3_room8",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "steel_dagger": {
+                  "quantity": 2,
+                  "value": 49
+                },
+                "enchanted_candle": {
+                  "quantity": 2,
+                  "value": 77
+                }
+              },
+              "chests": [],
+              "traps": [
+                {
+                  "name": "Hidden Spike Trap",
+                  "description": "Sharp spikes suddenly shoot up from the floor!",
+                  "trigger_chance": 0.3,
+                  "damage": [
+                    10,
+                    25
+                  ],
+                  "disarm_difficulty": "medium",
+                  "warning_signs": "You notice scratches on the floor and suspicious holes.",
+                  "type": "spike_trap",
+                  "triggered": false,
+                  "disarmed": false
+                }
+              ],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor3_room17": {
+              "id": "dungeon_2026021718_floor3_room17",
+              "type": "collapsed_tunnel",
+              "name": "Collapsed Tunnel",
+              "description": "Part of the tunnel has caved in, leaving a precarious path through the rubble.",
+              "quality": "low",
+              "floor": 3,
+              "coordinates": [
+                5,
+                2
+              ],
+              "exits": {
+                "south": {
+                  "target": "dungeon_2026021718_floor3_room13",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "rusty_dagger": {
+                  "quantity": 1,
+                  "value": 7
+                },
+                "torch": {
+                  "quantity": 1,
+                  "value": 4
+                },
+                "rat_pelt": {
+                  "quantity": 1,
+                  "value": 5
+                }
+              },
+              "chests": [
+                {
+                  "type": "wooden_chest",
+                  "opened": false,
+                  "contents": {
+                    "items": {
+                      "old_boot": {
+                        "quantity": 2,
+                        "value": 2
+                      },
+                      "leather_armor_piece": {
+                        "quantity": 1,
+                        "value": 25
+                      },
+                      "healing_salve": {
+                        "quantity": 1,
+                        "value": 35
+                      }
+                    },
+                    "gold": 52
+                  }
+                }
+              ],
+              "traps": [
+                {
+                  "name": "Magical Rune Trap",
+                  "description": "Ancient runes flare to life, releasing magical energy!",
+                  "trigger_chance": 0.2,
+                  "damage": [
+                    12,
+                    28
+                  ],
+                  "magic_damage": true,
+                  "disarm_difficulty": "very_hard",
+                  "warning_signs": "Glowing symbols are carved into the floor.",
+                  "disarm_tools": [
+                    "spell_scroll"
+                  ],
+                  "type": "magic_rune",
+                  "triggered": false,
+                  "disarmed": false
+                }
+              ],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor3_room18": {
+              "id": "dungeon_2026021718_floor3_room18",
+              "type": "treasury_vault",
+              "name": "Collapsed Treasury Vault",
+              "description": "A massive vault door lies broken on the ground. Gleaming treasures glint in the darkness.",
+              "quality": "high",
+              "floor": 3,
+              "coordinates": [
+                4,
+                -1
+              ],
+              "exits": {
+                "north": {
+                  "target": "dungeon_2026021718_floor3_room5",
+                  "type": "direction"
+                },
+                "south": {
+                  "target": "dungeon_2026021718_floor3_room20",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "platinum_bar": {
+                  "quantity": 3,
+                  "value": 210
+                },
+                "enchanted_cloak_fragment": {
+                  "quantity": 1,
+                  "value": 189
+                },
+                "magic_amulet": {
+                  "quantity": 3,
+                  "value": 182
+                },
+                "rare_gemstone": {
+                  "quantity": 2,
+                  "value": 203
+                }
+              },
+              "chests": [],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor3_room19": {
+              "id": "dungeon_2026021718_floor3_room19",
+              "type": "execution_chamber",
+              "name": "Execution Chamber",
+              "description": "Stone shackles hang from the walls. An execution block sits in the center.",
+              "quality": "medium",
+              "floor": 3,
+              "coordinates": [
+                2,
+                -2
+              ],
+              "exits": {
+                "north": {
+                  "target": "dungeon_2026021718_floor3_room3",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "silver_ring": {
+                  "quantity": 2,
+                  "value": 56
+                },
+                "craftsman_hammer": {
+                  "quantity": 3,
+                  "value": 53
+                },
+                "ancient_coin": {
+                  "quantity": 2,
+                  "value": 84
+                }
+              },
+              "chests": [
+                {
+                  "type": "wooden_chest",
+                  "opened": false,
+                  "contents": {
+                    "items": {
+                      "leather_armor_piece": {
+                        "quantity": 1,
+                        "value": 25
+                      },
+                      "moldy_bread": {
+                        "quantity": 1,
+                        "value": 1
+                      }
+                    },
+                    "gold": 27
+                  }
+                }
+              ],
+              "traps": [],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor3_room20": {
+              "id": "dungeon_2026021718_floor3_room20",
+              "type": "smithy",
+              "name": "Underground Smithy",
+              "description": "A forge still radiates faint warmth. Tools and metal scraps litter the workbench.",
+              "quality": "medium",
+              "floor": 3,
+              "coordinates": [
+                4,
+                -2
+              ],
+              "exits": {
+                "north": {
+                  "target": "dungeon_2026021718_floor3_room18",
+                  "type": "direction"
+                }
+              },
+              "items": {
+                "lockpick_set": {
+                  "quantity": 2,
+                  "value": 70
+                },
+                "rope_coil": {
+                  "quantity": 1,
+                  "value": 28
+                },
+                "craftsman_hammer": {
+                  "quantity": 1,
+                  "value": 53
+                }
+              },
+              "chests": [
+                {
+                  "type": "iron_chest",
+                  "opened": false,
+                  "contents": {
+                    "items": {
+                      "gold_chalice": {
+                        "quantity": 1,
+                        "value": 100
+                      },
+                      "moldy_bread": {
+                        "quantity": 1,
+                        "value": 1
+                      },
+                      "healing_salve": {
+                        "quantity": 2,
+                        "value": 35
+                      },
+                      "enchanted_ring": {
+                        "quantity": 1,
+                        "value": 120
+                      },
+                      "silver_ring": {
+                        "quantity": 1,
+                        "value": 40
+                      }
+                    },
+                    "gold": 72
+                  }
+                }
+              ],
+              "traps": [
+                {
+                  "name": "Concealed Pit",
+                  "description": "The floor gives way beneath you! You fall into a pit!",
+                  "trigger_chance": 0.2,
+                  "damage": [
+                    15,
+                    30
+                  ],
+                  "disarm_difficulty": "easy",
+                  "warning_signs": "The floor sounds hollow here.",
+                  "disarm_tools": [
+                    "rope_coil"
+                  ],
+                  "blocking": true,
+                  "type": "pit_trap",
+                  "triggered": false,
+                  "disarmed": false
+                }
+              ],
+              "visited": false,
+              "location_type": "building"
+            },
+            "dungeon_2026021718_floor3_room10_secret": {
+              "name": "🌟 HIDDEN CHAMBER 🌟",
+              "description": "A secret chamber hidden behind the walls of the treasure vault. In the center of the room, strange ASCII art is carved into stone:\n\n    ∿ ` ∾ ∿ ` ∾ ∿ ` ∾\n   / d o a b i g c h e e s e \\\n   \\ ∿ ` ∾ ∿ ` ∾ ∿ ` ∾ /\n    ¯ ¯ ¯ ¯ ¯ ¯ ¯ ¯ ¯ ¯ ¯ ¯\n\nYou feel the presence of something legendary here.",
+              "coordinates": [
+                10,
+                0
+              ],
+              "exits": {
+                "back": {
+                  "target": "dungeon_2026021718_floor3_room10",
+                  "type": "direction",
+                  "transition_text": "You carefully return through the hidden passage..."
+                }
+              },
+              "items": [
+                "legendary_artifact",
+                "ancient_relic"
+              ],
+              "is_secret": true
+            }
+          },
+          "entrance_room": "dungeon_2026021718_floor3_room1",
+          "exit_stairs_up": "dungeon_2026021718_floor3_room1",
+          "exit_stairs_down": null,
+          "boss_room": "dungeon_2026021718_floor3_room10"
+        }
+      },
+      "entrance_room_id": "dungeon_forest_entrance"
+    }
+  },
   "npc_dialogue": {},
   "shop": {
     "shop_id": "village_shop",
     "inventory": {
-      "quality_torch": {
+      "healing_salve": {
         "quantity": 3,
-        "value": 15,
-        "rarity": "common"
-      },
-      "craftsman_hammer": {
-        "quantity": 1,
-        "value": 38,
+        "value": 35,
         "rarity": "common"
       },
       "iron_key": {
@@ -471,20 +4458,19 @@
         "value": 25,
         "rarity": "common"
       },
-      "iron_sword": {
+      "worn_map": {
         "quantity": 3,
-        "value": 30,
+        "value": 45,
         "rarity": "uncommon"
-      },
-      "healing_potion": {
-        "quantity": 3,
-        "value": 85,
-        "rarity": "rare"
       }
     },
-    "last_rotation_hour": 23
+    "last_rotation_hour": 16
   },
   "dungeon_scheduler": {
-    "debug_force_open": []
+    "debug_force_open": [
+      "crystal_caverns",
+      "sunken_catacombs",
+      "iron_halls"
+    ]
   }
 }

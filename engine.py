@@ -103,7 +103,9 @@ try:
 	from skill_tree import (
 		SkillTreeWindow, get_tree_for_class, get_unlocked_skills,
 		get_available_skills, get_active_abilities, unlock_skill,
-		use_ability, tick_effects, has_active_effect
+		use_ability, tick_effects, has_active_effect,
+		is_skill_unlocked, get_node_by_id,
+		get_synergy_bonuses, get_branch_counts, apply_synergy_bonuses
 	)
 	PROGRESSION_AVAILABLE = True
 except Exception as e:
@@ -172,6 +174,19 @@ try:
 except Exception as e:
 	NPC_REP_AVAILABLE = False
 	print(f"[INIT] ⚠ NPC reputation system DISABLED: {e}")
+
+# =====================================================================
+# ACHIEVEMENT SYSTEM INITIALIZATION
+# =====================================================================
+try:
+	from achievement_system import (
+		check_achievements, track_event, get_achievements_display,
+		format_achievement_unlock, ACHIEVEMENTS
+	)
+	ACHIEVEMENT_AVAILABLE = True
+except Exception as e:
+	ACHIEVEMENT_AVAILABLE = False
+	print(f"[INIT] ⚠ Achievement system DISABLED: {e}")
 
 # =====================================================================
 # OVERWORLD ENCOUNTER SYSTEM INITIALIZATION
@@ -636,6 +651,10 @@ class CommandHandler:
 			if not args:
 				return self._show_abilities()
 			return self._use_ability(" ".join(args))
+		if verb in ("synergy", "synergies"):
+			return self._show_synergies()
+		if verb in ("achievements", "achieve", "ach"):
+			return self._show_achievements()
 
 		# Equipment commands
 		if verb == "equip":
@@ -864,6 +883,44 @@ class CommandHandler:
 
 	# ========== COMBAT COMMANDS ==========
 
+	def _track_combat_victory(self, combat):
+		"""Track achievement events for a combat victory."""
+		if not ACHIEVEMENT_AVAILABLE:
+			return ""
+		player = self.engine.player
+		try:
+			# Track kill
+			track_event(player, "kills")
+			# Track boss / mini-boss kills
+			if getattr(combat, 'is_boss', False):
+				track_event(player, "bosses_killed")
+				# Track elite boss kills (check if in a fixed dungeon with extreme difficulty)
+				fd = getattr(self.engine, 'current_fixed_dungeon', None)
+				if fd and fd.get('difficulty') == 'extreme':
+					track_event(player, "elite_bosses_killed")
+				# Track dungeon completion (boss kill = dungeon done)
+				track_event(player, "dungeons_completed")
+			if getattr(combat, 'is_mini_boss', False):
+				track_event(player, "mini_bosses_killed")
+			# Track close calls (won with < 10% HP)
+			hp = player.stats.get('health', 1)
+			hp_max = player.stats.get('health_max', 100)
+			if hp_max > 0 and hp / hp_max < 0.10:
+				track_event(player, "close_calls")
+			# Track flawless wins (HP unchanged from max)
+			if hp >= hp_max:
+				track_event(player, "flawless_wins")
+			# Track gold earned from combat
+			if isinstance(combat.gold_reward, (list, tuple)) and len(combat.gold_reward) == 2:
+				gold = (combat.gold_reward[0] + combat.gold_reward[1]) // 2
+			else:
+				gold = int(combat.gold_reward) if combat.gold_reward else 0
+			if gold > 0:
+				track_event(player, "total_gold", gold)
+			return self._check_and_show_achievements()
+		except Exception:
+			return ""
+
 	def _combat_attack(self):
 		"""Handle attack command during combat."""
 		if not COMBAT_AVAILABLE:
@@ -877,6 +934,8 @@ class CommandHandler:
 		# Check if enemy is dead
 		if combat.hp <= 0:
 			victory_msg = generate_victory_result(self.engine.player, combat)
+			# Track achievements
+			ach_msg = self._track_combat_victory(combat)
 			# Award XP through progression system
 			xp_msg = ""
 			if PROGRESSION_AVAILABLE:
@@ -897,7 +956,7 @@ class CommandHandler:
 					is_mini_boss=getattr(combat, 'is_mini_boss', False)
 				)
 				self.engine.quest_manager.on_item_changed()
-			return result + victory_msg + xp_msg
+			return result + victory_msg + xp_msg + ach_msg
 
 		# Check if player died
 		death_msg = self._check_player_death()
@@ -1079,7 +1138,7 @@ class CommandHandler:
 		return self._show_skills_text()
 
 	def _show_skills_text(self):
-		"""Show skills as text in the console (fallback)."""
+		"""Show skills as text in the console (fallback), grouped by branch."""
 		if not PROGRESSION_AVAILABLE:
 			return "Progression system not available."
 
@@ -1092,35 +1151,35 @@ class CommandHandler:
 		available = {n["id"] for n in get_available_skills(self.engine.player)}
 
 		result = "\n" + "=" * 50 + "\n"
-		result += f"  SKILL TREE ({class_id.upper()})\n"
+		result += f"  SKILL TREE ({class_id.upper()}) — {len(tree)} nodes\n"
 		result += f"  Skill Points: {self.engine.player.stats.get('skill_points', 0)}\n"
+		result += f"  Unlocked: {len(unlocked)}  |  Available: {len(available)}\n"
 		result += "=" * 50 + "\n\n"
 
-		# Group by tier
-		tiers = {}
+		# Group by branch, then tier
+		branches = {}
 		for node in tree:
-			t = node["tier"]
-			if t not in tiers:
-				tiers[t] = []
-			tiers[t].append(node)
+			b = node.get("branch", "origin")
+			branches.setdefault(b, []).append(node)
 
-		for tier_num in sorted(tiers.keys()):
-			result += f"  --- Tier {tier_num} ---\n"
-			for node in tiers[tier_num]:
-				status = ""
+		for branch_name in sorted(branches.keys()):
+			nodes = sorted(branches[branch_name], key=lambda n: (n["tier"], n["name"]))
+			# Count unlocked in this branch
+			b_unlocked = sum(1 for n in nodes if n["id"] in unlocked)
+			result += f"  [{branch_name.upper()}] ({b_unlocked}/{len(nodes)})\n"
+			for node in nodes:
 				if node["id"] in unlocked:
-					status = "[UNLOCKED]"
+					status = "+"
 				elif node["id"] in available:
-					status = "[AVAILABLE]"
+					status = ">"
 				else:
-					status = "[LOCKED]"
-
-				type_tag = "(Active)" if node["type"] == "active" else "(Passive)"
-				result += f"  {status} {node['name']} {type_tag} - {node['cost']}SP\n"
-				result += f"    {node['description'].split(chr(10))[0]}\n"
+					status = " "
+				type_tag = "A" if node["type"] == "active" else "P"
+				result += f"    {status} T{node['tier']} [{type_tag}] {node['name']} ({node['cost']}SP)\n"
 			result += "\n"
 
-		result += "Use 'skills' to open the graphical skill tree.\n"
+		result += "  + = unlocked, > = available\n"
+		result += "  Use 'skills' to open the graphical skill tree.\n"
 		result += "=" * 50 + "\n"
 		return result
 
@@ -1150,6 +1209,78 @@ class CommandHandler:
 			result += f"    Use: ability {cmd_name}\n\n"
 
 		result += "=" * 50 + "\n"
+		return result
+
+	def _show_synergies(self):
+		"""Show active branch synergy bonuses."""
+		if not PROGRESSION_AVAILABLE:
+			return "Progression system not available."
+
+		class_id = self.engine.player.stats.get("class", "none")
+		if class_id == "none":
+			return "You haven't chosen a class yet."
+
+		branch_counts = get_branch_counts(self.engine.player)
+		synergy_total, descriptions = get_synergy_bonuses(self.engine.player)
+
+		result = "\n" + "=" * 50 + "\n"
+		result += "  BRANCH SYNERGIES\n"
+		result += "=" * 50 + "\n\n"
+
+		if not branch_counts:
+			result += "  No branch skills unlocked yet.\n"
+			result += "  Unlock 3+ skills in a branch for synergy bonuses!\n"
+		else:
+			from skill_tree import SYNERGY_THRESHOLDS, BRANCH_SYNERGY_EXTRAS
+			for branch, count in sorted(branch_counts.items(), key=lambda x: -x[1]):
+				# Find current rank
+				current_rank = "—"
+				next_threshold = SYNERGY_THRESHOLDS[0][0] if SYNERGY_THRESHOLDS else 99
+				for i, (thresh, rank, _) in enumerate(SYNERGY_THRESHOLDS):
+					if count >= thresh:
+						current_rank = rank
+						next_threshold = SYNERGY_THRESHOLDS[i + 1][0] if i + 1 < len(SYNERGY_THRESHOLDS) else None
+					else:
+						next_threshold = thresh
+						break
+
+				branch_label = branch.replace("_", " ").title()
+				if current_rank == "—":
+					result += f"  {branch_label}: {count} nodes (need {next_threshold} for Initiate)\n"
+				elif next_threshold:
+					result += f"  ★ {branch_label}: {current_rank} ({count} nodes, {next_threshold - count} more for next)\n"
+				else:
+					result += f"  ★ {branch_label}: {current_rank} ({count} nodes) — MAX RANK!\n"
+
+			if synergy_total:
+				result += "\n  Total synergy bonuses:\n"
+				for stat, val in sorted(synergy_total.items()):
+					nice = stat.replace("_", " ").replace("health max bonus", "Max HP")
+					nice = nice.replace("crit chance bonus", "Crit Chance")
+					if isinstance(val, float):
+						result += f"    +{val:.0%} {nice}\n"
+					else:
+						result += f"    +{val} {nice}\n"
+
+		result += "\n" + "=" * 50 + "\n"
+		return result
+
+	def _show_achievements(self):
+		"""Show the player's achievements."""
+		if not ACHIEVEMENT_AVAILABLE:
+			return "Achievement system not available."
+		return get_achievements_display(self.engine.player)
+
+	def _check_and_show_achievements(self):
+		"""Check for new achievements and return notification text."""
+		if not ACHIEVEMENT_AVAILABLE:
+			return ""
+		newly_unlocked = check_achievements(self.engine.player)
+		if not newly_unlocked:
+			return ""
+		result = ""
+		for ach_id, ach_data in newly_unlocked:
+			result += format_achievement_unlock(ach_id, ach_data)
 		return result
 
 	def _use_ability(self, ability_name):
@@ -1184,6 +1315,8 @@ class CommandHandler:
 						pass
 				self.engine.pending_combat = None
 				self.engine._inventory_changed = True
+				# Track achievements
+				ach_msg = self._track_combat_victory(combat)
 				# Notify quest system of enemy kill
 				if QUEST_AVAILABLE and self.engine.quest_manager:
 					self.engine.quest_manager.on_enemy_killed(
@@ -1192,7 +1325,7 @@ class CommandHandler:
 						is_mini_boss=getattr(combat, 'is_mini_boss', False)
 					)
 					self.engine.quest_manager.on_item_changed()
-				return result + victory_msg + xp_msg
+				return result + victory_msg + xp_msg + ach_msg
 
 			# Check if player died
 			death_msg = self._check_player_death()
@@ -1573,6 +1706,8 @@ class CommandHandler:
 				elif visible_enemy_msg:
 					result += visible_enemy_msg
 				self._update_map_on_move(target_room_id)
+				# Check exploration achievements
+				result += self._check_and_show_achievements()
 				return result
 		
 		self._update_map_on_move(target_room_id)
@@ -1591,6 +1726,8 @@ class CommandHandler:
 			result += combat_msg
 		elif visible_enemy_msg:
 			result += visible_enemy_msg
+		# Check exploration achievements
+		result += self._check_and_show_achievements()
 		return result
 	
 	def _update_map_on_move(self, new_room_id):
@@ -2197,6 +2334,80 @@ class CommandHandler:
 		
 		return False, reason
 
+	def _check_dungeon_requirements(self, dungeon_data):
+		"""
+		Check if the player meets dungeon entry requirements.
+		
+		Returns:
+			(met: bool, message: str)
+		"""
+		reqs = dungeon_data.get("requirements")
+		if not reqs:
+			return True, ""
+
+		player = self.engine.player
+		if not player:
+			return False, "No active player."
+
+		failures = []
+
+		# Level requirement
+		min_level = reqs.get("min_level")
+		if min_level:
+			player_level = player.stats.get("level", 1)
+			if player_level < min_level:
+				failures.append(f"  ✗ Requires level {min_level} (you are level {player_level})")
+
+		# Require ANY of listed skills (class-flexible)
+		skills_any = reqs.get("skills_any")
+		if skills_any and PROGRESSION_AVAILABLE:
+			has_one = False
+			for sid in skills_any:
+				if is_skill_unlocked(player, sid):
+					has_one = True
+					break
+			if not has_one:
+				# Build a readable list of skill names
+				skill_names = []
+				player_class = player.stats.get("class", "")
+				for sid in skills_any:
+					node = get_node_by_id(player_class, sid)
+					if node:
+						skill_names.append(node.get("name", sid))
+					else:
+						skill_names.append(sid)
+				failures.append(f"  ✗ Requires one of: {', '.join(skill_names)}")
+
+		# Require ALL of listed skills
+		skills_all = reqs.get("skills_all")
+		if skills_all and PROGRESSION_AVAILABLE:
+			for sid in skills_all:
+				if not is_skill_unlocked(player, sid):
+					node = get_node_by_id(player.stats.get("class", ""), sid)
+					name = node.get("name", sid) if node else sid
+					failures.append(f"  ✗ Requires skill: {name}")
+
+		# Quest prerequisite
+		quest_req = reqs.get("quest_complete")
+		if quest_req:
+			completed_quests = player.state.get("completed_quests", [])
+			if quest_req not in completed_quests:
+				failures.append(f"  ✗ Requires quest completion: {quest_req}")
+
+		if failures:
+			desc = reqs.get("description", "You do not meet the requirements.")
+			msg = "\n" + "=" * 50 + "\n"
+			msg += "  ⛔ ENTRY DENIED\n"
+			msg += "=" * 50 + "\n\n"
+			msg += f"  {desc}\n\n"
+			msg += "  Requirements not met:\n"
+			msg += "\n".join(failures) + "\n\n"
+			msg += "  Grow stronger and return when you are ready.\n"
+			msg += "=" * 50 + "\n"
+			return False, msg
+
+		return True, ""
+
 	def handle_enter_command(self):
 		"""
 		Smart ENTER command that handles:
@@ -2489,6 +2700,12 @@ Do you wish to enter? (yes/no)
 		if not dungeon_data:
 			return f"The entrance seems sealed. [Error: Fixed dungeon '{dungeon_id}' not found]"
 		
+		# Check skill/level requirements
+		meets_reqs, req_msg = self._check_dungeon_requirements(dungeon_data)
+		if not meets_reqs:
+			name = dungeon_data.get("name", "Unknown Dungeon")
+			return f"\n  {name}\n{req_msg}"
+		
 		name = dungeon_data.get("name", "Unknown Dungeon")
 		description = dungeon_data.get("description", "A mysterious dungeon.")
 		num_floors = dungeon_data.get("num_floors", "?")
@@ -2595,6 +2812,16 @@ Do you wish to enter? (yes/no)
 			trap_msg = self._check_room_traps(entrance_room_id)
 			if trap_msg:
 				result += "\n" + trap_msg
+			
+			# Track achievement for elite dungeon entry
+			if ACHIEVEMENT_AVAILABLE:
+				try:
+					difficulty = dungeon_data.get('difficulty', '')
+					if difficulty == 'extreme':
+						track_event(self.engine.player, "elite_dungeons_entered")
+					result += self._check_and_show_achievements()
+				except Exception:
+					pass
 			
 			return result
 		
@@ -3341,6 +3568,14 @@ Do you wish to enter? (yes/no)
 			except Exception:
 				pass
 		
+		# Track chest gold for achievements
+		if ACHIEVEMENT_AVAILABLE and gold > 0:
+			try:
+				track_event(self.engine.player, "total_gold", gold)
+				result += self._check_and_show_achievements()
+			except Exception:
+				pass
+		
 		# Notify UI of inventory change
 		try:
 			self.engine._inventory_changed = True
@@ -3499,6 +3734,13 @@ Do you wish to enter? (yes/no)
 		if PROGRESSION_AVAILABLE:
 			try:
 				result += award_xp(self.engine.player, XP_AWARDS.get("sell_item", 2), "sold item")
+			except Exception:
+				pass
+		# Track gold for achievements
+		if ACHIEVEMENT_AVAILABLE and price > 0:
+			try:
+				track_event(self.engine.player, "total_gold", price)
+				result += self._check_and_show_achievements()
 			except Exception:
 				pass
 		return result
@@ -4269,7 +4511,7 @@ class GameEngine:
 		# ensure item_worth exists even if not in file
 		self.item_worth = getattr(self, "item_worth", {}) or {}
 
-	CURRENT_SAVE_VERSION = 2
+	CURRENT_SAVE_VERSION = 3
 
 	def _migrate_save(self, state, from_version):
 		"""Migrate old save formats to current version.
@@ -4308,7 +4550,58 @@ class GameEngine:
 			state["player"] = player
 			state["save_version"] = 2
 			if notes:
-				notes.insert(0, "v1→v2")
+				notes.insert(0, "v1\u2192v2")
+
+		# ── v2 → v3 migration (Skill Tree Redesign) ──
+		if from_version < 3:
+			player = state.get("player", {})
+			p_stats = player.get("stats", {})
+			p_state = player.get("state", {})
+			old_skills = p_state.get("unlocked_skills", [])
+
+			# Detect old-format skill IDs (v2 trees used IDs like w_power_strike,
+			# r_backstab, m_fireball without branch prefixes like w_ber_ / w_tank_).
+			# New trees use w_origin / r_origin / m_origin for the center node.
+			old_format_ids = [
+				s for s in old_skills
+				if s not in ("w_origin", "r_origin", "m_origin")
+				and not any(s.startswith(p) for p in (
+					"w_ber_", "w_tank_", "w_arc_", "w_cmd_", "w_wm_", "w_glad_",
+					"r_asn_", "r_trk_", "r_thf_", "r_bh_", "r_phn_",
+					"m_fir_", "m_ice_", "m_ear_", "m_wnd_", "m_ltn_",
+					"m_arc_", "m_heal_", "m_shd_",
+				))
+			]
+
+			if old_format_ids:
+				# Refund all SP spent on old tree and reset skills
+				refunded = 0
+				for sid in old_skills:
+					# Old nodes cost 1-3 SP based on tier; approximate = 1 each
+					refunded += 1
+				p_stats["skill_points"] = p_stats.get("skill_points", 0) + refunded
+
+				# Reset all skill-granted stat bonuses by recalculating from
+				# base class + level.  This is a best-effort reset.
+				class_id = p_stats.get("class", "none")
+				p_state["unlocked_skills"] = []
+				p_state["cooldowns"] = {}
+				p_state["active_effects"] = {}
+
+				# Auto-unlock origin node if class is set
+				origin_map = {"warrior": "w_origin", "rogue": "r_origin", "mage": "m_origin"}
+				origin = origin_map.get(class_id)
+				if origin:
+					p_state["unlocked_skills"].append(origin)
+
+				notes.append(f"v2\u2192v3 skill tree reset: refunded {refunded} SP")
+			else:
+				notes.append("v2\u2192v3")
+
+			player["stats"] = p_stats
+			player["state"] = p_state
+			state["player"] = player
+			state["save_version"] = 3
 
 		return state, notes
 
@@ -4519,7 +4812,7 @@ class GameEngine:
 
 		# Build a save structure containing only runtime-modified state (player + room items)
 		state = {
-			"save_version": 2,  # Save format version for migration
+			"save_version": 3,  # Save format version for migration
 			"player": self.player.to_dict(),  # inventory serialized as dict by Player.to_dict()
 			"rooms": {}
 		}
@@ -4756,6 +5049,11 @@ class GameEngine:
 			# If class not chosen yet, prompt selection
 			if self.player.stats.get("class", "none") == "none":
 				self.pending_class_selection = True
+			# Recalculate synergy bonuses on load
+			try:
+				apply_synergy_bonuses(self.player)
+			except Exception:
+				pass
 
 		# Migrate old saves: add equipment slots if missing
 		if EQUIPMENT_AVAILABLE and self.player:
@@ -4764,6 +5062,14 @@ class GameEngine:
 		# Migrate old saves: add cleared rooms tracking if missing
 		if self.player and "cleared_rooms" not in self.player.state:
 			self.player.state["cleared_rooms"] = []
+
+		# Initialize achievement tracking if missing
+		if ACHIEVEMENT_AVAILABLE and self.player:
+			if "achievements" not in self.player.state:
+				self.player.state["achievements"] = []
+			if "achievement_tracking" not in self.player.state:
+				self.player.state["achievement_tracking"] = {}
+
 		# Reset combat state on load
 		self.pending_combat = None
 
@@ -4890,6 +5196,12 @@ class AdventureGUI:
 		self.status_label = tk.Label(self.controls, text="", font=self.font)
 		self.status_label.pack(side="left")
 
+		# Ability hotbar frame (between controls and entry)
+		self.hotbar_frame = tk.Frame(root, bg="#1a1a1a")
+		self.hotbar_frame.pack(fill="x", padx=6)
+		self._hotbar_buttons = []  # list of (btn, ability_data) tuples
+		self._hotbar_visible = False
+
 		# Entry for commands - created early so user can type immediately
 		self.entry = tk.Entry(root, bg="#2e2e2e", fg="#ffffff", insertbackground="#ffffff", font=self.font)
 		self.entry.pack(fill="x", padx=6, pady=6)
@@ -4906,6 +5218,9 @@ class AdventureGUI:
 		root.bind("<Control-S>", self.on_save_shortcut)
 		root.bind("<Control-l>", self.on_load_shortcut)
 		root.bind("<Control-L>", self.on_load_shortcut)
+		# Hotbar keybindings (1-8 use ability in that slot)
+		for i in range(1, 9):
+			root.bind(str(i), lambda e, slot=i: self._hotbar_key(slot, e))
 
 		# Engine will be initialized shortly via _init_engine to avoid blocking UI draw
 		self.engine = None
@@ -4989,6 +5304,7 @@ class AdventureGUI:
 
 		# Ensure inventory UI reflects current state
 		self.refresh_inventory_display()
+		self._refresh_hotbar()
 		try:
 			self.root.after(0, lambda: self.entry.focus_set())
 		except Exception:
@@ -5038,6 +5354,8 @@ class AdventureGUI:
 
 		# Refresh inventory display because commands may have changed inventory
 		self.refresh_inventory_display()
+		# Refresh hotbar (cooldown states, new abilities, combat state)
+		self._refresh_hotbar()
 
 		# If engine requested quit, close the GUI
 		if getattr(self.engine, "should_quit", False):
@@ -5265,6 +5583,116 @@ class AdventureGUI:
 		except Exception:
 			# ignore UI errors
 			pass
+
+	# ── Ability Hotbar ──
+
+	def _refresh_hotbar(self):
+		"""Rebuild the ability hotbar buttons to reflect current abilities and cooldowns."""
+		# Clear old buttons
+		for widget in self.hotbar_frame.winfo_children():
+			widget.destroy()
+		self._hotbar_buttons = []
+
+		if not PROGRESSION_AVAILABLE or not self.engine or not self.engine.player:
+			self.hotbar_frame.configure(height=1)
+			self._hotbar_visible = False
+			return
+
+		abilities = get_active_abilities(self.engine.player)
+		if not abilities:
+			self.hotbar_frame.configure(height=1)
+			self._hotbar_visible = False
+			return
+
+		self._hotbar_visible = True
+		cooldowns = self.engine.player.state.get("cooldowns", {})
+		in_combat = getattr(self.engine, 'pending_combat', None) is not None
+
+		# Label
+		lbl = tk.Label(self.hotbar_frame, text="Abilities:",
+					   font=font.Font(family="Segoe UI", size=8, weight="bold"),
+					   bg="#1a1a1a", fg="#888888")
+		lbl.pack(side="left", padx=(4, 2))
+
+		for idx, ab in enumerate(abilities):
+			cd_remaining = cooldowns.get(ab["skill_id"], 0)
+			ab_name = ab.get("name", "?")
+			is_combat_ability = ab.get("combat", False)
+
+			# Button text: [slot] Name (cd)
+			slot_num = idx + 1
+			if cd_remaining > 0:
+				btn_text = f"[{slot_num}] {ab_name} ({cd_remaining}T)"
+			else:
+				btn_text = f"[{slot_num}] {ab_name}"
+
+			# Determine state and colours
+			if cd_remaining > 0:
+				bg_color = "#2a2a2a"
+				fg_color = "#666666"
+				state = "disabled"
+			elif is_combat_ability and not in_combat:
+				bg_color = "#2a2a2a"
+				fg_color = "#555555"
+				state = "disabled"
+			elif is_combat_ability and in_combat:
+				bg_color = "#3a1a00"
+				fg_color = "#FF9800"
+				state = "normal"
+			else:
+				# Non-combat utility ability — always usable
+				bg_color = "#1a2a3a"
+				fg_color = "#42A5F5"
+				state = "normal"
+
+			cmd_name = ab_name.lower().replace(" ", "_")
+			btn = tk.Button(
+				self.hotbar_frame, text=btn_text,
+				font=font.Font(family="Segoe UI", size=8),
+				bg=bg_color, fg=fg_color,
+				activebackground="#333333", activeforeground="#ffffff",
+				relief="flat", bd=1, padx=6, pady=2,
+				state=state,
+				command=lambda n=cmd_name: self._hotbar_use(n))
+			btn.pack(side="left", padx=2, pady=2)
+			self._hotbar_buttons.append((btn, ab))
+
+	def _hotbar_use(self, ability_cmd_name):
+		"""Execute an ability from the hotbar button click."""
+		if not self.engine:
+			return
+		# Run through the command handler so all combat logic is handled
+		resp = self.engine.process_command(f"ability {ability_cmd_name}")
+		if resp:
+			self.append(resp)
+		self._refresh_hotbar()
+		self.refresh_inventory_display()
+		try:
+			self.root.after(0, lambda: self.entry.focus_set())
+		except Exception:
+			pass
+
+	def _hotbar_key(self, slot, event=None):
+		"""Handle number key press to use hotbar slot (only when entry not focused)."""
+		# Only trigger if the entry widget does NOT have focus (typing numbers in commands)
+		try:
+			focused = self.root.focus_get()
+			if focused == self.entry:
+				return  # let the keystroke go through to the entry
+		except Exception:
+			return
+
+		if not self._hotbar_visible or not self._hotbar_buttons:
+			return
+		idx = slot - 1
+		if idx < 0 or idx >= len(self._hotbar_buttons):
+			return
+		btn, ab = self._hotbar_buttons[idx]
+		if str(btn.cget("state")) == "disabled":
+			return
+		cmd_name = ab.get("name", "").lower().replace(" ", "_")
+		if cmd_name:
+			self._hotbar_use(cmd_name)
 
 	def refresh_inventory_display(self):
 		"""Refresh the inventory listbox (if open) and update status label."""

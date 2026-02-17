@@ -60,7 +60,7 @@ QUEST_DATABASE = {
 				"description": "Collect 3 iron ingots",
 			},
 		],
-		"rewards": {"xp": 75, "gold": 50, "items": {"steel_dagger": 1}},
+		"rewards": {"xp": 75, "gold": 50, "items": {"steel_dagger": 1}, "skill_points": 1},
 		"prerequisite": None,
 		"chain_next": "blacksmith_masterwork",
 		"level_req": 1,
@@ -88,7 +88,7 @@ QUEST_DATABASE = {
 				"description": "Obtain an eternal ember",
 			},
 		],
-		"rewards": {"xp": 200, "gold": 100, "items": {"mithril_blade": 1}},
+		"rewards": {"xp": 200, "gold": 100, "items": {"mithril_blade": 1}, "skill_points": 2},
 		"prerequisite": "blacksmith_errand",
 		"chain_next": None,
 		"level_req": 5,
@@ -118,7 +118,7 @@ QUEST_DATABASE = {
 				"description": "Find 2 glowing mushrooms",
 			},
 		],
-		"rewards": {"xp": 100, "gold": 30, "items": {"greater_healing_potion": 2, "antidote": 2}},
+		"rewards": {"xp": 100, "gold": 30, "items": {"greater_healing_potion": 2, "antidote": 2}, "skill_points": 1},
 		"prerequisite": None,
 		"chain_next": None,
 		"level_req": 2,
@@ -151,7 +151,7 @@ QUEST_DATABASE = {
 				"description": "Reach the mountain peak",
 			},
 		],
-		"rewards": {"xp": 120, "gold": 40, "items": {"spyglass": 1}},
+		"rewards": {"xp": 120, "gold": 40, "items": {"spyglass": 1}, "skill_points": 1},
 		"prerequisite": None,
 		"chain_next": "hermit_shadow",
 		"level_req": 2,
@@ -173,7 +173,7 @@ QUEST_DATABASE = {
 				"description": "Defeat the Shadow Lord in the Shadow Depths",
 			},
 		],
-		"rewards": {"xp": 300, "gold": 150, "items": {"enchanted_candle": 1}},
+		"rewards": {"xp": 300, "gold": 150, "items": {"enchanted_candle": 1}, "skill_points": 3},
 		"prerequisite": "hermit_explore",
 		"chain_next": None,
 		"level_req": 5,
@@ -203,7 +203,7 @@ QUEST_DATABASE = {
 				"description": "Banish 3 ghosts",
 			},
 		],
-		"rewards": {"xp": 150, "gold": 60, "items": {"blessed_water": 2}},
+		"rewards": {"xp": 150, "gold": 60, "items": {"blessed_water": 2}, "skill_points": 2},
 		"prerequisite": None,
 		"chain_next": None,
 		"level_req": 3,
@@ -233,7 +233,7 @@ QUEST_DATABASE = {
 				"description": "Defeat a dungeon boss",
 			},
 		],
-		"rewards": {"xp": 400, "gold": 200, "items": {"warriors_medallion": 1}},
+		"rewards": {"xp": 400, "gold": 200, "items": {"warriors_medallion": 1}, "skill_points": 5},
 		"prerequisite": None,
 		"chain_next": None,
 		"level_req": 6,
@@ -257,7 +257,7 @@ QUEST_DATABASE = {
 				"description": "Catch 3 fresh fish from the river",
 			},
 		],
-		"rewards": {"xp": 50, "gold": 30, "items": {"healing_potion": 2}},
+		"rewards": {"xp": 50, "gold": 30, "items": {"healing_potion": 2}, "skill_points": 1},
 		"prerequisite": None,
 		"chain_next": None,
 		"level_req": 1,
@@ -281,7 +281,7 @@ QUEST_DATABASE = {
 				"description": "Collect 5 crystal shards",
 			},
 		],
-		"rewards": {"xp": 100, "gold": 120, "items": {}},
+		"rewards": {"xp": 100, "gold": 120, "items": {}, "skill_points": 2},
 		"prerequisite": None,
 		"chain_next": None,
 		"level_req": 3,
@@ -314,7 +314,7 @@ QUEST_DATABASE = {
 				"description": "Scout the Shadow Depths entrance",
 			},
 		],
-		"rewards": {"xp": 80, "gold": 45, "items": {"torch": 3}},
+		"rewards": {"xp": 80, "gold": 45, "items": {"torch": 3}, "skill_points": 1},
 		"prerequisite": None,
 		"chain_next": None,
 		"level_req": 1,
@@ -507,6 +507,12 @@ class QuestManager:
 			self.engine.player.stats["gold"] = self.engine.player.stats.get("gold", 0) + gold_reward
 			result += f"  💰 Received {gold_reward} gold\n"
 
+		# Award skill points
+		sp_reward = rewards.get("skill_points", 0)
+		if sp_reward:
+			self.engine.player.stats["skill_points"] = self.engine.player.stats.get("skill_points", 0) + sp_reward
+			result += f"  ⭐ Received {sp_reward} Skill Point{'s' if sp_reward > 1 else ''}\n"
+
 		# Award items
 		item_rewards = rewards.get("items", {})
 		for item_name, count in item_rewards.items():
@@ -517,6 +523,18 @@ class QuestManager:
 			result += f"  📦 Received: {count}x {nice}\n"
 
 		result += "\n"
+
+		# Track achievements for quest completion
+		try:
+			from achievement_system import track_event, check_achievements, format_achievement_unlock
+			track_event(self.engine.player, "quests_completed")
+			if gold_reward:
+				track_event(self.engine.player, "total_gold", gold_reward)
+			newly_unlocked = check_achievements(self.engine.player)
+			for ach_id, ach_data in newly_unlocked:
+				result += format_achievement_unlock(ach_id, ach_data)
+		except Exception:
+			pass
 
 		# Check if chain_next should be offered
 		chain_next = qdef.get("chain_next")
@@ -827,6 +845,9 @@ class QuestManager:
 			result += f"    ⭐ {rewards['xp']} XP\n"
 		if rewards.get("gold"):
 			result += f"    💰 {rewards['gold']} gold\n"
+		if rewards.get("skill_points"):
+			sp = rewards['skill_points']
+			result += f"    ⭐ {sp} Skill Point{'s' if sp > 1 else ''}\n"
 		for item, count in rewards.get("items", {}).items():
 			nice = item.replace("_", " ").title()
 			result += f"    📦 {count}x {nice}\n"

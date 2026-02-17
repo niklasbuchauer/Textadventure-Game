@@ -7,6 +7,10 @@
   "num_floors": 3,
   "theme": "shadow_magic",
   "difficulty": "hard",
+  "requirements": {
+    "min_level": 8,
+    "description": "The darkness tests your resolve. Only those who have advanced beyond the basics may enter."
+  },
   "floors": {
     "1": {
       "floor_number": 1,

@@ -1,0 +1,302 @@
+{
+  "dungeon_id": "verdant_labyrinth",
+  "name": "The Verdant Labyrinth",
+  "description": "Deep beneath the Ancient Grove, roots of the World Tree form a living maze. The labyrinth shifts and grows, walls of wood and vine rearranging themselves. Nature itself guards what lies within — the Seed of Creation.",
+  "entrance_room_id": "ancient_grove",
+  "always_open": true,
+  "num_floors": 4,
+  "theme": "nature_elite",
+  "difficulty": "extreme",
+  "requirements": {
+    "min_level": 15,
+    "skills_any": ["w_cmd_dominate", "r_phm_umbral", "m_earth_earthquake"],
+    "description": "The roots of the World Tree recognize only those who have achieved mastery. Prove your worth through leadership, stealth, or elemental dominance."
+  },
+  "floors": {
+    "1": {
+      "floor_number": 1,
+      "num_rooms": 6,
+      "entrance_room": "vl_f1_root_gate",
+      "exit_stairs_down": "vl_f1_deep_roots",
+      "rooms": {
+        "vl_f1_root_gate": {
+          "name": "Root Gate",
+          "description": "Massive roots part to reveal a passage beneath the grove. Bioluminescent fungi line the walls, casting an eerie green glow. The air is thick with pollen and the scent of ancient earth.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"glowing_mushroom": {"quantity": 3, "value": 35}},
+          "exits": {
+            "leave": {
+              "target": "ancient_grove",
+              "type": "leave_dungeon",
+              "transition_text": "You climb back through the root gate, emerging blinking into the dappled forest light..."
+            },
+            "south": {"target": "vl_f1_fungal_grotto", "type": "direction"},
+            "east": {"target": "vl_f1_vine_corridor", "type": "direction"}
+          }
+        },
+        "vl_f1_fungal_grotto": {
+          "name": "Fungal Grotto",
+          "description": "Enormous mushrooms tower over you like trees, their caps glowing with soft phosphorescence. Spores drift lazily through the air. Some of these fungi are known to be poisonous to the touch.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"giant_mushroom_cap": {"quantity": 1, "value": 80}, "toxic_spore_sac": {"quantity": 2, "value": 45}},
+          "traps": [{"type": "poison_spore", "triggered": false, "detected": false, "disarmed": false, "damage": 20}],
+          "exits": {
+            "north": {"target": "vl_f1_root_gate", "type": "direction"},
+            "east": {"target": "vl_f1_amber_pool", "type": "direction"}
+          }
+        },
+        "vl_f1_vine_corridor": {
+          "name": "Vine Corridor",
+          "description": "Living vines form the walls of this twisting passage. They writhe slowly, occasionally reaching toward you. Thorns as long as daggers line every tendril.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"living_vine": {"quantity": 2, "value": 50}},
+          "traps": [{"type": "thorn_whip", "triggered": false, "detected": false, "disarmed": false, "damage": 25}],
+          "exits": {
+            "west": {"target": "vl_f1_root_gate", "type": "direction"},
+            "south": {"target": "vl_f1_amber_pool", "type": "direction"},
+            "east": {"target": "vl_f1_treant_hall", "type": "direction"}
+          }
+        },
+        "vl_f1_amber_pool": {
+          "name": "Amber Pool",
+          "description": "A pool of liquid amber fills this chamber, perfectly still and golden. Ancient insects are preserved in the hardened amber around the edges. The liquid is warm to the touch.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"liquid_amber": {"quantity": 1, "value": 150}, "preserved_insect": {"quantity": 2, "value": 60}},
+          "exits": {
+            "north": {"target": "vl_f1_vine_corridor", "type": "direction"},
+            "west": {"target": "vl_f1_fungal_grotto", "type": "direction"}
+          }
+        },
+        "vl_f1_treant_hall": {
+          "name": "Treant Hall",
+          "description": "The petrified forms of ancient treants stand frozen in this vast chamber. Once guardians of the labyrinth, they now stand as silent sentinels. One seems to still have sap flowing through its wooden veins.",
+          "coordinates": [2, 0],
+          "location_type": "dungeon",
+          "items": {"heartwood": {"quantity": 1, "value": 120}},
+          "exits": {
+            "west": {"target": "vl_f1_vine_corridor", "type": "direction"},
+            "south": {"target": "vl_f1_deep_roots", "type": "direction"}
+          }
+        },
+        "vl_f1_deep_roots": {
+          "name": "Deep Root Chamber",
+          "description": "Roots as thick as castle pillars plunge downward into darkness. Between them, a natural stairway of compacted earth spirals into the deeper levels of the labyrinth.",
+          "coordinates": [2, -1],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "north": {"target": "vl_f1_treant_hall", "type": "direction"},
+            "down": {"target": "vl_f2_underground_river", "type": "stairs_down"}
+          }
+        }
+      }
+    },
+    "2": {
+      "floor_number": 2,
+      "num_rooms": 6,
+      "entrance_room": "vl_f2_underground_river",
+      "exit_stairs_down": "vl_f2_root_nexus",
+      "rooms": {
+        "vl_f2_underground_river": {
+          "name": "Underground River",
+          "description": "A swift underground river cuts through this level. Stepping stones of petrified wood offer a crossing. The water glows faintly with dissolved minerals.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"river_pearl": {"quantity": 2, "value": 90}},
+          "exits": {
+            "up": {"target": "vl_f1_deep_roots", "type": "stairs_up"},
+            "east": {"target": "vl_f2_moss_cathedral", "type": "direction"},
+            "south": {"target": "vl_f2_worm_tunnels", "type": "direction"}
+          }
+        },
+        "vl_f2_moss_cathedral": {
+          "name": "Moss Cathedral",
+          "description": "A natural cathedral of stone and moss, with columns of living wood supporting a canopy of hanging gardens. Flowers that bloom only in total darkness illuminate the space with soft bioluminescence.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"moonbloom_flower": {"quantity": 2, "value": 100}},
+          "exits": {
+            "west": {"target": "vl_f2_underground_river", "type": "direction"},
+            "south": {"target": "vl_f2_beetle_nest", "type": "direction"}
+          }
+        },
+        "vl_f2_worm_tunnels": {
+          "name": "Giant Worm Tunnels",
+          "description": "Tunnels bored by enormous earth worms intersect here. The walls are smooth and slightly slimy. Distant rumbling suggests the worms are still active somewhere nearby.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"worm_silk": {"quantity": 3, "value": 65}},
+          "traps": [{"type": "cave_in", "triggered": false, "detected": false, "disarmed": false, "damage": 35}],
+          "exits": {
+            "north": {"target": "vl_f2_underground_river", "type": "direction"},
+            "east": {"target": "vl_f2_beetle_nest", "type": "direction"},
+            "south": {"target": "vl_f2_mycelium_network", "type": "direction"}
+          }
+        },
+        "vl_f2_beetle_nest": {
+          "name": "Jewel Beetle Nest",
+          "description": "The walls shimmer with thousands of jewel beetles, their carapaces reflecting light like precious gemstones. They swarm protectively around their queen's chamber.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"jewel_beetle_shell": {"quantity": 3, "value": 120}},
+          "exits": {
+            "north": {"target": "vl_f2_moss_cathedral", "type": "direction"},
+            "west": {"target": "vl_f2_worm_tunnels", "type": "direction"}
+          }
+        },
+        "vl_f2_mycelium_network": {
+          "name": "Mycelium Network",
+          "description": "A vast network of fungal threads covers every surface, pulsing with faint light as it transmits signals throughout the labyrinth. Touching the threads sends ripples of awareness cascading through the web.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"mycelium_strand": {"quantity": 1, "value": 200}},
+          "traps": [{"type": "spore_explosion", "triggered": false, "detected": false, "disarmed": false, "damage": 30}],
+          "exits": {
+            "north": {"target": "vl_f2_worm_tunnels", "type": "direction"},
+            "east": {"target": "vl_f2_root_nexus", "type": "direction"}
+          }
+        },
+        "vl_f2_root_nexus": {
+          "name": "Root Nexus",
+          "description": "All roots converge here at a massive knot of living wood. Energy pulses through the root network like a heartbeat. A passage descends through the center of the nexus.",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {"nexus_sap": {"quantity": 1, "value": 300}},
+          "exits": {
+            "west": {"target": "vl_f2_mycelium_network", "type": "direction"},
+            "down": {"target": "vl_f3_primeval_chamber", "type": "stairs_down"}
+          }
+        }
+      }
+    },
+    "3": {
+      "floor_number": 3,
+      "num_rooms": 5,
+      "entrance_room": "vl_f3_primeval_chamber",
+      "exit_stairs_down": "vl_f3_world_root",
+      "rooms": {
+        "vl_f3_primeval_chamber": {
+          "name": "Primeval Chamber",
+          "description": "You've reached the primordial layer. Fossils of creatures that predate civilization are embedded in every surface. The air here carries the scent of creation itself.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"primordial_fossil": {"quantity": 1, "value": 350}},
+          "exits": {
+            "up": {"target": "vl_f2_root_nexus", "type": "stairs_up"},
+            "east": {"target": "vl_f3_seed_vault", "type": "direction"},
+            "south": {"target": "vl_f3_nature_sanctum", "type": "direction"}
+          }
+        },
+        "vl_f3_seed_vault": {
+          "name": "Seed Vault",
+          "description": "Thousands of seeds from extinct plant species are stored in crystalline pods. Each one contains a life form lost to the world above. Some still pulse with dormant energy.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"ancient_seed": {"quantity": 2, "value": 200}, "crystal_pod": {"quantity": 1, "value": 180}},
+          "exits": {
+            "west": {"target": "vl_f3_primeval_chamber", "type": "direction"},
+            "south": {"target": "vl_f3_druid_sanctum", "type": "direction"}
+          }
+        },
+        "vl_f3_nature_sanctum": {
+          "name": "Nature's Sanctum",
+          "description": "A perfect garden thrives in the depths, fed by magical light from crystals embedded in the ceiling. Every plant here is a lost species, preserved by the labyrinth's magic.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"eden_flower": {"quantity": 1, "value": 500}},
+          "exits": {
+            "north": {"target": "vl_f3_primeval_chamber", "type": "direction"},
+            "east": {"target": "vl_f3_druid_sanctum", "type": "direction"}
+          }
+        },
+        "vl_f3_druid_sanctum": {
+          "name": "Ancient Druid Sanctum",
+          "description": "The remains of an ancient druidic order. Stone altars ring a central crafting station overgrown with living vines. The druids' knowledge of nature magic is etched into every surface.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"druid_staff_fragment": {"quantity": 1, "value": 400}},
+          "exits": {
+            "north": {"target": "vl_f3_seed_vault", "type": "direction"},
+            "west": {"target": "vl_f3_nature_sanctum", "type": "direction"},
+            "south": {"target": "vl_f3_world_root", "type": "direction"}
+          }
+        },
+        "vl_f3_world_root": {
+          "name": "World Root Passage",
+          "description": "The main root of the World Tree itself. A passage carved through its woody flesh descends to the deepest chamber. Life energy throbs through the root like a massive pulse.",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "north": {"target": "vl_f3_druid_sanctum", "type": "direction"},
+            "down": {"target": "vl_f4_heart_of_growth", "type": "stairs_down"}
+          }
+        }
+      }
+    },
+    "4": {
+      "floor_number": 4,
+      "num_rooms": 4,
+      "entrance_room": "vl_f4_heart_of_growth",
+      "rooms": {
+        "vl_f4_heart_of_growth": {
+          "name": "Heart of Growth",
+          "description": "The very center of the World Tree's root system. Pure life energy saturates every molecule of air. Plants grow visibly in real-time, vines reaching and flowers blooming before your eyes.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"essence_of_growth": {"quantity": 1, "value": 600}},
+          "exits": {
+            "up": {"target": "vl_f3_world_root", "type": "stairs_up"},
+            "east": {"target": "vl_f4_living_altar", "type": "direction"}
+          }
+        },
+        "vl_f4_living_altar": {
+          "name": "Living Altar",
+          "description": "A crafting altar grown from living wood, pulsing with the World Tree's power. Items placed here are infused with the essence of nature itself. Moss and flowers decorate every surface.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"world_tree_bark": {"quantity": 1, "value": 800}},
+          "exits": {
+            "west": {"target": "vl_f4_heart_of_growth", "type": "direction"},
+            "south": {"target": "vl_f4_seed_chamber", "type": "direction"}
+          }
+        },
+        "vl_f4_seed_chamber": {
+          "name": "Seed of Creation",
+          "description": "In a chamber of blinding green light, a single seed the size of a boulder hovers in mid-air. This is the Seed of Creation — the origin point of all plant life in the world. It pulses with incomprehensible power.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"creation_seed_shard": {"quantity": 1, "value": 1500}},
+          "exits": {
+            "north": {"target": "vl_f4_living_altar", "type": "direction"},
+            "west": {"target": "vl_f4_guardian_chamber", "type": "direction"}
+          }
+        },
+        "vl_f4_guardian_chamber": {
+          "name": "Chamber of the Verdant Guardian",
+          "description": "The final test. The Verdant Guardian, an ancient treant fused with the World Tree itself, rises to challenge any who would disturb the Seed. Its wooden form towers to the ceiling, eyes blazing with green fire.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"guardian_heartwood": {"quantity": 1, "value": 2000}},
+          "boss": {
+            "name": "Verdant Guardian",
+            "level": 20,
+            "hp": 550,
+            "attack": 40,
+            "defense": 35,
+            "xp_reward": 850,
+            "gold_reward": [250, 550],
+            "abilities": ["root_slam", "nature_regeneration", "thorn_storm"]
+          },
+          "exits": {
+            "east": {"target": "vl_f4_seed_chamber", "type": "direction"}
+          }
+        }
+      }
+    }
+  }
+}
