@@ -1,0 +1,376 @@
+{
+  "dungeon_id": "temple_of_the_sun",
+  "name": "Temple of the Sun",
+  "description": "An ancient temple built by sun-worshipping islanders deep beneath the Sunstone Atoll. Golden light pulses through hieroglyph-covered corridors, and the air shimmers with residual divine energy. The temple's guardians still patrol its halls.",
+  "entrance_room_id": "sunstone_temple_deep_crypt",
+  "always_open": true,
+  "num_floors": 3,
+  "theme": "sun_temple",
+  "difficulty": "very_hard",
+  "requirements": {
+    "min_level": 10,
+    "description": "The sun-sealed door only opens for warriors who have proven themselves in many battles."
+  },
+  "floors": {
+    "1": {
+      "floor_number": 1,
+      "num_rooms": 8,
+      "entrance_room": "tots_f1_sunlit_vestibule",
+      "exit_stairs_down": "tots_f1_descending_passage",
+      "rooms": {
+        "tots_f1_sunlit_vestibule": {
+          "name": "Sunlit Vestibule",
+          "description": "Golden light streams from crystal skylights set into the ceiling far above. The walls are covered in murals depicting the sun god Ra-Solari granting fire to mortals. The air is warm and dry, scented with ancient incense.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"sun_incense": {"quantity": 2, "value": 25}},
+          "exits": {
+            "leave": {
+              "target": "sunstone_temple_deep_crypt",
+              "type": "leave_dungeon",
+              "transition_text": "You climb back through the crypt entrance, leaving the golden glow behind..."
+            },
+            "south": {"target": "tots_f1_hall_of_murals", "type": "direction"},
+            "east": {"target": "tots_f1_offering_chamber", "type": "direction"}
+          }
+        },
+        "tots_f1_hall_of_murals": {
+          "name": "Hall of Murals",
+          "description": "Both walls display floor-to-ceiling murals in vivid pigments that have somehow survived millennia. They tell the story of the Sun Priests — their rise, their golden age, and the dark ritual that sealed the temple forever. Gold leaf accents still gleam.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"gold_leaf_fragment": {"quantity": 3, "value": 35}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "tots_f1_sunlit_vestibule", "type": "direction"},
+            "south": {"target": "tots_f1_solar_font", "type": "direction"},
+            "west": {"target": "tots_f1_priest_quarters", "type": "direction"}
+          }
+        },
+        "tots_f1_offering_chamber": {
+          "name": "Offering Chamber",
+          "description": "A circular room with a golden bowl at its center, still filled with ancient coins and jewels. Skeletal hands reach from alcoves in the walls, frozen mid-offering. The bowl radiates warmth.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"ancient_gold_coin": {"quantity": 5, "value": 40}, "sun_ruby": {"quantity": 1, "value": 85}},
+          "traps": [
+            {"type": "poison_dart", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "west": {"target": "tots_f1_sunlit_vestibule", "type": "direction"},
+            "south": {"target": "tots_f1_guardian_hall", "type": "direction"}
+          }
+        },
+        "tots_f1_priest_quarters": {
+          "name": "Priest Quarters",
+          "description": "Small cells line the corridor, each with a stone bed and a sun-symbol carved above the doorway. Personal effects have long since crumbled, but a few golden trinkets survive. One cell has writing scratched into the wall — warnings about something below.",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {"golden_trinket": {"quantity": 2, "value": 30}, "sun_priest_journal": {"quantity": 1, "value": 50}},
+          "exits": {
+            "east": {"target": "tots_f1_hall_of_murals", "type": "direction"}
+          }
+        },
+        "tots_f1_solar_font": {
+          "name": "Solar Font",
+          "description": "A large basin carved from a single piece of amber stone, filled with liquid that glows like molten gold but is cool to the touch. Drinking from it is said to grant visions. The walls pulse with warmth in a slow rhythm, like a heartbeat.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"solar_water_vial": {"quantity": 2, "value": 55}},
+          "exits": {
+            "north": {"target": "tots_f1_hall_of_murals", "type": "direction"},
+            "east": {"target": "tots_f1_guardian_hall", "type": "direction"},
+            "south": {"target": "tots_f1_descending_passage", "type": "direction"}
+          }
+        },
+        "tots_f1_guardian_hall": {
+          "name": "Guardian Hall",
+          "description": "Stone statues of armored warriors line both sides of this wide corridor, their golden eyes tracking your movement. Some show cracks where they have animated before. The floor is scarred with old battle damage.",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {"guardian_armor_shard": {"quantity": 1, "value": 65}},
+          "traps": [
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "tots_f1_offering_chamber", "type": "direction"},
+            "west": {"target": "tots_f1_solar_font", "type": "direction"},
+            "south": {"target": "tots_f1_sealed_archive", "type": "direction"}
+          }
+        },
+        "tots_f1_sealed_archive": {
+          "name": "Sealed Archive",
+          "description": "Rows of golden scroll cases line the walls, each sealed with wax sun-stamps. Many have crumbled, but a few remain intact. A crystal reading lens magnifies the hieroglyphs on an open scroll, revealing astronomical calculations of staggering precision.",
+          "coordinates": [1, -3],
+          "location_type": "dungeon",
+          "items": {"sealed_sun_scroll": {"quantity": 1, "value": 90}, "crystal_lens": {"quantity": 1, "value": 70}},
+          "exits": {
+            "north": {"target": "tots_f1_guardian_hall", "type": "direction"}
+          }
+        },
+        "tots_f1_descending_passage": {
+          "name": "Descending Passage",
+          "description": "A grand staircase spirals downward, its golden railings warm to the touch. Sun-symbol lanterns flicker along the walls, their flames burning without fuel for untold centuries. The air grows warmer with each step down.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "north": {"target": "tots_f1_solar_font", "type": "direction"},
+            "down": {
+              "target": "tots_f2_solar_antechamber",
+              "type": "stairs_down",
+              "transition_text": "You descend the golden spiral staircase. The temperature rises and the light intensifies..."
+            }
+          }
+        }
+      }
+    },
+    "2": {
+      "floor_number": 2,
+      "num_rooms": 8,
+      "entrance_room": "tots_f2_solar_antechamber",
+      "exit_stairs_down": "tots_f2_burning_stair",
+      "rooms": {
+        "tots_f2_solar_antechamber": {
+          "name": "Solar Antechamber",
+          "description": "The second level opens into a grand chamber where beams of concentrated sunlight — channeled from the surface through crystal conduits — criss-cross the room in blinding patterns. The light is hot enough to singe exposed skin.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"sun_crystal_shard": {"quantity": 2, "value": 55}},
+          "exits": {
+            "up": {
+              "target": "tots_f1_descending_passage",
+              "type": "stairs_up",
+              "transition_text": "You ascend the golden staircase back to the upper level..."
+            },
+            "south": {"target": "tots_f2_mirror_maze", "type": "direction"},
+            "east": {"target": "tots_f2_flame_corridor", "type": "direction"}
+          }
+        },
+        "tots_f2_mirror_maze": {
+          "name": "Mirror Maze",
+          "description": "Polished golden mirrors redirect light beams in bewildering patterns. Your reflection stares back from a dozen angles. Some mirrors show not your reflection but visions of the temple in its prime — priests chanting, fires burning, the sun overhead.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"golden_mirror_shard": {"quantity": 2, "value": 45}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "tots_f2_solar_antechamber", "type": "direction"},
+            "south": {"target": "tots_f2_sun_forge", "type": "direction"},
+            "west": {"target": "tots_f2_tomb_of_priests", "type": "direction"}
+          }
+        },
+        "tots_f2_flame_corridor": {
+          "name": "Flame Corridor",
+          "description": "Jets of golden fire erupt from the walls in timed patterns. The flames are not natural — they burn without heat in some places and with searing intensity in others. Ancient mechanisms click and whir behind the walls.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"fire_essence": {"quantity": 1, "value": 75}},
+          "traps": [
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "west": {"target": "tots_f2_solar_antechamber", "type": "direction"},
+            "south": {"target": "tots_f2_sun_warrior_tomb", "type": "direction"}
+          }
+        },
+        "tots_f2_tomb_of_priests": {
+          "name": "Tomb of Priests",
+          "description": "Sarcophagi of gold-plated stone line the walls, each bearing the likeness of a High Sun Priest. Their mummified hands still clutch golden staffs. One sarcophagus lies open and empty — its occupant apparently walked away.",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {"golden_staff_fragment": {"quantity": 1, "value": 95}, "mummy_wrappings": {"quantity": 2, "value": 30}},
+          "traps": [
+            {"type": "poison_dart", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "east": {"target": "tots_f2_mirror_maze", "type": "direction"}
+          }
+        },
+        "tots_f2_sun_forge": {
+          "name": "Sun Forge",
+          "description": "An ancient forge powered by focused sunlight. Crystal lenses concentrate beams onto an anvil of black stone that glows cherry-red from centuries of absorbed heat. Tools of unknown alloy hang on the walls. The forge still functions.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"sunforged_ingot": {"quantity": 1, "value": 120}, "sun_coal": {"quantity": 3, "value": 40}},
+          "crafting_altar": true,
+          "altar_name": "Sun Forge",
+          "altar_description": "Crystal-focused sunlight heats this ancient anvil to impossible temperatures. The forge can shape metals that resist conventional fire — sunforged steel, golden adamant, and other lost alloys.",
+          "exits": {
+            "north": {"target": "tots_f2_mirror_maze", "type": "direction"},
+            "east": {"target": "tots_f2_sun_warrior_tomb", "type": "direction"},
+            "south": {"target": "tots_f2_burning_stair", "type": "direction"}
+          }
+        },
+        "tots_f2_sun_warrior_tomb": {
+          "name": "Sun Warrior Tomb",
+          "description": "Unlike the priests' simple sarcophagi, the warriors rest in elaborate battle poses preserved in golden amber. Their weapons and armor are sealed within — visible through the transparent golden resin. One warrior's eyes seem to follow you.",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {"amber_warrior_shard": {"quantity": 1, "value": 85}, "sun_warrior_helm_fragment": {"quantity": 1, "value": 110}},
+          "traps": [
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "tots_f2_flame_corridor", "type": "direction"},
+            "west": {"target": "tots_f2_sun_forge", "type": "direction"},
+            "south": {"target": "tots_f2_treasury_vault", "type": "direction"}
+          }
+        },
+        "tots_f2_treasury_vault": {
+          "name": "Treasury Vault",
+          "description": "Mountains of gold coins, gem-studded artifacts, and sun-themed jewelry fill this sealed vault. The wealth of an entire civilization, undisturbed for millennia. Golden dust motes dance in the light beams.",
+          "coordinates": [1, -3],
+          "location_type": "dungeon",
+          "items": {
+            "ancient_gold_coin": {"quantity": 8, "value": 40},
+            "sun_ruby": {"quantity": 2, "value": 85},
+            "golden_crown": {"quantity": 1, "value": 200},
+            "jeweled_scepter": {"quantity": 1, "value": 175}
+          },
+          "traps": [
+            {"type": "poison_dart", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "tots_f2_sun_warrior_tomb", "type": "direction"}
+          }
+        },
+        "tots_f2_burning_stair": {
+          "name": "Burning Staircase",
+          "description": "The steps themselves are made of smoldering amber that glows from within. Heat radiates upward in waves, and the walls are blackened from centuries of supernatural fire. Below, an orange glow promises something far more intense.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "north": {"target": "tots_f2_sun_forge", "type": "direction"},
+            "down": {
+              "target": "tots_f3_solar_sanctum",
+              "type": "stairs_down",
+              "transition_text": "You descend through waves of heat into the blazing heart of the temple..."
+            }
+          }
+        }
+      }
+    },
+    "3": {
+      "floor_number": 3,
+      "num_rooms": 6,
+      "entrance_room": "tots_f3_solar_sanctum",
+      "boss_room": "tots_f3_throne_of_ra_solari",
+      "rooms": {
+        "tots_f3_solar_sanctum": {
+          "name": "Solar Sanctum",
+          "description": "The deepest level of the temple. The walls, floor, and ceiling are all hammered gold, reflecting an intense light from a source deeper within. The air itself seems to glow. Ancient power thrums through every surface.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "up": {
+              "target": "tots_f2_burning_stair",
+              "type": "stairs_up",
+              "transition_text": "You climb back up through the searing staircase..."
+            },
+            "south": {"target": "tots_f3_hall_of_judgement", "type": "direction"}
+          }
+        },
+        "tots_f3_hall_of_judgement": {
+          "name": "Hall of Judgement",
+          "description": "Enormous golden scales dominate the center of this hall. On one side sits a golden feather; the other pan is empty, waiting. Murals depict Ra-Solari weighing the souls of the dead. Those found wanting burn in eternal noon.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"golden_feather": {"quantity": 1, "value": 150}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "tots_f3_solar_sanctum", "type": "direction"},
+            "east": {"target": "tots_f3_eclipse_chamber", "type": "direction"},
+            "south": {"target": "tots_f3_throne_of_ra_solari", "type": "direction"}
+          }
+        },
+        "tots_f3_eclipse_chamber": {
+          "name": "Eclipse Chamber",
+          "description": "A room of absolute darkness — the only dark place in the entire temple. A black stone orb floats at the center, absorbing all light that touches it. This is the Shadow of the Sun, the temple's greatest secret.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"shadow_sun_orb": {"quantity": 1, "value": 250}, "void_essence": {"quantity": 1, "value": 120}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "west": {"target": "tots_f3_hall_of_judgement", "type": "direction"}
+          }
+        },
+        "tots_f3_throne_of_ra_solari": {
+          "name": "Throne of Ra-Solari",
+          "description": "A vast circular chamber with a towering golden throne at its center. Above it, a miniature sun blazes with blinding light — actual fusion fire contained by ancient magic. On the throne sits the Solar Pharaoh, undead ruler of the temple, wreathed in golden flame and wielding the Sunspear.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {
+            "solar_pharaoh_crown": {"quantity": 1, "value": 350},
+            "sunspear_fragment": {"quantity": 1, "value": 280},
+            "pharaohs_golden_scarab": {"quantity": 1, "value": 220}
+          },
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "tots_f3_hall_of_judgement", "type": "direction"},
+            "west": {"target": "tots_f3_pharaohs_vault", "type": "direction"},
+            "east": {"target": "tots_f3_eternal_flame", "type": "direction"}
+          }
+        },
+        "tots_f3_pharaohs_vault": {
+          "name": "Pharaoh's Vault",
+          "description": "Behind the throne lies the personal treasury of the Solar Pharaoh. Golden sarcophagi, sun-forged weapons, and artifacts of immense power fill the chamber. The centerpiece is a suit of golden armor that radiates intense heat.",
+          "coordinates": [-1, -2],
+          "location_type": "dungeon",
+          "items": {
+            "sunforged_armor_piece": {"quantity": 1, "value": 300},
+            "pharaohs_ring": {"quantity": 1, "value": 250},
+            "ancient_gold_coin": {"quantity": 10, "value": 40},
+            "sun_diamond": {"quantity": 1, "value": 400}
+          },
+          "traps": [
+            {"type": "poison_dart", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "east": {"target": "tots_f3_throne_of_ra_solari", "type": "direction"}
+          }
+        },
+        "tots_f3_eternal_flame": {
+          "name": "Eternal Flame Altar",
+          "description": "A pillar of golden fire rises from an obsidian altar, burning without fuel since the temple's founding. The flame is said to contain the essence of Ra-Solari himself. Standing near it fills you with warmth and power.\n\nThe altar's surface is etched with sun-forging patterns. Perhaps items could be enhanced here...",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {"eternal_flame_ember": {"quantity": 1, "value": 320}},
+          "crafting_altar": true,
+          "altar_name": "Eternal Flame Altar",
+          "altar_description": "The eternal golden flame blazes atop obsidian stone. Items placed within are infused with solar energy, granting them properties of light and fire. Only the most worthy materials can withstand the process.",
+          "exits": {
+            "west": {"target": "tots_f3_throne_of_ra_solari", "type": "direction"}
+          }
+        }
+      }
+    }
+  }
+}

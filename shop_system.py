@@ -35,6 +35,127 @@ ITEM_DATABASE = {
     "magic_amulet": {"name": "Magic Amulet", "icon": "✨", "desc": "Radiates mysterious magical energy", "value": 130, "rarity": "rare", "spawn_chance": 0.05},
 }
 
+# ============================================================
+#  ISLAND SHOP DATABASES - Themed items per island tier
+# ============================================================
+
+HARBOR_ITEM_DATABASE = {
+    # Same as village but adds travel supplies
+    "rope_coil": {"name": "Rope Coil", "icon": "🪢", "desc": "Sturdy rope for climbing or binding", "value": 20, "rarity": "common", "spawn_chance": 0.35},
+    "quality_torch": {"name": "Quality Torch", "icon": "🔦", "desc": "Bright and reliable light source", "value": 15, "rarity": "common", "spawn_chance": 0.32},
+    "healing_salve": {"name": "Healing Salve", "icon": "🧴", "desc": "Restores minor wounds and bruises", "value": 35, "rarity": "common", "spawn_chance": 0.30},
+    "sailors_compass": {"name": "Sailor's Compass", "icon": "🧭", "desc": "Never lose your way at sea", "value": 45, "rarity": "common", "spawn_chance": 0.25},
+    "sea_rations": {"name": "Sea Rations", "icon": "🥫", "desc": "Preserved food for long voyages", "value": 18, "rarity": "common", "spawn_chance": 0.35},
+    "waterproof_satchel": {"name": "Waterproof Satchel", "icon": "🎒", "desc": "Keeps your gear dry in any storm", "value": 55, "rarity": "uncommon", "spawn_chance": 0.18},
+    "iron_sword": {"name": "Iron Sword", "icon": "⚔️", "desc": "Well-forged weapon of quality", "value": 30, "rarity": "uncommon", "spawn_chance": 0.15},
+    "leather_armor_piece": {"name": "Leather Armor", "icon": "🛡️", "desc": "Protects against common blows", "value": 25, "rarity": "uncommon", "spawn_chance": 0.12},
+    "healing_potion": {"name": "Healing Potion", "icon": "🧪", "desc": "Restores vitality and health", "value": 85, "rarity": "rare", "spawn_chance": 0.08},
+    "island_chart": {"name": "Island Chart", "icon": "🗺️", "desc": "Detailed maps of nearby islands", "value": 120, "rarity": "rare", "spawn_chance": 0.06},
+}
+
+SUNSTONE_ITEM_DATABASE = {
+    # Tropical themed, Level 5-10 gear
+    "coconut_water": {"name": "Coconut Water", "icon": "🥥", "desc": "Refreshing drink that restores energy", "value": 12, "rarity": "common", "spawn_chance": 0.35},
+    "palm_fiber_rope": {"name": "Palm Fiber Rope", "icon": "🪢", "desc": "Light but strong tropical rope", "value": 22, "rarity": "common", "spawn_chance": 0.30},
+    "coral_dagger": {"name": "Coral Dagger", "icon": "🗡️", "desc": "Sharp blade carved from hardened coral", "value": 45, "rarity": "common", "spawn_chance": 0.25},
+    "sun_salve": {"name": "Sun Salve", "icon": "☀️", "desc": "Healing balm infused with sunlight", "value": 50, "rarity": "common", "spawn_chance": 0.28},
+    "shell_shield": {"name": "Shell Shield", "icon": "🛡️", "desc": "Shield crafted from giant turtle shell", "value": 65, "rarity": "uncommon", "spawn_chance": 0.18},
+    "pearl_necklace": {"name": "Pearl Necklace", "icon": "📿", "desc": "Gleaming pearls with minor enchantment", "value": 80, "rarity": "uncommon", "spawn_chance": 0.14},
+    "trident": {"name": "Trident", "icon": "🔱", "desc": "Three-pronged spear of the sea", "value": 90, "rarity": "uncommon", "spawn_chance": 0.12},
+    "sunstone_charm": {"name": "Sunstone Charm", "icon": "✨", "desc": "Warm gem that glows in darkness", "value": 110, "rarity": "rare", "spawn_chance": 0.08},
+    "solar_potion": {"name": "Solar Potion", "icon": "🧪", "desc": "Potion brewed in direct sunlight", "value": 130, "rarity": "rare", "spawn_chance": 0.06},
+    "ancient_sun_medallion": {"name": "Sun Medallion", "icon": "🏅", "desc": "Relic from the Temple of the Sun", "value": 200, "rarity": "rare", "spawn_chance": 0.04},
+}
+
+EMERALD_ITEM_DATABASE = {
+    # Jungle/druid themed, Level 10-15 gear
+    "jungle_antidote": {"name": "Jungle Antidote", "icon": "🧴", "desc": "Cures most natural poisons", "value": 40, "rarity": "common", "spawn_chance": 0.30},
+    "vine_whip": {"name": "Vine Whip", "icon": "🌿", "desc": "Living vine that strikes with thorns", "value": 65, "rarity": "common", "spawn_chance": 0.25},
+    "hardwood_shield": {"name": "Hardwood Shield", "icon": "🛡️", "desc": "Dense ironwood shield, light but strong", "value": 75, "rarity": "common", "spawn_chance": 0.22},
+    "herbal_remedy": {"name": "Herbal Remedy", "icon": "🌱", "desc": "Powerful healing herbs from the deep jungle", "value": 70, "rarity": "common", "spawn_chance": 0.28},
+    "emerald_blade": {"name": "Emerald Blade", "icon": "⚔️", "desc": "Sword with an emerald-edged blade", "value": 120, "rarity": "uncommon", "spawn_chance": 0.15},
+    "druid_staff": {"name": "Druid Staff", "icon": "🪵", "desc": "Gnarled staff pulsing with nature magic", "value": 140, "rarity": "uncommon", "spawn_chance": 0.12},
+    "panther_cloak": {"name": "Panther Cloak", "icon": "🧥", "desc": "Camouflage cloak, improves stealth", "value": 130, "rarity": "uncommon", "spawn_chance": 0.10},
+    "greater_healing_potion": {"name": "Greater Healing Potion", "icon": "🧪", "desc": "Restores significant health", "value": 160, "rarity": "rare", "spawn_chance": 0.07},
+    "nature_amulet": {"name": "Nature Amulet", "icon": "✨", "desc": "Grants resistance to poison and disease", "value": 220, "rarity": "rare", "spawn_chance": 0.05},
+    "living_seed": {"name": "Living Seed", "icon": "🌰", "desc": "Legendary seed that grows into armor", "value": 300, "rarity": "rare", "spawn_chance": 0.03},
+}
+
+STORMBREAK_ITEM_DATABASE = {
+    # Storm/lightning themed, Level 15-20 gear
+    "storm_ration": {"name": "Storm Ration", "icon": "🥫", "desc": "Preserved food that won't spoil in wet conditions", "value": 35, "rarity": "common", "spawn_chance": 0.30},
+    "rubber_cloak": {"name": "Rubber Cloak", "icon": "🧥", "desc": "Insulates against lightning strikes", "value": 85, "rarity": "common", "spawn_chance": 0.25},
+    "storm_blade": {"name": "Storm Blade", "icon": "⚔️", "desc": "Crackling blade that arcs with electricity", "value": 150, "rarity": "uncommon", "spawn_chance": 0.15},
+    "thunder_shield": {"name": "Thunder Shield", "icon": "🛡️", "desc": "Absorbs electrical damage and redirects it", "value": 170, "rarity": "uncommon", "spawn_chance": 0.12},
+    "lightning_rod": {"name": "Lightning Rod", "icon": "⚡", "desc": "Channels storm energy into devastating attacks", "value": 200, "rarity": "uncommon", "spawn_chance": 0.10},
+    "tempest_potion": {"name": "Tempest Potion", "icon": "🧪", "desc": "Grants temporary lightning speed", "value": 180, "rarity": "uncommon", "spawn_chance": 0.10},
+    "stormforged_mail": {"name": "Stormforged Mail", "icon": "🛡️", "desc": "Chainmail forged during a lightning storm", "value": 280, "rarity": "rare", "spawn_chance": 0.06},
+    "kraken_ink_vial": {"name": "Kraken Ink", "icon": "🫙", "desc": "Rare ink for enchanting storm magic", "value": 320, "rarity": "rare", "spawn_chance": 0.05},
+    "eye_of_the_storm": {"name": "Eye of the Storm", "icon": "✨", "desc": "Amulet of absolute calm amid chaos", "value": 400, "rarity": "rare", "spawn_chance": 0.03},
+}
+
+CINDERFORGE_ITEM_DATABASE = {
+    # Fire/volcanic themed, Level 20-25 gear
+    "fireproof_salve": {"name": "Fireproof Salve", "icon": "🧴", "desc": "Protects skin from extreme heat", "value": 55, "rarity": "common", "spawn_chance": 0.30},
+    "obsidian_blade": {"name": "Obsidian Blade", "icon": "🗡️", "desc": "Razor-sharp volcanic glass sword", "value": 180, "rarity": "uncommon", "spawn_chance": 0.15},
+    "magma_shield": {"name": "Magma Shield", "icon": "🛡️", "desc": "Shield that radiates searing heat", "value": 220, "rarity": "uncommon", "spawn_chance": 0.12},
+    "forge_hammer": {"name": "Forge Hammer", "icon": "🔨", "desc": "Hammer that never cools, perfect for smithing", "value": 250, "rarity": "uncommon", "spawn_chance": 0.10},
+    "lava_potion": {"name": "Lava Potion", "icon": "🧪", "desc": "Grants immunity to fire for a short time", "value": 200, "rarity": "uncommon", "spawn_chance": 0.10},
+    "fire_opal": {"name": "Fire Opal", "icon": "💎", "desc": "Gem containing trapped volcanic fire", "value": 300, "rarity": "rare", "spawn_chance": 0.06},
+    "salamander_scale_armor": {"name": "Salamander Armor", "icon": "🛡️", "desc": "Armor of fire-immune salamander scales", "value": 420, "rarity": "rare", "spawn_chance": 0.05},
+    "inferno_blade": {"name": "Inferno Blade", "icon": "⚔️", "desc": "Sword wreathed in eternal flame", "value": 500, "rarity": "rare", "spawn_chance": 0.03},
+}
+
+DREADMIST_ITEM_DATABASE = {
+    # Undead/shadow themed, Level 25-30 gear
+    "holy_water": {"name": "Holy Water", "icon": "💧", "desc": "Burns undead on contact", "value": 60, "rarity": "common", "spawn_chance": 0.28},
+    "ghost_lantern": {"name": "Ghost Lantern", "icon": "🏮", "desc": "Reveals hidden undead and spirits", "value": 120, "rarity": "common", "spawn_chance": 0.22},
+    "silver_sword": {"name": "Silver Sword", "icon": "⚔️", "desc": "Blessed blade, devastating to undead", "value": 250, "rarity": "uncommon", "spawn_chance": 0.14},
+    "death_ward_amulet": {"name": "Death Ward", "icon": "✨", "desc": "Protects against necromantic magic", "value": 280, "rarity": "uncommon", "spawn_chance": 0.12},
+    "banshee_silk_cloak": {"name": "Banshee Silk Cloak", "icon": "🧥", "desc": "Phase through attacks like a ghost", "value": 320, "rarity": "uncommon", "spawn_chance": 0.10},
+    "resurrection_potion": {"name": "Resurrection Potion", "icon": "🧪", "desc": "Restores from the brink of death", "value": 350, "rarity": "rare", "spawn_chance": 0.06},
+    "lich_bane": {"name": "Lich Bane", "icon": "⚔️", "desc": "Enchanted mace that shatters phylacteries", "value": 550, "rarity": "rare", "spawn_chance": 0.04},
+    "soul_shield": {"name": "Soul Shield", "icon": "🛡️", "desc": "Shield powered by captured spirits", "value": 600, "rarity": "rare", "spawn_chance": 0.03},
+}
+
+WYRMSCALE_ITEM_DATABASE = {
+    # Dragon themed, Level 30-35 gear
+    "dragonscale_salve": {"name": "Dragonscale Salve", "icon": "🧴", "desc": "Toughens skin to match dragon hide", "value": 100, "rarity": "common", "spawn_chance": 0.25},
+    "drake_fang_dagger": {"name": "Drake Fang Dagger", "icon": "🗡️", "desc": "Dagger carved from a drake's fang", "value": 200, "rarity": "uncommon", "spawn_chance": 0.14},
+    "wyvern_wing_shield": {"name": "Wyvern Shield", "icon": "🛡️", "desc": "Shield of stretched wyvern membrane", "value": 350, "rarity": "uncommon", "spawn_chance": 0.12},
+    "dragon_breath_flask": {"name": "Dragon Breath Flask", "icon": "🧪", "desc": "Breathe fire for 30 seconds", "value": 400, "rarity": "uncommon", "spawn_chance": 0.08},
+    "dragonbone_sword": {"name": "Dragonbone Sword", "icon": "⚔️", "desc": "Sword forged from ancient dragonbone", "value": 600, "rarity": "rare", "spawn_chance": 0.05},
+    "wyrm_scale_armor": {"name": "Wyrm Armor", "icon": "🛡️", "desc": "Full suit of elder wyrm scales", "value": 750, "rarity": "rare", "spawn_chance": 0.04},
+    "dragon_eye_gem": {"name": "Dragon Eye Gem", "icon": "💎", "desc": "See through walls and detect treasure", "value": 800, "rarity": "rare", "spawn_chance": 0.03},
+    "wyrm_heart_elixir": {"name": "Wyrm Heart Elixir", "icon": "🧪", "desc": "Gain draconic power temporarily", "value": 900, "rarity": "rare", "spawn_chance": 0.02},
+}
+
+ABYSSAL_ITEM_DATABASE = {
+    # Eldritch/cosmic themed, Level 35+ gear (endgame)
+    "sanity_tonic": {"name": "Sanity Tonic", "icon": "🧴", "desc": "Keeps the madness at bay... temporarily", "value": 120, "rarity": "common", "spawn_chance": 0.22},
+    "void_touched_blade": {"name": "Void Blade", "icon": "🗡️", "desc": "Blade that cuts through reality itself", "value": 400, "rarity": "uncommon", "spawn_chance": 0.12},
+    "eldritch_ward": {"name": "Eldritch Ward", "icon": "✨", "desc": "Protection against mind-bending attacks", "value": 500, "rarity": "uncommon", "spawn_chance": 0.10},
+    "dimension_anchor": {"name": "Dimension Anchor", "icon": "⚓", "desc": "Prevents forced teleportation", "value": 550, "rarity": "uncommon", "spawn_chance": 0.08},
+    "reality_potion": {"name": "Reality Potion", "icon": "🧪", "desc": "Anchors you to this plane of existence", "value": 450, "rarity": "uncommon", "spawn_chance": 0.10},
+    "void_reaver": {"name": "Void Reaver", "icon": "⚔️", "desc": "Sword that devours what it cuts", "value": 900, "rarity": "rare", "spawn_chance": 0.04},
+    "cosmic_plate": {"name": "Cosmic Plate", "icon": "🛡️", "desc": "Armor forged from collapsed stars", "value": 1000, "rarity": "rare", "spawn_chance": 0.03},
+    "reality_shard_amulet": {"name": "Reality Shard", "icon": "💎", "desc": "Fragment of a broken universe", "value": 1200, "rarity": "rare", "spawn_chance": 0.02},
+    "genesis_spark": {"name": "Genesis Spark", "icon": "✨", "desc": "Spark of creation itself — ultimate power", "value": 1500, "rarity": "rare", "spawn_chance": 0.01},
+}
+
+# Map shop room IDs to their item databases
+SHOP_DATABASES = {
+    "village_shop": ITEM_DATABASE,
+    "harbor_shop": HARBOR_ITEM_DATABASE,
+    "sunstone_village_east": SUNSTONE_ITEM_DATABASE,
+    "emerald_village_market": EMERALD_ITEM_DATABASE,
+    "stormbreak_town_market": STORMBREAK_ITEM_DATABASE,
+    "cinder_village_market": CINDERFORGE_ITEM_DATABASE,
+    "dreadmist_village_market": DREADMIST_ITEM_DATABASE,
+    "wyrm_village_market": WYRMSCALE_ITEM_DATABASE,
+    "abyssal_outpost_supply_depot": ABYSSAL_ITEM_DATABASE,
+}
+
 # Backwards compatibility reference
 SHOP_INVENTORY_POOL = {item_id: {"value": data["value"], "rarity": data["rarity"], "spawn_chance": data["spawn_chance"]} 
                        for item_id, data in ITEM_DATABASE.items()}
@@ -43,14 +164,14 @@ SHOP_INVENTORY_POOL = {item_id: {"value": data["value"], "rarity": data["rarity"
 class Shop:
     """Manages shop inventory rotation and pricing."""
     
-    def __init__(self, shop_id="village_shop"):
+    def __init__(self, shop_id="village_shop", item_database=None):
         """Initialize shop with automatic hourly inventory rotation."""
         self.shop_id = shop_id
         self.timezone = self._get_timezone()
         self.inventory = {}
         self.shop_inventory = {}  # Modern interface
         self.last_rotation_hour = self._get_current_hour()
-        self.item_database = ITEM_DATABASE
+        self.item_database = item_database if item_database else ITEM_DATABASE
         self.generate_inventory()
     
     def _get_timezone(self):
@@ -87,7 +208,7 @@ class Shop:
         """Generate random inventory based on spawn chances."""
         self.inventory = {}
         self.shop_inventory = {}
-        for item_id, item_data in ITEM_DATABASE.items():
+        for item_id, item_data in self.item_database.items():
             if random.random() < item_data["spawn_chance"]:
                 quantity = random.randint(1, 3)
                 price = item_data["value"]

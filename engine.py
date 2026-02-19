@@ -67,6 +67,12 @@ except ImportError:
 	MAP_AVAILABLE = False
 
 try:
+	from searchable_items_window import SearchableItemsWindow
+	ITEMS_WINDOW_AVAILABLE = True
+except ImportError:
+	ITEMS_WINDOW_AVAILABLE = False
+
+try:
 	from debug_commands import handle_debug_commands, show_player_commands
 	DEBUG_AVAILABLE = True
 except ImportError:
@@ -285,6 +291,8 @@ class Player:
 		self.stats = {}
 		# visited_rooms tracks rooms the player has visited (for fog of war)
 		self.visited_rooms = set([start_room])
+		# Track which islands the player has unlocked boat travel to
+		self.unlocked_islands = set()
 
 	def to_dict(self):
 		# Always serialize inventory as dict of string->int
@@ -293,7 +301,8 @@ class Player:
 			"inventory": {str(k): int(v) for k, v in (self.inventory or {}).items()},
 			"state": self.state,
 			"stats": self.stats,
-			"visited_rooms": list(self.visited_rooms) if self.visited_rooms else []
+			"visited_rooms": list(self.visited_rooms) if self.visited_rooms else [],
+			"unlocked_islands": list(self.unlocked_islands) if self.unlocked_islands else []
 		}
 
 	@classmethod
@@ -319,6 +328,9 @@ class Player:
 		# Load visited_rooms from save, or use current room as fallback
 		visited = data.get("visited_rooms", [])
 		p.visited_rooms = set(visited) if visited else {p.current_room}
+		# Load unlocked islands (backward compat: default to empty)
+		unlocked = data.get("unlocked_islands", [])
+		p.unlocked_islands = set(unlocked) if unlocked else set()
 		return p
 
 
@@ -356,6 +368,10 @@ class CommandHandler:
 		if self.engine.pending_dungeon_entry is not None:
 			# Player is answering yes/no question
 			return self.confirm_dungeon_entry(cmd)
+		
+		# Check if we're waiting for boat travel unlock confirmation
+		if getattr(self.engine, 'pending_boat_travel', None) is not None:
+			return self._confirm_boat_travel(cmd)
 		
 		# Check if we're waiting for quest accept/decline
 		if QUEST_AVAILABLE and getattr(self.engine, 'pending_quest_action', None) is not None:
@@ -676,6 +692,50 @@ class CommandHandler:
 		if verb == "flee":
 			return self._combat_flee()
 
+		# Board / ship travel command
+		if verb == "board":
+			room = self.engine.get_room_data(self.engine.player.current_room)
+			exits = room.exits if hasattr(room, 'exits') else (room.get('exits', {}) if isinstance(room, dict) else {})
+			# Exact exit key match — delegate to _go
+			if cmd in exits:
+				return self._go(cmd)
+			# Collect all boat_travel exits
+			boat_exits = {k: v for k, v in exits.items()
+						  if isinstance(v, dict) and v.get("type") == "boat_travel"}
+			if not boat_exits:
+				return "There is no ship here to board."
+			if not args:
+				# List available ships
+				lines = ["\n╔══════════════════════════════════════════════════════╗",
+						 "║                  AVAILABLE SHIPS                    ║",
+						 "╠══════════════════════════════════════════════════════╣"]
+				for key, info in boat_exits.items():
+					display = info.get("display", key)
+					fare = info.get("fare_cost", 0)
+					lvl = info.get("min_level", 1)
+					if fare > 0:
+						row = f"║  {key:<22}  → {display:<18} {fare}g lvl{lvl}+ ║"
+					else:
+						row = f"║  {key:<22}  → {display:<28} ║"
+					lines.append(row)
+				lines.append("╚══════════════════════════════════════════════════════╝")
+				lines.append("  Type the full command to sail (e.g. 'board mainland')")
+				return "\n".join(lines)
+			# Typed "board <something>" — try partial match
+			partial = cmd.lower()
+			for k in boat_exits:
+				if k.startswith(partial) or partial in k:
+					return self._go(k)
+			return f"No ship going to '{' '.join(args)}'. Type 'board' to see available ships."
+
+		# Room Browser window
+		if verb in ("rooms", "room_browser", "areas"):
+			return "__OPEN_ROOMS__"
+
+		# Bestiary window
+		if verb in ("bestiary", "monsters", "enemies"):
+			return "__OPEN_BESTIARY__"
+
 		return "I don't understand that."
 
 	# ========== CLASS SELECTION ==========
@@ -813,13 +873,18 @@ class CommandHandler:
 			has_equip = any(v for v in equip.values()) if equip else False
 			if has_equip:
 				result += "\n  --- Equipment ---\n"
-				slot_icons = {"weapon": "⚔️", "armor": "🛡️", "shield": "🔰", "accessory": "💍"}
+				slot_icons = {"weapon": "⚔️", "armor": "🛡️", "shield": "🔰", "helm": "⛑️", "boots": "🥾", "gloves": "🧤", "accessory": "💍"}
 				for slot in EQUIPMENT_SLOTS:
 					item = equip.get(slot)
 					if item:
-						nice = item.replace("_", " ").title()
+						# Show rarity indicator if available
+						eq_data = EQUIPMENT_DATABASE.get(item, {})
+						rarity = eq_data.get("rarity", "common")
+						from equipment_system import RARITY_TIERS
+						rarity_icon = RARITY_TIERS.get(rarity, {}).get("icon", "")
+						nice = eq_data.get("name", item.replace("_", " ").title())
 						icon = slot_icons.get(slot, "•")
-						result += f"  {icon} {slot.capitalize():12s} {nice}\n"
+						result += f"  {icon} {slot.capitalize():12s} {rarity_icon} {nice}\n"
 				bonuses = get_total_equipment_bonuses(self.engine.player)
 				if bonuses:
 					result += f"  Attack Power:  {get_attack_power(self.engine.player)}\n"
@@ -1100,14 +1165,28 @@ class CommandHandler:
 
 		# Respawn
 		self.engine.player.stats["health"] = self.engine.player.stats.get("health_max", 100) // 2
-		self.engine.player.current_room = respawn_room
 		self.engine.poison_status = None  # clear poison on death
 
-		# Leave dungeon state if in one
-		if hasattr(self.engine, 'dungeon_instance') and self.engine.dungeon_instance:
-			self.engine.dungeon_instance = None
-		if hasattr(self.engine, 'dungeon_return_room'):
-			self.engine.dungeon_return_room = None
+		# Fully clean up dungeon state if player died inside one (fixes map not updating)
+		in_dungeon = (
+			getattr(self.engine, 'current_dungeon_instance', None) is not None
+			or getattr(self.engine, 'current_fixed_dungeon', None) is not None
+		)
+		if in_dungeon:
+			self.engine.cleanup_dungeon()
+
+		# Set respawn location AFTER cleanup (cleanup may have moved player to entrance)
+		self.engine.player.current_room = respawn_room
+
+		# Update map so it shows the respawn room immediately
+		if hasattr(self.engine.player, 'visited_rooms'):
+			self.engine.player.visited_rooms.add(respawn_room)
+		if hasattr(self.engine, 'map_window') and self.engine.map_window:
+			if self.engine.map_window.is_open():
+				self.engine.map_window.update_location(
+					respawn_room,
+					getattr(self.engine.player, 'visited_rooms', set())
+				)
 
 		respawn_name = respawn_room.replace("_", " ").title()
 		result += f"\n  You wake up at {respawn_name} with half health.\n"
@@ -1628,6 +1707,10 @@ class CommandHandler:
 			print(f"[DEBUG _go] Fixed dungeon entrance detected via '{direction}'")
 			return self._handle_fixed_dungeon_entrance(exit_info)
 		
+		# Handle boat travel to islands
+		if exit_info and isinstance(exit_info, dict) and exit_info.get("type") == "boat_travel":
+			return self._handle_boat_travel(exit_info)
+		
 		# Handle leaving the dungeon
 		if exit_info and isinstance(exit_info, dict) and exit_info.get("type") == "leave_dungeon":
 			return self._leave_dungeon(exit_info)
@@ -1770,6 +1853,209 @@ class CommandHandler:
 		result += "=" * 50 + "\n\n"
 		if dest:
 			result += dest.describe()
+		return result
+
+	def _handle_boat_travel(self, exit_info):
+		"""Handle boat travel exits to islands. Checks level req, unlock status, and fare."""
+		island_id = exit_info.get("island_id", "unknown")
+		island_name = exit_info.get("display", island_id.replace("_", " ").title())
+		min_level = exit_info.get("min_level", 1)
+		unlock_cost = exit_info.get("unlock_cost", 0)
+		fare_cost = exit_info.get("fare_cost", 0)
+		target = exit_info.get("target")
+		
+		player = self.engine.player
+		player_level = player.stats.get("level", 1)
+		player_gold = player.stats.get("gold", 0)
+		
+		# Check level requirement
+		if player_level < min_level:
+			result = "\n" + "=" * 60 + "\n"
+			result += f"  PASSAGE DENIED — {island_name}\n"
+			result += "=" * 60 + "\n\n"
+			result += f"The captain looks you over and shakes his head.\n"
+			result += f"\"You're not seasoned enough for {island_name}, adventurer.\"\n"
+			result += f"\"Come back when you've reached level {min_level}.\"\n\n"
+			result += f"  Your level: {player_level} | Required: {min_level}\n"
+			result += "-" * 60 + "\n"
+			return result
+		
+		# Check if island is unlocked
+		if not hasattr(player, 'unlocked_islands'):
+			player.unlocked_islands = set()
+		
+		if island_id not in player.unlocked_islands:
+			# Need to unlock first — prompt player
+			if player_gold < unlock_cost:
+				result = "\n" + "=" * 60 + "\n"
+				result += f"  PASSAGE TO {island_name.upper()}\n"
+				result += "=" * 60 + "\n\n"
+				result += f"The captain strokes his beard thoughtfully.\n"
+				result += f"\"First voyage to {island_name}? That'll cost {unlock_cost} gold\n"
+				result += f" to charter the route. Plus {fare_cost} gold per trip after.\"\n\n"
+				result += f"  Your gold: {player_gold} | Unlock cost: {unlock_cost}\n"
+				result += f"  You don't have enough gold!\n"
+				result += "-" * 60 + "\n"
+				return result
+			
+			# Player can afford it — ask for confirmation
+			self.engine.pending_boat_travel = {
+				"island_id": island_id,
+				"island_name": island_name,
+				"unlock_cost": unlock_cost,
+				"fare_cost": fare_cost,
+				"target": target,
+				"exit_info": exit_info,
+				"needs_unlock": True
+			}
+			result = "\n" + "=" * 60 + "\n"
+			result += f"  CHARTER PASSAGE — {island_name}\n"
+			result += "=" * 60 + "\n\n"
+			result += f"The captain nods. \"Aye, I can take you to {island_name}.\"\n"
+			result += f"\"First time? Chartering the route costs {unlock_cost} gold.\"\n"
+			result += f"\"After that, it's {fare_cost} gold per voyage.\"\n\n"
+			result += f"  Unlock cost: {unlock_cost} gold\n"
+			result += f"  Your gold:   {player_gold} gold\n\n"
+			result += f"Charter passage to {island_name}? (yes/no)\n"
+			result += "-" * 60 + "\n"
+			return result
+		
+		# Island already unlocked — just charge fare
+		if fare_cost > 0 and player_gold < fare_cost:
+			result = "\n" + "-" * 60 + "\n"
+			result += f"The captain shrugs. \"Voyage to {island_name} costs {fare_cost} gold.\n"
+			result += f"You only have {player_gold}. Come back when you can pay.\"\n"
+			result += "-" * 60 + "\n"
+			return result
+		
+		# Deduct fare and travel
+		if fare_cost > 0:
+			player.stats["gold"] = player_gold - fare_cost
+		
+		return self._execute_boat_travel(exit_info, fare_cost)
+	
+	def _confirm_boat_travel(self, cmd):
+		"""Handle yes/no response to boat travel unlock prompt."""
+		pending = self.engine.pending_boat_travel
+		if pending is None:
+			return "I don't understand that command. Type 'help' for available commands."
+		
+		response = cmd.lower().strip()
+		player = self.engine.player
+		
+		if response in ("yes", "y"):
+			island_id = pending["island_id"]
+			island_name = pending["island_name"]
+			unlock_cost = pending["unlock_cost"]
+			fare_cost = pending["fare_cost"]
+			target = pending["target"]
+			exit_info = pending["exit_info"]
+			player_gold = player.stats.get("gold", 0)
+			
+			total_cost = unlock_cost + fare_cost
+			
+			if player_gold < total_cost:
+				# Check if they can at least afford the unlock
+				if player_gold < unlock_cost:
+					self.engine.pending_boat_travel = None
+					return f"\nYou no longer have enough gold for the unlock fee ({unlock_cost}g).\n"
+				
+				# Unlock but can't afford fare right now
+				player.stats["gold"] = player_gold - unlock_cost
+				if not hasattr(player, 'unlocked_islands'):
+					player.unlocked_islands = set()
+				player.unlocked_islands.add(island_id)
+				self.engine.pending_boat_travel = None
+				
+				result = "\n" + "=" * 60 + "\n"
+				result += f"  ROUTE CHARTERED — {island_name}\n"
+				result += "=" * 60 + "\n\n"
+				result += f"The captain pockets your {unlock_cost} gold.\n"
+				result += f"\"Route's chartered! But you'll need {fare_cost} gold for the\n"
+				result += f" voyage itself. Come back when you have the fare.\"\n\n"
+				result += f"  Remaining gold: {player.stats['gold']}\n"
+				result += "-" * 60 + "\n"
+				return result
+			
+			# Can afford both — unlock and travel
+			player.stats["gold"] = player_gold - total_cost
+			if not hasattr(player, 'unlocked_islands'):
+				player.unlocked_islands = set()
+			player.unlocked_islands.add(island_id)
+			self.engine.pending_boat_travel = None
+			
+			return self._execute_boat_travel(exit_info, total_cost)
+		
+		elif response in ("no", "n"):
+			island_name = pending["island_name"]
+			self.engine.pending_boat_travel = None
+			result = "\n" + "-" * 60 + "\n"
+			result += f"You step back from the dock.\n"
+			result += f"\"Suit yourself,\" the captain says. \"{island_name} ain't\n"
+			result += f" going anywhere... for now.\"\n"
+			result += "-" * 60 + "\n"
+			return result
+		else:
+			return f"\nPlease type 'yes' to charter passage or 'no' to decline.\n"
+	
+	def _execute_boat_travel(self, exit_info, gold_spent):
+		"""Actually move the player via boat to the target island room."""
+		target = exit_info.get("target")
+		island_name = exit_info.get("display", "the island")
+		transition_text = exit_info.get("transition_text", "")
+		
+		if not target:
+			return "[Error: No target destination for boat travel]"
+		
+		# Check if target room exists
+		dest_room = self.engine.get_room_data(target)
+		if not dest_room:
+			return f"[Error: Destination room '{target}' not found]"
+		
+		# Move player
+		self.engine.player.current_room = target
+		
+		# Build result text
+		result = "\n" + "=" * 60 + "\n"
+		result += "  SETTING SAIL\n"
+		result += "=" * 60 + "\n\n"
+		
+		if gold_spent > 0:
+			result += f"  [{gold_spent} gold spent]\n\n"
+		
+		if transition_text:
+			result += transition_text + "\n\n"
+		else:
+			result += f"You board the weathered ship. The crew casts off the mooring\n"
+			result += f"lines and the sails catch the wind. The mainland shrinks behind\n"
+			result += f"you as the ship cuts through the open ocean.\n\n"
+			result += f"After days at sea, the silhouette of {island_name}\n"
+			result += f"emerges from the horizon...\n\n"
+		
+		result += "=" * 60 + "\n"
+		result += f"  ARRIVED AT {island_name.upper()}\n"
+		result += "=" * 60 + "\n\n"
+		
+		# Award exploration XP on first visit
+		xp_msg = ""
+		if PROGRESSION_AVAILABLE:
+			try:
+				is_first_visit = target not in self.engine.player.visited_rooms
+				if is_first_visit:
+					xp_msg = award_xp(self.engine.player, XP_AWARDS.get("first_visit_room", 3) * 5, f"discovering {island_name}")
+			except Exception:
+				pass
+		
+		self._update_map_on_move(target)
+		result += dest_room.describe()
+		if xp_msg:
+			result += xp_msg
+		
+		# Check achievements
+		result += self._check_and_show_achievements()
+
+		# Signal the GUI to show the travel animation before rendering this text
+		self.engine.pending_travel_animation = island_name
 		return result
 
 	def _check_room_enemy(self, room_id, dest_room):
@@ -3748,15 +4034,59 @@ Do you wish to enter? (yes/no)
 	# ========== SHOP SYSTEM METHODS ==========
 	
 	def _check_in_shop(self):
-		"""Verify player is in the shop."""
-		if self.engine.player.current_room != "village_shop":
-			return False, "You need to be in the village shop to do that."
+		"""Verify player is in a shop room and activate the correct shop."""
+		current_room_id = self.engine.player.current_room
+		current_room = self.engine.rooms.get(current_room_id)
+		
+		# Check if this room is a shop (by room property or known shop ID)
+		is_shop_room = False
+		if current_room and hasattr(current_room, 'shop') and current_room.shop:
+			is_shop_room = True
+		elif current_room_id == "village_shop":
+			is_shop_room = True
+		
+		if not is_shop_room:
+			return False, "You need to be in a shop to do that."
+		
+		# Activate the right shop for this room
+		if not self._activate_shop_for_room(current_room_id):
+			return False, "The shop system is not available."
+		
 		if not self.engine.shop or not self.engine.shopkeeper:
 			return False, "The shop system is not available."
 		# Check if inventory needs rotation
 		if self.engine.shop.check_and_rotate():
 			pass  # Silently rotated
 		return True, ""
+	
+	def _activate_shop_for_room(self, room_id):
+		"""Switch to the correct shop instance for the given room."""
+		if not SHOP_AVAILABLE:
+			return False
+		try:
+			from shop_system import SHOP_DATABASES
+			# Check if we need to switch shops
+			if self.engine.shop and self.engine.shop.shop_id == room_id:
+				return True  # Already on the right shop
+			
+			# Get the item database for this room 
+			item_db = SHOP_DATABASES.get(room_id)
+			if item_db is None:
+				# Fallback: use default database
+				item_db = SHOP_DATABASES.get("village_shop")
+			
+			# Create or switch to the appropriate shop
+			if room_id not in self.engine.island_shops:
+				shop = Shop(shop_id=room_id, item_database=item_db)
+				self.engine.island_shops[room_id] = shop
+			
+			self.engine.shop = self.engine.island_shops[room_id]
+			self.engine.shopkeeper = Shopkeeper(self.engine.shop)
+			self.engine.shop_ui = ShopUI(self.engine.shop, self.engine.shopkeeper, self.engine)
+			return True
+		except Exception as e:
+			print(f"[ERROR] Failed to activate shop for {room_id}: {e}")
+			return False
 	
 	def _shop_help(self):
 		"""Show shop command help with beautiful UI."""
@@ -3913,6 +4243,8 @@ Do you wish to enter? (yes/no)
 ║    fight                - Engage a visible enemy in the room   ║
 ║    open map             - Open live map window                 ║
 ║    close map            - Close map window                     ║
+║    rooms / areas        - Browse all game areas                ║
+║    bestiary / monsters  - Browse all enemies                   ║
 ║                                                                ║
 ║  [INVENTORY]                                                   ║
 ║ ---------------------------------------------------------------║
@@ -3921,6 +4253,19 @@ Do you wish to enter? (yes/no)
 ║    drop <item>          - Drop an item from inventory          ║
 ║    sell <item>          - Sell item for standard value         ║
 ║    use <item>           - Use an item (potion, torch, etc.)    ║
+║                                                                ║
+"""
+
+		# Ship travel commands (show when dock has boat exits)
+		_room_for_help = self.engine.get_room_data(self.engine.player.current_room)
+		_help_exits = _room_for_help.exits if hasattr(_room_for_help, 'exits') else (_room_for_help.get('exits', {}) if isinstance(_room_for_help, dict) else {})
+		_has_boat = any(isinstance(v, dict) and v.get('type') == 'boat_travel' for v in _help_exits.values())
+		if _has_boat:
+			result += """║  [SHIP TRAVEL]                                                 ║
+║ ---------------------------------------------------------------║
+║    board                - List all ships at this dock          ║
+║    board mainland       - Return to Grand Harbor               ║
+║    board <island>       - Sail to a discovered island          ║
 ║                                                                ║
 """
 
@@ -4180,6 +4525,8 @@ class GameEngine:
 		self.item_worth = {}
 		# map window for live display
 		self.map_window = None
+		# searchable items debug window
+		self.items_search_window = None
 		# Track pending dungeon entry confirmation
 		self.pending_dungeon_entry = None
 		# Track pending disarm minigame
@@ -4201,6 +4548,10 @@ class GameEngine:
 		self.pending_class_selection = False
 		# Track pending quest action (accept/decline)
 		self.pending_quest_action = None
+		# Track pending boat travel (island unlock confirmation)
+		self.pending_boat_travel = None
+		# Track pending travel animation (set by _execute_boat_travel, consumed by AdventureGUI)
+		self.pending_travel_animation = None
 		
 		# Debug overrides for dungeons
 		self.debug_force_open_dungeons = set()  # Stores dungeon_ids that are force-opened
@@ -4211,12 +4562,16 @@ class GameEngine:
 		self.current_fixed_dungeon = None  # Loaded fixed dungeon JSON data
 		self.fixed_dungeon_room_ids = set()  # Room IDs belonging to current fixed dungeon
 		
+		# Island shop registry (lazy-created per shop room)
+		self.island_shops = {}
+		
 		# Initialize shop system
 		if SHOP_AVAILABLE:
 			try:
 				self.shop = Shop("village_shop")
 				self.shopkeeper = Shopkeeper(self.shop)
 				self.shop_ui = ShopUI(self.shop, self.shopkeeper, self)
+				self.island_shops["village_shop"] = self.shop
 			except Exception as e:
 				print(f"[ERROR] Failed to initialize shop: {e}")
 				self.shop = None
@@ -5059,6 +5414,11 @@ class GameEngine:
 		if EQUIPMENT_AVAILABLE and self.player:
 			if "equipment" not in self.player.state:
 				self.player.state["equipment"] = {slot: None for slot in EQUIPMENT_SLOTS}
+			else:
+				# Migrate existing equipment dict to add new slots (helm, boots, gloves)
+				for slot in EQUIPMENT_SLOTS:
+					if slot not in self.player.state["equipment"]:
+						self.player.state["equipment"][slot] = None
 		# Migrate old saves: add cleared rooms tracking if missing
 		if self.player and "cleared_rooms" not in self.player.state:
 			self.player.state["cleared_rooms"] = []
@@ -5317,6 +5677,246 @@ class AdventureGUI:
 		self.text.config(state="disabled")
 		self.text.see("end")
 
+	def show_death_screen(self, respawn_text):
+		"""Display a 5-second death screen overlay, then show respawn text."""
+		# Disable input while death screen is shown
+		self.entry.config(state="disabled")
+
+		# Create overlay Toplevel covering the main window
+		overlay = tk.Toplevel(self.root)
+		overlay.overrideredirect(True)  # no title bar
+		overlay.attributes("-topmost", True)
+
+		# Match main window position and size
+		self.root.update_idletasks()
+		x = self.root.winfo_x()
+		y = self.root.winfo_y()
+		w = self.root.winfo_width()
+		h = self.root.winfo_height()
+		overlay.geometry(f"{w}x{h}+{x}+{y}")
+		overlay.configure(bg="#0a0a0a")
+
+		# Skull art
+		skull = (
+			"  ░░░░░░░░░░░░░░░░░░░░░  \n"
+			" ░░  ██████████████  ░░ \n"
+			"░░  ██  ██    ██  ██  ░░\n"
+			"░░  ██████    ██████  ░░\n"
+			"░░    ████████████    ░░\n"
+			"░░  ████  ████  ████  ░░\n"
+			" ░░  ██████  ██████  ░░ \n"
+			"  ░░░░░░░░░░░░░░░░░░░  "
+		)
+
+		# Center frame
+		frame = tk.Frame(overlay, bg="#0a0a0a")
+		frame.place(relx=0.5, rely=0.5, anchor="center")
+
+		tk.Label(
+			frame, text=skull,
+			font=("Courier", 13), fg="#cc0000", bg="#0a0a0a"
+		).pack(pady=(0, 10))
+
+		tk.Label(
+			frame, text="YOU HAVE FALLEN",
+			font=("Courier", 28, "bold"), fg="#cc0000", bg="#0a0a0a"
+		).pack(pady=(0, 6))
+
+		tk.Label(
+			frame, text="Your journey continues...",
+			font=("Courier", 13, "italic"), fg="#888888", bg="#0a0a0a"
+		).pack(pady=(0, 20))
+
+		# Countdown label
+		countdown_var = tk.StringVar(value="Respawning in 5...")
+		tk.Label(
+			frame, textvariable=countdown_var,
+			font=("Courier", 11), fg="#555555", bg="#0a0a0a"
+		).pack()
+
+		def tick(remaining):
+			if remaining > 0:
+				countdown_var.set(f"Respawning in {remaining}...")
+				overlay.after(1000, tick, remaining - 1)
+			else:
+				# Dismiss overlay and show respawn
+				try:
+					overlay.destroy()
+				except Exception:
+					pass
+				self.append(respawn_text)
+				self.refresh_inventory_display()
+				self._refresh_hotbar()
+				self.entry.config(state="normal")
+				try:
+					self.root.after(0, lambda: self.entry.focus_set())
+				except Exception:
+					pass
+
+		overlay.after(1000, tick, 4)
+
+	# ──────────────────────────────────────────────────────────
+	#  Travel animation
+	# ──────────────────────────────────────────────────────────
+
+	def _show_travel_animation(self, island_name, deferred_text):
+		"""
+		Show an animated ASCII ocean voyage window, then append arrival text.
+		island_name  – display name of the destination
+		deferred_text – full travel result to append after animation closes
+		"""
+		win = tk.Toplevel(self.root)
+		win.title("Setting Sail…")
+		win.geometry("620x310")
+		win.configure(bg="#0a0a14")
+		win.resizable(False, False)
+		win.attributes("-topmost", True)
+		# Disable the game entry while animating
+		try:
+			self.entry.config(state="disabled")
+		except Exception:
+			pass
+
+		hdr = tk.Label(
+			win,
+			text=f"  \u26f5  SETTING SAIL  \u2192  {island_name.upper()}  \u2693 ",
+			font=("Consolas", 13, "bold"),
+			fg="#00ccff",
+			bg="#0a0a14",
+			anchor="center",
+		)
+		hdr.pack(fill="x", pady=(12, 4))
+		tk.Frame(win, height=1, bg="#1a3a5a").pack(fill="x", padx=16)
+
+		anim_text = tk.Text(
+			win,
+			font=("Consolas", 11),
+			bg="#0a0a14",
+			fg="#88ddff",
+			relief="flat",
+			bd=0,
+			highlightthickness=0,
+			state="disabled",
+			height=8,
+			width=60,
+		)
+		anim_text.pack(padx=20, pady=(8, 2))
+		tk.Frame(win, height=1, bg="#1a3a5a").pack(fill="x", padx=16)
+
+		status_var = tk.StringVar(value="")
+		tk.Label(
+			win,
+			textvariable=status_var,
+			font=("Consolas", 10),
+			fg="#446688",
+			bg="#0a0a14",
+		).pack(pady=6)
+
+		# ── Build animation frames ──────────────────────────────
+		WIDTH = 56
+		# Ship ASCII art pieces
+		sail_top = "  |  "
+		sail_mid = " [-] "
+		hull     = "\\_O_/"
+		wave_a = ("\u2248" * WIDTH)[:WIDTH]
+		wave_b = ("~ " * (WIDTH // 2 + 1))[:WIDTH]
+		wave_c = (" ~" * (WIDTH // 2 + 1))[:WIDTH]
+
+		positions = [1, 7, 13, 19, 25, 31, 37, 43, 49]
+		day_labels = [
+			"Leaving port…", "Day 1 at sea…", "Day 2 at sea…",
+			"Day 3 at sea…", "Day 4 at sea…", "Day 5 at sea…",
+			"Day 6 at sea…", "Nearing land…", "Land ahoy!"
+		]
+		wave_cycle = [wave_a, wave_b, wave_c, wave_b]
+
+		frames = []
+		for i, pos in enumerate(positions):
+			p = min(pos, WIDTH - 5)
+			l1 = " " * p + sail_top
+			l2 = " " * p + sail_mid
+			l3 = " " * p + hull
+			w1 = wave_cycle[i % 4]
+			w2 = wave_cycle[(i + 1) % 4]
+			w3 = wave_cycle[(i + 2) % 4]
+			frame_text = f"\n{l1}\n{l2}\n{l3}\n{w1}\n{w2}\n{w3}\n"
+			frames.append((frame_text, day_labels[i]))
+
+		# Final arrived frame
+		short_name = island_name[:24]
+		frames.append((
+			f"\n\n"
+			f"       \u2693  ANCHOR DROPPED  \u2693\n\n"
+			f"   \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n"
+			f"       {short_name:^24}\n"
+			f"   \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n",
+			f"Arrived at {island_name}!"
+		))
+
+		frame_idx = [0]
+
+		def next_frame():
+			if not win.winfo_exists():
+				return
+			if frame_idx[0] < len(frames) - 1:
+				txt, status = frames[frame_idx[0]]
+				anim_text.config(state="normal")
+				anim_text.delete("1.0", "end")
+				anim_text.insert("end", txt)
+				anim_text.config(state="disabled")
+				status_var.set(status)
+				frame_idx[0] += 1
+				win.after(220, next_frame)
+			else:
+				# Show arrived frame, then close and append text
+				txt, status = frames[-1]
+				anim_text.config(state="normal")
+				anim_text.delete("1.0", "end")
+				anim_text.insert("end", txt)
+				anim_text.config(state="disabled")
+				status_var.set(status)
+				win.after(1400, _finish)
+
+		def _finish():
+			try:
+				win.destroy()
+			except Exception:
+				pass
+			try:
+				self.entry.config(state="normal")
+			except Exception:
+				pass
+			if deferred_text:
+				self.append(deferred_text)
+			self.refresh_inventory_display()
+			self._refresh_hotbar()
+			try:
+				self.root.after(0, lambda: self.entry.focus_set())
+			except Exception:
+				pass
+
+		win.after(80, next_frame)
+
+	# ──────────────────────────────────────────────────────────
+	#  Room Browser & Bestiary popup launchers
+	# ──────────────────────────────────────────────────────────
+
+	def _open_rooms_window(self):
+		"""Open the searchable Room Browser window."""
+		try:
+			from searchable_rooms_window import SearchableRoomsWindow
+			SearchableRoomsWindow(self.root, self.engine)
+		except Exception as exc:
+			self.append(f"[Room Browser] Could not open: {exc}")
+
+	def _open_bestiary_window(self):
+		"""Open the searchable Bestiary window."""
+		try:
+			from bestiary_window import BestiaryWindow
+			BestiaryWindow(self.root)
+		except Exception as exc:
+			self.append(f"[Bestiary] Could not open: {exc}")
+
 	def on_enter(self, event=None):
 		# Always ensure entry is ready to accept input
 		cmd = self.entry.get().strip()
@@ -5342,8 +5942,49 @@ class AdventureGUI:
 
 		# Process via engine
 		resp = self.engine.process_command(cmd)
+
+		# Check for travel animation request (intercept before appending text)
+		travel_anim = getattr(self.engine, 'pending_travel_animation', None)
+		if travel_anim is not None:
+			self.engine.pending_travel_animation = None
+			self.entry.delete(0, "end")
+			try:
+				self.root.after(0, lambda: self.entry.focus_set())
+			except Exception:
+				pass
+			self.refresh_inventory_display()
+			self._refresh_hotbar()
+			self._show_travel_animation(travel_anim, resp or "")
+			return "break"
+
+		# Check for open-window requests
+		if resp == "__OPEN_ROOMS__":
+			self._open_rooms_window()
+			self.entry.delete(0, "end")
+			try:
+				self.root.after(0, lambda: self.entry.focus_set())
+			except Exception:
+				pass
+			return "break"
+		if resp == "__OPEN_BESTIARY__":
+			self._open_bestiary_window()
+			self.entry.delete(0, "end")
+			try:
+				self.root.after(0, lambda: self.entry.focus_set())
+			except Exception:
+				pass
+			return "break"
+
 		if resp:
-			self.append(resp)
+			if "💀 YOU HAVE FALLEN! 💀" in resp:
+				# Show death screen overlay; it will append respawn text after 5s
+				self.entry.delete(0, "end")
+				self.show_death_screen(resp)
+				self.refresh_inventory_display()
+				self._refresh_hotbar()
+				return "break"
+			else:
+				self.append(resp)
 
 		# Clear entry and refocus immediately so typing feels responsive
 		self.entry.delete(0, "end")
@@ -5569,13 +6210,18 @@ class AdventureGUI:
 					if has_equip:
 						self.stats_listbox.insert("end", "───────────────────")
 						self.stats_listbox.insert("end", "Equipment:")
-						slot_icons = {"weapon": "⚔️", "armor": "🛡️", "shield": "🔰", "accessory": "💍"}
+						slot_icons = {"weapon": "⚔️", "armor": "🛡️", "shield": "🔰", "helm": "⛑️", "boots": "🥾", "gloves": "🧤", "accessory": "💍"}
 						for slot in EQUIPMENT_SLOTS:
 							item = equip.get(slot)
 							if item:
-								nice = item.replace("_", " ").title()
+								# Show rarity indicator
+								eq_data = EQUIPMENT_DATABASE.get(item, {})
+								rarity = eq_data.get("rarity", "common")
+								from equipment_system import RARITY_TIERS
+								rarity_icon = RARITY_TIERS.get(rarity, {}).get("icon", "")
+								nice = eq_data.get("name", item.replace("_", " ").title())
 								icon = slot_icons.get(slot, "•")
-								self.stats_listbox.insert("end", f"  {icon} {nice}")
+								self.stats_listbox.insert("end", f"  {icon} {rarity_icon} {nice}")
 			else:
 				# Fallback: show sorted stats
 				for k in sorted(stats.keys(), key=lambda s: s.lower()):

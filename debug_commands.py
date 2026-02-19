@@ -38,9 +38,17 @@ def handle_debug_commands(engine, args):
         if len(args) > 2 and args[1].lower() == "points":
             return _debug_set_skill_points(engine, args[2])
         return "Usage: debug skill points <amount>"
+    elif subcommand == "level":
+        if len(args) > 1:
+            return _debug_set_level(engine, args[1])
+        return "Usage: debug level <level_number>"
     elif subcommand == "items":
-        if len(args) > 1 and args[1].lower() == "all":
-            return _debug_list_all_items()
+        if len(args) > 1:
+            sub = args[1].lower()
+            if sub == "all":
+                return _debug_open_items_window(engine)
+            elif sub == "list":
+                return _debug_list_all_items()
         return _debug_list_items(engine)
     elif subcommand == "enemies":
         return _debug_list_all_enemies()
@@ -108,7 +116,8 @@ Combat & Enemies:
 
 Items & Inventory:
   debug items                   - Show your inventory
-  debug items all               - List all items in database
+  debug items all               - Open searchable items window
+  debug items list              - Print full item list to console (old behavior)
   debug spawn item <id>         - Add item to inventory
   debug gold <amount>           - Set gold amount
 
@@ -120,6 +129,7 @@ Dungeons:
 
 Skills & Stats:
   debug skill points <amount>   - Set skill points
+  debug level <level_number>    - Set player level
   debug stats                   - Show player stats
 
 Debug Modes:
@@ -339,6 +349,18 @@ def _debug_set_skill_points(engine, amount):
         return f"Invalid amount: {amount}"
 
 
+def _debug_set_level(engine, level):
+    """Set player level."""
+    try:
+        level_amount = int(level)
+        if engine.player:
+            engine.player.stats['level'] = level_amount
+            return f"Level set to {level_amount}"
+        return "No player found"
+    except ValueError:
+        return f"Invalid level: {level}"
+
+
 def _debug_list_items(engine):
     """Show player inventory with nice formatting."""
     if not engine.player:
@@ -362,7 +384,7 @@ def _debug_list_items(engine):
         result += f"\n{'─' * 79}\n"
         result += f"Total: {len(inventory)} item types, {total_items} items\n"
     
-    result += "Use 'debug items all' to see all available items\n"
+    result += "Use 'debug items all' to open the searchable item window\n"
     return result
 
 
@@ -805,6 +827,35 @@ def _debug_spawn_enemy(engine, enemy_id, level=None):
 	return result
 
 
+def _debug_open_items_window(engine):
+	"""Open the searchable items database window."""
+	try:
+		from searchable_items_window import SearchableItemsWindow
+	except ImportError as e:
+		return f"Items window not available: {e}"
+
+	# Get the root tkinter widget from the engine
+	root = None
+	if hasattr(engine, 'root'):
+		root = engine.root
+	elif hasattr(engine, 'master'):
+		root = engine.master
+	else:
+		return "Items window requires a running GUI (tkinter root not found)."
+
+	# Close existing window if open
+	existing = getattr(engine, 'items_search_window', None)
+	if existing and existing.is_open():
+		existing.window.lift()
+		return "  Items search window is already open (brought to front)."
+
+	# Create and open new window
+	win = SearchableItemsWindow(root, game_engine=engine)
+	win.create_window()
+	engine.items_search_window = win
+	return "  Opened item database search window."
+
+
 def _debug_list_all_items():
 	"""List ALL items from every source in the game — equipment, shop, crafting,
 	combat loot, dungeon loot, world rooms, fishing, fixed dungeons, quests, and item effects."""
@@ -1207,7 +1258,7 @@ def _debug_spawn_item(engine, item_id):
 			msg += "Did you mean:\n"
 			for s in suggestions[:10]:
 				msg += f"  {s}\n"
-		msg += "\nUse 'debug items all' to see all available items.\n"
+		msg += "\nUse 'debug items all' to open the searchable item window.\n"
 		msg += "Prefix with ! to force-spawn any ID (e.g. debug spawn item !custom_item)\n"
 		return msg
 

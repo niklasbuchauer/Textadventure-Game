@@ -236,6 +236,476 @@ RECIPE_DATABASE = {
 		"description": "A crown of dark power, restored from its shattered form.",
 		"auto_discover": True,
 	},
+
+	# ═══════════════════════════════════════════════════════════════════
+	# EXPANDED EQUIPMENT CRAFTING - Common & Uncommon at Forge
+	# ═══════════════════════════════════════════════════════════════════
+
+	# --- WEAPONS (Forge) ---
+	"bronze_sword": {
+		"id": "bronze_sword",
+		"name": "Bronze Sword",
+		"ingredients": {"copper_ore": 2, "tin_ore": 1, "stick": 1},
+		"result": ("bronze_sword", 1),
+		"station": "forge",
+		"description": "A simple sword made from bronze alloy.",
+	},
+	"iron_axe": {
+		"id": "iron_axe",
+		"name": "Iron Axe",
+		"ingredients": {"iron_ingot": 2, "stick": 1, "rope_coil": 1},
+		"result": ("iron_axe", 1),
+		"station": "forge",
+		"description": "A heavy axe for chopping foes and firewood alike.",
+	},
+	"steel_mace": {
+		"id": "steel_mace",
+		"name": "Steel Mace",
+		"ingredients": {"refined_iron": 2, "iron_ingot": 1},
+		"result": ("steel_mace", 1),
+		"station": "forge",
+		"description": "A weighty mace that crushes armor.",
+	},
+	"hunters_bow": {
+		"id": "hunters_bow",
+		"name": "Hunter's Bow",
+		"ingredients": {"stick": 3, "rope_coil": 2, "wolf_pelt": 1},
+		"result": ("hunters_bow", 1),
+		"station": "forge",
+		"description": "A reliable bow for hunting and combat.",
+	},
+	"silver_rapier": {
+		"id": "silver_rapier",
+		"name": "Silver Rapier",
+		"ingredients": {"silver_ingot": 2, "refined_iron": 1},
+		"result": ("silver_rapier", 1),
+		"station": "forge",
+		"description": "An elegant thrusting blade of pure silver.",
+	},
+
+	# --- ARMOR (Forge) ---
+	"padded_vest": {
+		"id": "padded_vest",
+		"name": "Padded Vest",
+		"ingredients": {"cloth_scraps": 4, "rope_coil": 1},
+		"result": ("padded_vest", 1),
+		"station": "forge",
+		"description": "A simple padded vest offering basic protection.",
+	},
+	"chainmail_shirt": {
+		"id": "chainmail_shirt",
+		"name": "Chainmail Shirt",
+		"ingredients": {"iron_ingot": 4, "rope_coil": 2},
+		"result": ("chainmail_shirt", 1),
+		"station": "forge",
+		"description": "Interlocking iron rings provide flexible protection.",
+	},
+	"iron_plate": {
+		"id": "iron_plate",
+		"name": "Iron Plate Armor",
+		"ingredients": {"iron_ingot": 5, "refined_iron": 2, "leather_strip": 2},
+		"result": ("iron_plate", 1),
+		"station": "forge",
+		"description": "Heavy plate armor forged from solid iron.",
+	},
+
+	# --- HELMS (Forge) ---
+	"leather_cap": {
+		"id": "leather_cap",
+		"name": "Leather Cap",
+		"ingredients": {"wolf_pelt": 1, "leather_strip": 2},
+		"result": ("leather_cap", 1),
+		"station": "forge",
+		"description": "A simple leather cap for head protection.",
+	},
+	"iron_helm": {
+		"id": "iron_helm",
+		"name": "Iron Helm",
+		"ingredients": {"iron_ingot": 2, "leather_strip": 1},
+		"result": ("iron_helm", 1),
+		"station": "forge",
+		"description": "A solid iron helmet with nose guard.",
+	},
+	"steel_greathelm": {
+		"id": "steel_greathelm",
+		"name": "Steel Greathelm",
+		"ingredients": {"refined_iron": 3, "iron_ingot": 2},
+		"result": ("steel_greathelm", 1),
+		"station": "forge",
+		"description": "A fully enclosed helm of tempered steel.",
+	},
+
+	# --- BOOTS (Forge) ---
+	"leather_boots": {
+		"id": "leather_boots",
+		"name": "Leather Boots",
+		"ingredients": {"wolf_pelt": 2, "rope_coil": 1},
+		"result": ("leather_boots", 1),
+		"station": "forge",
+		"description": "Sturdy boots for long journeys.",
+	},
+	"iron_sabatons": {
+		"id": "iron_sabatons",
+		"name": "Iron Sabatons",
+		"ingredients": {"iron_ingot": 2, "leather_strip": 2},
+		"result": ("iron_sabatons", 1),
+		"station": "forge",
+		"description": "Heavy iron boots that clank with each step.",
+	},
+	"steel_greaves": {
+		"id": "steel_greaves",
+		"name": "Steel Greaves",
+		"ingredients": {"refined_iron": 2, "iron_ingot": 2, "leather_strip": 1},
+		"result": ("steel_greaves", 1),
+		"station": "forge",
+		"description": "Steel leg armor extending from knee to ankle.",
+	},
+
+	# --- GLOVES (Forge) ---
+	"cloth_gloves": {
+		"id": "cloth_gloves",
+		"name": "Cloth Gloves",
+		"ingredients": {"cloth_scraps": 2},
+		"result": ("cloth_gloves", 1),
+		"station": "forge",
+		"description": "Simple cloth hand wraps.",
+	},
+	"leather_gloves": {
+		"id": "leather_gloves",
+		"name": "Leather Gloves",
+		"ingredients": {"wolf_pelt": 1, "leather_strip": 1},
+		"result": ("leather_gloves", 1),
+		"station": "forge",
+		"description": "Sturdy leather gloves with good grip.",
+	},
+	"iron_gauntlets": {
+		"id": "iron_gauntlets",
+		"name": "Iron Gauntlets",
+		"ingredients": {"iron_ingot": 2, "leather_strip": 1},
+		"result": ("iron_gauntlets", 1),
+		"station": "forge",
+		"description": "Heavy iron gauntlets that double as weapons.",
+	},
+
+	# --- SHIELDS (Forge) ---
+	"wooden_buckler": {
+		"id": "wooden_buckler",
+		"name": "Wooden Buckler",
+		"ingredients": {"stick": 3, "rope_coil": 1},
+		"result": ("wooden_buckler", 1),
+		"station": "forge",
+		"description": "A small wooden shield for parrying.",
+	},
+	"iron_kite_shield": {
+		"id": "iron_kite_shield",
+		"name": "Iron Kite Shield",
+		"ingredients": {"iron_ingot": 3, "leather_strip": 2},
+		"result": ("iron_kite_shield", 1),
+		"station": "forge",
+		"description": "A large kite-shaped shield for infantry.",
+	},
+	"steel_tower_shield": {
+		"id": "steel_tower_shield",
+		"name": "Steel Tower Shield",
+		"ingredients": {"refined_iron": 3, "iron_ingot": 2, "leather_strip": 2},
+		"result": ("steel_tower_shield", 1),
+		"station": "forge",
+		"description": "A massive tower shield providing full body coverage.",
+	},
+
+	# --- ACCESSORIES (Forge/Any) ---
+	"copper_ring": {
+		"id": "copper_ring",
+		"name": "Copper Ring",
+		"ingredients": {"copper_ore": 2},
+		"result": ("copper_ring", 1),
+		"station": "forge",
+		"description": "A simple copper ring with minor enchantment.",
+	},
+	"silver_ring": {
+		"id": "silver_ring",
+		"name": "Silver Ring",
+		"ingredients": {"silver_ingot": 1},
+		"result": ("silver_ring", 1),
+		"station": "forge",
+		"description": "A silver ring that wards off curses.",
+	},
+	"bone_amulet": {
+		"id": "bone_amulet",
+		"name": "Bone Amulet",
+		"ingredients": {"bone_fragments": 3, "rope_coil": 1},
+		"result": ("bone_amulet", 1),
+		"station": "any",
+		"description": "A tribal amulet carved from bones.",
+	},
+
+	# ═══════════════════════════════════════════════════════════════════
+	# CRYSTAL ALTAR RECIPES - Crystal-themed Epic/Legendary Equipment
+	# ═══════════════════════════════════════════════════════════════════
+
+	"crystal_blade": {
+		"id": "crystal_blade",
+		"name": "Crystal Blade",
+		"ingredients": {"heart_crystal_fragment": 2, "resonance_crystal": 1, "steel_longsword": 1},
+		"result": ("crystal_blade", 1),
+		"station": "altar_crystal",
+		"description": "A sword of pure crystallized light.",
+		"auto_discover": True,
+	},
+	"radiant_helm": {
+		"id": "radiant_helm",
+		"name": "Radiant Helm",
+		"ingredients": {"heart_crystal_fragment": 1, "steel_greathelm": 1, "concentrated_light_essence": 1},
+		"result": ("radiant_helm", 1),
+		"station": "altar_crystal",
+		"description": "A helm that glows with inner light.",
+		"auto_discover": True,
+	},
+	"prismatic_boots": {
+		"id": "prismatic_boots",
+		"name": "Prismatic Boots",
+		"ingredients": {"spectrum_prism": 1, "steel_greaves": 1, "resonance_crystal": 1},
+		"result": ("prismatic_boots", 1),
+		"station": "altar_crystal",
+		"description": "Boots that leave rainbow trails with each step.",
+		"auto_discover": True,
+	},
+	"crystalweave_gloves": {
+		"id": "crystalweave_gloves",
+		"name": "Crystalweave Gloves",
+		"ingredients": {"heart_crystal_fragment": 1, "leather_gloves": 1, "concentrated_light_essence": 1},
+		"result": ("crystalweave_gloves", 1),
+		"station": "altar_crystal",
+		"description": "Gloves woven with crystal thread.",
+		"auto_discover": True,
+	},
+	"lightweaver_robes": {
+		"id": "lightweaver_robes",
+		"name": "Lightweaver Robes",
+		"ingredients": {"concentrated_light_essence": 2, "enchanted_cloak_fragment": 1, "resonance_crystal": 1},
+		"result": ("lightweaver_robes", 1),
+		"station": "altar_crystal",
+		"description": "Robes that shimmer with captured sunlight.",
+		"auto_discover": True,
+	},
+
+	# ═══════════════════════════════════════════════════════════════════
+	# SHADOW ALTAR RECIPES - Shadow-themed Epic/Legendary Equipment
+	# ═══════════════════════════════════════════════════════════════════
+
+	"nightblade": {
+		"id": "nightblade",
+		"name": "Nightblade",
+		"ingredients": {"obsidian_blade_fragment": 2, "steel_longsword": 1, "umbral_thread": 2},
+		"result": ("nightblade", 1),
+		"station": "altar_shadow",
+		"description": "A blade that drinks in light.",
+		"auto_discover": True,
+	},
+	"shadowstep_boots": {
+		"id": "shadowstep_boots",
+		"name": "Shadowstep Boots",
+		"ingredients": {"umbral_thread": 3, "leather_boots": 1, "concentrated_void_essence": 1},
+		"result": ("shadowstep_boots", 1),
+		"station": "altar_shadow",
+		"description": "Boots that muffle sound and shadow.",
+		"auto_discover": True,
+	},
+	"hood_of_whispers": {
+		"id": "hood_of_whispers",
+		"name": "Hood of Whispers",
+		"ingredients": {"umbral_thread": 2, "leather_cap": 1, "dread_idol": 1},
+		"result": ("hood_of_whispers", 1),
+		"station": "altar_shadow",
+		"description": "A hood that lets you hear secrets on the wind.",
+		"auto_discover": True,
+	},
+	"void_touched_gauntlets": {
+		"id": "void_touched_gauntlets",
+		"name": "Void-Touched Gauntlets",
+		"ingredients": {"void_heart_fragment": 1, "iron_gauntlets": 1, "concentrated_void_essence": 1},
+		"result": ("void_touched_gauntlets", 1),
+		"station": "altar_shadow",
+		"description": "Gauntlets that phase through armor.",
+		"auto_discover": True,
+	},
+	"shadow_mail": {
+		"id": "shadow_mail",
+		"name": "Shadow Mail",
+		"ingredients": {"umbral_thread": 4, "chainmail_shirt": 1, "void_heart_fragment": 1},
+		"result": ("shadow_mail", 1),
+		"station": "altar_shadow",
+		"description": "Armor woven from solidified shadows.",
+		"auto_discover": True,
+	},
+
+	# ═══════════════════════════════════════════════════════════════════
+	# IRON ALTAR RECIPES - Dwarven Epic/Legendary Equipment
+	# ═══════════════════════════════════════════════════════════════════
+
+	"runeforged_blade": {
+		"id": "runeforged_blade",
+		"name": "Runeforged Blade",
+		"ingredients": {"raw_mithril": 1, "tempered_steel_ingot": 2, "eternal_ember": 1},
+		"result": ("runeforged_blade", 1),
+		"station": "altar_iron",
+		"description": "A blade inscribed with dwarven power runes.",
+		"auto_discover": True,
+	},
+	"forgemaster_helm": {
+		"id": "forgemaster_helm",
+		"name": "Forgemaster Helm",
+		"ingredients": {"tempered_steel_ingot": 2, "eternal_ember": 1, "steel_greathelm": 1},
+		"result": ("forgemaster_helm", 1),
+		"station": "altar_iron",
+		"description": "A helm forged in the eternal flames.",
+		"auto_discover": True,
+	},
+	"ironbound_boots": {
+		"id": "ironbound_boots",
+		"name": "Ironbound Boots",
+		"ingredients": {"tempered_steel_ingot": 2, "mithril_dust": 1, "iron_sabatons": 1},
+		"result": ("ironbound_boots", 1),
+		"station": "altar_iron",
+		"description": "Boots reinforced with ancient dwarven alloy.",
+		"auto_discover": True,
+	},
+	"steamfist_gauntlets": {
+		"id": "steamfist_gauntlets",
+		"name": "Steamfist Gauntlets",
+		"ingredients": {"eternal_ember": 1, "iron_gauntlets": 1, "clockwork_gear": 2},
+		"result": ("steamfist_gauntlets", 1),
+		"station": "altar_iron",
+		"description": "Steam-powered gauntlets that enhance punch force.",
+		"auto_discover": True,
+	},
+	"adamantine_shield": {
+		"id": "adamantine_shield",
+		"name": "Adamantine Shield",
+		"ingredients": {"raw_mithril": 1, "tempered_steel_ingot": 2, "iron_kite_shield": 1},
+		"result": ("adamantine_shield", 1),
+		"station": "altar_iron",
+		"description": "A shield of the hardest known metal.",
+		"auto_discover": True,
+	},
+	"runeplate_armor": {
+		"id": "runeplate_armor",
+		"name": "Runeplate Armor",
+		"ingredients": {"tempered_steel_ingot": 3, "mithril_dust": 2, "iron_plate": 1, "eternal_ember": 1},
+		"result": ("runeplate_armor", 1),
+		"station": "altar_iron",
+		"description": "Masterwork dwarven plate etched with protective runes.",
+		"auto_discover": True,
+	},
+
+	# ═══════════════════════════════════════════════════════════════════
+	# CATACOMB ALTAR RECIPES - Undead-themed Epic/Legendary Equipment
+	# ═══════════════════════════════════════════════════════════════════
+
+	"bonereaper_scythe": {
+		"id": "bonereaper_scythe",
+		"name": "Bonereaper Scythe",
+		"ingredients": {"bone_fragments": 5, "soul_gem": 2, "cracked_phylactery": 1},
+		"result": ("bonereaper_scythe", 1),
+		"station": "altar_catacomb",
+		"description": "A scythe that harvests souls.",
+		"auto_discover": True,
+	},
+	"grave_warden_helm": {
+		"id": "grave_warden_helm",
+		"name": "Grave Warden Helm",
+		"ingredients": {"bone_fragments": 3, "soul_gem": 1, "iron_helm": 1},
+		"result": ("grave_warden_helm", 1),
+		"station": "altar_catacomb",
+		"description": "A skull-like helm of bound spirits.",
+		"auto_discover": True,
+	},
+	"soulbound_boots": {
+		"id": "soulbound_boots",
+		"name": "Soulbound Boots",
+		"ingredients": {"soul_gem": 2, "leather_boots": 1, "umbral_thread": 1},
+		"result": ("soulbound_boots", 1),
+		"station": "altar_catacomb",
+		"description": "Boots empowered by trapped souls.",
+		"auto_discover": True,
+	},
+	"phylactery_gauntlets": {
+		"id": "phylactery_gauntlets",
+		"name": "Phylactery Gauntlets",
+		"ingredients": {"cracked_phylactery": 2, "iron_gauntlets": 1, "blood_ruby": 1},
+		"result": ("phylactery_gauntlets", 1),
+		"station": "altar_catacomb",
+		"description": "Gauntlets that drain life force from foes.",
+		"auto_discover": True,
+	},
+	"deathshroud_armor": {
+		"id": "deathshroud_armor",
+		"name": "Deathshroud Armor",
+		"ingredients": {"umbral_thread": 3, "soul_gem": 3, "chainmail_shirt": 1},
+		"result": ("deathshroud_armor", 1),
+		"station": "altar_catacomb",
+		"description": "Armor wreathed in deathly energy.",
+		"auto_discover": True,
+	},
+	"necromancer_ring": {
+		"id": "necromancer_ring",
+		"name": "Necromancer Ring",
+		"ingredients": {"soul_gem": 1, "blood_ruby": 1, "silver_ring": 1},
+		"result": ("necromancer_ring", 1),
+		"station": "altar_catacomb",
+		"description": "A ring that commands the restless dead.",
+		"auto_discover": True,
+	},
+
+	# ═══════════════════════════════════════════════════════════════════
+	# MYTHIC CRAFTING - Requires Multiple Boss Materials
+	# ═══════════════════════════════════════════════════════════════════
+
+	"titans_grasp": {
+		"id": "titans_grasp",
+		"name": "Titan's Grasp",
+		"ingredients": {"titans_heart": 1, "forgemaster_heart": 1, "raw_mithril": 2, "eternal_ember": 2},
+		"result": ("titans_grasp", 1),
+		"station": "altar_iron",
+		"description": "Gauntlets forged from two titans' essence. Grants immense strength.",
+		"auto_discover": True,
+	},
+	"eclipse_blade": {
+		"id": "eclipse_blade",
+		"name": "Eclipse Blade",
+		"ingredients": {"titans_heart": 1, "sovereign_shadow_crown": 1, "prismatic_blade": 1, "shadow_blade": 1},
+		"result": ("eclipse_blade", 1),
+		"station": "altar_shadow",
+		"description": "A blade of light and shadow in perfect balance.",
+		"auto_discover": True,
+	},
+	"crown_of_dominion": {
+		"id": "crown_of_dominion",
+		"name": "Crown of Dominion",
+		"ingredients": {"lich_crown_fragment": 1, "sovereign_shadow_crown": 1, "frost_sovereign_crystal": 1, "blood_ruby": 3},
+		"result": ("crown_of_dominion", 1),
+		"station": "altar_catacomb",
+		"description": "A crown that commands all who behold it.",
+		"auto_discover": True,
+	},
+	"worldshaper_armor": {
+		"id": "worldshaper_armor",
+		"name": "Worldshaper Armor",
+		"ingredients": {"forgemaster_heart": 1, "verdant_guardian_seed": 1, "dwarven_masterwork": 1, "raw_mithril": 3},
+		"result": ("worldshaper_armor", 1),
+		"station": "altar_iron",
+		"description": "Armor infused with the power to reshape reality.",
+		"auto_discover": True,
+	},
+	"boots_of_the_void": {
+		"id": "boots_of_the_void",
+		"name": "Boots of the Void",
+		"ingredients": {"void_heart_fragment": 2, "sovereign_shadow_crown": 1, "shadowstep_boots": 1},
+		"result": ("boots_of_the_void", 1),
+		"station": "altar_shadow",
+		"description": "Boots that step between dimensions.",
+		"auto_discover": True,
+	},
 }
 
 # =====================================================================
@@ -249,6 +719,7 @@ except ImportError:
 
 # Item worth for crafted items (that don't already exist in the item_worth table)
 CRAFTED_ITEM_WORTH = {
+	# Original forge items
 	"steel_dagger": 35,
 	"iron_sword": 30,
 	"steel_longsword": 110,
@@ -270,6 +741,81 @@ CRAFTED_ITEM_WORTH = {
 	"dwarven_masterwork": 380,
 	"soul_blade": 300,
 	"lich_crown": 350,
+
+	# New Forge Weapons
+	"bronze_sword": 20,
+	"iron_axe": 45,
+	"steel_mace": 90,
+	"hunters_bow": 55,
+	"silver_rapier": 130,
+
+	# New Forge Armor
+	"padded_vest": 15,
+	"chainmail_shirt": 85,
+	"iron_plate": 150,
+
+	# New Forge Helms
+	"leather_cap": 18,
+	"iron_helm": 50,
+	"steel_greathelm": 120,
+
+	# New Forge Boots
+	"leather_boots": 22,
+	"iron_sabatons": 55,
+	"steel_greaves": 100,
+
+	# New Forge Gloves
+	"cloth_gloves": 8,
+	"leather_gloves": 25,
+	"iron_gauntlets": 60,
+
+	# New Forge Shields
+	"wooden_buckler": 12,
+	"iron_kite_shield": 70,
+	"steel_tower_shield": 140,
+
+	# New Forge Accessories
+	"copper_ring": 25,
+	"silver_ring": 65,
+	"bone_amulet": 35,
+
+	# Crystal Altar Equipment
+	"crystal_blade": 280,
+	"radiant_helm": 240,
+	"prismatic_boots": 220,
+	"crystalweave_gloves": 180,
+	"lightweaver_robes": 260,
+
+	# Shadow Altar Equipment
+	"nightblade": 260,
+	"shadowstep_boots": 200,
+	"hood_of_whispers": 190,
+	"void_touched_gauntlets": 210,
+	"shadow_mail": 240,
+
+	# Iron Altar Equipment
+	"runeforged_blade": 300,
+	"forgemaster_helm": 270,
+	"ironbound_boots": 230,
+	"steamfist_gauntlets": 220,
+	"adamantine_shield": 280,
+	"runeplate_armor": 350,
+
+	# Catacomb Altar Equipment
+	"bonereaper_scythe": 290,
+	"grave_warden_helm": 200,
+	"soulbound_boots": 180,
+	"phylactery_gauntlets": 210,
+	"deathshroud_armor": 260,
+	"necromancer_ring": 220,
+
+	# Mythic Crafted Items
+	"titans_grasp": 800,
+	"eclipse_blade": 950,
+	"crown_of_dominion": 900,
+	"worldshaper_armor": 1000,
+	"boots_of_the_void": 750,
+
 	# Cooked food
 	"cooked_fish": 10,
 	"grilled_trout": 18,

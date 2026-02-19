@@ -230,6 +230,216 @@ ITEM_EFFECTS = {
 		"description": "Crystal growth research notes from an unknown scientist.",
 		"use_text": "You study the research notes:\n  'Diamond and heart-crystal combine at the Forge of Light.'\n  'Resonance crystals amplify enchantments on rings.'\n  'The growth solution accelerates crystalline bonding.'",
 	},
+
+	# ═══════════════════════════════════════════════════════════════════
+	# NEW CONSUMABLES - BUFF POTIONS
+	# ═══════════════════════════════════════════════════════════════════
+
+	"strength_potion": {
+		"type": "consumable",
+		"effect": "buff_attack",
+		"value": 5,
+		"duration": 5,
+		"description": "A bubbling red potion that enhances physical strength.",
+		"use_text": "You drink the strength potion. Your muscles surge with power!",
+	},
+	"ironhide_potion": {
+		"type": "consumable",
+		"effect": "buff_defense",
+		"value": 5,
+		"duration": 5,
+		"description": "A thick gray potion that toughens your skin.",
+		"use_text": "You drink the ironhide potion. Your skin hardens like armor!",
+	},
+	"elixir_of_might": {
+		"type": "consumable",
+		"effect": "buff_attack",
+		"value": 10,
+		"duration": 3,
+		"description": "A powerful elixir that grants immense strength briefly.",
+		"use_text": "You drink the elixir of might. Raw power courses through your veins!",
+	},
+	"stoneskin_elixir": {
+		"type": "consumable",
+		"effect": "buff_defense",
+		"value": 10,
+		"duration": 3,
+		"description": "A rare elixir that turns skin to stone briefly.",
+		"use_text": "You drink the stoneskin elixir. Your body becomes nearly impervious!",
+	},
+	"berserker_draught": {
+		"type": "consumable",
+		"effect": "buff_attack",
+		"value": 15,
+		"duration": 2,
+		"description": "A dangerous brew that grants incredible strength at a cost.",
+		"use_text": "You drink the berserker draught. Battle fury overwhelms you!",
+	},
+	"greater_healing_potion": {
+		"type": "consumable",
+		"effect": "heal",
+		"value": 100,
+		"description": "A large, glowing potion that restores significant vitality.",
+		"use_text": "You drink the greater healing potion. A surge of life energy courses through you!",
+	},
+	"lesser_healing_potion": {
+		"type": "consumable",
+		"effect": "heal",
+		"value": 25,
+		"description": "A small healing potion for minor wounds.",
+		"use_text": "You drink the lesser healing potion. Some of your wounds close.",
+	},
+	"regeneration_potion": {
+		"type": "consumable",
+		"effect": "regenerate",
+		"value": 5,
+		"duration": 5,
+		"description": "A green potion that accelerates natural healing.",
+		"use_text": "You drink the regeneration potion. Warmth spreads as healing begins.",
+	},
+
+	# ═══════════════════════════════════════════════════════════════════
+	# NEW CONSUMABLES - RESISTANCE POTIONS
+	# ═══════════════════════════════════════════════════════════════════
+
+	"fire_resistance_potion": {
+		"type": "consumable",
+		"effect": "resist_fire",
+		"value": 50,
+		"duration": 5,
+		"description": "A cool blue potion that protects against fire.",
+		"use_text": "You drink the fire resistance potion. You feel protected from heat.",
+	},
+	"frost_resistance_potion": {
+		"type": "consumable",
+		"effect": "resist_frost",
+		"value": 50,
+		"duration": 5,
+		"description": "A warm orange potion that protects against cold.",
+		"use_text": "You drink the frost resistance potion. You feel protected from cold.",
+	},
+	"shadow_resistance_potion": {
+		"type": "consumable",
+		"effect": "resist_shadow",
+		"value": 50,
+		"duration": 5,
+		"description": "A glowing white potion that protects against shadow magic.",
+		"use_text": "You drink the shadow resistance potion. Light suffuses your being.",
+	},
+	"poison_resistance_potion": {
+		"type": "consumable",
+		"effect": "resist_poison",
+		"value": 75,
+		"duration": 5,
+		"description": "A sickly green potion that protects against toxins.",
+		"use_text": "You drink the poison resistance potion. Your blood feels fortified.",
+	},
+
+	# ═══════════════════════════════════════════════════════════════════
+	# NEW CONSUMABLES - FOOD ITEMS
+	# ═══════════════════════════════════════════════════════════════════
+
+	"dried_meat": {
+		"type": "consumable",
+		"effect": "heal",
+		"value": 8,
+		"description": "Preserved strips of salted meat. Long lasting.",
+		"use_text": "You chew on the dried meat. It's tough but nourishing.",
+	},
+	"fresh_bread": {
+		"type": "consumable",
+		"effect": "heal",
+		"value": 12,
+		"description": "A fresh loaf of hearty bread.",
+		"use_text": "You eat the fresh bread. Its warmth fills your belly.",
+	},
+	"travelers_ration": {
+		"type": "consumable",
+		"effect": "heal",
+		"value": 15,
+		"description": "A compact package of mixed provisions.",
+		"use_text": "You eat the traveler's ration. Simple but effective sustenance.",
+	},
+	"hearty_stew": {
+		"type": "consumable",
+		"effect": "heal",
+		"value": 35,
+		"description": "A bowl of thick, meaty stew.",
+		"use_text": "You eat the hearty stew. Warmth and strength spread through you.",
+	},
+	"hunters_meal": {
+		"type": "consumable",
+		"effect": "buff_attack",
+		"value": 3,
+		"duration": 8,
+		"description": "A meal of roasted game meat. Increases combat prowess.",
+		"use_text": "You eat the hunter's meal. You feel ready for battle!",
+	},
+	"fortifying_soup": {
+		"type": "consumable",
+		"effect": "buff_defense",
+		"value": 3,
+		"duration": 8,
+		"description": "A vegetable soup that strengthens the body.",
+		"use_text": "You eat the fortifying soup. Your body feels tougher.",
+	},
+	"warriors_feast": {
+		"type": "consumable",
+		"effect": "buff_all",
+		"value": 5,
+		"duration": 5,
+		"description": "A magnificent feast fit for a warrior.",
+		"use_text": "You devour the warrior's feast. Power surges through you!",
+	},
+	"apple": {
+		"type": "consumable",
+		"effect": "heal",
+		"value": 5,
+		"description": "A fresh, crisp apple.",
+		"use_text": "You eat the apple. It's refreshing and sweet.",
+	},
+	"cheese_wheel": {
+		"type": "consumable",
+		"effect": "heal",
+		"value": 20,
+		"description": "A wheel of aged cheese. Quite filling.",
+		"use_text": "You cut slices from the cheese wheel and eat. Rich and satisfying.",
+	},
+
+	# ═══════════════════════════════════════════════════════════════════
+	# NEW CONSUMABLES - SCROLLS
+	# ═══════════════════════════════════════════════════════════════════
+
+	"scroll_of_protection": {
+		"type": "consumable",
+		"effect": "buff_defense",
+		"value": 8,
+		"duration": 4,
+		"description": "A magical scroll inscribed with protective runes.",
+		"use_text": "You read the scroll of protection. A shield of light surrounds you!",
+	},
+	"scroll_of_strength": {
+		"type": "consumable",
+		"effect": "buff_attack",
+		"value": 8,
+		"duration": 4,
+		"description": "A magical scroll inscribed with empowering runes.",
+		"use_text": "You read the scroll of strength. Magic enhances your might!",
+	},
+	"scroll_of_insight": {
+		"type": "consumable",
+		"effect": "reveal_traps",
+		"value": 0,
+		"description": "A magical scroll that reveals hidden dangers.",
+		"use_text": "You read the scroll of insight. Hidden truths are revealed!",
+	},
+	"scroll_of_escape": {
+		"type": "consumable",
+		"effect": "escape_combat",
+		"value": 100,
+		"description": "A scroll that guarantees escape from combat.",
+		"use_text": "You read the scroll of escape. Reality bends and you vanish!",
+	},
 }
 
 # Water-adjacent rooms for fishing
@@ -315,6 +525,21 @@ class ItemEffects:
 			result += "Your lockpicks are ready. Use 'disarm' near traps or locked chests."
 		elif effect_type == "read":
 			pass  # use_text already contains the reading content
+		# New buff effects
+		elif effect_type == "buff_attack":
+			result += self._apply_buff("attack", effect_data["value"], effect_data.get("duration", 5))
+		elif effect_type == "buff_defense":
+			result += self._apply_buff("defense", effect_data["value"], effect_data.get("duration", 5))
+		elif effect_type == "buff_all":
+			result += self._apply_buff("attack", effect_data["value"], effect_data.get("duration", 5))
+			result += self._apply_buff("defense", effect_data["value"], effect_data.get("duration", 5))
+		elif effect_type == "regenerate":
+			result += self._apply_regenerate(effect_data["value"], effect_data.get("duration", 5))
+		elif effect_type in ("resist_fire", "resist_frost", "resist_shadow", "resist_poison"):
+			resist_type = effect_type.replace("resist_", "")
+			result += self._apply_resistance(resist_type, effect_data["value"], effect_data.get("duration", 5))
+		elif effect_type == "escape_combat":
+			result += self._apply_escape_combat()
 		else:
 			result += "Nothing seems to happen."
 
@@ -348,6 +573,47 @@ class ItemEffects:
 			self.engine.poison_status = None
 			return "  🧪 Poison cured!\n"
 		return "  You weren't poisoned.\n"
+
+	def _apply_buff(self, stat_type, value, duration):
+		"""Apply a temporary stat buff."""
+		state = self.engine.player.state
+		buffs = state.setdefault("active_buffs", {})
+		
+		# Stack with existing buff or create new
+		buff_key = f"buff_{stat_type}"
+		if buff_key in buffs:
+			# Extend duration if new buff is stronger or equal
+			existing = buffs[buff_key]
+			if value >= existing.get("value", 0):
+				buffs[buff_key] = {"value": value, "duration": duration}
+				return f"  ⬆️ {stat_type.title()} buff refreshed: +{value} for {duration} turns!\n"
+			else:
+				return f"  ⬆️ Current {stat_type} buff is stronger. Duration extended.\n"
+		else:
+			buffs[buff_key] = {"value": value, "duration": duration}
+			return f"  ⬆️ {stat_type.title()} +{value} for {duration} turns!\n"
+
+	def _apply_regenerate(self, heal_per_turn, duration):
+		"""Apply a heal-over-time effect."""
+		state = self.engine.player.state
+		buffs = state.setdefault("active_buffs", {})
+		buffs["regeneration"] = {"value": heal_per_turn, "duration": duration}
+		return f"  💚 Regeneration active: +{heal_per_turn} HP per turn for {duration} turns!\n"
+
+	def _apply_resistance(self, resist_type, value, duration):
+		"""Apply elemental resistance."""
+		state = self.engine.player.state
+		buffs = state.setdefault("active_buffs", {})
+		buffs[f"resist_{resist_type}"] = {"value": value, "duration": duration}
+		return f"  🛡️ {resist_type.title()} resistance +{value}% for {duration} turns!\n"
+
+	def _apply_escape_combat(self):
+		"""Guarantee escape from combat."""
+		if hasattr(self.engine, 'combat') and self.engine.combat:
+			# Set a flag that guarantees escape
+			self.engine.player.state["guaranteed_escape"] = True
+			return "  ✨ You feel ready to vanish at will. Use 'run' to escape!\n"
+		return "  You're not in combat.\n"
 
 	def _apply_reveal_traps(self):
 		"""Reveal all traps in current room."""

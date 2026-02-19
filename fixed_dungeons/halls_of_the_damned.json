@@ -1,0 +1,367 @@
+{
+  "dungeon_id": "halls_of_the_damned",
+  "name": "Halls of the Damned",
+  "description": "A vast underground necropolis where the island's most powerful undead have gathered. The halls pulse with necrotic energy, and the dead here do not rest — they reign. At its heart sits the Lich King, orchestrating an army of the damned.",
+  "entrance_room_id": "dreadmist_necropolis_heart",
+  "always_open": true,
+  "num_floors": 3,
+  "theme": "undead_necropolis",
+  "difficulty": "extreme",
+  "requirements": {
+    "min_level": 27,
+    "description": "The cursed gates open only for those whose strength has overcome death itself many times."
+  },
+  "floors": {
+    "1": {
+      "floor_number": 1,
+      "num_rooms": 8,
+      "entrance_room": "hd_f1_cursed_entry",
+      "exit_stairs_down": "hd_f1_bone_staircase",
+      "rooms": {
+        "hd_f1_cursed_entry": {
+          "name": "Cursed Entry",
+          "description": "Black iron gates stand open, radiating waves of dread. The stone floor is etched with containment circles — failed ones, broken from the inside. Cold mist pours from the darkness ahead.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"broken_containment_rune": {"quantity": 2, "value": 55}},
+          "exits": {
+            "leave": {
+              "target": "dreadmist_necropolis_heart",
+              "type": "leave_dungeon",
+              "transition_text": "You flee back through the cursed gates into the necropolis above..."
+            },
+            "south": {"target": "hd_f1_wailing_gallery", "type": "direction"},
+            "east": {"target": "hd_f1_embalming_chamber", "type": "direction"}
+          }
+        },
+        "hd_f1_wailing_gallery": {
+          "name": "Wailing Gallery",
+          "description": "Portraits of the dead line the walls, their painted eyes following your movement. The frames are chained to the wall, and the portraits periodically scream. Each depicts a soul trapped in the painting for eternity.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"cursed_portrait": {"quantity": 1, "value": 80}, "soul_fragment": {"quantity": 2, "value": 65}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "hd_f1_cursed_entry", "type": "direction"},
+            "south": {"target": "hd_f1_ossuary", "type": "direction"},
+            "west": {"target": "hd_f1_spirit_cell", "type": "direction"}
+          }
+        },
+        "hd_f1_embalming_chamber": {
+          "name": "Embalming Chamber",
+          "description": "Stone slabs stained with centuries of dark fluids fill this cold room. Jars of preserved organs line shelves, still faintly pulsing. The tools of necromantic preservation hang on hooks — each one cursed.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"cursed_embalming_tool": {"quantity": 1, "value": 75}, "preserved_heart": {"quantity": 1, "value": 90}},
+          "traps": [
+            {"type": "poison_dart", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "west": {"target": "hd_f1_cursed_entry", "type": "direction"},
+            "south": {"target": "hd_f1_bone_workshop", "type": "direction"}
+          }
+        },
+        "hd_f1_spirit_cell": {
+          "name": "Spirit Cell Block",
+          "description": "Iron cages enchanted to hold ghosts. Most are empty, their spectral occupants long escaped. A few still contain wailing spirits, pressing against invisible barriers with translucent hands.",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {"spirit_chain": {"quantity": 2, "value": 70}, "ghost_lantern": {"quantity": 1, "value": 100}},
+          "exits": {
+            "east": {"target": "hd_f1_wailing_gallery", "type": "direction"}
+          }
+        },
+        "hd_f1_bone_workshop": {
+          "name": "Bone Workshop",
+          "description": "A necromancer's craft room where bones are shaped into weapons, armor, and constructs. Half-finished bone golems stand on assembly tables. The tools are made of enchanted bone that reshapes other bone.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"bone_golem_arm": {"quantity": 1, "value": 85}, "necromantic_chisel": {"quantity": 1, "value": 95}},
+          "traps": [
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "hd_f1_embalming_chamber", "type": "direction"},
+            "west": {"target": "hd_f1_ossuary", "type": "direction"}
+          }
+        },
+        "hd_f1_ossuary": {
+          "name": "Grand Ossuary",
+          "description": "Millions of bones arranged in intricate patterns cover every surface — walls made of femurs, chandeliers of skulls, floors tiled with vertebrae. The arrangement is not random but forms massive containment runes.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"enchanted_skull": {"quantity": 1, "value": 110}, "bone_dust": {"quantity": 3, "value": 40}},
+          "exits": {
+            "north": {"target": "hd_f1_wailing_gallery", "type": "direction"},
+            "east": {"target": "hd_f1_bone_workshop", "type": "direction"},
+            "south": {"target": "hd_f1_coffin_gallery", "type": "direction"}
+          }
+        },
+        "hd_f1_coffin_gallery": {
+          "name": "Coffin Gallery",
+          "description": "Hundreds of coffins are stacked floor to ceiling like a macabre library. Some are nailed shut with silver; others stand slightly ajar. Scratching sounds come from within several of them.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {"silver_coffin_nail": {"quantity": 4, "value": 35}, "death_shroud": {"quantity": 1, "value": 75}},
+          "exits": {
+            "north": {"target": "hd_f1_ossuary", "type": "direction"},
+            "east": {"target": "hd_f1_bone_staircase", "type": "direction"}
+          }
+        },
+        "hd_f1_bone_staircase": {
+          "name": "Bone Staircase",
+          "description": "A spiral staircase constructed entirely of fused bones. Each step is a different creature's skull. The handrail is a spine of enormous length, and the air grows colder with each downward step.",
+          "coordinates": [1, -3],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "west": {"target": "hd_f1_coffin_gallery", "type": "direction"},
+            "down": {
+              "target": "hd_f2_death_court",
+              "type": "stairs_down",
+              "transition_text": "You descend the bone staircase. The temperature drops to freezing..."
+            }
+          }
+        }
+      }
+    },
+    "2": {
+      "floor_number": 2,
+      "num_rooms": 8,
+      "entrance_room": "hd_f2_death_court",
+      "exit_stairs_down": "hd_f2_void_descent",
+      "rooms": {
+        "hd_f2_death_court": {
+          "name": "Death Court",
+          "description": "An underground courtroom where spectral judges preside over the dead. The dock is always full — souls queue endlessly for judgement. Their verdicts echo through eternity: guilty, guilty, guilty.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"judges_gavel": {"quantity": 1, "value": 100}},
+          "exits": {
+            "up": {
+              "target": "hd_f1_bone_staircase",
+              "type": "stairs_up",
+              "transition_text": "You climb the bone staircase back to the upper level..."
+            },
+            "south": {"target": "hd_f2_soul_forge", "type": "direction"},
+            "east": {"target": "hd_f2_wraith_barracks", "type": "direction"}
+          }
+        },
+        "hd_f2_wraith_barracks": {
+          "name": "Wraith Barracks",
+          "description": "The undead army musters here. Spectral weapons hang on phantom racks, and ghostly soldiers drill in endless formation. Their discipline is terrifying — death has not diminished their martial skill.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"spectral_weapon_essence": {"quantity": 1, "value": 130}, "wraith_captain_insignia": {"quantity": 1, "value": 105}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "west": {"target": "hd_f2_death_court", "type": "direction"},
+            "south": {"target": "hd_f2_phylactery_vault", "type": "direction"}
+          }
+        },
+        "hd_f2_soul_forge": {
+          "name": "Soul Forge",
+          "description": "A forge that burns not with fire but with captured souls. The flames are translucent blue-white, and faces appear and vanish in the fire. Items shaped here carry fragments of the souls used as fuel.\n\nThe soul-fire burns with cold intensity...",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"soul_steel_ingot": {"quantity": 1, "value": 180}},
+          "crafting_altar": true,
+          "altar_name": "Soul Forge",
+          "altar_description": "This unholy forge burns with captured spirits. Items shaped here are imbued with spectral energy — weapons that drain life, armor that phases through attacks, and tools that operate between the living and dead worlds.",
+          "exits": {
+            "north": {"target": "hd_f2_death_court", "type": "direction"},
+            "south": {"target": "hd_f2_necromantic_library", "type": "direction"},
+            "west": {"target": "hd_f2_torture_gallery", "type": "direction"}
+          }
+        },
+        "hd_f2_torture_gallery": {
+          "name": "Torture Gallery",
+          "description": "Instruments of exquisite cruelty line the walls, some still stained with ancient blood. This was where the Lich King broke the wills of the living, converting them into loyal undead servants. The screams have been absorbed into the stone.",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {"torturer_key_ring": {"quantity": 1, "value": 75}, "blood_crystal": {"quantity": 1, "value": 135}},
+          "traps": [
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "poison_dart", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "east": {"target": "hd_f2_soul_forge", "type": "direction"}
+          }
+        },
+        "hd_f2_necromantic_library": {
+          "name": "Necromantic Library",
+          "description": "Books bound in skin and written in blood fill towering shelves. Each tome contains the secrets of death magic — reanimation, soul binding, life draining, and worse. The books whisper to those who come near.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"necromantic_tome": {"quantity": 1, "value": 200}, "death_rune": {"quantity": 2, "value": 80}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "hd_f2_soul_forge", "type": "direction"},
+            "east": {"target": "hd_f2_phylactery_vault", "type": "direction"},
+            "south": {"target": "hd_f2_void_descent", "type": "direction"}
+          }
+        },
+        "hd_f2_phylactery_vault": {
+          "name": "Phylactery Vault",
+          "description": "Glass cases house the phylacteries of lesser liches — objects containing their souls. Each glows with a sickly light, and destroying one would permanently kill its owner. The cases are heavily warded.",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {
+            "lesser_phylactery": {"quantity": 1, "value": 300},
+            "lich_dust": {"quantity": 2, "value": 90},
+            "soul_gem": {"quantity": 1, "value": 220}
+          },
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "poison_dart", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "hd_f2_wraith_barracks", "type": "direction"},
+            "west": {"target": "hd_f2_necromantic_library", "type": "direction"}
+          }
+        },
+        "hd_f2_blood_pool": {
+          "name": "Blood Pool",
+          "description": "A pool of blood that never coagulates, fed by unseen sources. The blood serves as a scrying medium — gazing into it reveals other places and times. It also serves as a gateway for summoning darker things.",
+          "coordinates": [-1, -2],
+          "location_type": "dungeon",
+          "items": {"blood_vial": {"quantity": 3, "value": 65}, "scrying_lens": {"quantity": 1, "value": 150}},
+          "exits": {
+            "east": {"target": "hd_f2_necromantic_library", "type": "direction"}
+          }
+        },
+        "hd_f2_void_descent": {
+          "name": "Void Descent",
+          "description": "A pit of absolute darkness — not just absence of light but active negation of it. A stone staircase spirals down into the void, each step colder than the last. At the bottom, something ancient waits.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "north": {"target": "hd_f2_necromantic_library", "type": "direction"},
+            "down": {
+              "target": "hd_f3_throne_approach",
+              "type": "stairs_down",
+              "transition_text": "You descend into absolute darkness. The cold becomes supernatural..."
+            }
+          }
+        }
+      }
+    },
+    "3": {
+      "floor_number": 3,
+      "num_rooms": 6,
+      "entrance_room": "hd_f3_throne_approach",
+      "boss_room": "hd_f3_lich_kings_throne",
+      "rooms": {
+        "hd_f3_throne_approach": {
+          "name": "Throne Approach",
+          "description": "The deepest level is paradoxically grand — vaulted ceilings, black marble columns, and silver-blue ghostlight. This is no dungeon but a palace. The palace of death itself.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "up": {
+              "target": "hd_f2_void_descent",
+              "type": "stairs_up",
+              "transition_text": "You climb back through the void into the upper halls..."
+            },
+            "south": {"target": "hd_f3_death_guard_hall", "type": "direction"}
+          }
+        },
+        "hd_f3_death_guard_hall": {
+          "name": "Death Guard Hall",
+          "description": "Elite undead warriors in ornate black armor stand in perfect formation. These are the Lich King's Death Guard — the strongest undead warriors ever raised. They do not move unless commanded.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"death_guard_insignia": {"quantity": 1, "value": 180}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "hd_f3_throne_approach", "type": "direction"},
+            "east": {"target": "hd_f3_crown_jewels", "type": "direction"},
+            "south": {"target": "hd_f3_lich_kings_throne", "type": "direction"}
+          }
+        },
+        "hd_f3_crown_jewels": {
+          "name": "Crown Jewels of the Dead",
+          "description": "The Lich King's personal treasury — artifacts stolen from every conquered kingdom. Crowns, scepters, holy relics turned unholy, and weapons wielded by legendary heroes before their deaths fed the Lich King's power.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {
+            "lich_king_crown_fragment": {"quantity": 1, "value": 400},
+            "unholy_relic": {"quantity": 1, "value": 320},
+            "dead_kings_scepter": {"quantity": 1, "value": 280}
+          },
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "poison_dart", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "west": {"target": "hd_f3_death_guard_hall", "type": "direction"}
+          }
+        },
+        "hd_f3_lich_kings_throne": {
+          "name": "Lich King's Throne",
+          "description": "A throne of fused souls — thousands of screaming faces pressed into the black metal of the seat. The Lich King rises from it as you enter, his skeletal form draped in robes of woven shadow. His phylactery pulses in his ribcage, visible through his translucent flesh. He raises a staff of pure death energy.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {
+            "lich_kings_staff": {"quantity": 1, "value": 550},
+            "soul_crown": {"quantity": 1, "value": 480},
+            "death_essence_crystal": {"quantity": 1, "value": 420}
+          },
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "hd_f3_death_guard_hall", "type": "direction"},
+            "west": {"target": "hd_f3_soul_vault", "type": "direction"},
+            "east": {"target": "hd_f3_death_forge", "type": "direction"}
+          }
+        },
+        "hd_f3_soul_vault": {
+          "name": "Soul Vault",
+          "description": "Thousands of soul gems line the walls, each containing a captured spirit. The Lich King's power source — every gem destroyed weakens him, but they are protected by the strongest wards in existence.",
+          "coordinates": [-1, -2],
+          "location_type": "dungeon",
+          "items": {
+            "greater_soul_gem": {"quantity": 2, "value": 300},
+            "soul_siphon": {"quantity": 1, "value": 380},
+            "death_rune": {"quantity": 3, "value": 80}
+          },
+          "exits": {
+            "east": {"target": "hd_f3_lich_kings_throne", "type": "direction"}
+          }
+        },
+        "hd_f3_death_forge": {
+          "name": "Death Forge",
+          "description": "A forge that burns with necrotic fire — cold flames that unmake rather than shape. Items placed here are stripped of their physical nature and remade as spectral weapons. The Living Fear the Dead Forge.\n\nThe necrotic fire crackles with dark purpose...",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {"death_forged_ingot": {"quantity": 1, "value": 450}},
+          "crafting_altar": true,
+          "altar_name": "Death Forge",
+          "altar_description": "Necrotic fire burns cold on this unholy anvil. Items shaped here become instruments of death — draining life on contact, phasing through defenses, and growing stronger with each kill. The ultimate expression of death-smithing.",
+          "exits": {
+            "west": {"target": "hd_f3_lich_kings_throne", "type": "direction"}
+          }
+        }
+      }
+    }
+  }
+}

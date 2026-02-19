@@ -1,0 +1,363 @@
+{
+  "dungeon_id": "tempest_depths",
+  "name": "The Tempest Depths",
+  "description": "A network of underwater caves beneath the Stormbreak Reef, where the storm above channels raw lightning into the depths. Crystal formations store electrical energy, and ancient sea creatures patrol electrified corridors.",
+  "entrance_room_id": "stormbreak_kraken_lair",
+  "always_open": true,
+  "num_floors": 3,
+  "theme": "storm_ocean",
+  "difficulty": "very_hard",
+  "requirements": {
+    "min_level": 18,
+    "description": "The lightning-sealed entrance only opens for those strong enough to survive the storm's fury."
+  },
+  "floors": {
+    "1": {
+      "floor_number": 1,
+      "num_rooms": 8,
+      "entrance_room": "td_f1_storm_entry",
+      "exit_stairs_down": "td_f1_whirlpool_shaft",
+      "rooms": {
+        "td_f1_storm_entry": {
+          "name": "Storm Entry",
+          "description": "The cave mouth crackles with residual lightning. Water streams down the walls in sheets, and the air tastes of ozone and salt. Thunder echoes from somewhere far below.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"storm_crystal": {"quantity": 2, "value": 40}},
+          "exits": {
+            "leave": {
+              "target": "stormbreak_kraken_lair",
+              "type": "leave_dungeon",
+              "transition_text": "You climb back out through the electrified cave mouth into the storm above..."
+            },
+            "south": {"target": "td_f1_tidal_corridor", "type": "direction"},
+            "east": {"target": "td_f1_barnacle_hall", "type": "direction"}
+          }
+        },
+        "td_f1_tidal_corridor": {
+          "name": "Tidal Corridor",
+          "description": "Seawater floods this corridor in rhythmic surges, rising waist-deep before draining away. The walls are encrusted with bioluminescent barnacles that pulse in time with the tides.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"luminous_barnacle": {"quantity": 3, "value": 30}},
+          "traps": [
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "td_f1_storm_entry", "type": "direction"},
+            "south": {"target": "td_f1_shipwreck_chamber", "type": "direction"},
+            "west": {"target": "td_f1_kelp_room", "type": "direction"}
+          }
+        },
+        "td_f1_barnacle_hall": {
+          "name": "Barnacle Hall",
+          "description": "Every surface is covered in razor-sharp barnacles. Walking here requires extreme care. Among the barnacles, ancient coins and jewelry from sunken ships glint in the dim light.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"ancient_gold_coin": {"quantity": 4, "value": 35}, "coral_shard": {"quantity": 2, "value": 25}},
+          "traps": [
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "poison_dart", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "west": {"target": "td_f1_storm_entry", "type": "direction"},
+            "south": {"target": "td_f1_eel_nest", "type": "direction"}
+          }
+        },
+        "td_f1_kelp_room": {
+          "name": "Kelp Forest Room",
+          "description": "Thick kelp grows from floor to ceiling, creating a underwater forest. Pockets of air are trapped in bell-shaped kelp bladders. Bioluminescent fish dart between the fronds.",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {"kelp_extract": {"quantity": 2, "value": 35}, "bioluminescent_fish": {"quantity": 1, "value": 50}},
+          "exits": {
+            "east": {"target": "td_f1_tidal_corridor", "type": "direction"}
+          }
+        },
+        "td_f1_eel_nest": {
+          "name": "Electric Eel Nest",
+          "description": "A tangle of enormous electric eels writhes among coral formations. The water sparks and crackles with their combined discharge. Shed skins and eggs litter the rocky floor.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"eel_skin": {"quantity": 2, "value": 45}, "lightning_shard": {"quantity": 1, "value": 65}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "td_f1_barnacle_hall", "type": "direction"},
+            "west": {"target": "td_f1_shipwreck_chamber", "type": "direction"}
+          }
+        },
+        "td_f1_shipwreck_chamber": {
+          "name": "Shipwreck Chamber",
+          "description": "The shattered hull of an enormous galleon is wedged into this cavern, its masts broken against the ceiling. Cargo spills from cracked holds — silks, weapons, and chests of gold, all barnacle-encrusted.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"waterlogged_chest": {"quantity": 1, "value": 90}, "gold_coin": {"quantity": 6, "value": 35}, "coral_encrusted_sword": {"quantity": 1, "value": 75}},
+          "exits": {
+            "north": {"target": "td_f1_tidal_corridor", "type": "direction"},
+            "east": {"target": "td_f1_eel_nest", "type": "direction"},
+            "south": {"target": "td_f1_captain_quarters", "type": "direction"}
+          }
+        },
+        "td_f1_captain_quarters": {
+          "name": "Captain's Quarters",
+          "description": "The galleon's captain's cabin, miraculously intact. A skeleton in a naval coat sits at the desk, quill still in hand. Charts and maps cover the walls, and a locked chest sits beneath the bed.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {"captains_log": {"quantity": 1, "value": 60}, "naval_compass": {"quantity": 1, "value": 85}, "captains_chest_key": {"quantity": 1, "value": 40}},
+          "exits": {
+            "north": {"target": "td_f1_shipwreck_chamber", "type": "direction"},
+            "east": {"target": "td_f1_whirlpool_shaft", "type": "direction"}
+          }
+        },
+        "td_f1_whirlpool_shaft": {
+          "name": "Whirlpool Shaft",
+          "description": "A circular shaft where water spirals endlessly downward. The whirlpool is controlled by ancient mechanisms — handholds carved into the walls allow safe descent if you time it with the current's rhythm.",
+          "coordinates": [1, -3],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "west": {"target": "td_f1_captain_quarters", "type": "direction"},
+            "down": {
+              "target": "td_f2_pressure_chamber",
+              "type": "stairs_down",
+              "transition_text": "You descend through the controlled whirlpool, the water pressure increasing with each spiral..."
+            }
+          }
+        }
+      }
+    },
+    "2": {
+      "floor_number": 2,
+      "num_rooms": 8,
+      "entrance_room": "td_f2_pressure_chamber",
+      "exit_stairs_down": "td_f2_abyssal_vent",
+      "rooms": {
+        "td_f2_pressure_chamber": {
+          "name": "Pressure Chamber",
+          "description": "The second level is noticeably deeper. Water seeps from every crack, and the pressure makes your ears pop. Storm energy courses through crystal veins in the walls, providing eerie blue illumination.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"pressure_crystal": {"quantity": 2, "value": 55}},
+          "exits": {
+            "up": {
+              "target": "td_f1_whirlpool_shaft",
+              "type": "stairs_up",
+              "transition_text": "You ride the whirlpool current back to the upper level..."
+            },
+            "south": {"target": "td_f2_lightning_gallery", "type": "direction"},
+            "east": {"target": "td_f2_coral_throne", "type": "direction"}
+          }
+        },
+        "td_f2_lightning_gallery": {
+          "name": "Lightning Gallery",
+          "description": "Arcs of blue-white lightning jump between crystal pillars in a terrifying light show. The bolts follow predictable patterns — but one misstep means electrocution.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"charged_crystal": {"quantity": 2, "value": 70}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "td_f2_pressure_chamber", "type": "direction"},
+            "south": {"target": "td_f2_storm_forge", "type": "direction"},
+            "west": {"target": "td_f2_drowned_temple", "type": "direction"}
+          }
+        },
+        "td_f2_coral_throne": {
+          "name": "Coral Throne Room",
+          "description": "A throne carved from living coral dominates this undersea chamber. The seat was made for something far larger than human. Offerings of pearls and shells are piled at its base, left by deep-sea supplicants.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"black_pearl": {"quantity": 2, "value": 95}, "coral_crown": {"quantity": 1, "value": 120}},
+          "traps": [
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "west": {"target": "td_f2_pressure_chamber", "type": "direction"},
+            "south": {"target": "td_f2_treasure_grotto", "type": "direction"}
+          }
+        },
+        "td_f2_drowned_temple": {
+          "name": "Drowned Temple",
+          "description": "A pre-human temple to some ocean deity, now completely submerged. Stone fish-gods stare from alcoves, their gem eyes still glinting. The altar is stained with something darker than seawater.",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {"ocean_deity_idol": {"quantity": 1, "value": 110}, "gem_eye": {"quantity": 2, "value": 65}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "east": {"target": "td_f2_lightning_gallery", "type": "direction"}
+          }
+        },
+        "td_f2_storm_forge": {
+          "name": "Storm Forge",
+          "description": "Lightning is channeled through crystal conduits to power this ancient forge. The anvil crackles with stored energy, and the hammer sparks with every swing. Items forged here carry the storm's power.\n\nThe storm-powered forge hums with readiness...",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"stormforged_ingot": {"quantity": 1, "value": 140}},
+          "crafting_altar": true,
+          "altar_name": "Storm Forge",
+          "altar_description": "Lightning from the eternal storm above is channeled into this forge through crystal conduits. Items shaped here are imbued with electrical energy — shocking on contact, resistant to water, and crackling with power.",
+          "exits": {
+            "north": {"target": "td_f2_lightning_gallery", "type": "direction"},
+            "east": {"target": "td_f2_treasure_grotto", "type": "direction"},
+            "south": {"target": "td_f2_abyssal_vent", "type": "direction"}
+          }
+        },
+        "td_f2_treasure_grotto": {
+          "name": "Treasure Grotto",
+          "description": "Centuries of shipwrecks have deposited their treasures here. Gold coins carpet the floor, weapons and armor lie scattered among the coral, and chests overflow with gems from a dozen nations.",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {
+            "gold_coin": {"quantity": 10, "value": 35},
+            "pearl": {"quantity": 3, "value": 50},
+            "coral_encrusted_sword": {"quantity": 1, "value": 75},
+            "storm_sapphire": {"quantity": 1, "value": 180}
+          },
+          "traps": [
+            {"type": "poison_dart", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "td_f2_coral_throne", "type": "direction"},
+            "west": {"target": "td_f2_storm_forge", "type": "direction"}
+          }
+        },
+        "td_f2_siren_chamber": {
+          "name": "Siren's Chamber",
+          "description": "Haunting melodies echo through this crystalline chamber. The source is unclear — the walls themselves seem to sing, drawing unwary travelers deeper. Beautiful but deadly coral formations line the path.",
+          "coordinates": [-1, -2],
+          "location_type": "dungeon",
+          "items": {"siren_shell": {"quantity": 1, "value": 95}, "enchanted_coral": {"quantity": 1, "value": 80}},
+          "exits": {
+            "east": {"target": "td_f2_storm_forge", "type": "direction"}
+          }
+        },
+        "td_f2_abyssal_vent": {
+          "name": "Abyssal Vent",
+          "description": "A volcanic vent blasts superheated water upward in a column of bubbles. The shaft beside it leads down into absolute darkness, where the water turns ice-cold and the pressure becomes crushing.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "north": {"target": "td_f2_storm_forge", "type": "direction"},
+            "down": {
+              "target": "td_f3_deep_sanctum",
+              "type": "stairs_down",
+              "transition_text": "You descend past the thermal vent into the crushing darkness of the deepest level..."
+            }
+          }
+        }
+      }
+    },
+    "3": {
+      "floor_number": 3,
+      "num_rooms": 6,
+      "entrance_room": "td_f3_deep_sanctum",
+      "boss_room": "td_f3_eye_of_the_storm",
+      "rooms": {
+        "td_f3_deep_sanctum": {
+          "name": "Deep Sanctum",
+          "description": "The deepest level is eerily calm. The storm above is just a distant rumble. Phosphorescent organisms provide dim light, and the water is glass-still. Ancient power sleeps here.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "up": {
+              "target": "td_f2_abyssal_vent",
+              "type": "stairs_up",
+              "transition_text": "You ascend past the thermal vent back to the second level..."
+            },
+            "south": {"target": "td_f3_kraken_gallery", "type": "direction"}
+          }
+        },
+        "td_f3_kraken_gallery": {
+          "name": "Kraken Gallery",
+          "description": "Enormous sucker-marks scar the walls. Shed tentacle segments, each thicker than a tree trunk, litter the floor. This is where the Tempest Kraken comes to rest — and the marks suggest it is truly colossal.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"kraken_sucker": {"quantity": 2, "value": 85}, "shed_tentacle_segment": {"quantity": 1, "value": 120}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "td_f3_deep_sanctum", "type": "direction"},
+            "east": {"target": "td_f3_pearl_chamber", "type": "direction"},
+            "south": {"target": "td_f3_eye_of_the_storm", "type": "direction"}
+          }
+        },
+        "td_f3_pearl_chamber": {
+          "name": "Pearl Chamber",
+          "description": "Giant oysters — each the size of a bathtub — line the walls. Some are open, revealing pearls the size of fists in shades of black, white, gold, and impossible colors. The Kraken's personal treasure hoard.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"giant_pearl": {"quantity": 2, "value": 200}, "void_pearl": {"quantity": 1, "value": 280}, "black_pearl": {"quantity": 3, "value": 95}},
+          "traps": [
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "west": {"target": "td_f3_kraken_gallery", "type": "direction"}
+          }
+        },
+        "td_f3_eye_of_the_storm": {
+          "name": "Eye of the Storm",
+          "description": "A vast spherical chamber where the storm's energy converges. Lightning spirals around the walls in a perpetual vortex, and at the center, the Tempest Kraken — ancient beyond measure — waits with tentacles spread like a living cage of storm-charged flesh. Its single great eye glows with the fury of a hundred thunderstorms.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {
+            "tempest_kraken_eye": {"quantity": 1, "value": 450},
+            "storm_crown": {"quantity": 1, "value": 380},
+            "krakens_heart": {"quantity": 1, "value": 350}
+          },
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "td_f3_kraken_gallery", "type": "direction"},
+            "west": {"target": "td_f3_maelstrom_vault", "type": "direction"},
+            "east": {"target": "td_f3_tempest_forge", "type": "direction"}
+          }
+        },
+        "td_f3_maelstrom_vault": {
+          "name": "Maelstrom Vault",
+          "description": "A vault where the concentrated power of ocean storms is stored in crystal batteries. Each crystal contains a captured hurricane, visible as a tiny swirling tempest within. The power here could level an island.",
+          "coordinates": [-1, -2],
+          "location_type": "dungeon",
+          "items": {
+            "hurricane_crystal": {"quantity": 1, "value": 320},
+            "storm_essence": {"quantity": 3, "value": 85},
+            "stormforged_ingot": {"quantity": 2, "value": 140}
+          },
+          "exits": {
+            "east": {"target": "td_f3_eye_of_the_storm", "type": "direction"}
+          }
+        },
+        "td_f3_tempest_forge": {
+          "name": "Tempest Forge",
+          "description": "Raw storm energy is harnessed here through massive crystal conduits. Lightning strikes the anvil with metronomic precision, and the forge burns not with fire but with contained hurricanes.\n\nThe tempest-powered forge crackles with readiness...",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {"tempest_core": {"quantity": 1, "value": 400}},
+          "crafting_altar": true,
+          "altar_name": "Tempest Forge",
+          "altar_description": "Pure storm energy — lightning, wind, and ocean fury — converges on this forge. Items shaped here are imbued with the tempest's power: weapons that call lightning, armor that deflects storms, and tools that command the thunder.",
+          "exits": {
+            "west": {"target": "td_f3_eye_of_the_storm", "type": "direction"}
+          }
+        }
+      }
+    }
+  }
+}

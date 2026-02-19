@@ -1,0 +1,359 @@
+{
+  "dungeon_id": "void_beyond",
+  "name": "The Void Beyond",
+  "description": "At the bottom of the Abyssal Depths, reality itself fractures. The Void Beyond is not a place but a tear in existence — a window into the space between worlds where eldritch entities drift in infinite darkness. The Void Sovereign rules here, a being of pure entropy that seeks to unmake all of creation.",
+  "entrance_room_id": "abyssal_threshold_gate",
+  "always_open": true,
+  "num_floors": 3,
+  "theme": "eldritch_void",
+  "difficulty": "apocalyptic",
+  "requirements": {
+    "min_level": 37,
+    "description": "Only those who have mastered every challenge the world offers may peer into the Void Beyond. Many who enter never return — not because they die, but because they cease to have ever existed."
+  },
+  "floors": {
+    "1": {
+      "floor_number": 1,
+      "num_rooms": 8,
+      "entrance_room": "vb_f1_reality_breach",
+      "exit_stairs_down": "vb_f1_gravity_well",
+      "rooms": {
+        "vb_f1_reality_breach": {
+          "name": "Reality Breach",
+          "description": "The walls of reality are thin here — you can see through them to the void beyond. Stars and impossible geometries are visible through the translucent stone. The floor shifts underfoot as physics becomes optional.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"reality_shard": {"quantity": 2, "value": 120}, "void_residue": {"quantity": 3, "value": 85}},
+          "exits": {
+            "leave": {
+              "target": "abyssal_threshold_gate",
+              "type": "leave_dungeon",
+              "transition_text": "You claw your way back through the breach in reality, gasping as the world becomes solid again..."
+            },
+            "south": {"target": "vb_f1_mind_maze", "type": "direction"},
+            "east": {"target": "vb_f1_echo_chamber", "type": "direction"}
+          }
+        },
+        "vb_f1_mind_maze": {
+          "name": "Mind Maze",
+          "description": "The corridors rearrange themselves based on your thoughts. Fear creates dead ends, confidence opens paths, and doubt collapses walls. Your sanity is the key — lose it, and the maze becomes your tomb.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"sanity_anchor": {"quantity": 1, "value": 180}, "thought_crystal": {"quantity": 2, "value": 100}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "vb_f1_reality_breach", "type": "direction"},
+            "south": {"target": "vb_f1_paradox_hall", "type": "direction"},
+            "west": {"target": "vb_f1_memory_vault", "type": "direction"}
+          }
+        },
+        "vb_f1_echo_chamber": {
+          "name": "Echo Chamber",
+          "description": "Versions of yourself from other timelines appear here, fighting, dying, winning. Each echo shows a different choice, a different outcome. Some echoes try to warn you. Others try to kill you.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"temporal_echo_fragment": {"quantity": 1, "value": 200}, "timeline_splinter": {"quantity": 1, "value": 165}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "west": {"target": "vb_f1_reality_breach", "type": "direction"},
+            "south": {"target": "vb_f1_entropy_pool", "type": "direction"}
+          }
+        },
+        "vb_f1_memory_vault": {
+          "name": "Memory Vault",
+          "description": "Crystallized memories float in suspension — moments stolen from reality. Some are yours, some belong to people who no longer exist. Touching one relives the memory with perfect clarity and terrible emotional weight.",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {"crystallized_memory": {"quantity": 1, "value": 220}, "forgotten_name": {"quantity": 2, "value": 90}},
+          "exits": {
+            "east": {"target": "vb_f1_mind_maze", "type": "direction"}
+          }
+        },
+        "vb_f1_entropy_pool": {
+          "name": "Entropy Pool",
+          "description": "A pool of liquid entropy — things that touch it age, decay, and dissolve. Time moves faster near its surface; seconds become years. Objects tossed in emerge as dust. Yet something moves within the pool, immune to its effects.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"entropy_essence": {"quantity": 1, "value": 250}, "time_dust": {"quantity": 3, "value": 75}},
+          "traps": [
+            {"type": "poison_dart", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "vb_f1_echo_chamber", "type": "direction"},
+            "west": {"target": "vb_f1_paradox_hall", "type": "direction"}
+          }
+        },
+        "vb_f1_paradox_hall": {
+          "name": "Paradox Hall",
+          "description": "A hallway that is simultaneously its own beginning and end. Walking forward brings you back to the entrance — but subtly different. Each loop changes small details until the hall becomes unrecognizable. The exit exists in the gap between loops.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"paradox_key": {"quantity": 1, "value": 190}},
+          "exits": {
+            "north": {"target": "vb_f1_mind_maze", "type": "direction"},
+            "east": {"target": "vb_f1_entropy_pool", "type": "direction"},
+            "south": {"target": "vb_f1_dimensional_rift", "type": "direction"}
+          }
+        },
+        "vb_f1_dimensional_rift": {
+          "name": "Dimensional Rift",
+          "description": "A tear in space hangs in the air, showing glimpses of other planes — fire, ice, shadow, light, and things with no name. The rift pulses and writhes, and stepping too close pulls at your very existence.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {"rift_fragment": {"quantity": 1, "value": 230}, "planar_residue": {"quantity": 2, "value": 110}},
+          "exits": {
+            "north": {"target": "vb_f1_paradox_hall", "type": "direction"},
+            "east": {"target": "vb_f1_gravity_well", "type": "direction"}
+          }
+        },
+        "vb_f1_gravity_well": {
+          "name": "Gravity Well",
+          "description": "Gravity shifts constantly — up becomes down, then sideways, then absent entirely. You float, fall, and crawl in rapid succession. At the center, a dark sphere pulls everything toward it — a miniature black hole leading deeper into the void.",
+          "coordinates": [1, -3],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "west": {"target": "vb_f1_dimensional_rift", "type": "direction"},
+            "down": {
+              "target": "vb_f2_void_expanse",
+              "type": "stairs_down",
+              "transition_text": "You are pulled into the gravity well. Reality stretches, warps, and snaps — you tumble into a deeper layer of unreality..."
+            }
+          }
+        }
+      }
+    },
+    "2": {
+      "floor_number": 2,
+      "num_rooms": 8,
+      "entrance_room": "vb_f2_void_expanse",
+      "exit_stairs_down": "vb_f2_event_horizon",
+      "rooms": {
+        "vb_f2_void_expanse": {
+          "name": "Void Expanse",
+          "description": "Infinite darkness stretches in every direction. Islands of stone float in the void, connected by bridges of frozen light. Stars that don't correspond to any sky burn in impossible colors. You are between worlds.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"void_star": {"quantity": 1, "value": 200}},
+          "exits": {
+            "up": {
+              "target": "vb_f1_gravity_well",
+              "type": "stairs_up",
+              "transition_text": "You pull yourself back up through the gravity well into the upper level..."
+            },
+            "south": {"target": "vb_f2_thought_forge", "type": "direction"},
+            "east": {"target": "vb_f2_unmaking_room", "type": "direction"}
+          }
+        },
+        "vb_f2_unmaking_room": {
+          "name": "Unmaking Room",
+          "description": "In this chamber, things cease to exist — not destroyed but unmade, as if they never were. The walls are gaps in reality, and touching them erases whatever makes contact. Creation itself is being undone here.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"unmade_matter": {"quantity": 1, "value": 300}, "existence_anchor": {"quantity": 1, "value": 280}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "west": {"target": "vb_f2_void_expanse", "type": "direction"},
+            "south": {"target": "vb_f2_eldritch_nursery", "type": "direction"}
+          }
+        },
+        "vb_f2_thought_forge": {
+          "name": "Thought Forge",
+          "description": "Concepts become solid here. Thoughts manifest as physical objects — love becomes a warm gem, fear becomes a cold blade, hope becomes light itself. The forge reshapes abstract ideas into tangible things.\n\nThe forge of pure thought awaits your intentions...",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"solidified_concept": {"quantity": 1, "value": 350}},
+          "crafting_altar": true,
+          "altar_name": "Thought Forge",
+          "altar_description": "In this forge, abstract concepts become physical reality. Items shaped here transcend normal enchantment — they embody ideas themselves. Weapons that strike with the force of conviction, armor woven from determination, tools shaped by pure will.",
+          "exits": {
+            "north": {"target": "vb_f2_void_expanse", "type": "direction"},
+            "south": {"target": "vb_f2_impossible_geometry", "type": "direction"},
+            "west": {"target": "vb_f2_dead_god_remains", "type": "direction"}
+          }
+        },
+        "vb_f2_dead_god_remains": {
+          "name": "Dead God's Remains",
+          "description": "The corpse of a god floats in the void — colossal, incomprehensible, and ancient beyond measure. Its eye sockets are windows to other universes. Power still radiates from its remains, and things have grown in and on it.",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {
+            "divine_bone_fragment": {"quantity": 1, "value": 500},
+            "gods_eye_lens": {"quantity": 1, "value": 450},
+            "ichor_vial": {"quantity": 2, "value": 200}
+          },
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "poison_dart", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "east": {"target": "vb_f2_thought_forge", "type": "direction"}
+          }
+        },
+        "vb_f2_eldritch_nursery": {
+          "name": "Eldritch Nursery",
+          "description": "Newborn eldritch entities grow here — incomprehensible shapes that defy description. They are not malicious but their very existence is toxic to mortal minds. Looking at them too long causes nosebleeds, then madness.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"eldritch_larva": {"quantity": 1, "value": 380}, "madness_crystal": {"quantity": 2, "value": 160}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "vb_f2_unmaking_room", "type": "direction"},
+            "west": {"target": "vb_f2_thought_forge", "type": "direction"}
+          }
+        },
+        "vb_f2_impossible_geometry": {
+          "name": "Impossible Geometry",
+          "description": "A room that exists in more dimensions than three. Staircases lead up to floors below. Doors open to the rooms you just left. The architecture is mathematically impossible yet structurally sound — non-Euclidean space made real.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"tesseract_fragment": {"quantity": 1, "value": 420}, "dimensional_compass": {"quantity": 1, "value": 340}},
+          "exits": {
+            "north": {"target": "vb_f2_thought_forge", "type": "direction"},
+            "south": {"target": "vb_f2_event_horizon", "type": "direction"},
+            "east": {"target": "vb_f2_cosmic_web", "type": "direction"}
+          }
+        },
+        "vb_f2_cosmic_web": {
+          "name": "Cosmic Web",
+          "description": "Threads of pure energy connect floating nodes — a web that mirrors the structure of the universe itself. Each node is a universe, each thread a connection between realities. You are walking on the scaffolding of existence.",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {"cosmic_thread": {"quantity": 1, "value": 380}, "universe_node": {"quantity": 1, "value": 460}},
+          "exits": {
+            "west": {"target": "vb_f2_impossible_geometry", "type": "direction"}
+          }
+        },
+        "vb_f2_event_horizon": {
+          "name": "Event Horizon",
+          "description": "The boundary between existence and non-existence. Beyond this point, nothing returns — not light, not matter, not thought. The Void Sovereign's domain begins here. Crossing is a one-way journey into the impossible.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "north": {"target": "vb_f2_impossible_geometry", "type": "direction"},
+            "down": {
+              "target": "vb_f3_null_space",
+              "type": "stairs_down",
+              "transition_text": "You cross the event horizon. All light vanishes. All sound ceases. You exist in a space that predates creation itself..."
+            }
+          }
+        }
+      }
+    },
+    "3": {
+      "floor_number": 3,
+      "num_rooms": 6,
+      "entrance_room": "vb_f3_null_space",
+      "boss_room": "vb_f3_void_sovereigns_throne",
+      "rooms": {
+        "vb_f3_null_space": {
+          "name": "Null Space",
+          "description": "Nothing exists here — no light, no sound, no temperature, no time. You exist only because your will insists upon it. The void presses against your being, trying to reduce you to nothing. Every step is an act of defiance against non-existence.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "up": {
+              "target": "vb_f2_event_horizon",
+              "type": "stairs_up",
+              "transition_text": "You force yourself back across the event horizon, reality rushing back in..."
+            },
+            "south": {"target": "vb_f3_entropy_cathedral", "type": "direction"}
+          }
+        },
+        "vb_f3_entropy_cathedral": {
+          "name": "Entropy Cathedral",
+          "description": "A cathedral built from the concept of ending. Its pillars are made of collapsed stars, its windows show the death of universes, and its altar is entropy itself. This is where all things come to end.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"collapsed_star_fragment": {"quantity": 1, "value": 500}, "entropy_shard": {"quantity": 1, "value": 420}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "vb_f3_null_space", "type": "direction"},
+            "east": {"target": "vb_f3_reality_seed", "type": "direction"},
+            "south": {"target": "vb_f3_void_sovereigns_throne", "type": "direction"}
+          }
+        },
+        "vb_f3_reality_seed": {
+          "name": "Reality Seed",
+          "description": "A tiny point of light in the infinite darkness — a seed of reality, a potential universe waiting to be born. It contains within it the possibility of everything: every star, every world, every life. The Void Sovereign keeps it as a trophy.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"reality_seed_fragment": {"quantity": 1, "value": 800}, "creation_spark": {"quantity": 1, "value": 700}},
+          "exits": {
+            "west": {"target": "vb_f3_entropy_cathedral", "type": "direction"}
+          }
+        },
+        "vb_f3_void_sovereigns_throne": {
+          "name": "Void Sovereign's Throne",
+          "description": "It sits upon a throne made of unmade things — objects, people, worlds that it has erased from existence. The Void Sovereign is not a creature but an absence — a hole in reality shaped like intention. When it speaks, words cease to mean things. When it moves, space forgets its dimensions. It is the end of all things, and it has noticed you.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {
+            "void_sovereigns_crown": {"quantity": 1, "value": 1200},
+            "reality_unmaker": {"quantity": 1, "value": 1000},
+            "essence_of_entropy": {"quantity": 1, "value": 900}
+          },
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "poison_dart", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "vb_f3_entropy_cathedral", "type": "direction"},
+            "west": {"target": "vb_f3_oblivion_vault", "type": "direction"},
+            "east": {"target": "vb_f3_genesis_forge", "type": "direction"}
+          }
+        },
+        "vb_f3_oblivion_vault": {
+          "name": "Oblivion Vault",
+          "description": "Everything the Void Sovereign has unmade is stored here as concepts — the memory of things that no longer exist. Touching an object here gives you fleeting knowledge of entire unmade civilizations, snuffed-out stars, and erased timelines.",
+          "coordinates": [-1, -2],
+          "location_type": "dungeon",
+          "items": {
+            "unmade_world_memory": {"quantity": 1, "value": 950},
+            "oblivion_crystal": {"quantity": 1, "value": 850},
+            "erased_timeline": {"quantity": 1, "value": 780}
+          },
+          "exits": {
+            "east": {"target": "vb_f3_void_sovereigns_throne", "type": "direction"}
+          }
+        },
+        "vb_f3_genesis_forge": {
+          "name": "Genesis Forge",
+          "description": "Hidden behind the Void Sovereign's throne, this forge predates the void itself — it is where reality was first created. Its fire is the spark of creation, the opposite of everything around it. Items shaped here are remade at the most fundamental level.\n\nThe primordial flame of creation burns with infinite potential...",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {"genesis_ingot": {"quantity": 1, "value": 1100}},
+          "crafting_altar": true,
+          "altar_name": "Genesis Forge",
+          "altar_description": "The first forge — where reality itself was shaped. Items placed in its fire are unmade and remade from scratch, imbued with the power of creation itself. Weapons that define reality, armor that cannot be negated, and artifacts that exist outside the rules of the universe. The ultimate crafting station.",
+          "exits": {
+            "west": {"target": "vb_f3_void_sovereigns_throne", "type": "direction"}
+          }
+        }
+      }
+    }
+  }
+}

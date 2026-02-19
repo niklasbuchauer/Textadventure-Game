@@ -1,0 +1,365 @@
+{
+  "dungeon_id": "molten_crucible",
+  "name": "The Molten Crucible",
+  "description": "An ancient dwarven forge-complex built directly above a magma chamber. The crucible was the greatest forge ever constructed, capable of shaping adamantine and mythril. Now abandoned, its automated defenses still function, powered by the volcano's eternal heat.",
+  "entrance_room_id": "cinder_volcano_heart",
+  "always_open": true,
+  "num_floors": 3,
+  "theme": "volcanic_forge",
+  "difficulty": "extreme",
+  "requirements": {
+    "min_level": 22,
+    "description": "The heat-sealed gates require a warrior tempered by countless battles to enter."
+  },
+  "floors": {
+    "1": {
+      "floor_number": 1,
+      "num_rooms": 8,
+      "entrance_room": "mc_f1_ember_vestibule",
+      "exit_stairs_down": "mc_f1_magma_descent",
+      "rooms": {
+        "mc_f1_ember_vestibule": {
+          "name": "Ember Vestibule",
+          "description": "The entrance glows cherry-red from the heat below. Dwarven runes etched into the obsidian walls still pulse with protective magic. The air is barely breathable — hot as an oven and thick with sulfur.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"dwarven_rune_stone": {"quantity": 2, "value": 50}},
+          "exits": {
+            "leave": {
+              "target": "cinder_volcano_heart",
+              "type": "leave_dungeon",
+              "transition_text": "You retreat from the searing heat back into the volcano's outer chambers..."
+            },
+            "south": {"target": "mc_f1_slag_corridor", "type": "direction"},
+            "east": {"target": "mc_f1_cooling_chamber", "type": "direction"}
+          }
+        },
+        "mc_f1_slag_corridor": {
+          "name": "Slag Corridor",
+          "description": "Rivers of cooling slag flow through channels carved into the floor. The dwarves used these as conveyor systems for processed ore. Some channels still glow with residual heat. Metal scrap and failed castings litter the walkways.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"slag_ingot": {"quantity": 3, "value": 40}, "obsidian_shard": {"quantity": 2, "value": 45}},
+          "traps": [
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "mc_f1_ember_vestibule", "type": "direction"},
+            "south": {"target": "mc_f1_ore_gallery", "type": "direction"},
+            "west": {"target": "mc_f1_bellows_room", "type": "direction"}
+          }
+        },
+        "mc_f1_cooling_chamber": {
+          "name": "Cooling Chamber",
+          "description": "Massive stone basins once filled with water for quenching hot metal. The water has long since evaporated, but condensation drips from crystal-covered pipes overhead. Finished weapons and armor fragments remain in the quench racks.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"dwarven_weapon_fragment": {"quantity": 1, "value": 95}, "quench_crystal": {"quantity": 2, "value": 55}},
+          "exits": {
+            "west": {"target": "mc_f1_ember_vestibule", "type": "direction"},
+            "south": {"target": "mc_f1_automaton_workshop", "type": "direction"}
+          }
+        },
+        "mc_f1_bellows_room": {
+          "name": "Bellows Room",
+          "description": "Enormous mechanical bellows, each the size of a house, still pump volcanic gases upward through stone pipes. The machinery is dwarven-engineered perfection, running on geothermal power without maintenance for millennia.",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {"dwarven_gear": {"quantity": 2, "value": 60}, "bellows_leather": {"quantity": 1, "value": 45}},
+          "traps": [
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "east": {"target": "mc_f1_slag_corridor", "type": "direction"}
+          }
+        },
+        "mc_f1_automaton_workshop": {
+          "name": "Automaton Workshop",
+          "description": "Half-assembled dwarven automatons stand on workbenches. Some are barely more than skeletons of gears and pistons; others are eerily complete, missing only their power cores. Tools of exquisite craftsmanship hang on pegboards.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"automaton_part": {"quantity": 2, "value": 80}, "dwarven_tool_set": {"quantity": 1, "value": 110}},
+          "exits": {
+            "north": {"target": "mc_f1_cooling_chamber", "type": "direction"},
+            "west": {"target": "mc_f1_ore_gallery", "type": "direction"}
+          }
+        },
+        "mc_f1_ore_gallery": {
+          "name": "Ore Gallery",
+          "description": "Display cases of every ore known to dwarven-kind line the walls — iron, mithril, adamantine, orichalcum, and metals with no surface-world name. Some ores glow, some hum, and one seems to exist in more than three dimensions.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"mithril_ore": {"quantity": 1, "value": 150}, "adamantine_dust": {"quantity": 1, "value": 130}, "raw_orichalcum": {"quantity": 1, "value": 175}},
+          "exits": {
+            "north": {"target": "mc_f1_slag_corridor", "type": "direction"},
+            "east": {"target": "mc_f1_automaton_workshop", "type": "direction"},
+            "south": {"target": "mc_f1_magma_descent", "type": "direction"}
+          }
+        },
+        "mc_f1_rune_library": {
+          "name": "Rune Library",
+          "description": "Stone tablets inscribed with dwarven forging runes fill floor-to-ceiling shelves. Each tablet contains the blueprints for a different masterwork. The knowledge here represents the pinnacle of dwarven craft — priceless and irreplaceable.",
+          "coordinates": [-1, -2],
+          "location_type": "dungeon",
+          "items": {"master_rune_tablet": {"quantity": 1, "value": 160}, "dwarven_rune_stone": {"quantity": 3, "value": 50}},
+          "exits": {
+            "east": {"target": "mc_f1_ore_gallery", "type": "direction"}
+          }
+        },
+        "mc_f1_magma_descent": {
+          "name": "Magma Descent",
+          "description": "A spiral staircase of heat-resistant black stone descends alongside a vertical magma channel. The heat is almost unbearable. Dwarven cooling runes on the railings keep the stone from becoming untouchable.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "north": {"target": "mc_f1_ore_gallery", "type": "direction"},
+            "down": {
+              "target": "mc_f2_crucible_antechamber",
+              "type": "stairs_down",
+              "transition_text": "You descend alongside the magma channel. The heat becomes staggering..."
+            }
+          }
+        }
+      }
+    },
+    "2": {
+      "floor_number": 2,
+      "num_rooms": 8,
+      "entrance_room": "mc_f2_crucible_antechamber",
+      "exit_stairs_down": "mc_f2_core_shaft",
+      "rooms": {
+        "mc_f2_crucible_antechamber": {
+          "name": "Crucible Antechamber",
+          "description": "The second level was the working heart of the forge. Conveyor belts of stone still move slowly, carrying nothing. The walls are reinforced with adamantine and covered in heat-dissipation runes.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"adamantine_bolt": {"quantity": 3, "value": 65}},
+          "exits": {
+            "up": {
+              "target": "mc_f1_magma_descent",
+              "type": "stairs_up",
+              "transition_text": "You climb back up alongside the magma channel..."
+            },
+            "south": {"target": "mc_f2_master_forge", "type": "direction"},
+            "east": {"target": "mc_f2_mithril_smelter", "type": "direction"}
+          }
+        },
+        "mc_f2_master_forge": {
+          "name": "Master Forge",
+          "description": "The primary forge — a colossal anvil of pure adamantine set over a controlled magma vent. The hammer hanging above it weighs tons and is operated by chains. This is where the dwarves' greatest works were born.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"adamantine_fragment": {"quantity": 1, "value": 180}},
+          "crafting_altar": true,
+          "altar_name": "Master Forge of the Crucible",
+          "altar_description": "The legendary adamantine anvil sits over a controlled magma vent, maintained at perfect forging temperature by ancient dwarven engineering. Items shaped here gain the unbreakable quality of dwarven masterworks.",
+          "exits": {
+            "north": {"target": "mc_f2_crucible_antechamber", "type": "direction"},
+            "south": {"target": "mc_f2_enchantment_hall", "type": "direction"},
+            "west": {"target": "mc_f2_weapon_vault", "type": "direction"}
+          }
+        },
+        "mc_f2_mithril_smelter": {
+          "name": "Mithril Smelter",
+          "description": "A specialized furnace designed solely for processing mithril ore. The temperatures required are extraordinary — only magma-powered forges can achieve them. Ingots of pale silver mithril line cooling racks.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"mithril_ingot": {"quantity": 1, "value": 200}, "mithril_dust": {"quantity": 2, "value": 85}},
+          "traps": [
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "west": {"target": "mc_f2_crucible_antechamber", "type": "direction"},
+            "south": {"target": "mc_f2_armor_hall", "type": "direction"}
+          }
+        },
+        "mc_f2_weapon_vault": {
+          "name": "Weapon Vault",
+          "description": "Racks of dwarven masterwork weapons, each one a work of art. Axes that sing when swung, hammers that crack stone with a touch, and blades sharp enough to split light. Most are too heavy for non-dwarven hands.",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {
+            "dwarven_waraxe": {"quantity": 1, "value": 250},
+            "mithril_blade": {"quantity": 1, "value": 300},
+            "obsidian_warhammer": {"quantity": 1, "value": 220}
+          },
+          "traps": [
+            {"type": "poison_dart", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "east": {"target": "mc_f2_master_forge", "type": "direction"}
+          }
+        },
+        "mc_f2_enchantment_hall": {
+          "name": "Enchantment Hall",
+          "description": "Rune-carved pillars channel magical energy from the earth itself. This is where dwarven runesmiths imbued their creations with magical properties. The air crackles with residual enchantments, and touching any surface causes sparks.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"enchantment_crystal": {"quantity": 2, "value": 120}, "runesmith_chisel": {"quantity": 1, "value": 95}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "mc_f2_master_forge", "type": "direction"},
+            "east": {"target": "mc_f2_armor_hall", "type": "direction"},
+            "south": {"target": "mc_f2_core_shaft", "type": "direction"}
+          }
+        },
+        "mc_f2_armor_hall": {
+          "name": "Armor Hall",
+          "description": "Complete suits of dwarven plate armor stand on mannequins like a gallery of metal warriors. Each set is unique, crafted for legendary heroes. The adamantine-mithril alloy gleams despite millennia of abandonment.",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {
+            "dwarven_plate_fragment": {"quantity": 1, "value": 280},
+            "mithril_chain_links": {"quantity": 2, "value": 110},
+            "adamantine_shield_piece": {"quantity": 1, "value": 240}
+          },
+          "traps": [
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "mc_f2_mithril_smelter", "type": "direction"},
+            "west": {"target": "mc_f2_enchantment_hall", "type": "direction"}
+          }
+        },
+        "mc_f2_gem_cutter": {
+          "name": "Gem Cutter's Workshop",
+          "description": "Precision grinding wheels and cutting tools fill this workshop. Gems of every color are displayed in progress — rough stones being transformed into faceted masterpieces. A single flawless diamond sits in a clamp, half-cut.",
+          "coordinates": [-1, -2],
+          "location_type": "dungeon",
+          "items": {"flawless_diamond": {"quantity": 1, "value": 350}, "raw_diamond": {"quantity": 2, "value": 140}, "ruby_heart": {"quantity": 1, "value": 165}},
+          "exits": {
+            "east": {"target": "mc_f2_enchantment_hall", "type": "direction"}
+          }
+        },
+        "mc_f2_core_shaft": {
+          "name": "Core Shaft",
+          "description": "An elevator platform suspended over the volcano's magma chamber by adamantine chains. Far below, the magma churns and bubbles. The platform descends when the correct rune sequence is activated.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "north": {"target": "mc_f2_enchantment_hall", "type": "direction"},
+            "down": {
+              "target": "mc_f3_heart_of_fire",
+              "type": "stairs_down",
+              "transition_text": "The platform descends into the volcano's magma chamber. The heat is beyond anything you've ever experienced..."
+            }
+          }
+        }
+      }
+    },
+    "3": {
+      "floor_number": 3,
+      "num_rooms": 6,
+      "entrance_room": "mc_f3_heart_of_fire",
+      "boss_room": "mc_f3_crucible_throne",
+      "rooms": {
+        "mc_f3_heart_of_fire": {
+          "name": "Heart of Fire",
+          "description": "The deepest level sits within the volcano's magma chamber itself. Islands of black stone float on a sea of lava, connected by bridges of cooled obsidian. The heat is supernatural — only the dwarven wards keep it survivable.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "up": {
+              "target": "mc_f2_core_shaft",
+              "type": "stairs_up",
+              "transition_text": "The platform carries you back up from the magma chamber..."
+            },
+            "south": {"target": "mc_f3_lava_bridge", "type": "direction"}
+          }
+        },
+        "mc_f3_lava_bridge": {
+          "name": "Lava Bridge",
+          "description": "A narrow bridge of black glass stretches over a lake of churning magma. Heat rises in visible waves, and the bridge groans under stress. Below, something enormous moves beneath the lava's surface.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"volcanic_glass": {"quantity": 2, "value": 90}},
+          "traps": [
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "mc_f3_heart_of_fire", "type": "direction"},
+            "east": {"target": "mc_f3_magma_treasury", "type": "direction"},
+            "south": {"target": "mc_f3_crucible_throne", "type": "direction"}
+          }
+        },
+        "mc_f3_magma_treasury": {
+          "name": "Magma Treasury",
+          "description": "The dwarves stored their greatest treasures where no thief could reach — in a vault surrounded by magma. Items of incalculable value fill adamantine cases: the crown jewels of a civilization at its peak.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {
+            "dwarven_king_crown": {"quantity": 1, "value": 500},
+            "adamantine_ingot": {"quantity": 2, "value": 250},
+            "heart_of_the_mountain": {"quantity": 1, "value": 450}
+          },
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "poison_dart", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "west": {"target": "mc_f3_lava_bridge", "type": "direction"}
+          }
+        },
+        "mc_f3_crucible_throne": {
+          "name": "Crucible Throne",
+          "description": "At the heart of the magma chamber, a throne of pure adamantine rises from a platform of cooled lava. Upon it sits the Forge Colossus — the ultimate dwarven automaton, a titan of metal and fire standing thirty feet tall. Its eyes glow with magma, and its hammer can reshape reality itself.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {
+            "forge_colossus_core": {"quantity": 1, "value": 550},
+            "colossus_hammer_fragment": {"quantity": 1, "value": 480},
+            "adamantine_crown": {"quantity": 1, "value": 400}
+          },
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "mc_f3_lava_bridge", "type": "direction"},
+            "west": {"target": "mc_f3_eternal_anvil", "type": "direction"},
+            "east": {"target": "mc_f3_magma_forge", "type": "direction"}
+          }
+        },
+        "mc_f3_eternal_anvil": {
+          "name": "Eternal Anvil Chamber",
+          "description": "The supreme creation of dwarven engineering — an anvil forged from a falling star, set directly over the earth's mantle. Items shaped here achieve perfection. The anvil has never cooled since it was first heated.",
+          "coordinates": [-1, -2],
+          "location_type": "dungeon",
+          "items": {
+            "starforged_ingot": {"quantity": 1, "value": 600},
+            "mantle_crystal": {"quantity": 1, "value": 350}
+          },
+          "exits": {
+            "east": {"target": "mc_f3_crucible_throne", "type": "direction"}
+          }
+        },
+        "mc_f3_magma_forge": {
+          "name": "Magma Forge Eternal",
+          "description": "The volcano itself serves as the furnace. Magma channels feed directly into the forge basin, providing infinite heat. The dwarven god of crafting is said to have worked at this very forge.\n\nThe ultimate forge blazes with the volcano's eternal fire...",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {"volcanic_core": {"quantity": 1, "value": 500}},
+          "crafting_altar": true,
+          "altar_name": "Magma Forge Eternal",
+          "altar_description": "The volcano's own magma powers this supreme forge. Items shaped here are imbued with the earth's core energy — unbreakable, eternally sharp, and burning with inner fire. The pinnacle of dwarven forging technology.",
+          "exits": {
+            "west": {"target": "mc_f3_crucible_throne", "type": "direction"}
+          }
+        }
+      }
+    }
+  }
+}

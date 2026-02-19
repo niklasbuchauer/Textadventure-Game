@@ -9,8 +9,8 @@ from typing import Dict, List, Any, Optional, Tuple
 import copy
 
 # Constants for location types
-LOCATION_TYPES = {"wilderness", "settlement", "building", "transition"}
-EXIT_TYPES = {"direction", "named"}
+LOCATION_TYPES = {"wilderness", "settlement", "building", "transition", "dock", "island"}
+EXIT_TYPES = {"direction", "named", "boat_travel"}
 DIRECTIONS = {"north", "south", "east", "west"}
 
 

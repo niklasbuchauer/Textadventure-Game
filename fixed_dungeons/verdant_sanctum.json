@@ -1,0 +1,362 @@
+{
+  "dungeon_id": "verdant_sanctum",
+  "name": "The Verdant Sanctum",
+  "description": "An ancient druid temple buried beneath the roots of the Emerald Isle's oldest trees. Living vines pulse with magical energy, and the walls breathe with the rhythm of nature itself. The sanctum's guardians are the forest made flesh.",
+  "entrance_room_id": "emerald_ancient_sanctum",
+  "always_open": true,
+  "num_floors": 3,
+  "theme": "nature_druid",
+  "difficulty": "very_hard",
+  "requirements": {
+    "min_level": 14,
+    "description": "The living roots only part for those who have proven their strength against nature's fury."
+  },
+  "floors": {
+    "1": {
+      "floor_number": 1,
+      "num_rooms": 8,
+      "entrance_room": "vs_f1_root_gate",
+      "exit_stairs_down": "vs_f1_descent_of_vines",
+      "rooms": {
+        "vs_f1_root_gate": {
+          "name": "Root Gate",
+          "description": "Massive tree roots form a living archway into the earth. Bioluminescent moss lines the passage, casting everything in soft green light. The air is thick with the scent of rich soil and blooming flowers.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"glowing_moss": {"quantity": 3, "value": 20}},
+          "exits": {
+            "leave": {
+              "target": "emerald_ancient_sanctum",
+              "type": "leave_dungeon",
+              "transition_text": "You climb back through the root gate into the overgrown ruins above..."
+            },
+            "south": {"target": "vs_f1_fungal_passage", "type": "direction"},
+            "east": {"target": "vs_f1_root_hollow", "type": "direction"}
+          }
+        },
+        "vs_f1_fungal_passage": {
+          "name": "Fungal Passage",
+          "description": "Giant mushrooms tower overhead, their caps forming a canopy of purple and blue bioluminescence. Spores drift lazily through the air like underwater snow. The ground squelches with each step on deep mycelium mats.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"glowing_mushroom": {"quantity": 4, "value": 30}, "spore_sac": {"quantity": 2, "value": 25}},
+          "traps": [
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "vs_f1_root_gate", "type": "direction"},
+            "south": {"target": "vs_f1_druid_crypt", "type": "direction"},
+            "west": {"target": "vs_f1_mycelium_chamber", "type": "direction"}
+          }
+        },
+        "vs_f1_root_hollow": {
+          "name": "Root Hollow",
+          "description": "A chamber formed inside the hollow of an impossibly large root system. Smaller roots dangle from above like living curtains. Sap pools in golden puddles on the floor, crystallizing into amber at the edges.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"crystallized_sap": {"quantity": 2, "value": 45}, "living_wood": {"quantity": 1, "value": 55}},
+          "exits": {
+            "west": {"target": "vs_f1_root_gate", "type": "direction"},
+            "south": {"target": "vs_f1_insect_nest", "type": "direction"}
+          }
+        },
+        "vs_f1_mycelium_chamber": {
+          "name": "Mycelium Chamber",
+          "description": "The walls are covered in a thick web of white mycelium that pulses with faint light. Touching it sends ripples across the entire network — it seems to be a single massive organism, aware and watching.",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {"fungal_essence": {"quantity": 2, "value": 50}, "mycelium_thread": {"quantity": 3, "value": 35}},
+          "traps": [
+            {"type": "poison_dart", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "east": {"target": "vs_f1_fungal_passage", "type": "direction"}
+          }
+        },
+        "vs_f1_insect_nest": {
+          "name": "Insect Nest",
+          "description": "Enormous beetles and centipedes crawl across every surface. Their carapaces shimmer with metallic greens and golds. A massive honeycomb structure drips with luminescent honey that seems to have magical properties.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"luminous_honey": {"quantity": 2, "value": 60}, "beetle_carapace": {"quantity": 1, "value": 40}},
+          "traps": [
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "vs_f1_root_hollow", "type": "direction"},
+            "west": {"target": "vs_f1_druid_crypt", "type": "direction"}
+          }
+        },
+        "vs_f1_druid_crypt": {
+          "name": "Druid Crypt",
+          "description": "Ancient druids were laid to rest here, their bodies wrapped in living vines that still bloom after centuries. Each burial alcove is a miniature garden, tended by the sanctum's magic. Faint whispers echo — the druids dream still.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"druid_staff_shard": {"quantity": 1, "value": 75}, "nature_rune": {"quantity": 2, "value": 55}},
+          "exits": {
+            "north": {"target": "vs_f1_fungal_passage", "type": "direction"},
+            "east": {"target": "vs_f1_insect_nest", "type": "direction"},
+            "south": {"target": "vs_f1_seed_vault", "type": "direction"}
+          }
+        },
+        "vs_f1_seed_vault": {
+          "name": "Seed Vault",
+          "description": "Thousands of seeds from plants long extinct on the surface are preserved in crystal cases, each glowing with dormant life force. The druids archived the entire botanical world here, a library of life itself.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {"ancient_seed": {"quantity": 2, "value": 80}, "crystal_seed_case": {"quantity": 1, "value": 65}},
+          "exits": {
+            "north": {"target": "vs_f1_druid_crypt", "type": "direction"},
+            "east": {"target": "vs_f1_descent_of_vines", "type": "direction"}
+          }
+        },
+        "vs_f1_descent_of_vines": {
+          "name": "Descent of Vines",
+          "description": "A vertical shaft where thick vines form a living ladder spiraling downward into emerald darkness. The vines grip your hands and feet as if guiding you, pulsing warmly with each handhold.",
+          "coordinates": [1, -3],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "west": {"target": "vs_f1_seed_vault", "type": "direction"},
+            "down": {
+              "target": "vs_f2_canopy_cavern",
+              "type": "stairs_down",
+              "transition_text": "You descend the living vine ladder deeper into the earth. The green glow intensifies..."
+            }
+          }
+        }
+      }
+    },
+    "2": {
+      "floor_number": 2,
+      "num_rooms": 8,
+      "entrance_room": "vs_f2_canopy_cavern",
+      "exit_stairs_down": "vs_f2_root_spiral",
+      "rooms": {
+        "vs_f2_canopy_cavern": {
+          "name": "Canopy Cavern",
+          "description": "An enormous underground cavern where entire trees grow upside-down from the ceiling, their roots reaching upward through stone. Leaves rain continuously, dissolving into green light before hitting the ground.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"luminous_leaf": {"quantity": 3, "value": 40}},
+          "exits": {
+            "up": {
+              "target": "vs_f1_descent_of_vines",
+              "type": "stairs_up",
+              "transition_text": "You climb the vine ladder back to the upper level..."
+            },
+            "south": {"target": "vs_f2_overgrown_library", "type": "direction"},
+            "east": {"target": "vs_f2_beast_den", "type": "direction"}
+          }
+        },
+        "vs_f2_overgrown_library": {
+          "name": "Overgrown Library",
+          "description": "Shelves of stone tablets and bark scrolls line the walls, all overgrown with flowering vines. The druids recorded their knowledge in living script — words that shift and grow as you read them. Ancient wisdom whispers from every leaf.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"bark_scroll": {"quantity": 2, "value": 65}, "druid_tome": {"quantity": 1, "value": 100}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "vs_f2_canopy_cavern", "type": "direction"},
+            "south": {"target": "vs_f2_spirit_pool", "type": "direction"},
+            "west": {"target": "vs_f2_chrysalis_chamber", "type": "direction"}
+          }
+        },
+        "vs_f2_beast_den": {
+          "name": "Beast Den",
+          "description": "Claw marks score the walls of this wide chamber. Enormous bones and shed scales litter the floor. The den's current occupant is absent — but the warmth of its body still radiates from the nest of woven branches.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"beast_scale": {"quantity": 2, "value": 55}, "primal_tooth": {"quantity": 1, "value": 70}},
+          "traps": [
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "west": {"target": "vs_f2_canopy_cavern", "type": "direction"},
+            "south": {"target": "vs_f2_thorn_maze", "type": "direction"}
+          }
+        },
+        "vs_f2_chrysalis_chamber": {
+          "name": "Chrysalis Chamber",
+          "description": "Dozens of enormous cocoons hang from the ceiling, each pulsing with different colored light. Some have already hatched, leaving behind shimmering silk and shed chitin. Something beautiful — or terrible — transforms within the rest.",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {"enchanted_silk": {"quantity": 2, "value": 75}, "chrysalis_fragment": {"quantity": 1, "value": 90}},
+          "traps": [
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "east": {"target": "vs_f2_overgrown_library", "type": "direction"}
+          }
+        },
+        "vs_f2_spirit_pool": {
+          "name": "Spirit Pool",
+          "description": "A perfectly still pool of liquid that reflects not your face but your spirit — a green-tinged silhouette wreathed in the light of your life force. Druid spirits drift beneath the surface, their eyes watching, judging.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"spirit_water": {"quantity": 2, "value": 80}, "spirit_essence": {"quantity": 1, "value": 95}},
+          "exits": {
+            "north": {"target": "vs_f2_overgrown_library", "type": "direction"},
+            "east": {"target": "vs_f2_thorn_maze", "type": "direction"},
+            "south": {"target": "vs_f2_root_spiral", "type": "direction"}
+          }
+        },
+        "vs_f2_thorn_maze": {
+          "name": "Thorn Maze",
+          "description": "Walls of razor-sharp thorns form a shifting labyrinth. The vines rearrange themselves when you're not looking, and some thorns drip with paralytic venom. Scratches from these thorns glow green for hours.",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {"venom_thorn": {"quantity": 3, "value": 45}},
+          "traps": [
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "poison_dart", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "vs_f2_beast_den", "type": "direction"},
+            "west": {"target": "vs_f2_spirit_pool", "type": "direction"},
+            "south": {"target": "vs_f2_living_forge", "type": "direction"}
+          }
+        },
+        "vs_f2_living_forge": {
+          "name": "Living Forge",
+          "description": "Instead of fire, this forge uses concentrated life energy. A tree stump serves as the anvil, and tools of living wood reshape materials through growth rather than heat. The forge grows items rather than forging them.\n\nThe forge pulses with readiness, eager to shape new creations...",
+          "coordinates": [1, -3],
+          "location_type": "dungeon",
+          "items": {"living_ingot": {"quantity": 1, "value": 130}},
+          "crafting_altar": true,
+          "altar_name": "Living Forge",
+          "altar_description": "Life energy courses through this organic forge. Materials placed here are reshaped through accelerated growth — wood hardens to steel, leaves become blades, and nature's raw power is bound into equipment.",
+          "exits": {
+            "north": {"target": "vs_f2_thorn_maze", "type": "direction"}
+          }
+        },
+        "vs_f2_root_spiral": {
+          "name": "Root Spiral",
+          "description": "A magnificent spiral staircase formed of interlocking roots, descending into a warm green glow. Flowers bloom along the railings, and the roots shift and adjust to support your weight. Far below, something ancient breathes.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "north": {"target": "vs_f2_spirit_pool", "type": "direction"},
+            "down": {
+              "target": "vs_f3_heart_approach",
+              "type": "stairs_down",
+              "transition_text": "You descend the living root spiral. The air grows thick with primal nature energy..."
+            }
+          }
+        }
+      }
+    },
+    "3": {
+      "floor_number": 3,
+      "num_rooms": 6,
+      "entrance_room": "vs_f3_heart_approach",
+      "boss_room": "vs_f3_heart_of_the_wild",
+      "rooms": {
+        "vs_f3_heart_approach": {
+          "name": "Heart Approach",
+          "description": "The deepest level of the sanctum. The walls are pure living wood, breathing slowly. Every surface is covered in flowers that bloom and wilt in rapid cycles. The concentration of nature magic here is staggering.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "up": {
+              "target": "vs_f2_root_spiral",
+              "type": "stairs_up",
+              "transition_text": "You climb the root spiral back to the second level..."
+            },
+            "south": {"target": "vs_f3_guardian_grove", "type": "direction"}
+          }
+        },
+        "vs_f3_guardian_grove": {
+          "name": "Guardian Grove",
+          "description": "Four massive treants stand sentinel around a circular clearing, their branches intertwined overhead. Their bark-eyes glow with ancient wisdom and fierce protectiveness. They judge all who pass.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"ancient_bark": {"quantity": 2, "value": 85}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "vs_f3_heart_approach", "type": "direction"},
+            "east": {"target": "vs_f3_bloom_vault", "type": "direction"},
+            "south": {"target": "vs_f3_heart_of_the_wild", "type": "direction"}
+          }
+        },
+        "vs_f3_bloom_vault": {
+          "name": "Bloom Vault",
+          "description": "A treasury of nature's rarest gifts. Flowers that cure any disease, seeds that grow into armor, fruits that grant temporary immortality — all preserved in stasis fields of pure green light. A botanical fortune beyond measure.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"immortal_bloom": {"quantity": 1, "value": 250}, "armor_seed": {"quantity": 1, "value": 180}, "cure_blossom": {"quantity": 2, "value": 120}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "poison_dart", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "west": {"target": "vs_f3_guardian_grove", "type": "direction"}
+          }
+        },
+        "vs_f3_heart_of_the_wild": {
+          "name": "Heart of the Wild",
+          "description": "At the absolute center of the island, a colossal tree — the World Root — fills this cathedral-sized cavern. Its trunk is as wide as a castle tower, and its roots extend through the entire island. At its base stands the Archdruid Eternal, a being of bark and leaf and starlight, guardian of the world's oldest magic.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {
+            "world_root_splinter": {"quantity": 1, "value": 400},
+            "archdruids_circlet": {"quantity": 1, "value": 350},
+            "seed_of_ages": {"quantity": 1, "value": 300}
+          },
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "vs_f3_guardian_grove", "type": "direction"},
+            "west": {"target": "vs_f3_primal_wellspring", "type": "direction"},
+            "east": {"target": "vs_f3_verdant_forge", "type": "direction"}
+          }
+        },
+        "vs_f3_primal_wellspring": {
+          "name": "Primal Wellspring",
+          "description": "A spring of liquid life energy bubbles up from the earth's core. The water is not water but concentrated nature magic — green, warm, and thrumming with power. Plants that touch it grow to maturity in seconds.",
+          "coordinates": [-1, -2],
+          "location_type": "dungeon",
+          "items": {
+            "primal_water": {"quantity": 2, "value": 150},
+            "life_crystal": {"quantity": 1, "value": 280},
+            "nature_rune": {"quantity": 3, "value": 55}
+          },
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "east": {"target": "vs_f3_heart_of_the_wild", "type": "direction"}
+          }
+        },
+        "vs_f3_verdant_forge": {
+          "name": "Verdant Forge",
+          "description": "The World Root's heartwood forms a natural forge where life energy can reshape matter. Weapons and armor placed here are not just enhanced — they become alive, growing thorns, healing their wielder, and bonding with their owner.\n\nThe heartwood surface glows with readiness. Perhaps items could be transformed here...",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {"heartwood_core": {"quantity": 1, "value": 350}},
+          "crafting_altar": true,
+          "altar_name": "Verdant Forge",
+          "altar_description": "The World Root's living heartwood can reshape matter through concentrated life energy. Items placed here become living things — armor that heals, weapons that grow, and tools that bond with their wielder.",
+          "exits": {
+            "west": {"target": "vs_f3_heart_of_the_wild", "type": "direction"}
+          }
+        }
+      }
+    }
+  }
+}

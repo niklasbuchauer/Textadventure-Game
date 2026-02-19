@@ -52,6 +52,18 @@ class LiveMapWindow:
         "graveyard": ("#2e0a0a", "#aa4444"),   # dark red
         "ruins":     ("#2e1a0a", "#cc8844"),   # amber
         "building":  ("#1a1a2e", "#6688bb"),   # muted blue
+        "desert":    ("#2e2a10", "#ddaa44"),   # sandy gold/orange
+        "tundra":    ("#1a2e3e", "#88ccee"),   # icy blue
+        "coast":     ("#0a2e3e", "#44ccdd"),   # ocean teal
+        "castle":    ("#2e1a2e", "#bb88cc"),   # royal purple
+        "dock":      ("#1a1a3e", "#6688cc"),   # harbor blue
+        "sunstone":  ("#2e2a10", "#ffcc44"),   # tropical gold
+        "emerald":   ("#0a3e0a", "#33dd55"),   # vivid green
+        "stormbreak":("#1a1a3e", "#7788dd"),   # storm blue
+        "cinderforge":("#3e1a0a", "#ff6622"),  # volcanic orange
+        "dreadmist": ("#2e0a1a", "#aa44aa"),   # cursed purple
+        "wyrmscale": ("#3e2a0a", "#dd8833"),   # dragon amber
+        "abyssal":   ("#1a0a2e", "#8844dd"),   # void purple
         "default":   ("#003300", "#00ff00"),   # original green
     }
 
@@ -329,6 +341,7 @@ class LiveMapWindow:
     def _draw_connections(self, positions, rooms, visited):
         """Draw lines between rooms that share an exit."""
         drawn: set = set()
+        boat_routes: list = []  # collect boat routes to draw as dashed
         for rid, rdata in rooms.items():
             if rid not in positions:
                 continue
@@ -347,10 +360,22 @@ class LiveMapWindow:
                 drawn.add(pair)
 
                 x2, y2 = positions[target_id]
+                
+                # Check if this is a boat_travel exit — draw differently
+                is_boat = isinstance(target, dict) and target.get("type") == "boat_travel"
+                if is_boat:
+                    boat_routes.append((x1, y1, x2, y2))
+                    continue
+                
                 both = rid in visited and target_id in visited
                 color = self.COLORS["connection_visited"] if both else self.COLORS["connection"]
                 width = 2 if both else 1
                 self.canvas.create_line(x1, y1, x2, y2, fill=color, width=width)
+        
+        # Draw boat routes as dashed blue lines
+        for x1, y1, x2, y2 in boat_routes:
+            self.canvas.create_line(x1, y1, x2, y2,
+                                    fill="#4488cc", width=2, dash=(8, 6))
 
     def _get_room_style(self, tag, room_id=""):
         """Return (fill, outline, label_color) for a room-type tag."""
@@ -377,34 +402,94 @@ class LiveMapWindow:
     def _detect_region(room_id):
         """Determine which region a room belongs to based on its ID."""
         rid = room_id.lower()
+        # Island regions (check first — most specific)
+        if rid.startswith("sunstone_"):
+            return "sunstone"
+        if rid.startswith("emerald_"):
+            return "emerald"
+        if rid.startswith("stormbreak_"):
+            return "stormbreak"
+        if rid.startswith("cinder_"):
+            return "cinderforge"
+        if rid.startswith("dreadmist_"):
+            return "dreadmist"
+        if rid.startswith("wyrm_"):
+            return "wyrmscale"
+        if rid.startswith("abyssal_"):
+            return "abyssal"
+        # Dock / Harbor areas
+        if any(kw in rid for kw in ("grand_harbor", "harbor_north_dock", "harbor_east_dock",
+                                     "harbor_west_dock", "harbor_south_pier", "harbor_warehouse",
+                                     "harbor_watchtower", "harbor_master", "harbor_tavern",
+                                     "harbor_inn", "harbor_shop")):
+            return "dock"
+        # Castle/Royal areas
+        if any(kw in rid for kw in ("castle", "royal", "kingshold", "throne")):
+            return "castle"
+        # Desert areas
+        if any(kw in rid for kw in ("desert", "dunes", "oasis", "sand", "pyramid",
+                                     "scorpion", "mesa", "canyon", "caravan", "nomad",
+                                     "djinn", "cactus", "vulture", "salt_flat")):
+            return "desert"
+        # Frozen/Tundra areas
+        if any(kw in rid for kw in ("frozen", "tundra", "ice", "frost", "glacier",
+                                     "polar", "blizzard", "mammoth", "aurora", "snow")):
+            return "tundra"
+        # Coastal/Ocean areas
+        if any(kw in rid for kw in ("port", "harbor", "pier", "lighthouse", "coastal",
+                                     "shipwreck", "reef", "coral", "kelp", "mermaid",
+                                     "whale", "pelican", "shrimp", "smuggler")):
+            return "coast"
+        # Forest areas
         if any(kw in rid for kw in ("forest", "grove", "clearing", "mossy", "woodland",
-                                     "hermit", "deep_forest", "ancient_grove")):
+                                     "hermit", "deep_forest", "ancient_grove", "thicket",
+                                     "logging", "fairy", "ravine", "wolf", "bear",
+                                     "spider", "fallen", "hollow_tree", "hunter", "orchard",
+                                     "twilight", "mushroom", "berry", "fox")):
             return "forest"
-        if any(kw in rid for kw in ("swamp", "witch", "marsh", "foggy")):
+        # Swamp areas
+        if any(kw in rid for kw in ("swamp", "witch", "marsh", "foggy", "bog",
+                                     "crocodile", "leech", "cypress", "frog", "drowned",
+                                     "lily", "corpse_grove", "quicksand")):
             return "swamp"
-        if any(kw in rid for kw in ("mountain", "highland", "peak", "foothills")):
+        # Mountain areas
+        if any(kw in rid for kw in ("mountain", "highland", "peak", "foothills",
+                                     "cliff", "pass", "avalanche", "goat", "eagle",
+                                     "mining", "dwarf", "waterfall", "stream", "hot_spring")):
             return "mountain"
+        # Village/Settlement areas
         if any(kw in rid for kw in ("village", "tavern", "shop", "blacksmith",
-                                     "chapel", "farmland")):
+                                     "chapel", "farmland", "stable", "inn", "guild",
+                                     "apothecary", "baker", "market", "notice", "well",
+                                     "training", "garden", "pasture", "shepherd", "mill",
+                                     "covered_bridge", "ferry")):
             return "village"
+        # River/Water areas
         if any(kw in rid for kw in ("river", "bank", "beach", "dock", "lake",
-                                     "tidal", "fishing", "old_dock")):
+                                     "tidal", "fishing", "old_dock", "tide_pool",
+                                     "sandy_beach", "sea_cave", "pond")):
             return "river"
-        if any(kw in rid for kw in ("grave", "crypt", "battlefield")):
+        # Graveyard/Death areas
+        if any(kw in rid for kw in ("grave", "crypt", "battlefield", "cemetery",
+                                     "haunted", "cursed", "tomb", "raven")):
             return "graveyard"
+        # Ruins/Ancient areas
         if any(kw in rid for kw in ("ruins", "library", "watchtower", "crossroads",
-                                     "sunken")):
+                                     "sunken", "collapsed", "standing_stones", "shrine",
+                                     "temple", "obelisk", "meteor", "dragon_bones")):
             return "ruins"
         return "default"
 
     @staticmethod
     def _room_shape(room_data):
-        """Determine shape type based on location_type: 'circle', 'square', 'diamond'."""
+        """Determine shape type based on location_type: 'circle', 'square', 'diamond', 'hexagon'."""
         loc_type = (room_data.get("location_type") or "wilderness").lower()
         if loc_type == "building":
             return "square"
         if loc_type == "settlement":
             return "diamond"
+        if loc_type == "dock":
+            return "diamond"  # docks use diamond shape like settlements
         return "circle"
 
     def _draw_rooms(self, positions, rooms, visited):
@@ -481,39 +566,67 @@ class LiveMapWindow:
         canvas_w = self.canvas.winfo_width()
         y = canvas_h - 25
 
-        items = [
-            ("\u2605 You",  self.COLORS["current_fill"],    self.COLORS["current_outline"],  "circle"),
-            ("\u2620 Dungeon", self.COLORS["dungeon_entrance_fill"], self.COLORS["dungeon_entrance_outline"], "circle"),
+        # Two rows of legend items to fit all regions
+        mainland_items = [
+            ("★ You",  self.COLORS["current_fill"],    self.COLORS["current_outline"],  "circle"),
+            ("☠ Dungeon", self.COLORS["dungeon_entrance_fill"], self.COLORS["dungeon_entrance_outline"], "circle"),
             ("Forest",  self.REGION_COLORS["forest"][0],  self.REGION_COLORS["forest"][1],   "circle"),
             ("Village", self.REGION_COLORS["village"][0], self.REGION_COLORS["village"][1],  "diamond"),
             ("Mountain", self.REGION_COLORS["mountain"][0], self.REGION_COLORS["mountain"][1], "circle"),
             ("Swamp",   self.REGION_COLORS["swamp"][0],   self.REGION_COLORS["swamp"][1],    "circle"),
-            ("Building", self.REGION_COLORS["building"][0], self.REGION_COLORS["building"][1], "square"),
-            ("Unknown", self.COLORS["unexplored_fill"],   self.COLORS["unexplored_outline"], "circle"),
+            ("Desert",  self.REGION_COLORS["desert"][0],  self.REGION_COLORS["desert"][1],   "circle"),
+            ("Tundra",  self.REGION_COLORS["tundra"][0],  self.REGION_COLORS["tundra"][1],   "circle"),
+            ("Coast",   self.REGION_COLORS["coast"][0],   self.REGION_COLORS["coast"][1],    "circle"),
+            ("Castle",  self.REGION_COLORS["castle"][0],  self.REGION_COLORS["castle"][1],   "diamond"),
+            ("Dock",    self.REGION_COLORS["dock"][0],    self.REGION_COLORS["dock"][1],     "diamond"),
+        ]
+
+        island_items = [
+            ("Sunstone", self.REGION_COLORS["sunstone"][0], self.REGION_COLORS["sunstone"][1], "circle"),
+            ("Emerald",  self.REGION_COLORS["emerald"][0],  self.REGION_COLORS["emerald"][1],  "circle"),
+            ("Storm",    self.REGION_COLORS["stormbreak"][0], self.REGION_COLORS["stormbreak"][1], "circle"),
+            ("Cinder",   self.REGION_COLORS["cinderforge"][0], self.REGION_COLORS["cinderforge"][1], "circle"),
+            ("Dread",    self.REGION_COLORS["dreadmist"][0], self.REGION_COLORS["dreadmist"][1], "circle"),
+            ("Wyrm",     self.REGION_COLORS["wyrmscale"][0], self.REGION_COLORS["wyrmscale"][1], "circle"),
+            ("Abyssal",  self.REGION_COLORS["abyssal"][0],  self.REGION_COLORS["abyssal"][1],  "circle"),
+            ("⚓ Boat", "#0a1525", "#4488cc", "circle"),
         ]
 
         # separator
-        self.canvas.create_line(20, y - 18, canvas_w - 20, y - 18,
+        self.canvas.create_line(20, y - 38, canvas_w - 20, y - 38,
                                 fill=self.COLORS["grid"], width=1)
 
-        total_w = len(items) * 95
-        sx = (canvas_w - total_w) / 2
+        # Row 1: mainland items
+        y1 = y - 20
+        total_w1 = len(mainland_items) * 80
+        sx1 = (canvas_w - total_w1) / 2
+        for i, (label, fill, outline, shape) in enumerate(mainland_items):
+            x = sx1 + i * 80
+            self._draw_legend_item(x, y1, label, fill, outline, shape)
 
-        for i, (label, fill, outline, shape) in enumerate(items):
-            x = sx + i * 95
-            if shape == "square":
-                self.canvas.create_rectangle(x, y - 6, x + 12, y + 6,
-                                             fill=fill, outline=outline, width=1)
-            elif shape == "diamond":
-                self.canvas.create_polygon(
-                    x + 6, y - 6, x + 12, y, x + 6, y + 6, x, y,
-                    fill=fill, outline=outline, width=1)
-            else:
-                self.canvas.create_oval(x, y - 6, x + 12, y + 6,
-                                        fill=fill, outline=outline, width=1)
-            self.canvas.create_text(x + 18, y, text=label,
-                                    fill=self.COLORS["text"], font=("Consolas", 8),
-                                    anchor="w")
+        # Row 2: island items
+        y2 = y + 2
+        total_w2 = len(island_items) * 80
+        sx2 = (canvas_w - total_w2) / 2
+        for i, (label, fill, outline, shape) in enumerate(island_items):
+            x = sx2 + i * 80
+            self._draw_legend_item(x, y2, label, fill, outline, shape)
+
+    def _draw_legend_item(self, x, y, label, fill, outline, shape):
+        """Draw a single legend entry at the given position."""
+        if shape == "square":
+            self.canvas.create_rectangle(x, y - 6, x + 12, y + 6,
+                                         fill=fill, outline=outline, width=1)
+        elif shape == "diamond":
+            self.canvas.create_polygon(
+                x + 6, y - 6, x + 12, y, x + 6, y + 6, x, y,
+                fill=fill, outline=outline, width=1)
+        else:
+            self.canvas.create_oval(x, y - 6, x + 12, y + 6,
+                                    fill=fill, outline=outline, width=1)
+        self.canvas.create_text(x + 18, y, text=label,
+                                fill=self.COLORS["text"], font=("Consolas", 7),
+                                anchor="w")
 
     # ── dungeon renderer ────────────────────────────────────────────
     def _render_dungeon_map(self):
@@ -611,6 +724,10 @@ class LiveMapWindow:
             coord_map[(c[0], c[1])] = rid
 
         positions, spacing = self._compute_layout(coord_map, canvas_w, canvas_h)
+
+        # Draw ocean background (fills entire canvas with deep blue)
+        self.canvas.create_rectangle(0, 0, canvas_w, canvas_h,
+                                      fill="#0a1525", outline="", width=0)
 
         self._draw_grid(positions, spacing)
         self._draw_connections(positions, rooms, visited)

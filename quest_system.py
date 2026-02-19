@@ -137,13 +137,13 @@ QUEST_DATABASE = {
 		"objectives": [
 			{
 				"type": "visit",
-				"room": "forest_ruins_entrance",
-				"description": "Find the forest ruins entrance",
+				"room": "dungeon_ruins_entrance",
+				"description": "Find the ancient ruins entrance",
 			},
 			{
 				"type": "visit",
-				"room": "graveyard_crypt",
-				"description": "Visit the old crypt in the graveyard",
+				"room": "open_crypt",
+				"description": "Visit the open crypt in the graveyard",
 			},
 			{
 				"type": "visit",
@@ -305,12 +305,12 @@ QUEST_DATABASE = {
 			},
 			{
 				"type": "visit",
-				"room": "mountain_dungeon_entrance",
+				"room": "dungeon_mountain_entrance",
 				"description": "Scout the Iron Halls entrance",
 			},
 			{
 				"type": "visit",
-				"room": "graveyard_crypt",
+				"room": "open_crypt",
 				"description": "Scout the Shadow Depths entrance",
 			},
 		],

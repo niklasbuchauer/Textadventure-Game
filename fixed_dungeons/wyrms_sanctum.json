@@ -1,0 +1,353 @@
+{
+  "dungeon_id": "wyrms_sanctum",
+  "name": "Wyrm's Sanctum",
+  "description": "Deep beneath the dragon-scarred mountains lies the sanctum of the Elder Wyrm — the ancient dragon who first claimed Wyrmscale Isle as its domain. The tunnels are carved by dragon fire, the walls lined with hoarded treasure, and the air itself burns with draconic power.",
+  "entrance_room_id": "wyrm_elder_cavern",
+  "always_open": true,
+  "num_floors": 3,
+  "theme": "dragon_lair",
+  "difficulty": "nightmare",
+  "requirements": {
+    "min_level": 32,
+    "description": "Only those tempered by countless battles dare enter the lair of the Elder Wyrm."
+  },
+  "floors": {
+    "1": {
+      "floor_number": 1,
+      "num_rooms": 8,
+      "entrance_room": "ws_f1_scorched_entry",
+      "exit_stairs_down": "ws_f1_lava_descent",
+      "rooms": {
+        "ws_f1_scorched_entry": {
+          "name": "Scorched Entry",
+          "description": "Claw marks ten feet deep gouge the tunnel walls. The stone is glass-smooth in places — melted and resolidified by dragonfire. Bones of past challengers crunch underfoot, their armor melted to slag.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"melted_armor_slag": {"quantity": 2, "value": 70}, "dragon_claw_fragment": {"quantity": 1, "value": 120}},
+          "exits": {
+            "leave": {
+              "target": "wyrm_elder_cavern",
+              "type": "leave_dungeon",
+              "transition_text": "You escape through the scorched tunnel back to the cavern above..."
+            },
+            "south": {"target": "ws_f1_drake_den", "type": "direction"},
+            "east": {"target": "ws_f1_scale_grotto", "type": "direction"}
+          }
+        },
+        "ws_f1_drake_den": {
+          "name": "Drake Den",
+          "description": "Juvenile drakes nest here in hollowed alcoves, fighting over scraps of prey. Their scales shimmer with developing color patterns — each will someday grow to terrifying size. For now, they are merely dangerous.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"drake_egg_shard": {"quantity": 2, "value": 85}, "young_drake_scale": {"quantity": 3, "value": 60}},
+          "traps": [
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "ws_f1_scorched_entry", "type": "direction"},
+            "south": {"target": "ws_f1_fire_vein_tunnel", "type": "direction"},
+            "west": {"target": "ws_f1_bone_pile", "type": "direction"}
+          }
+        },
+        "ws_f1_scale_grotto": {
+          "name": "Scale Grotto",
+          "description": "Shed dragon scales cover every surface like enormous iridescent coins. Each scale is harder than steel. Dragons periodically shed here, and the accumulated scales of centuries form glittering dunes.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {"prismatic_dragon_scale": {"quantity": 1, "value": 200}, "scale_dust": {"quantity": 3, "value": 55}},
+          "exits": {
+            "west": {"target": "ws_f1_scorched_entry", "type": "direction"},
+            "south": {"target": "ws_f1_flame_geyser_hall", "type": "direction"}
+          }
+        },
+        "ws_f1_bone_pile": {
+          "name": "Bone Pile",
+          "description": "A mountain of bones — the remains of centuries of dragon kills. Animals, warriors, giants, even other dragons. The pile reaches the ceiling, and things move within it — scavengers brave enough to feed in a dragon's nest.",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {"giant_femur_club": {"quantity": 1, "value": 95}, "dragon_tooth": {"quantity": 2, "value": 110}},
+          "exits": {
+            "east": {"target": "ws_f1_drake_den", "type": "direction"}
+          }
+        },
+        "ws_f1_flame_geyser_hall": {
+          "name": "Flame Geyser Hall",
+          "description": "Natural vents in the floor erupt with jets of dragonfire at irregular intervals. The flames are supernaturally hot — even the stone glows orange between eruptions. Timing your passage is essential.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"fire_crystal": {"quantity": 2, "value": 130}},
+          "traps": [
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "ws_f1_scale_grotto", "type": "direction"},
+            "west": {"target": "ws_f1_fire_vein_tunnel", "type": "direction"}
+          }
+        },
+        "ws_f1_fire_vein_tunnel": {
+          "name": "Fire Vein Tunnel",
+          "description": "Veins of molten rock run through the walls like a dragon's circulatory system. The tunnel pulses with heat, and the air shimmers. The dragonfire has seeped so deep it has become part of the mountain itself.",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"magma_vein_shard": {"quantity": 1, "value": 140}},
+          "exits": {
+            "north": {"target": "ws_f1_drake_den", "type": "direction"},
+            "east": {"target": "ws_f1_flame_geyser_hall", "type": "direction"},
+            "south": {"target": "ws_f1_wyvern_roost", "type": "direction"}
+          }
+        },
+        "ws_f1_wyvern_roost": {
+          "name": "Wyvern Roost",
+          "description": "A vertical shaft opens above, and wyverns nest on ledges circling its walls. They screech and snap at intruders. Their toxic tail-stingers drip venom that sizzles on the hot stone.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {"wyvern_venom_gland": {"quantity": 1, "value": 160}, "wyvern_wing_membrane": {"quantity": 1, "value": 120}},
+          "exits": {
+            "north": {"target": "ws_f1_fire_vein_tunnel", "type": "direction"},
+            "east": {"target": "ws_f1_lava_descent", "type": "direction"}
+          }
+        },
+        "ws_f1_lava_descent": {
+          "name": "Lava Descent",
+          "description": "A staircase carved into the wall of an active lava tube. The molten rock flows sluggishly below, and the heat is almost unbearable. Dragon-proof glyphs are carved into each step — a path only the worthy may walk.",
+          "coordinates": [1, -3],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "west": {"target": "ws_f1_wyvern_roost", "type": "direction"},
+            "down": {
+              "target": "ws_f2_treasure_approach",
+              "type": "stairs_down",
+              "transition_text": "You descend along the lava tube. The heat becomes nearly unbearable..."
+            }
+          }
+        }
+      }
+    },
+    "2": {
+      "floor_number": 2,
+      "num_rooms": 8,
+      "entrance_room": "ws_f2_treasure_approach",
+      "exit_stairs_down": "ws_f2_wyrm_gate",
+      "rooms": {
+        "ws_f2_treasure_approach": {
+          "name": "Treasure Approach",
+          "description": "Gold coins spill across the floor in growing density — the outer edge of the Elder Wyrm's hoard. It extends beyond sight, a sea of gold, gems, and artifacts accumulated over millennia.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {"ancient_gold_coins": {"quantity": 5, "value": 80}},
+          "exits": {
+            "up": {
+              "target": "ws_f1_lava_descent",
+              "type": "stairs_up",
+              "transition_text": "You climb back up through the lava tube..."
+            },
+            "south": {"target": "ws_f2_gold_dunes", "type": "direction"},
+            "east": {"target": "ws_f2_gem_cavern", "type": "direction"}
+          }
+        },
+        "ws_f2_gem_cavern": {
+          "name": "Gem Cavern",
+          "description": "Every surface is encrusted with gems — diamonds, rubies, sapphires, emeralds — natural formations enhanced by centuries of draconic magic. The light refracts endlessly, creating a dazzling kaleidoscope.",
+          "coordinates": [1, 0],
+          "location_type": "dungeon",
+          "items": {
+            "flawless_ruby": {"quantity": 1, "value": 280},
+            "star_sapphire": {"quantity": 1, "value": 250},
+            "dragon_diamond": {"quantity": 1, "value": 350}
+          },
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "west": {"target": "ws_f2_treasure_approach", "type": "direction"},
+            "south": {"target": "ws_f2_artifact_gallery", "type": "direction"}
+          }
+        },
+        "ws_f2_gold_dunes": {
+          "name": "Gold Dunes",
+          "description": "Dunes of gold coins shift and slide underfoot. The hoard is so vast it forms its own geography — hills, valleys, and rivers of precious metal. Buried weapons and armor poke through the surface.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"buried_crown": {"quantity": 1, "value": 200}, "gold_bar": {"quantity": 2, "value": 150}},
+          "exits": {
+            "north": {"target": "ws_f2_treasure_approach", "type": "direction"},
+            "south": {"target": "ws_f2_dragon_altar", "type": "direction"},
+            "west": {"target": "ws_f2_cursed_weapon_rack", "type": "direction"}
+          }
+        },
+        "ws_f2_cursed_weapon_rack": {
+          "name": "Cursed Weapon Rack",
+          "description": "Weapons of legendary heroes, taken as trophies. Each one is cursed by dragon magic — they remember their fallen wielders and hunger for new hands. Taking one grants great power but binds you to the wyrm's will.",
+          "coordinates": [-1, -1],
+          "location_type": "dungeon",
+          "items": {"cursed_hero_sword": {"quantity": 1, "value": 320}, "dragonbane_lance": {"quantity": 1, "value": 380}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "poison_dart", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "east": {"target": "ws_f2_gold_dunes", "type": "direction"}
+          }
+        },
+        "ws_f2_artifact_gallery": {
+          "name": "Artifact Gallery",
+          "description": "The most prized items in the hoard are displayed here on obsidian pedestals. Each artifact pulses with ancient power — weapons that slew gods, armor worn by dragon kings, and relics from before the age of mortals.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"dragonking_gauntlet": {"quantity": 1, "value": 450}, "wyrm_eye_amulet": {"quantity": 1, "value": 400}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "ws_f2_gem_cavern", "type": "direction"},
+            "west": {"target": "ws_f2_gold_dunes", "type": "direction"}
+          }
+        },
+        "ws_f2_dragon_altar": {
+          "name": "Dragon Altar",
+          "description": "An altar of pure dragonbone, radiating heat that warps the air. Dragon fire burns eternally atop it. Items placed in the flame are reforged with draconic essence — made harder, sharper, and infused with fire.\n\nThe eternal dragonfire awaits offerings...",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {"dragonfire_ember": {"quantity": 1, "value": 300}},
+          "crafting_altar": true,
+          "altar_name": "Dragon Altar",
+          "altar_description": "Eternal dragonfire burns atop this bone altar. Items placed in the flame emerge transformed — weapons that breathe fire, armor scaled like a dragon's hide, and objects radiating draconic authority. The forge of wyrms.",
+          "exits": {
+            "north": {"target": "ws_f2_gold_dunes", "type": "direction"},
+            "south": {"target": "ws_f2_wyrm_gate", "type": "direction"},
+            "east": {"target": "ws_f2_dragonkin_shrine", "type": "direction"}
+          }
+        },
+        "ws_f2_dragonkin_shrine": {
+          "name": "Dragonkin Shrine",
+          "description": "A shrine to the dragon gods — colossal dragon skulls mounted on pillars, their empty eye sockets glowing with inner fire. Dragonkin cultists leave offerings here, praying for the transformation into true dragons.",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {"dragonkin_prayer_beads": {"quantity": 1, "value": 170}, "dragon_god_idol": {"quantity": 1, "value": 260}},
+          "exits": {
+            "west": {"target": "ws_f2_dragon_altar", "type": "direction"}
+          }
+        },
+        "ws_f2_wyrm_gate": {
+          "name": "Wyrm Gate",
+          "description": "Massive doors carved from a single piece of obsidian, depicting the Elder Wyrm in its full glory. The doors radiate heat and power. Beyond them lies the sanctum itself.",
+          "coordinates": [0, -3],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "north": {"target": "ws_f2_dragon_altar", "type": "direction"},
+            "down": {
+              "target": "ws_f3_sanctum_threshold",
+              "type": "stairs_down",
+              "transition_text": "The obsidian doors grind open. A wave of furnace heat and ancient power washes over you..."
+            }
+          }
+        }
+      }
+    },
+    "3": {
+      "floor_number": 3,
+      "num_rooms": 6,
+      "entrance_room": "ws_f3_sanctum_threshold",
+      "boss_room": "ws_f3_elder_wyrm_throne",
+      "rooms": {
+        "ws_f3_sanctum_threshold": {
+          "name": "Sanctum Threshold",
+          "description": "The Elder Wyrm's inner sanctum — a cavern so vast clouds form near the ceiling. The floor is covered in gold deeper than a man is tall. Pillars of crystallized dragonfire support the vault above.",
+          "coordinates": [0, 0],
+          "location_type": "dungeon",
+          "items": {},
+          "exits": {
+            "up": {
+              "target": "ws_f2_wyrm_gate",
+              "type": "stairs_up",
+              "transition_text": "You retreat through the obsidian doors..."
+            },
+            "south": {"target": "ws_f3_fire_guardian_hall", "type": "direction"}
+          }
+        },
+        "ws_f3_fire_guardian_hall": {
+          "name": "Fire Guardian Hall",
+          "description": "Statues of dragons animate as you approach — fire guardians created by the Elder Wyrm to protect its sanctum. Each is a miniature dragon of living flame, and they attack without mercy.",
+          "coordinates": [0, -1],
+          "location_type": "dungeon",
+          "items": {"fire_guardian_core": {"quantity": 1, "value": 320}},
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "gas_trap", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "ws_f3_sanctum_threshold", "type": "direction"},
+            "east": {"target": "ws_f3_egg_chamber", "type": "direction"},
+            "south": {"target": "ws_f3_elder_wyrm_throne", "type": "direction"}
+          }
+        },
+        "ws_f3_egg_chamber": {
+          "name": "Egg Chamber",
+          "description": "Dragon eggs the size of boulders rest in nests of gold and gems, warmed by volcanic vents. Each egg pulses with inner fire, and the unborn dragons within can be sensed stirring. The Elder Wyrm protects these above all.",
+          "coordinates": [1, -1],
+          "location_type": "dungeon",
+          "items": {"dragon_egg_fragment": {"quantity": 1, "value": 500}, "nesting_gold": {"quantity": 3, "value": 100}},
+          "exits": {
+            "west": {"target": "ws_f3_fire_guardian_hall", "type": "direction"}
+          }
+        },
+        "ws_f3_elder_wyrm_throne": {
+          "name": "Elder Wyrm's Throne",
+          "description": "The Elder Wyrm itself — a dragon of immeasurable age and size, its scales darkened to black by centuries of dragonfire. It rests upon a mountain of treasure, one eye opening as you approach. Ancient, intelligent, and furious. It speaks in a voice that shakes the mountain: 'YOU DARE?'",
+          "coordinates": [0, -2],
+          "location_type": "dungeon",
+          "items": {
+            "elder_wyrm_fang": {"quantity": 1, "value": 700},
+            "dragonlord_crown": {"quantity": 1, "value": 650},
+            "wyrm_heart_gem": {"quantity": 1, "value": 600}
+          },
+          "traps": [
+            {"type": "magic_rune", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "spike_trap", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "poison_dart", "triggered": false, "detected": false, "disarmed": false},
+            {"type": "crushing_ceiling", "triggered": false, "detected": false, "disarmed": false}
+          ],
+          "exits": {
+            "north": {"target": "ws_f3_fire_guardian_hall", "type": "direction"},
+            "west": {"target": "ws_f3_wyrm_treasury", "type": "direction"},
+            "east": {"target": "ws_f3_dragonfire_forge", "type": "direction"}
+          }
+        },
+        "ws_f3_wyrm_treasury": {
+          "name": "Wyrm Treasury",
+          "description": "The Elder Wyrm's most prized possessions — artifacts so powerful they warp reality around them. A sword that cuts through time, a shield that reflects magic, a helm that grants dragon-sight. Each is worth a kingdom.",
+          "coordinates": [-1, -2],
+          "location_type": "dungeon",
+          "items": {
+            "timecutter_blade": {"quantity": 1, "value": 800},
+            "mirror_shield": {"quantity": 1, "value": 750},
+            "dragon_sight_helm": {"quantity": 1, "value": 680}
+          },
+          "exits": {
+            "east": {"target": "ws_f3_elder_wyrm_throne", "type": "direction"}
+          }
+        },
+        "ws_f3_dragonfire_forge": {
+          "name": "Dragonfire Forge",
+          "description": "An ancient forge where the Elder Wyrm itself serves as the furnace. The dragon's breath is channeled into a forge of pure obsidian. Items shaped here acquire draconic properties beyond mortal crafting.\n\nThe wyrm's eternal flame burns with world-ending intensity...",
+          "coordinates": [1, -2],
+          "location_type": "dungeon",
+          "items": {"dragonfire_ingot": {"quantity": 1, "value": 550}},
+          "crafting_altar": true,
+          "altar_name": "Dragonfire Forge",
+          "altar_description": "The Elder Wyrm's own breath fuels this obsidian forge. Items shaped here become dragon-grade — weapons that cut through enchantments, armor that resists all elements, and objects imbued with the authority of the wyrm. The pinnacle of mortal crafting.",
+          "exits": {
+            "west": {"target": "ws_f3_elder_wyrm_throne", "type": "direction"}
+          }
+        }
+      }
+    }
+  }
+}

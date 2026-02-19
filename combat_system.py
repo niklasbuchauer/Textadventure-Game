@@ -269,7 +269,8 @@ ENEMY_DATABASE = {
         "name": "Crystal Golem", "description": "A towering construct of living crystal. Slow but devastating.",
         "hp": 50, "attack": 10, "defense": 5,
         "xp_reward": 40, "gold_reward": (15, 30),
-        "loot": [("heart_crystal_fragment", 0.20), ("raw_diamond", 0.10)],
+        "loot": [("heart_crystal_fragment", 0.20), ("raw_diamond", 0.10),
+                 ("golem_core_amulet", 0.08)],
         "floor_range": (2, 3), "dungeon": "crystal_caverns",
         "abilities": ["crystal_shard", "iron_slam"],
     },
@@ -277,7 +278,8 @@ ENEMY_DATABASE = {
         "name": "Gem Wyrm", "description": "A serpentine creature with scales of living gemstone.",
         "hp": 30, "attack": 8, "defense": 3,
         "xp_reward": 25, "gold_reward": (8, 18),
-        "loot": [("cave_crystal", 0.20), ("raw_diamond", 0.08)],
+        "loot": [("cave_crystal", 0.20), ("raw_diamond", 0.08),
+                 ("wyrm_scale_boots", 0.05)],
         "floor_range": (1, 2), "dungeon": "crystal_caverns",
         "abilities": ["bite", "tail_slam"],
     },
@@ -285,7 +287,7 @@ ENEMY_DATABASE = {
         "name": "Prism Wisp", "description": "A floating orb of refracted light. Blindingly bright.",
         "hp": 15, "attack": 6, "defense": 0,
         "xp_reward": 12, "gold_reward": (2, 7),
-        "loot": [("cave_crystal", 0.15)],
+        "loot": [("cave_crystal", 0.15), ("wisp_lantern", 0.03)],
         "floor_range": (1, 2), "dungeon": "crystal_caverns",
         "abilities": ["screech", "crystal_shard"],
     },
@@ -327,7 +329,8 @@ ENEMY_DATABASE = {
         "name": "Forge Elemental", "description": "A being of living flame and molten metal.",
         "hp": 45, "attack": 12, "defense": 4,
         "xp_reward": 40, "gold_reward": (15, 35),
-        "loot": [("eternal_ember", 0.15), ("raw_mithril", 0.08)],
+        "loot": [("eternal_ember", 0.15), ("raw_mithril", 0.08),
+                 ("ember_gauntlets", 0.05)],
         "floor_range": (2, 3), "dungeon": "iron_halls",
         "abilities": ["fire_breath", "flame_slash"],
     },
@@ -335,7 +338,8 @@ ENEMY_DATABASE = {
         "name": "Gear Golem", "description": "A construct of interlocking gears and pistons. It clicks menacingly.",
         "hp": 35, "attack": 7, "defense": 5,
         "xp_reward": 28, "gold_reward": (8, 18),
-        "loot": [("iron_ingot", 0.20), ("tempered_steel_ingot", 0.05)],
+        "loot": [("iron_ingot", 0.20), ("tempered_steel_ingot", 0.05),
+                 ("clockwork_ring", 0.04)],
         "floor_range": (1, 2), "dungeon": "iron_halls",
         "abilities": ["iron_slam", "claw_swipe"],
     },
@@ -377,7 +381,8 @@ ENEMY_DATABASE = {
         "name": "Shadow Stalker", "description": "A humanoid shape of pure darkness. Silent and deadly.",
         "hp": 35, "attack": 10, "defense": 3,
         "xp_reward": 30, "gold_reward": (8, 20),
-        "loot": [("umbral_thread", 0.20), ("obsidian_blade_fragment", 0.10)],
+        "loot": [("umbral_thread", 0.20), ("obsidian_blade_fragment", 0.10),
+                 ("stalkers_hood", 0.04)],
         "floor_range": (1, 3), "dungeon": "shadow_depths",
         "abilities": ["shadow_bolt", "claw_swipe", "void_touch"],
     },
@@ -385,7 +390,8 @@ ENEMY_DATABASE = {
         "name": "Void Wraith", "description": "A screaming horror from the space between worlds.",
         "hp": 45, "attack": 13, "defense": 4,
         "xp_reward": 45, "gold_reward": (15, 30),
-        "loot": [("void_heart_fragment", 0.15), ("concentrated_void_essence", 0.20)],
+        "loot": [("void_heart_fragment", 0.15), ("concentrated_void_essence", 0.20),
+                 ("wraith_touch_gloves", 0.04)],
         "floor_range": (2, 3), "dungeon": "shadow_depths",
         "abilities": ["void_touch", "death_gaze", "drain_life"],
     },
@@ -393,7 +399,8 @@ ENEMY_DATABASE = {
         "name": "Nightmare", "description": "A horse-like creature of pure shadow. Its hooves crack the floor.",
         "hp": 40, "attack": 11, "defense": 3,
         "xp_reward": 35, "gold_reward": (10, 22),
-        "loot": [("umbral_thread", 0.15), ("concentrated_void_essence", 0.12)],
+        "loot": [("umbral_thread", 0.15), ("concentrated_void_essence", 0.12),
+                 ("nightmare_cloak", 0.04), ("nightmare_scythe", 0.02)],
         "floor_range": (2, 3), "dungeon": "shadow_depths",
         "abilities": ["charge", "shadow_bolt", "screech"],
     },
@@ -443,7 +450,8 @@ ENEMY_DATABASE = {
         "name": "Spectral Knight", "description": "A ghostly warrior in ethereal plate armor.",
         "hp": 50, "attack": 12, "defense": 5,
         "xp_reward": 45, "gold_reward": (15, 35),
-        "loot": [("cracked_phylactery", 0.12), ("soul_gem", 0.15)],
+        "loot": [("cracked_phylactery", 0.12), ("soul_gem", 0.15),
+                 ("spectral_blade", 0.04)],
         "floor_range": (2, 3), "dungeon": "sunken_catacombs",
         "abilities": ["shadow_bolt", "charge", "death_gaze"],
     },
@@ -483,7 +491,8 @@ ENEMY_DATABASE = {
         "name": "Death Knight", "description": "A heavily armored skeleton warrior radiating dark energy.",
         "hp": 48, "attack": 11, "defense": 5,
         "xp_reward": 42, "gold_reward": (14, 30),
-        "loot": [("cracked_phylactery", 0.15), ("soul_gem", 0.20)],
+        "loot": [("cracked_phylactery", 0.15), ("soul_gem", 0.20),
+                 ("death_knight_blade", 0.03)],
         "floor_range": (2, 3), "dungeon": "sunken_catacombs",
         "abilities": ["necrotic_blast", "charge", "bone_throw"],
     },
@@ -525,7 +534,7 @@ ENEMY_DATABASE = {
         "name": "Moss Troll", "description": "A hulking green-skinned troll overgrown with moss.",
         "hp": 55, "attack": 10, "defense": 3,
         "xp_reward": 38, "gold_reward": (10, 22),
-        "loot": [],
+        "loot": [("trollhide_belt", 0.06)],
         "floor_range": (2, 3), "dungeon": "any",
         "abilities": ["claw_swipe", "charge", "bite"],
     },
@@ -533,7 +542,7 @@ ENEMY_DATABASE = {
         "name": "Mimic", "description": "It looked like a treasure chest. It was NOT a treasure chest.",
         "hp": 30, "attack": 9, "defense": 4,
         "xp_reward": 35, "gold_reward": (15, 30),
-        "loot": [("raw_diamond", 0.10)],
+        "loot": [("raw_diamond", 0.10), ("mimic_tooth_dagger", 0.05)],
         "floor_range": (1, 3), "dungeon": "any",
         "abilities": ["bite", "acid_spit", "claw_swipe"],
     },
@@ -550,7 +559,9 @@ MINI_BOSS_DATABASE = {
         "description": "An ancient crystal spider of immense size. Smaller spiders skitter around her.",
         "hp": 75, "attack": 12, "defense": 5,
         "xp_reward": 80, "gold_reward": (30, 60),
-        "loot": [("heart_crystal_fragment", 0.50), ("raw_diamond", 0.30)],
+        "loot": [("heart_crystal_fragment", 0.50), ("raw_diamond", 0.30),
+                 # Mini-boss equipment drops
+                 ("spidersilk_gloves", 0.20), ("matriarch_eye_amulet", 0.15)],
         "abilities": ["crystal_nova", "venom_fang", "web_snare", "crystal_shard"],
         "dungeon": "crystal_caverns",
         "intro_text": (
@@ -568,7 +579,10 @@ MINI_BOSS_DATABASE = {
         "description": "A colossal automaton built to guard the inner halls. Steam hisses from its joints.",
         "hp": 80, "attack": 13, "defense": 8,
         "xp_reward": 85, "gold_reward": (35, 65),
-        "loot": [("tempered_steel_ingot", 0.50), ("raw_mithril", 0.25)],
+        "loot": [("tempered_steel_ingot", 0.50), ("raw_mithril", 0.25),
+                 # Mini-boss equipment drops
+                 ("warden_core_shield", 0.18), ("warden_plating", 0.15),
+                 ("overclock_gear_ring", 0.12)],
         "abilities": ["molten_core", "iron_slam", "charge", "fire_breath"],
         "dungeon": "iron_halls",
         "intro_text": (
@@ -586,7 +600,9 @@ MINI_BOSS_DATABASE = {
         "description": "A creature that exists partially in another dimension. Reality warps around it.",
         "hp": 70, "attack": 14, "defense": 4,
         "xp_reward": 90, "gold_reward": (30, 55),
-        "loot": [("void_heart_fragment", 0.40), ("concentrated_void_essence", 0.50)],
+        "loot": [("void_heart_fragment", 0.40), ("concentrated_void_essence", 0.50),
+                 # Mini-boss equipment drops
+                 ("phase_shift_boots", 0.18), ("weaver_cowl", 0.15)],
         "abilities": ["void_rift", "shadow_bolt", "void_touch", "death_gaze"],
         "dungeon": "shadow_depths",
         "intro_text": (
@@ -604,7 +620,9 @@ MINI_BOSS_DATABASE = {
         "description": "Hundreds of skeletons fused into a towering horror. It never stops growing.",
         "hp": 85, "attack": 12, "defense": 6,
         "xp_reward": 85, "gold_reward": (35, 60),
-        "loot": [("soul_gem", 0.50), ("cracked_phylactery", 0.35)],
+        "loot": [("soul_gem", 0.50), ("cracked_phylactery", 0.35),
+                 # Mini-boss equipment drops
+                 ("colossus_ribcage_plate", 0.18), ("bonewrought_helm", 0.15)],
         "abilities": ["bone_storm", "necrotic_blast", "disease_touch", "bone_throw"],
         "dungeon": "sunken_catacombs",
         "intro_text": (
@@ -640,18 +658,22 @@ BOSS_DATABASE = {
         "hp": 120, "attack": 15, "defense": 8,
         "xp_reward": 150, "gold_reward": (50, 100),
         "loot": [("heart_crystal_fragment", 0.80), ("raw_diamond", 0.50),
-                 ("spectrum_prism", 0.30)],
+                 ("spectrum_prism", 0.30),
+                 # Mythic equipment drops
+                 ("titans_crystalline_edge", 0.12), ("titans_carapace", 0.08),
+                 ("titans_grasp", 0.15), ("prismatic_crown", 0.10),
+                 ("heart_of_the_titan", 0.15), ("titan_treads", 0.12)],
         "abilities": ["crystal_slam", "regenerate", "crystal_shard", "iron_slam"],
         "dungeon": "crystal_caverns",
         "intro_text": (
             "\n" + "=" * 55 + "\n"
-            "  BOSS ENCOUNTER: CRYSTAL TITAN\n"
-            "=" * 55 + "\n"
-            "  The ground trembles as a colossal figure of living\n"
-            "  crystal rises from the floor. Light refracts through\n"
-            "  its body in blinding rainbows. It regards you with\n"
-            "  eyes like blazing diamonds.\n"
-            "=" * 55 + "\n"
+            + "  BOSS ENCOUNTER: CRYSTAL TITAN\n"
+            + "=" * 55 + "\n"
+            + "  The ground trembles as a colossal figure of living\n"
+            + "  crystal rises from the floor. Light refracts through\n"
+            + "  its body in blinding rainbows. It regards you with\n"
+            + "  eyes like blazing diamonds.\n"
+            + "=" * 55 + "\n"
         ),
     },
     "iron_forgemaster": {
@@ -660,18 +682,23 @@ BOSS_DATABASE = {
         "hp": 130, "attack": 17, "defense": 10,
         "xp_reward": 160, "gold_reward": (60, 120),
         "loot": [("eternal_ember", 0.70), ("raw_mithril", 0.40),
-                 ("forgemaster_hammer", 0.25)],
+                 ("forgemaster_hammer", 0.25),
+                 # Mythic equipment drops
+                 ("forgemasters_warhammer", 0.12), ("forgemasters_plate", 0.08),
+                 ("forgemasters_helm", 0.10), ("molten_gauntlets", 0.15),
+                 ("ironclad_greaves", 0.15), ("eternal_anvil_shield", 0.12),
+                 ("eternal_ember_core", 0.10)],
         "abilities": ["flame_strike", "fortify", "iron_slam", "fire_breath"],
         "dungeon": "iron_halls",
         "intro_text": (
             "\n" + "=" * 55 + "\n"
-            "  BOSS ENCOUNTER: IRON FORGEMASTER\n"
-            "=" * 55 + "\n"
-            "  A massive dwarven construct slams its hammer on the\n"
-            "  anvil, sending sparks cascading across the chamber.\n"
-            "  Molten iron flows through its joints like blood.\n"
-            "  It turns to face you with furnace-bright eyes.\n"
-            "=" * 55 + "\n"
+            + "  BOSS ENCOUNTER: IRON FORGEMASTER\n"
+            + "=" * 55 + "\n"
+            + "  A massive dwarven construct slams its hammer on the\n"
+            + "  anvil, sending sparks cascading across the chamber.\n"
+            + "  Molten iron flows through its joints like blood.\n"
+            + "  It turns to face you with furnace-bright eyes.\n"
+            + "=" * 55 + "\n"
         ),
     },
     "shadow_sovereign": {
@@ -680,18 +707,22 @@ BOSS_DATABASE = {
         "hp": 110, "attack": 18, "defense": 6,
         "xp_reward": 170, "gold_reward": (50, 110),
         "loot": [("sovereign_shadow_crown", 0.60), ("concentrated_void_essence", 0.70),
-                 ("void_heart_fragment", 0.40)],
+                 ("void_heart_fragment", 0.40),
+                 # Mythic equipment drops
+                 ("sovereigns_edge", 0.12), ("cloak_of_eternal_night", 0.10),
+                 ("shadow_walker_treads", 0.15), ("void_crown", 0.12),
+                 ("void_grasp", 0.14), ("sovereigns_sigil", 0.08)],
         "abilities": ["shadow_strike", "darkness", "void_touch", "drain_life"],
         "dungeon": "shadow_depths",
         "intro_text": (
             "\n" + "=" * 55 + "\n"
-            "  BOSS ENCOUNTER: SHADOW SOVEREIGN\n"
-            "=" * 55 + "\n"
-            "  The shadows in the room coalesce into a towering\n"
-            "  figure wearing a crown of pure darkness. Its voice\n"
-            "  echoes from everywhere and nowhere at once:\n"
-            '  "You dare enter MY domain?"\n'
-            "=" * 55 + "\n"
+            + "  BOSS ENCOUNTER: SHADOW SOVEREIGN\n"
+            + "=" * 55 + "\n"
+            + "  The shadows in the room coalesce into a towering\n"
+            + "  figure wearing a crown of pure darkness. Its voice\n"
+            + "  echoes from everywhere and nowhere at once:\n"
+            + '  "You dare enter MY domain?"\n'
+            + "=" * 55 + "\n"
         ),
     },
     "lich_king": {
@@ -700,19 +731,23 @@ BOSS_DATABASE = {
         "hp": 140, "attack": 16, "defense": 7,
         "xp_reward": 180, "gold_reward": (70, 130),
         "loot": [("lich_crown_fragment", 0.70), ("soul_gem", 0.60),
-                 ("cracked_phylactery", 0.50), ("blood_ruby", 0.30)],
+                 ("cracked_phylactery", 0.50), ("blood_ruby", 0.30),
+                 # Mythic equipment drops
+                 ("lich_king_soul_blade", 0.12), ("deathshroud_robes", 0.12),
+                 ("crown_of_the_lich_king", 0.10), ("bonelord_gauntlets", 0.15),
+                 ("lichbone_greaves", 0.14), ("phylactery_shard", 0.06)],
         "abilities": ["death_bolt", "summon_skeleton", "necrotic_blast", "petrify_gaze"],
         "dungeon": "sunken_catacombs",
         "intro_text": (
             "\n" + "=" * 55 + "\n"
-            "  BOSS ENCOUNTER: LICH KING\n"
-            "=" * 55 + "\n"
-            "  A skeletal figure draped in tattered robes rises\n"
-            "  from a throne of bones. Green fire burns in its\n"
-            "  empty eye sockets. It raises a bony hand and the\n"
-            "  temperature plummets.\n"
-            '  "Another fool seeks my crown..."\n'
-            "=" * 55 + "\n"
+            + "  BOSS ENCOUNTER: LICH KING\n"
+            + "=" * 55 + "\n"
+            + "  A skeletal figure draped in tattered robes rises\n"
+            + "  from a throne of bones. Green fire burns in its\n"
+            + "  empty eye sockets. It raises a bony hand and the\n"
+            + "  temperature plummets.\n"
+            + '  "Another fool seeks my crown..."\n'
+            + "=" * 55 + "\n"
         ),
     },
 }
@@ -733,19 +768,23 @@ BOSS_DATABASE["frost_sovereign"] = {
     "hp": 200, "attack": 22, "defense": 14,
     "xp_reward": 350, "gold_reward": (150, 350),
     "loot": [("sovereign_crown", 0.90), ("eternal_frost_essence", 0.70),
-             ("frost_wyrm_scale", 0.50), ("void_ice", 0.30)],
+             ("frost_wyrm_scale", 0.50), ("void_ice", 0.30),
+             # Mythic equipment drops
+             ("frostbite_mythic", 0.10), ("glacial_sovereign_plate", 0.08),
+             ("frost_sovereign_crown", 0.10), ("glacial_striders", 0.12),
+             ("permafrost_gauntlets", 0.14), ("frozen_heart_mythic", 0.08)],
     "abilities": ["frost_nova", "ice_armor", "crystal_shard", "drain_life"],
     "dungeon": "frozen_spire",
     "intro_text": (
         "\n" + "=" * 55 + "\n"
-        "  👑 BOSS ENCOUNTER: FROST SOVEREIGN 👑\n"
-        "=" * 55 + "\n"
-        "  Upon a throne of living ice sits a being of terrible\n"
-        "  beauty. Its skin is translucent crystal, and its eyes\n"
-        "  burn with the cold light of dying stars. The temperature\n"
-        "  plummets as it rises, and the very air freezes.\n"
-        '  "You have come far... but winter is eternal."\n'
-        "=" * 55 + "\n"
+        + "  👑 BOSS ENCOUNTER: FROST SOVEREIGN 👑\n"
+        + "=" * 55 + "\n"
+        + "  Upon a throne of living ice sits a being of terrible\n"
+        + "  beauty. Its skin is translucent crystal, and its eyes\n"
+        + "  burn with the cold light of dying stars. The temperature\n"
+        + "  plummets as it rises, and the very air freezes.\n"
+        + '  "You have come far... but winter is eternal."\n'
+        + "=" * 55 + "\n"
     ),
 }
 
@@ -755,19 +794,23 @@ BOSS_DATABASE["verdant_guardian"] = {
     "hp": 220, "attack": 20, "defense": 16,
     "xp_reward": 380, "gold_reward": (180, 400),
     "loot": [("guardian_heartwood", 0.90), ("world_tree_bark", 0.70),
-             ("creation_seed_shard", 0.50), ("eden_flower", 0.40)],
+             ("creation_seed_shard", 0.50), ("eden_flower", 0.40),
+             # Mythic equipment drops
+             ("verdant_wrath", 0.10), ("worldtree_bark_plate", 0.08),
+             ("worldtree_crown", 0.10), ("rootwarden_greaves", 0.12),
+             ("rootwarden_grips", 0.14), ("heart_of_the_forest", 0.08)],
     "abilities": ["regenerate", "iron_slam", "darkness", "petrify_gaze"],
     "dungeon": "verdant_labyrinth",
     "intro_text": (
         "\n" + "=" * 55 + "\n"
-        "  👑 BOSS ENCOUNTER: VERDANT GUARDIAN 👑\n"
-        "=" * 55 + "\n"
-        "  The ground splits open as an ancient treant rises,\n"
-        "  its body woven from the roots of the World Tree itself.\n"
-        "  Eyes of blazing green fire regard you with ancient\n"
-        "  wisdom and terrible resolve.\n"
-        '  "The Seed must not be disturbed. Turn back or perish."\n'
-        "=" * 55 + "\n"
+        + "  👑 BOSS ENCOUNTER: VERDANT GUARDIAN 👑\n"
+        + "=" * 55 + "\n"
+        + "  The ground splits open as an ancient treant rises,\n"
+        + "  its body woven from the roots of the World Tree itself.\n"
+        + "  Eyes of blazing green fire regard you with ancient\n"
+        + "  wisdom and terrible resolve.\n"
+        + '  "The Seed must not be disturbed. Turn back or perish."\n'
+        + "=" * 55 + "\n"
     ),
 }
 
