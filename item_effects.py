@@ -137,6 +137,29 @@ ITEM_EFFECTS = {
 		"use_text": "You force down the moldy bread. You feel... marginally less hungry.",
 	},
 
+	# ───── CONSUMABLE: MANA ─────
+	"mana_potion": {
+		"type": "consumable",
+		"effect": "restore_mana",
+		"value": 30,
+		"description": "A cobalt-blue potion brimming with arcane energy. Restores 30% of your max mana.",
+		"use_text": "You drink the mana potion. Cool azure light flows through you as arcane energy is restored.",
+	},
+	"major_mana_potion": {
+		"type": "consumable",
+		"effect": "restore_mana",
+		"value": 60,
+		"description": "A deep-crystalline flask suffused with potent mana. Restores 60% of your max mana.",
+		"use_text": "You drink the major mana potion. A surge of brilliance floods your mind, sharply restoring your magical reserves.",
+	},
+	"mana_essence": {
+		"type": "consumable",
+		"effect": "increase_max_mana",
+		"value": 10,
+		"description": "A crystallised droplet of pure arcane essence. Permanently expands your mana pool by 10.",
+		"use_text": "You absorb the mana essence. It dissolves into your soul, widening the channel through which magic flows.",
+	},
+
 	# ───── TOOL: PERSISTENT ITEMS ─────
 	"old_spyglass": {
 		"type": "tool",
@@ -538,6 +561,10 @@ class ItemEffects:
 		elif effect_type in ("resist_fire", "resist_frost", "resist_shadow", "resist_poison"):
 			resist_type = effect_type.replace("resist_", "")
 			result += self._apply_resistance(resist_type, effect_data["value"], effect_data.get("duration", 5))
+		elif effect_type == "restore_mana":
+			result += self._apply_restore_mana(effect_data["value"])
+		elif effect_type == "increase_max_mana":
+			result += self._apply_increase_max_mana(int(effect_data["value"]))
 		elif effect_type == "escape_combat":
 			result += self._apply_escape_combat()
 		else:
@@ -566,6 +593,30 @@ class ItemEffects:
 		if healed <= 0:
 			return "  You're already at full health.\n"
 		return f"  ❤️ Restored {healed} health. (Health: {new_hp}/{max_hp})\n"
+
+	def _apply_restore_mana(self, percent):
+		"""Restore percent% of max_mana."""
+		stats = self.engine.player.stats
+		max_mana = stats.get("max_mana", 0)
+		if max_mana == 0:
+			return "  You have no mana pool to restore.\n"
+		restore_amt = max(1, int(max_mana * percent / 100))
+		old_mana = stats.get("mana", 0)
+		new_mana = min(old_mana + restore_amt, max_mana)
+		actual = new_mana - old_mana
+		stats["mana"] = new_mana
+		if actual <= 0:
+			return "  Your mana is already full.\n"
+		return f"  💙 Restored {actual} MP. (Mana: {new_mana}/{max_mana})\n"
+
+	def _apply_increase_max_mana(self, amount):
+		"""Permanently increase max_mana and current mana by amount."""
+		stats = self.engine.player.stats
+		max_mana = stats.get("max_mana", 0)
+		new_max = max_mana + amount
+		stats["max_mana"] = new_max
+		stats["mana"] = min(stats.get("mana", 0) + amount, new_max)
+		return f"  ✨ Max Mana permanently increased by {amount}! (Mana: {stats['mana']}/{new_max})\n"
 
 	def _apply_cure_poison(self):
 		"""Cure active poison."""

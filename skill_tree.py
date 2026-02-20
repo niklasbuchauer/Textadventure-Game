@@ -20,6 +20,7 @@ from skill_tree_data import (
     WARRIOR_TREE, ROGUE_TREE, MAGE_TREE,
     SKILL_TREES_DATA, CLASS_BRANCHES,
     WARRIOR_BRANCHES, ROGUE_BRANCHES, MAGE_BRANCHES,
+    MANA_COSTS,
 )
 
 # =====================================================================
@@ -319,6 +320,8 @@ def get_active_abilities(player):
             ability["skill_id"] = node["id"]
             ability["skill_name"] = node["name"]
             ability["description"] = node.get("description", "")
+            # Attach mana cost from centralised MANA_COSTS table
+            ability["mana_cost"] = MANA_COSTS.get(node["id"], ability.get("mana_cost", 0))
             abilities.append(ability)
 
     return abilities
@@ -353,6 +356,16 @@ def use_ability(player, ability_name):
     if remaining > 0:
         return False, f"{found['name']} is on cooldown ({remaining} turns remaining).", None
 
+    # Check mana cost
+    mana_cost = found.get("mana_cost", 0)
+    current_mana = player.stats.get("mana", 0)
+    if mana_cost > 0 and current_mana < mana_cost:
+        return False, f"Not enough mana!  {found['name']} requires {mana_cost} MP  (you have {current_mana}).", None
+
+    # Deduct mana
+    if mana_cost > 0:
+        player.stats["mana"] = current_mana - mana_cost
+
     # Activate the ability
     effect = found.get("effect", "")
 
@@ -367,7 +380,7 @@ def use_ability(player, ability_name):
         "combat_poison", "combat_freeze_attack", "combat_damage_burn",
         "combat_damage_stun", "combat_heal", "combat_execute",
         "combat_bleed_attack", "guaranteed_flee", "buff_attack",
-        "extra_gold"
+        "extra_gold", "restore_mana"
     )
 
     if effect not in combat_effects:
@@ -417,6 +430,11 @@ def _apply_ability_effect(player, effect, duration, value):
     elif effect == "archmage_mode":
         active_effects["archmage_mode"] = duration
         active_effects["guaranteed_detection"] = duration
+    elif effect == "restore_mana":
+        # Out-of-combat mana restore (pct of max_mana)
+        max_mana = player.stats.get("max_mana", 0)
+        restore_amt = max(1, int(max_mana * value))
+        player.stats["mana"] = min(player.stats.get("mana", 0) + restore_amt, max_mana)
 
     player.state["active_effects"] = active_effects
 

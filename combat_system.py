@@ -1305,6 +1305,13 @@ def _enemy_turn(player, combat):
             player.stats["health"] = player.stats.get("health", 100) - weak_dmg
             result += f"\n  The {combat.enemy_name} hesitates... (glancing blow: {weak_dmg} damage)"
 
+    # Passive mana regen at end of every enemy turn
+    mana_regen_bonus = player.stats.get("mana_regen_bonus", 0.0)
+    max_mana = player.stats.get("max_mana", 0)
+    if max_mana > 0:
+        regen = max(1, int(max_mana * (0.02 + mana_regen_bonus)))
+        player.stats["mana"] = min(player.stats.get("mana", 0) + regen, max_mana)
+
     return result
 
 
@@ -1623,6 +1630,15 @@ def process_ability_in_combat(player, combat, ability_data):
         player.stats["defense"] = player.stats.get("defense", 0) + boost
         result += f"\n  🛡️ Your defense surges by {boost} for {duration} turns!"
 
+    elif effect == "restore_mana":
+        # Restore a percentage of max mana in combat
+        max_mana = player.stats.get("max_mana", 0)
+        restore_amt = max(1, int(value * max_mana))
+        old_mana = player.stats.get("mana", 0)
+        player.stats["mana"] = min(old_mana + restore_amt, max_mana)
+        actual = player.stats["mana"] - old_mana
+        result += f"\n  💙 You restore {actual} MP!  ({player.stats['mana']}/{max_mana})"
+
     # Check if enemy died from ability
     if combat.hp <= 0:
         combat.hp = 0
@@ -1697,6 +1713,15 @@ def get_combat_status(player, combat):
     result += "─" * 50 + "\n"
     result += f"  You  {player_hp_icon}\n"
     result += f"  HP: [{pbar}] {php}/{php_max}\n"
+
+    # Mana bar
+    pmana = player.stats.get("mana", 0)
+    pmana_max = player.stats.get("max_mana", 0)
+    if pmana_max > 0:
+        mpct = max(0, pmana / pmana_max)
+        mfilled = int(mpct * 15)
+        mbar = "█" * mfilled + "░" * (15 - mfilled)
+        result += f"  MP: [{mbar}] {pmana}/{pmana_max}\n"
 
     # Show player status effects with detail
     player_statuses = []

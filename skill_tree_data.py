@@ -78,6 +78,114 @@ def _a(id, name, tier, cost, prereqs, ability, desc, branch, pos=None):
 
 
 # =====================================================================
+# MANA COSTS — maps skill_id → mana_cost consumed when activating.
+# Tier 2 = 12  |  Tier 3 = 20  |  Tier 4 = 30  |  Tier 5 ★ = 45
+# Utility / restore skills are cheaper.  Healer branch reduced by ~20%.
+# =====================================================================
+MANA_COSTS = {
+    # ── Warrior: Berserker ──
+    "w_ber_frenzy_strike":  12,
+    "w_ber_rampage":        20,
+    "w_ber_berserk_mode":   20,
+    "w_ber_apocalypse":     45,
+    # ── Warrior: Tank ──
+    "w_tank_shield_bash":   12,
+    "w_tank_fortify":       20,
+    "w_tank_rally":         30,
+    "w_tank_invincible":    45,
+    # ── Warrior: Archer ──
+    "w_arc_power_shot":     12,
+    "w_arc_multishot":      20,
+    "w_arc_rain":           30,
+    "w_arc_killshot":       45,
+    # ── Warrior: Commander ──
+    "w_cmd_war_cry":        12,
+    "w_cmd_battle_cry":     20,
+    "w_cmd_inspire_all":    30,
+    "w_cmd_rally_supreme":  45,
+    "w_cmd_focus":           0,   # mana-restore: free
+    # ── Warrior: Weaponmaster ──
+    "w_wm_power_strike":    12,
+    "w_wm_cleave":          20,
+    "w_wm_execute":         30,
+    "w_wm_titan_strike":    45,
+    # ── Warrior: Gladiator ──
+    "w_glad_taunt":         12,
+    "w_glad_finishing_blow":20,
+    "w_glad_execution":     30,
+    "w_glad_ultimate":      45,
+    # ── Rogue: Assassin ──
+    "r_asn_backstab":       12,
+    "r_asn_poison_strike":  20,
+    "r_asn_ambush":         30,
+    "r_asn_assassinate":    45,
+    # ── Rogue: Trickster ──
+    "r_trk_smoke":          15,
+    "r_trk_flash":          20,
+    "r_trk_vanish":         20,
+    "r_trk_reality_warp":   45,
+    "r_trk_meditate":        0,   # mana-restore: free
+    # ── Rogue: Thief ──
+    "r_thf_pickpocket":     10,
+    "r_thf_steal":          15,
+    "r_thf_larceny":        20,
+    "r_thf_jackpot_ult":    30,
+    # ── Rogue: Bounty Hunter ──
+    "r_bh_mark_prey":       12,
+    "r_bh_binding_shot":    20,
+    "r_bh_execute":         30,
+    "r_bh_death_sentence":  45,
+    # ── Rogue: Phantom ──
+    "r_phm_shadow_step":    12,
+    "r_phm_shadow_strike":  20,
+    "r_phm_ghost_walk":     20,
+    "r_phm_oblivion":       45,
+    # ── Mage: Fire ──
+    "m_fire_fireball":      12,
+    "m_fire_flame_wall":    20,
+    "m_fire_firestorm":     30,
+    "m_fire_meteor":        45,
+    # ── Mage: Ice ──
+    "m_ice_bolt":           12,
+    "m_ice_blizzard":       20,
+    "m_ice_comet":          30,
+    "m_ice_glacier_ult":    45,
+    # ── Mage: Earth ──
+    "m_earth_slam":         12,
+    "m_earth_earthquake":   20,
+    "m_earth_cataclysm":    30,
+    "m_earth_world_break":  45,
+    # ── Mage: Wind ──
+    "m_wind_slash":         12,
+    "m_wind_cyclone":       20,
+    "m_wind_tempest":       30,
+    "m_wind_maelstrom":     45,
+    # ── Mage: Lightning ──
+    "m_lit_bolt":           12,
+    "m_lit_thunder":        20,
+    "m_lit_smite":          30,
+    "m_lit_ragnarok":       45,
+    # ── Mage: Arcane ──
+    "m_arc_missile":        12,
+    "m_arc_barrage":        20,
+    "m_arc_annihilate":     30,
+    "m_arc_oblivion":       45,
+    "m_arc_surge":           0,   # mana-restore: free
+    "m_arc_mana_surge":      0,   # mana-restore active (new node): free
+    # ── Mage: Healer (slightly cheaper) ──
+    "m_heal_heal":          10,
+    "m_heal_greater":       18,
+    "m_heal_resurrect":     28,
+    "m_heal_miracle":       40,
+    # ── Mage: Shadow ──
+    "m_shd_drain_life":     12,
+    "m_shd_dark_blast":     20,
+    "m_shd_death_coil":     30,
+    "m_shd_apocalypse":     45,
+}
+
+
+# =====================================================================
 # WARRIOR SKILL TREE — 203 nodes (1 origin + 6 branches × ~33-35 each)
 # =====================================================================
 
@@ -663,6 +771,16 @@ WARRIOR_TREE = [
         "value": 3.0, "combat": True,
         "use_text": "THE CROWD GOES WILD! You deliver the CHAMPION'S FINALE!"},
        "CAPSTONE ACTIVE: 3.0x arena finisher.\nCooldown: 12 turns", "gladiator"),
+
+    # ── NEW: Mana Recovery Nodes (Commander branch) ──
+    _p("w_cmd_mana_reserve", "Warrior's Reserve", 3, 1, ["w_cmd_tactician"],
+       {"mana_regen_bonus": 0.01},
+       "Internal discipline deepens your mana reserves.\n+1% Mana Regen per combat turn.", "commander"),
+    _a("w_cmd_focus", "Battlecry of Focus", 4, 2, ["w_cmd_inspire_all"],
+       {"name": "Battlecry of Focus", "cooldown": 8, "effect": "restore_mana",
+        "value": 0.25, "combat": True,
+        "use_text": "You let out a focused battlecry, channeling your inner reserves!"},
+       "Sacrifice your attack to restore 25% of your mana.\nCooldown: 8 turns", "commander"),
 ]
 
 
@@ -1256,6 +1374,16 @@ ROGUE_TREE = [
         "value": 3.0, "combat": True,
         "use_text": "You strike from OBLIVION with the force of the VOID!"},
        "CAPSTONE ACTIVE: 3.0x void damage.\nCooldown: 12 turns", "phantom"),
+
+    # ── NEW: Mana Recovery Nodes (Trickster & Phantom branches) ──
+    _p("r_phm_shadow_flow", "Shadow Flow", 3, 1, ["r_phm_umbral"],
+       {"mana_regen_bonus": 0.01},
+       "Let shadow energy flow through you, feeding your mana.\n+1% Mana Regen per combat turn.", "phantom"),
+    _a("r_trk_meditate", "Shadow Meditate", 4, 2, ["r_trk_vanish"],
+       {"name": "Shadow Meditate", "cooldown": 8, "effect": "restore_mana",
+        "value": 0.25, "combat": True,
+        "use_text": "You slip into shadow-stillness, drawing fresh mana from the dark."},
+       "Sacrifice your attack to restore 25% of your mana.\nCooldown: 8 turns", "trickster"),
 ]
 
 
@@ -1652,6 +1780,16 @@ MAGE_TREE = [
        {"name": "Shadow Apocalypse", "cooldown": 12, "effect": "combat_damage", "value": 3.0, "combat": True,
         "use_text": "A SHADOW APOCALYPSE consumes all light!"},
        "CAPSTONE ACTIVE: 3.0x shadow damage.\nCooldown: 12 turns", "shadow"),
+
+    # ── NEW: Mana Recovery Nodes (Arcane branch) ──
+    _p("m_arc_ley_tap", "Ley Line Tap", 3, 1, ["m_arc_well"],
+       {"mana_regen_bonus": 0.015},
+       "You tap directly into arcane ley lines, amplifying your mana flow.\n+1.5% Mana Regen per combat turn.", "arcane"),
+    _a("m_arc_mana_surge", "Arcane Mana Surge", 4, 2, ["m_arc_annihilate"],
+       {"name": "Arcane Mana Surge", "cooldown": 6, "effect": "restore_mana",
+        "value": 0.30, "combat": True,
+        "use_text": "Arcane energy surges through you, flooding your reserves with mana!"},
+       "Sacrifice your attack to restore 30% of your mana.\nCooldown: 6 turns", "arcane"),
 ]
 
 # =====================================================================

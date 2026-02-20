@@ -33,6 +33,11 @@ ITEM_DATABASE = {
     "spell_scroll": {"name": "Spell Scroll", "icon": "📜", "desc": "Ancient magic inscribed on parchment", "value": 95, "rarity": "rare", "spawn_chance": 0.08},
     "ancient_coin": {"name": "Ancient Coin", "icon": "🪙", "desc": "From a forgotten civilization", "value": 60, "rarity": "rare", "spawn_chance": 0.05},
     "magic_amulet": {"name": "Magic Amulet", "icon": "✨", "desc": "Radiates mysterious magical energy", "value": 130, "rarity": "rare", "spawn_chance": 0.05},
+    # Mana items
+    "mana_potion": {"name": "Mana Potion", "icon": "💙", "desc": "Restores 30% of your max mana", "value": 75, "rarity": "rare", "spawn_chance": 0.12},
+    "major_mana_potion": {"name": "Major Mana Potion", "icon": "💎", "desc": "Restores 60% of your max mana", "value": 140, "rarity": "rare", "spawn_chance": 0.07},
+    "mana_essence": {"name": "Mana Essence", "icon": "✨", "desc": "Permanently increases max mana by 10", "value": 250, "rarity": "epic", "spawn_chance": 0.04},
+    "mana_chalice": {"name": "Mana Chalice", "icon": "🏆", "desc": "Equippable: +5% passive mana regen per turn", "value": 800, "rarity": "rare", "spawn_chance": 0.03},
 }
 
 # ============================================================

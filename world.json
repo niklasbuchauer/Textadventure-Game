@@ -46,6 +46,11 @@
           "target": "village_blacksmith",
           "type": "named",
           "display": "Blacksmith's Forge"
+        },
+        "bank": {
+          "target": "bank_of_estoria",
+          "type": "named",
+          "display": "Bank of Estoria"
         }
       }
     },
@@ -37287,6 +37292,31 @@
       "exits": {
         "west": {
           "target": "abyssal_wake_ritual_platform",
+          "type": "direction"
+        }
+      }
+    },
+    "bank_of_estoria": {
+      "id": "bank_of_estoria",
+      "name": "Bank of Estoria",
+      "description": "A sturdy stone vault-building near the village square. Heavy iron-banded doors stand open during business hours, and the interior smells of old parchment and polished brass. Thick walls muffle all outside noise. Behind a solid oak counter, rows of locked strongboxes line the vaulted back wall, each sealed with runic keys. A hand-lettered sign reads: \"Deposits safe from all harm — guaranteed by the Geld family since year 84.\"",
+      "location_type": "settlement",
+      "coordinates": [
+        0,
+        1
+      ],
+      "items": {},
+      "npcs": [
+        "banker"
+      ],
+      "exits": {
+        "back": {
+          "target": "village_square",
+          "type": "named",
+          "display": "Village Square"
+        },
+        "south": {
+          "target": "village_square",
           "type": "direction"
         }
       }

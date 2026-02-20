@@ -1659,6 +1659,55 @@ NPC_DATABASE = {
 			},
 		},
 	},
+	# ── Banker ────────────────────────────────────────────────────────────────
+	"banker": {
+		"id": "banker",
+		"name": "Aldus Geld",
+		"title": "Bank Keeper",
+		"location": "bank_of_estoria",
+		"greeting": "A portly man in a starched collar looks up from a heavy ledger and adjusts his spectacles.\n\n\"Ah, welcome to the Bank of Estoria — the safest vault in the realm!  I'm Aldus Geld, keeper of this fine institution.  How may I serve you today?\"",
+		"dialogue": {
+			"root": {
+				"text": None,
+				"options": [
+					{"label": "How does the bank work?", "next": "how_it_works"},
+					{"label": "Can I upgrade my vault?", "next": "upgrades"},
+					{"label": "Tell me about the bank's history.", "next": "history"},
+					{"label": "Goodbye.", "next": "farewell"},
+				],
+			},
+			"how_it_works": {
+				"text": "Aldus beams with pride.\n\n\"Simplicity itself!  You may deposit gold here for safekeeping — funds stored in the vault are *completely* safe, even should misfortune befall you on the road.  To use the service:\n\n  deposit <amount>  — put gold into the vault\n  withdraw <amount> — retrieve your gold\n  balance          — see your current balance\n\nYour vault begins at 5,000 gold capacity, but I can expand it with the right materials.\"",
+				"options": [
+					{"label": "How do I expand my vault?", "next": "upgrades"},
+					{"label": "Let me ask something else.", "next": "root"},
+				],
+			},
+			"upgrades": {
+				"text": "Aldus taps the counter with a meticulous finger.\n\n\"We currently offer nineteen vault expansions — each requires gold and certain crafting materials to pay for the reinforced ironwork.  The early tiers rely on copper and iron; later tiers need steel, mithril, and exotic components.\n\nSimply type  'upgrade bank'  and I shall check whether you meet the requirements.\"",
+				"options": [
+					{"label": "What is the maximum capacity?", "next": "max_cap"},
+					{"label": "Thanks, let me ask something else.", "next": "root"},
+				],
+			},
+			"max_cap": {
+				"text": "\"At Tier 19 — our finest vault — you may store up to 100,000 gold.  Quite the achievement!  Only the wealthiest adventurers ever reach that level.\"\n\nHe lowers his voice conspiratorially.\n\n\"Between you and me, only three adventurers have ever maxed the vault.  One retired to a sea-side manor.  Another disappeared into the Void Beyond.  The third... we don't talk about the third.\"",
+				"options": [
+					{"label": "Noted.  Let me ask something else.", "next": "root"},
+				],
+			},
+			"history": {
+				"text": "Aldus straightens with obvious pride.\n\n\"The Bank of Estoria was founded four hundred years ago by Esterio Geld — my ancestor.  During the Great Pillaging, every merchant in the realm lost their gold to roaming brigands.  Esterio had the notion of a vault beneath the town square, sealed by runestones.\n\nThe vault has never been breached.  Even during the Demon Siege of year 312, the vault held.  Some say the foundation is blessed by the old gods of commerce.\"\n\nHe pats the stonework wall affectionately.",
+				"options": [
+					{"label": "Impressive!  Back to business.", "next": "root"},
+				],
+			},
+			"farewell": {
+				"text": "Aldus bows his head courteously.\n\n\"May your purse always be heavy and your enemies always be light.  Safe travels, friend.\"\n\nHe returns to his ledger with practiced efficiency.",
+				"options": [],
+			},
+		},
+	},
 }
 
 

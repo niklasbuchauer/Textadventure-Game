@@ -1,131 +1,15 @@
 {
-  "save_version": 3,
+  "save_version": 4,
   "player": {
-    "current_room": "desert_border",
+    "current_room": "chapel",
     "inventory": {},
     "state": {
       "unlocked_skills": [
-        "r_origin",
-        "r_asn_quick",
-        "r_asn_nimble",
-        "r_asn_blade_dance",
-        "r_asn_focus",
-        "r_asn_vital",
-        "r_asn_execute_mark",
-        "r_asn_death_mark",
-        "r_asn_nerve",
-        "r_trk_wit",
-        "r_trk_evasive",
-        "r_thf_nimble",
-        "r_thf_keen",
-        "r_thf_lockpick",
-        "r_thf_master_lock",
-        "r_thf_vault",
-        "r_thf_appraise",
-        "r_thf_treasure",
-        "r_thf_luck",
-        "r_thf_fortune",
-        "r_thf_jackpot",
-        "r_thf_dragon_hoard",
-        "r_thf_escape",
-        "r_thf_hide",
-        "r_thf_sticky",
-        "r_thf_filch",
-        "r_thf_pickpocket",
-        "r_thf_steal",
-        "r_trk_slip",
-        "r_trk_phase",
-        "r_trk_blink",
-        "r_trk_adapt",
-        "r_thf_larceny",
-        "r_thf_perfect_heist",
-        "r_thf_midas",
-        "r_thf_street",
-        "r_thf_contort",
-        "r_thf_fence",
-        "r_thf_slippery",
-        "r_thf_black_market",
-        "r_thf_loot_sense",
-        "r_thf_kingpin",
-        "r_thf_crime_lord",
-        "r_thf_legendary",
-        "r_thf_emperor",
-        "r_thf_jackpot_ult",
-        "r_bh_mark",
-        "r_bh_mark_prey",
-        "r_bh_prey_sense",
-        "r_bh_hunter",
-        "r_bh_weak_spot",
-        "r_bh_study",
-        "r_bh_anatomy",
-        "r_bh_exploit",
-        "r_bh_lethal",
-        "r_bh_vital_strike",
-        "r_bh_death_strike",
-        "r_bh_bola",
-        "r_bh_binding",
-        "r_bh_snare",
-        "r_bh_binding_shot",
-        "r_bh_execute",
-        "r_bh_chain",
-        "r_bh_executioner",
-        "r_bh_tracker",
-        "r_bh_keen_track",
-        "r_bh_master_track",
-        "r_bh_predator",
-        "r_bh_apex",
-        "r_bh_relentless",
-        "r_bh_grand_hunter",
-        "r_bh_nemesis",
-        "r_bh_death_sentence",
-        "r_phm_whisper",
-        "r_phm_night",
-        "r_phm_wraith",
-        "r_asn_sharp",
-        "r_phm_shadow",
-        "r_phm_shadow_step",
-        "r_phm_darksight",
-        "r_phm_echo",
-        "r_phm_veil",
-        "r_phm_dark",
-        "r_phm_dark_power",
-        "r_phm_dark_strike",
-        "r_phm_shadow_strike",
-        "r_phm_dark_master",
-        "r_phm_void_sight",
-        "r_phm_shadow_walk",
-        "r_phm_ghost",
-        "r_phm_umbral",
-        "r_phm_void_walk",
-        "r_phm_void_blade",
-        "r_asn_precise",
-        "r_phm_after_image",
-        "r_asn_deadly",
-        "r_asn_lethality",
-        "r_asn_master",
-        "r_asn_backstab",
-        "r_asn_stealth",
-        "r_asn_shadow_blade",
-        "r_asn_umbral",
-        "r_asn_assassinate",
-        "r_asn_shadow_dance",
-        "r_asn_ambush"
+        "w_origin",
+        "w_arc_instinct",
+        "w_arc_wind_read"
       ],
-      "cooldowns": {
-        "r_asn_assassinate": 12,
-        "r_thf_jackpot_ult": 12,
-        "r_phm_shadow_strike": 4,
-        "r_phm_shadow_step": 4,
-        "r_bh_death_sentence": 12,
-        "r_bh_binding_shot": 5,
-        "r_asn_backstab": 3,
-        "r_thf_steal": 8,
-        "r_thf_larceny": 10,
-        "r_thf_pickpocket": 6,
-        "r_asn_ambush": 5,
-        "r_bh_mark_prey": 5,
-        "r_bh_execute": 8
-      },
+      "cooldowns": {},
       "active_effects": {},
       "equipment": {
         "weapon": null,
@@ -137,63 +21,61 @@
         "accessory": null
       },
       "cleared_rooms": [],
-      "_synergy_bonuses": {
-        "attack": 60,
-        "defense": 34,
-        "health_max_bonus": 155,
-        "crit_chance_bonus": 0.37
-      },
-      "_synergy_descriptions": [
-        "Assassin Master (20 nodes)",
-        "Trickster Adept (6 nodes)",
-        "Thief Master (31 nodes)",
-        "Bounty Hunter Master (27 nodes)",
-        "Phantom Master (20 nodes)"
-      ],
       "achievements": [
         "first_skill",
-        "skilled",
-        "mastery",
-        "branch_initiate",
-        "branch_master",
+        "explorer",
         "level_5",
-        "first_blood",
-        "flawless_victory"
+        "level_10",
+        "level_20",
+        "level_30"
       ],
-      "achievement_tracking": {
-        "kills": 7,
-        "flawless_wins": 2,
-        "total_gold": 118
-      }
+      "achievement_tracking": {},
+      "_synergy_bonuses": {},
+      "_synergy_descriptions": [],
+      "death_gold_lost_total": 170
     },
     "stats": {
-      "gold": 371,
-      "health": 295,
-      "health_max": 295,
-      "level": 9,
-      "xp": 2478,
-      "xp_to_next": 222,
-      "skill_points": 1850,
-      "class": "rogue",
-      "strength": 52,
-      "defense": 42,
-      "dexterity": 75,
-      "perception": 81,
-      "charisma": 29,
-      "constitution": 4,
-      "attack": 64,
-      "crit_chance_bonus": 1.23,
-      "disarm_bonus": 0.5
+      "gold": 2480,
+      "health": 57,
+      "health_max": 115,
+      "level": 1000,
+      "xp": 2032,
+      "xp_to_next": 0,
+      "skill_points": 1,
+      "class": "warrior",
+      "strength": 4,
+      "defense": 5,
+      "dexterity": 2,
+      "perception": 3,
+      "charisma": 0,
+      "constitution": 3,
+      "mana": 85,
+      "max_mana": 85,
+      "mana_regen_bonus": 0.0,
+      "attack": 2
     },
     "visited_rooms": [
-      "farmland_east",
+      "coastal_road_north",
+      "sandy_beach",
+      "stormbreak_docks",
+      "grand_harbor_square",
+      "village_south_road",
+      "grand_harbor_road",
+      "harbor_south_pier",
+      "chapel",
+      "grand_harbor_gate",
+      "harbor_east_dock",
+      "village_west_end",
+      "reef_shallows",
       "village_east_end",
-      "farmland_west",
-      "desert_border",
-      "farmland_center",
-      "village_square"
+      "village_square",
+      "crossroads",
+      "smugglers_cove",
+      "coastal_cliffs"
     ],
-    "unlocked_islands": []
+    "unlocked_islands": [
+      "stormbreak_island"
+    ]
   },
   "rooms": {
     "village_square": {
@@ -6982,6 +6864,9 @@
         "deep_eye_tear": 1,
         "polished_resting_stone": 1
       }
+    },
+    "bank_of_estoria": {
+      "items": {}
     }
   },
   "item_worth": {
@@ -7043,12 +6928,25 @@
     "copper_ore": 10
   },
   "quests": {},
-  "npc_reputation": {},
+  "npc_reputation": {
+    "banker": {
+      "npc_id": "banker",
+      "affinity": 2,
+      "visit_count": 1,
+      "gifts_given": {},
+      "total_gifts": 0,
+      "favors_completed": [],
+      "dialogue_seen": [
+        "how_it_works"
+      ],
+      "rep_rewards_claimed": []
+    }
+  },
   "overworld_encounters": {
     "recent_rooms": [
-      "farmland_center",
-      "farmland_east",
-      "desert_border"
+      "sandy_beach",
+      "reef_shallows",
+      "smugglers_cove"
     ],
     "visible_enemies": {
       "dungeon_forest_entrance": {
@@ -7114,28 +7012,67 @@
           ],
           "id": "sand_viper"
         }
+      },
+      "sandy_beach": {
+        "enemy_id": "pirate_raider",
+        "enemy_data": {
+          "name": "Pirate Raider",
+          "description": "A grizzled seafarer with a cutlass and murderous intent.",
+          "hp": 26,
+          "attack": 8,
+          "defense": 2,
+          "xp_reward": 18,
+          "gold_reward": [
+            20,
+            45
+          ],
+          "loot": [
+            [
+              "health_potion",
+              0.2
+            ],
+            [
+              "gold_coin",
+              0.5
+            ],
+            [
+              "cutlass",
+              0.08
+            ]
+          ],
+          "abilities": [
+            "slash",
+            "pistol_shot"
+          ],
+          "id": "pirate_raider"
+        }
       }
     },
     "rooms_rolled": [
-      "farmland_east",
-      "coastal_cliffs",
-      "farmland_west",
-      "forest_path",
-      "meteor_crater",
-      "farmland_center",
-      "coastal_road_north",
-      "deep_forest",
-      "reef_shallows",
-      "dungeon_forest_entrance",
-      "crossroads",
+      "village_road",
+      "sandy_beach",
       "canyon_entrance",
-      "graveyard",
-      "desert_cliffs",
       "farmland",
+      "farmland_west",
+      "mesa_top",
       "desert_border",
-      "smugglers_cove",
+      "forest_path",
+      "farmland_center",
+      "dungeon_forest_entrance",
       "graveyard_gates",
-      "village_road"
+      "desert_cliffs",
+      "reef_shallows",
+      "crossroads",
+      "desert_dunes_west",
+      "mesa_base",
+      "coastal_road_north",
+      "meteor_crater",
+      "deep_forest",
+      "smugglers_cove",
+      "coastal_cliffs",
+      "scorpion_flats",
+      "farmland_east",
+      "graveyard"
     ]
   },
   "fishing": {
@@ -7166,9 +7103,9 @@
   },
   "dungeon_scheduler": {
     "debug_force_open": [
-      "crystal_caverns",
+      "iron_halls",
       "sunken_catacombs",
-      "iron_halls"
+      "crystal_caverns"
     ]
   }
 }

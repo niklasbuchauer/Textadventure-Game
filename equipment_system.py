@@ -1829,6 +1829,16 @@ EQUIPMENT_DATABASE = {
         "craftable": True,
         "source": "altar_iron",
     },
+    "mana_chalice": {
+        "name": "Mana Chalice",
+        "slot": "accessory",
+        "rarity": "rare",
+        "material": "crystal",
+        "description": "An ornate chalice imbued with arcane magic. Slowly replenishes your mana.",
+        "stats": {"mana_regen_bonus": 0.05},
+        "craftable": False,
+        "source": "shop",
+    },
 
     # ══════════════════════════════════════════════════════════════════
     # REGION-THEMED EQUIPMENT

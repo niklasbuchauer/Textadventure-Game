@@ -231,6 +231,11 @@ def check_level_up(player):
                 hp_gain = max(2, int(5 * math.sqrt(40 / current_level)))
             stats["health_max"] = stats.get("health_max", 100) + hp_gain
             stats["health"] = stats.get("health_max", 100)  # Full heal on level up
+            # Mana growth per level
+            class_id = stats.get("class", "warrior")
+            mana_gain = {"warrior": 5, "rogue": 6, "mage": 10}.get(class_id, 5)
+            stats["max_mana"] = stats.get("max_mana", 0) + mana_gain
+            stats["mana"] = stats.get("max_mana", 0)  # Full mana restore on level up
             level_ups.append((current_level, sp))
         else:
             break
@@ -279,6 +284,10 @@ def award_xp(player, amount, source="unknown"):
             result += f"  +{sp} Skill Point{'s' if sp > 1 else ''} earned!\n"
             result += f"  +5 Max Health (now {stats.get('health_max', 100)})\n"
             result += f"  Health fully restored!\n"
+            class_id2 = stats.get("class", "warrior")
+            mg = {"warrior": 5, "rogue": 6, "mage": 10}.get(class_id2, 5)
+            result += f"  +{mg} Max Mana (now {stats.get('max_mana', 0)})\n"
+            result += f"  Mana fully restored!\n"
             result += f"\n  Total Skill Points: {stats.get('skill_points', 0)}\n"
             result += f"  Use 'skills' to open your skill tree.\n"
             result += "=" * 55 + "\n"
@@ -328,6 +337,12 @@ def apply_class(player, class_id):
         player.state["unlocked_skills"] = []
     if "cooldowns" not in player.state:
         player.state["cooldowns"] = {}
+
+    # Set starting mana based on class
+    mana_base = {"warrior": 80, "rogue": 90, "mage": 120}.get(class_id, 80)
+    stats["mana"] = mana_base
+    stats["max_mana"] = mana_base
+    stats["mana_regen_bonus"] = 0.0  # extra regen from passives/gear
 
     # Auto-unlock the tier 0 center node for the chosen class
     center_nodes = {

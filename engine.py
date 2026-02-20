@@ -335,6 +335,32 @@ class Player:
 		return p
 
 
+# ─── Bank of Estoria — tiered storage caps ───────────────────────────────────
+# Index = bank_tier (0–19).  Tier 0 is free; tiers 1-19 require gold + materials.
+BANK_TIERS = [
+	{"capacity": 5_000,   "gold_cost": 0,      "material_cost": {}},
+	{"capacity": 10_000,  "gold_cost": 500,    "material_cost": {"copper_ingot": 5}},
+	{"capacity": 15_000,  "gold_cost": 1_000,  "material_cost": {"copper_ingot": 10}},
+	{"capacity": 20_000,  "gold_cost": 2_000,  "material_cost": {"iron_ingot": 5}},
+	{"capacity": 25_000,  "gold_cost": 3_000,  "material_cost": {"iron_ingot": 10}},
+	{"capacity": 30_000,  "gold_cost": 5_000,  "material_cost": {"iron_ingot": 15}},
+	{"capacity": 37_500,  "gold_cost": 7_500,  "material_cost": {"steel_ingot": 5}},
+	{"capacity": 45_000,  "gold_cost": 10_000, "material_cost": {"steel_ingot": 10}},
+	{"capacity": 52_500,  "gold_cost": 12_500, "material_cost": {"steel_ingot": 15}},
+	{"capacity": 60_000,  "gold_cost": 15_000, "material_cost": {"mithril_ore": 5}},
+	{"capacity": 67_500,  "gold_cost": 20_000, "material_cost": {"mithril_ore": 10}},
+	{"capacity": 72_500,  "gold_cost": 25_000, "material_cost": {"mithril_ore": 15}},
+	{"capacity": 77_500,  "gold_cost": 30_000, "material_cost": {"mithril_ore": 20, "gold_dust": 5}},
+	{"capacity": 82_500,  "gold_cost": 35_000, "material_cost": {"mithril_ore": 20, "gold_dust": 10}},
+	{"capacity": 87_500,  "gold_cost": 40_000, "material_cost": {"mithril_ore": 20, "gold_dust": 10, "rare_crystal": 3}},
+	{"capacity": 90_000,  "gold_cost": 42_500, "material_cost": {"mithril_ore": 20, "gold_dust": 10, "rare_crystal": 5}},
+	{"capacity": 93_000,  "gold_cost": 45_000, "material_cost": {"mithril_ore": 20, "gold_dust": 10, "rare_crystal": 5}},
+	{"capacity": 96_000,  "gold_cost": 47_500, "material_cost": {"mithril_ore": 20, "gold_dust": 10, "rare_crystal": 5}},
+	{"capacity": 98_000,  "gold_cost": 49_000, "material_cost": {"mithril_ore": 20, "gold_dust": 10, "rare_crystal": 5}},
+	{"capacity": 100_000, "gold_cost": 50_000, "material_cost": {"mithril_ore": 20, "gold_dust": 10, "rare_crystal": 5}},
+]
+
+
 class CommandHandler:
 	"""Parse and execute commands. Delegates to GameEngine for state changes.
 	All handler methods return a string (the response) instead of printing.
@@ -589,6 +615,51 @@ class CommandHandler:
 			if NPC_AVAILABLE and self.engine.npc_manager:
 				return self.engine.npc_manager.start_conversation(target)
 			return "Talk to whom?"
+
+		# ── Bank commands (only available in bank_of_estoria) ──────────────────────
+		if verb == "bank":
+			if not args:
+				return self._bank_help()
+			sub = args[0].lower()
+			if sub == "help":
+				return self._bank_help()
+			elif sub == "balance":
+				return self._bank_balance()
+			elif sub == "upgrade":
+				return self._bank_upgrade()
+			else:
+				return self._bank_help()
+
+		if verb == "deposit":
+			if not args:
+				return "Deposit how much? (e.g. 'deposit 500')"
+			try:
+				amount = int(args[0])
+			except ValueError:
+				# allow "all"
+				if args[0].lower() == "all":
+					amount = self.engine.player.stats.get("gold", 0)
+				else:
+					return "Amount must be a number."
+			return self._bank_deposit(amount)
+
+		if verb == "withdraw":
+			if not args:
+				return "Withdraw how much? (e.g. 'withdraw 200')"
+			try:
+				amount = int(args[0])
+			except ValueError:
+				if args[0].lower() == "all":
+					amount = self.engine.player.state.get("bank_gold", 0)
+				else:
+					return "Amount must be a number."
+			return self._bank_withdraw(amount)
+
+		if verb == "balance":
+			return self._bank_balance()
+
+		if verb in ("upgrade",) and args and args[0].lower() == "bank":
+			return self._bank_upgrade()
 
 		# Gift command: gift <npc> <item>
 		if verb == "gift" or verb == "give":
@@ -850,6 +921,8 @@ class CommandHandler:
 		result += f"  SP:       {stats.get('skill_points', 0)} skill points\n"
 		result += "\n  --- Vitals ---\n"
 		result += f"  Health:   {stats.get('health', 100)}/{stats.get('health_max', 100)}\n"
+		if stats.get('max_mana', 0) > 0:
+			result += f"  Mana:     {stats.get('mana', 0)}/{stats.get('max_mana', 0)}\n"
 		result += f"  Gold:     {stats.get('gold', 0)}\n"
 		result += "\n  --- Attributes ---\n"
 
@@ -1146,12 +1219,17 @@ class CommandHandler:
 		result += "  💀 YOU HAVE FALLEN! 💀\n"
 		result += "=" * 55 + "\n"
 
-		# Gold penalty: lose 25% of gold
+		# Gold penalty: lose 5-10% of carried gold (bank_gold is safe)
+		import random as _rnd
 		gold = self.engine.player.stats.get("gold", 0)
-		gold_lost = gold // 4
+		pct = _rnd.uniform(0.05, 0.10)
+		gold_lost = int(gold * pct)
 		self.engine.player.stats["gold"] = gold - gold_lost
+		self.engine.player.state["death_gold_lost_total"] = (
+			self.engine.player.state.get("death_gold_lost_total", 0) + gold_lost
+		)
 		if gold_lost > 0:
-			result += f"  You lost {gold_lost} gold...\n"
+			result += f"  You lost {gold_lost}g ({pct*100:.0f}% of your carried gold)...\n"
 
 		# Find respawn location: village or chapel, fallback to start
 		respawn_room = self.engine.start_room
@@ -1421,7 +1499,7 @@ class CommandHandler:
 			return result + get_combat_status(self.engine.player, combat)
 
 		# Handle combat abilities used in combat that don't start with combat_
-		if combat and COMBAT_AVAILABLE and effect in ("guaranteed_flee", "buff_attack", "extra_gold", "temp_defense"):
+		if combat and COMBAT_AVAILABLE and effect in ("guaranteed_flee", "buff_attack", "extra_gold", "temp_defense", "restore_mana"):
 			combat_result = process_ability_in_combat(self.engine.player, combat, ability_data)
 			result = msg + "\n" + combat_result
 
@@ -4197,6 +4275,146 @@ Do you wish to enter? (yes/no)
 		self.engine.shop_ui.show_shop_info()
 		return ""
 
+	# ── Bank of Estoria helpers ────────────────────────────────────────────────
+
+	def _require_bank(self):
+		"""Return (True, '') if the player is in the bank, else (False, error_msg)."""
+		if self.engine.player.current_room != "bank_of_estoria":
+			return (False, "You must be in the Bank of Estoria to use banking commands.")
+		return (True, "")
+
+	def _bank_help(self):
+		ok, msg = self._require_bank()
+		if not ok:
+			return msg
+		tier = self.engine.player.state.get("bank_tier", 0)
+		cap = BANK_TIERS[tier]["capacity"]
+		bal = self.engine.player.state.get("bank_gold", 0)
+		result  = "\n╔══════════════════════════════════════╗\n"
+		result += "║      🏦  BANK OF ESTORIA              ║\n"
+		result += "╠══════════════════════════════════════╣\n"
+		result += f"║  Balance:  {bal:>8,}g                ║\n"
+		result += f"║  Capacity: {cap:>8,}g  (Tier {tier})       ║\n"
+		result += "╠══════════════════════════════════════╣\n"
+		result += "║  deposit <amount>  — store gold      ║\n"
+		result += "║  withdraw <amount> — retrieve gold   ║\n"
+		result += "║  balance           — check balance   ║\n"
+		result += "║  upgrade bank      — expand vault    ║\n"
+		result += "╚══════════════════════════════════════╝\n"
+		return result
+
+	def _bank_balance(self):
+		ok, msg = self._require_bank()
+		if not ok:
+			return msg
+		tier = self.engine.player.state.get("bank_tier", 0)
+		cap  = BANK_TIERS[tier]["capacity"]
+		bal  = self.engine.player.state.get("bank_gold", 0)
+		carried = self.engine.player.stats.get("gold", 0)
+		result  = f"\n  🏦 Bank of Estoria — Account Summary\n"
+		result += f"  ─────────────────────────────────\n"
+		result += f"  Deposited : {bal:,}g  /  {cap:,}g capacity  (Tier {tier})\n"
+		result += f"  Carried   : {carried:,}g\n"
+		result += f"  ─────────────────────────────────\n"
+		if tier < len(BANK_TIERS) - 1:
+			next_tier = BANK_TIERS[tier + 1]
+			result += f"  Next tier ({tier+1}): {next_tier['capacity']:,}g capacity"
+			result += f"  —  costs {next_tier['gold_cost']:,}g"
+			if next_tier["material_cost"]:
+				mats = ", ".join(f"{v}× {k.replace('_',' ')}" for k, v in next_tier["material_cost"].items())
+				result += f" + {mats}"
+			result += "\n  Type 'upgrade bank' when ready.\n"
+		else:
+			result += "  You have reached the maximum vault tier!\n"
+		return result
+
+	def _bank_deposit(self, amount):
+		ok, msg = self._require_bank()
+		if not ok:
+			return msg
+		if amount <= 0:
+			return "  Amount must be positive."
+		carried = self.engine.player.stats.get("gold", 0)
+		if amount > carried:
+			return f"  You only have {carried:,}g on you."
+		tier = self.engine.player.state.get("bank_tier", 0)
+		cap  = BANK_TIERS[tier]["capacity"]
+		bal  = self.engine.player.state.get("bank_gold", 0)
+		space = cap - bal
+		if space <= 0:
+			return f"  Your vault is full ({bal:,}/{cap:,}g).  Upgrade to store more."
+		actual = min(amount, space)
+		self.engine.player.stats["gold"] = carried - actual
+		self.engine.player.state["bank_gold"] = bal + actual
+		result = f"  🏦 Deposited {actual:,}g.\n"
+		result += f"  Vault: {bal + actual:,}/{cap:,}g   |   Carried: {carried - actual:,}g\n"
+		if actual < amount:
+			result += f"  (Only {actual:,}g deposited — vault is now full.)\n"
+		return result
+
+	def _bank_withdraw(self, amount):
+		ok, msg = self._require_bank()
+		if not ok:
+			return msg
+		if amount <= 0:
+			return "  Amount must be positive."
+		bal = self.engine.player.state.get("bank_gold", 0)
+		if amount > bal:
+			return f"  You only have {bal:,}g in the vault."
+		self.engine.player.state["bank_gold"] = bal - amount
+		carried = self.engine.player.stats.get("gold", 0)
+		self.engine.player.stats["gold"] = carried + amount
+		result = f"  🏦 Withdrew {amount:,}g.\n"
+		result += f"  Vault: {bal - amount:,}g   |   Carried: {carried + amount:,}g\n"
+		return result
+
+	def _bank_upgrade(self):
+		ok, msg = self._require_bank()
+		if not ok:
+			return msg
+		tier = self.engine.player.state.get("bank_tier", 0)
+		if tier >= len(BANK_TIERS) - 1:
+			return "  Your vault is already at the maximum tier (19)!"
+		next_tier = BANK_TIERS[tier + 1]
+		gold_cost = next_tier["gold_cost"]
+		mat_cost  = next_tier["material_cost"]
+		carried   = self.engine.player.stats.get("gold", 0)
+
+		# Check gold
+		if carried < gold_cost:
+			needed = gold_cost - carried
+			return f"  You need {gold_cost:,}g to upgrade.  You have {carried:,}g  (need {needed:,}g more)."
+
+		# Check materials
+		inv = self.engine.player.inventory
+		for item_id, qty_needed in mat_cost.items():
+			have = inv.get(item_id, 0)
+			if have < qty_needed:
+				name = item_id.replace("_", " ").title()
+				return (f"  Missing materials: need {qty_needed}× {name} "
+						f"(you have {have}).")
+
+		# Deduct gold + materials
+		self.engine.player.stats["gold"] = carried - gold_cost
+		for item_id, qty_needed in mat_cost.items():
+			inv[item_id] -= qty_needed
+			if inv[item_id] <= 0:
+				del inv[item_id]
+
+		# Apply upgrade
+		new_tier = tier + 1
+		self.engine.player.state["bank_tier"] = new_tier
+		new_cap = BANK_TIERS[new_tier]["capacity"]
+		result  = f"  🏦 Vault upgraded to Tier {new_tier}!\n"
+		result += f"  New capacity: {new_cap:,}g\n"
+		if gold_cost:
+			result += f"  Cost: {gold_cost:,}g"
+			if mat_cost:
+				mats = ", ".join(f"{v}× {k.replace('_',' ')}" for k,v in mat_cost.items())
+				result += f" + {mats}"
+			result += "\n"
+		return result
+
 	def _open_map(self):
 		"""Open the live map window."""
 		if not MAP_AVAILABLE:
@@ -4890,7 +5108,7 @@ class GameEngine:
 		# ensure item_worth exists even if not in file
 		self.item_worth = getattr(self, "item_worth", {}) or {}
 
-	CURRENT_SAVE_VERSION = 3
+	CURRENT_SAVE_VERSION = 4
 
 	def _migrate_save(self, state, from_version):
 		"""Migrate old save formats to current version.
@@ -4981,6 +5199,41 @@ class GameEngine:
 			player["state"] = p_state
 			state["player"] = player
 			state["save_version"] = 3
+
+		# ── v3 → v4 migration (Mana System + Bank) ──
+		if from_version < 4:
+			player = state.get("player", {})
+			p_stats = player.get("stats", {})
+			p_state = player.get("state", {})
+
+			# Ensure mana stats exist (old saves get mana = max_mana)
+			if "max_mana" not in p_stats:
+				class_id = p_stats.get("class", "none")
+				mana_base = {"warrior": 80, "rogue": 90, "mage": 120}.get(class_id, 80)
+				# Add mana for levels beyond 1
+				level_gain = {"warrior": 5, "rogue": 6, "mage": 10}.get(class_id, 5)
+				lvl = max(1, p_stats.get("level", 1))
+				mana_base += (lvl - 1) * level_gain
+				p_stats["max_mana"] = mana_base
+				p_stats["mana"] = mana_base
+				p_stats["mana_regen_bonus"] = 0.0
+				notes.append(f"v3→v4 added mana ({mana_base}/{mana_base})")
+			elif "mana" not in p_stats:
+				p_stats["mana"] = p_stats["max_mana"]
+				notes.append("v3→v4 set mana = max_mana")
+
+			# Ensure bank fields exist
+			if "bank_gold" not in p_state:
+				p_state["bank_gold"] = 0
+				notes.append("v3→v4 added bank_gold")
+			if "bank_tier" not in p_state:
+				p_state["bank_tier"] = 0
+				notes.append("v3→v4 added bank_tier")
+
+			player["stats"] = p_stats
+			player["state"] = p_state
+			state["player"] = player
+			state["save_version"] = 4
 
 		return state, notes
 
@@ -5191,7 +5444,7 @@ class GameEngine:
 
 		# Build a save structure containing only runtime-modified state (player + room items)
 		state = {
-			"save_version": 3,  # Save format version for migration
+			"save_version": 4,  # Save format version for migration
 			"player": self.player.to_dict(),  # inventory serialized as dict by Player.to_dict()
 			"rooms": {}
 		}
@@ -6945,8 +7198,8 @@ class AdventureGUI:
 			return
 		win = tk.Toplevel(self.root)
 		win.title("Quest Journal")
-		win.geometry("500x550")
-		win.resizable(True, True)
+		win.geometry("560x600")
+		win.resizable(False, False)
 		frame = tk.Frame(win, padx=6, pady=6)
 		frame.pack(fill="both", expand=True)
 
@@ -6957,7 +7210,7 @@ class AdventureGUI:
 		text_frame.pack(fill="both", expand=True, pady=(4, 6))
 		scrollbar = tk.Scrollbar(text_frame)
 		scrollbar.pack(side="right", fill="y")
-		journal_text = tk.Text(text_frame, wrap="word", font=self.font, bg="#1e1e1e", fg="#dcdcdc",
+		journal_text = tk.Text(text_frame, wrap="none", font=self.font, bg="#1e1e1e", fg="#dcdcdc",
 							   state="disabled", yscrollcommand=scrollbar.set)
 		journal_text.pack(fill="both", expand=True)
 		scrollbar.config(command=journal_text.yview)
