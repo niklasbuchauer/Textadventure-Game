@@ -1,0 +1,41 @@
+{
+    "visual": {
+        "colors": {
+            "combat": "#FF6B6B",
+            "item": "#98FB98",
+            "dialogue": "#87CEEB",
+            "status": "#87CEFA",
+            "warning": "#FFD700",
+            "system": "#DA70D6",
+            "command": "#AAAAAA",
+            "default": "#DCDCDC"
+        },
+        "bg_color": "#1e1e1e",
+        "fg_color": "#dcdcdc",
+        "font_family": "Courier New",
+        "font_size": 11,
+        "theme": "dark"
+    },
+    "gameplay": {
+        "combat_speed": "normal",
+        "scroll_mode": "auto",
+        "confirm_dangerous": true,
+        "difficulty_modifier": 1.0
+    },
+    "accessibility": {
+        "high_contrast": false,
+        "text_size": 10
+    },
+    "ui": {
+        "timestamps": false,
+        "max_messages": 50,
+        "layout": "side_by_side",
+        "panels": {
+            "main": true,
+            "combat": true,
+            "items": true,
+            "dialogue": false,
+            "system": false
+        }
+    }
+}

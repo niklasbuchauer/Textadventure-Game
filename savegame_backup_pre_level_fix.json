@@ -1,17 +1,15 @@
 {
   "save_version": 4,
   "player": {
-    "current_room": "desert_border",
+    "current_room": "chapel",
     "inventory": {
-      "prayer_candle": 1,
-      "snake_scale": 1
+      "prayer_candle": 1
     },
     "state": {
       "unlocked_skills": [
         "w_origin",
         "w_arc_instinct",
-        "w_arc_wind_read",
-        "w_wm_edge"
+        "w_arc_wind_read"
       ],
       "cooldowns": {},
       "active_effects": {},
@@ -31,27 +29,23 @@
         "level_5",
         "level_10",
         "level_20",
-        "level_30",
-        "first_blood"
+        "level_30"
       ],
-      "achievement_tracking": {
-        "kills": 1,
-        "total_gold": 3
-      },
+      "achievement_tracking": {},
       "_synergy_bonuses": {},
       "_synergy_descriptions": [],
-      "death_gold_lost_total": 559
+      "death_gold_lost_total": 170
     },
     "stats": {
-      "gold": 2095,
-      "health": 20,
+      "gold": 2480,
+      "health": 57,
       "health_max": 115,
-      "level": 5,
-      "xp": 2090,
+      "level": 1000,
+      "xp": 2032,
       "xp_to_next": 0,
-      "skill_points": 0,
+      "skill_points": 1,
       "class": "warrior",
-      "strength": 5,
+      "strength": 4,
       "defense": 5,
       "dexterity": 2,
       "perception": 3,
@@ -63,28 +57,23 @@
       "attack": 2
     },
     "visited_rooms": [
-      "reef_shallows",
-      "coastal_cliffs",
-      "crossroads",
-      "farmland_east",
-      "village_square",
-      "village_west_end",
-      "smugglers_cove",
-      "sandy_beach",
-      "village_south_road",
-      "chapel",
-      "desert_dunes_west",
-      "farmland_west",
-      "stormbreak_docks",
       "harbor_south_pier",
-      "grand_harbor_gate",
-      "harbor_east_dock",
-      "farmland_center",
-      "desert_border",
-      "coastal_road_north",
-      "grand_harbor_square",
+      "reef_shallows",
       "grand_harbor_road",
-      "village_east_end"
+      "village_square",
+      "sandy_beach",
+      "crossroads",
+      "village_east_end",
+      "smugglers_cove",
+      "village_west_end",
+      "grand_harbor_gate",
+      "stormbreak_docks",
+      "grand_harbor_square",
+      "chapel",
+      "harbor_east_dock",
+      "village_south_road",
+      "coastal_cliffs",
+      "coastal_road_north"
     ],
     "unlocked_islands": [
       "stormbreak_island"
@@ -6955,9 +6944,9 @@
   },
   "overworld_encounters": {
     "recent_rooms": [
-      "farmland_east",
-      "desert_border",
-      "desert_dunes_west"
+      "sandy_beach",
+      "reef_shallows",
+      "smugglers_cove"
     ],
     "visible_enemies": {
       "dungeon_forest_entrance": {
@@ -6992,6 +6981,36 @@
             "gore"
           ],
           "id": "wild_boar"
+        }
+      },
+      "desert_border": {
+        "enemy_id": "sand_viper",
+        "enemy_data": {
+          "name": "Sand Viper",
+          "description": "A venomous snake perfectly camouflaged in the sand.",
+          "hp": 24,
+          "attack": 14,
+          "defense": 1,
+          "xp_reward": 18,
+          "gold_reward": [
+            1,
+            6
+          ],
+          "loot": [
+            [
+              "venom_sac",
+              0.4
+            ],
+            [
+              "snake_scale",
+              0.25
+            ]
+          ],
+          "abilities": [
+            "bite",
+            "poison_strike"
+          ],
+          "id": "sand_viper"
         }
       },
       "sandy_beach": {
@@ -7030,30 +7049,30 @@
       }
     },
     "rooms_rolled": [
-      "scorpion_flats",
-      "reef_shallows",
-      "coastal_cliffs",
-      "crossroads",
-      "farmland_east",
-      "dungeon_forest_entrance",
-      "mesa_base",
-      "smugglers_cove",
-      "sandy_beach",
       "desert_cliffs",
-      "desert_dunes_west",
-      "farmland_west",
       "village_road",
-      "canyon_entrance",
-      "graveyard",
-      "meteor_crater",
-      "deep_forest",
-      "farmland_center",
-      "desert_border",
-      "coastal_road_north",
-      "forest_path",
       "farmland",
+      "canyon_entrance",
+      "reef_shallows",
+      "graveyard",
+      "deep_forest",
+      "forest_path",
+      "crossroads",
+      "coastal_road_north",
+      "meteor_crater",
+      "mesa_base",
+      "dungeon_forest_entrance",
+      "smugglers_cove",
+      "scorpion_flats",
+      "desert_border",
+      "desert_dunes_west",
+      "sandy_beach",
       "mesa_top",
-      "graveyard_gates"
+      "farmland_center",
+      "farmland_east",
+      "farmland_west",
+      "graveyard_gates",
+      "coastal_cliffs"
     ]
   },
   "fishing": {

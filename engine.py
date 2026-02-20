@@ -225,8 +225,260 @@ except Exception as e:
 	ENCHANTING_AVAILABLE = False
 	print(f"[INIT] ⚠ Enchanting system DISABLED: {e}")
 
-WORLD_FILE = os.path.join(os.path.dirname(__file__), "world.json")
-SAVE_FILE = os.path.join(os.path.dirname(__file__), "savegame.json")
+WORLD_FILE  = os.path.join(os.path.dirname(__file__), "world.json")
+SAVE_FILE   = os.path.join(os.path.dirname(__file__), "savegame.json")
+CONFIG_FILE = os.path.join(os.path.dirname(__file__), "config.json")
+
+CONFIG_DEFAULTS = {
+    "visual": {
+        "colors": {
+            "combat":   "#FF6B6B",
+            "item":     "#98FB98",
+            "dialogue": "#87CEEB",
+            "status":   "#87CEFA",
+            "warning":  "#FFD700",
+            "system":   "#DA70D6",
+            "command":  "#AAAAAA",
+            "default":  "#DCDCDC",
+        },
+        "bg_color":    "#1e1e1e",
+        "fg_color":    "#dcdcdc",
+        "font_family": "Courier New",
+        "font_size":   10,
+        "theme":       "dark",
+    },
+    "gameplay": {
+        "combat_speed":        "normal",
+        "scroll_mode":         "auto",
+        "confirm_dangerous":   True,
+        "difficulty_modifier": 1.0,
+    },
+    "accessibility": {
+        "high_contrast": False,
+        "text_size":     10,
+    },
+    "ui": {
+        "timestamps":   False,
+        "max_messages": 50,
+        "layout":       "side_by_side",
+        "panels": {
+            "main":     True,
+            "combat":   True,
+            "items":    True,
+            "dialogue": False,
+            "system":   False,
+        },
+    },
+}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  PanelWidget  – a titled, scrollable text panel with scroll-lock button
+# ─────────────────────────────────────────────────────────────────────────────
+
+class PanelWidget:
+    """
+    A self-contained output panel: title bar, scroll-lock toggle, Text widget.
+
+    Attributes
+    ----------
+    frame       : tk.Frame   – outer container (pack/grid this)
+    text_widget : tk.Text    – the read-only text area
+    title       : str        – display name
+    msg_type    : str        – message category this panel accepts
+    _scroll_locked : bool    – when True, auto-scroll is suppressed
+    _msg_count  : int        – total visible messages
+    _last_msg   : str        – last message text (for collapse)
+    _last_count : int        – consecutive repeat count
+    """
+
+    def __init__(self, parent, title: str, msg_type: str,
+                 bg: str = "#1e1e1e", fg: str = "#dcdcdc",
+                 font_obj=None):
+        self.title     = title
+        self.msg_type  = msg_type
+        self._scroll_locked = False
+        self._msg_count     = 0
+        self._last_msg      = ""
+        self._last_count    = 1
+        self._hidden_lines  = []   # list of (start_mark, end_mark) for hidden history
+
+        # ── outer frame ──────────────────────────────────────────────────────
+        self.frame = tk.Frame(parent, bg="#141414", bd=1, relief="solid")
+
+        # ── title bar ─────────────────────────────────────────────────────────
+        title_bar = tk.Frame(self.frame, bg="#141414")
+        title_bar.pack(fill="x", side="top")
+
+        self._title_lbl = tk.Label(
+            title_bar, text=f"  {title}",
+            bg="#141414", fg="#FFD700",
+            font=("Courier New", 8, "bold"), anchor="w"
+        )
+        self._title_lbl.pack(side="left", fill="x", expand=True)
+
+        self._lock_btn = tk.Button(
+            title_bar, text="🔓",
+            bg="#141414", fg="#888888", relief="flat",
+            font=("Courier New", 8),
+            cursor="hand2",
+            command=self._toggle_lock
+        )
+        self._lock_btn.pack(side="right", padx=2)
+
+        # ── text + scrollbar ─────────────────────────────────────────────────
+        txt_frame = tk.Frame(self.frame, bg=bg)
+        txt_frame.pack(fill="both", expand=True)
+
+        scrollbar = tk.Scrollbar(txt_frame)
+        scrollbar.pack(side="right", fill="y")
+
+        self.text_widget = tk.Text(
+            txt_frame, wrap="word",
+            bg=bg, fg=fg,
+            insertbackground=fg,
+            state="disabled",
+            font=font_obj,
+            yscrollcommand=scrollbar.set,
+        )
+        self.text_widget.pack(fill="both", expand=True)
+        scrollbar.config(command=self.text_widget.yview)
+
+        # Default color tags – overridden by apply_config
+        self._setup_default_tags(fg)
+
+    # ── Tag setup ─────────────────────────────────────────────────────────────
+
+    def _setup_default_tags(self, default_fg: str) -> None:
+        cfg_colors = CONFIG_DEFAULTS["visual"]["colors"]
+        self.text_widget.tag_config("combat",   foreground=cfg_colors["combat"])
+        self.text_widget.tag_config("item",     foreground=cfg_colors["item"])
+        self.text_widget.tag_config("dialogue", foreground=cfg_colors["dialogue"])
+        self.text_widget.tag_config("status",   foreground=cfg_colors["status"])
+        self.text_widget.tag_config("warning",  foreground=cfg_colors["warning"])
+        self.text_widget.tag_config("system",   foreground=cfg_colors["system"])
+        self.text_widget.tag_config("command",  foreground=cfg_colors["command"])
+        self.text_widget.tag_config("default",  foreground=default_fg)
+        # Title-screen tags (only used in main panel)
+        self.text_widget.tag_config("title_gold",   foreground="#FFD700")
+        self.text_widget.tag_config("title_cyan",   foreground="#00FFFF")
+        self.text_widget.tag_config("title_green",  foreground="#00FF00")
+        self.text_widget.tag_config("title_purple", foreground="#DA70D6")
+        self.text_widget.tag_config("normal",       foreground=default_fg)
+
+    def apply_colors(self, colors: dict) -> None:
+        """Update tag colours from a config colors dict."""
+        for tag, hex_col in colors.items():
+            try:
+                self.text_widget.tag_config(tag, foreground=hex_col)
+            except Exception:
+                pass
+
+    def apply_font(self, font_obj) -> None:
+        self.text_widget.config(font=font_obj)
+
+    # ── Scroll lock ───────────────────────────────────────────────────────────
+
+    def _toggle_lock(self) -> None:
+        self._scroll_locked = not self._scroll_locked
+        self._lock_btn.config(
+            text="🔒" if self._scroll_locked else "🔓",
+            fg="#FF6B6B" if self._scroll_locked else "#888888"
+        )
+
+    # ── Message insertion ─────────────────────────────────────────────────────
+
+    def insert_message(self, text: str, tag: str = "default",
+                       timestamp: str = "",
+                       max_messages: int = 50) -> None:
+        """
+        Append a message to this panel.
+        Collapses consecutive identical messages; trims old messages if needed.
+        """
+        tw = self.text_widget
+        tw.config(state="normal")
+
+        # ── Collapse repeated messages ──────────────────────────────────────
+        if text == self._last_msg and self._last_count >= 1:
+            self._last_count += 1
+            # Edit the last inserted line to append (×N)
+            try:
+                idx = tw.index("end - 1c linestart")
+                line_text = tw.get(idx, "end - 1c")
+                # Strip old (×N) suffix if present
+                import re
+                clean = re.sub(r"\s+\(×\d+\)$", "", line_text)
+                tw.delete(idx, "end - 1c")
+                tw.insert("end - 1c", f"{clean}  (×{self._last_count})", tag)
+            except Exception:
+                pass
+            tw.config(state="disabled")
+            if not self._scroll_locked:
+                tw.see("end")
+            return
+
+        # ── New message ──────────────────────────────────────────────────────
+        self._last_msg   = text
+        self._last_count = 1
+
+        prefix = f"[{timestamp}] " if timestamp else ""
+        full_text = f"{prefix}{text}\n\n"
+
+        # Mark position before insert so we can hide it later if needed
+        start_mark = f"msg_{self._msg_count}_start"
+        end_mark   = f"msg_{self._msg_count}_end"
+        tw.mark_set(start_mark, "end")
+        tw.mark_gravity(start_mark, "left")
+        tw.insert("end", full_text, tag)
+        tw.mark_set(end_mark, "end")
+        tw.mark_gravity(end_mark, "right")
+
+        self._msg_count += 1
+        self._hidden_lines.append((start_mark, end_mark))
+
+        # ── Trim oldest messages if over limit ───────────────────────────────
+        if len(self._hidden_lines) > max_messages + 10:
+            # Show "Load More" link only if we haven't already
+            if len(self._hidden_lines) == max_messages + 11:
+                self._insert_load_more(tw, max_messages)
+            # Hide oldest message
+            sm, em = self._hidden_lines[0]
+            try:
+                tw.tag_add("_hidden", sm, em)
+            except Exception:
+                pass
+            self._hidden_lines.pop(0)
+
+        tw.config(state="disabled")
+        if not self._scroll_locked:
+            tw.see("end")
+
+    def _insert_load_more(self, tw: tk.Text, max_messages: int) -> None:
+        """Embed a 'Load More ▲' button into the text widget."""
+        try:
+            btn = tk.Button(
+                tw, text=" Load More ▲ ",
+                bg="#2a2a2a", fg="#87CEEB",
+                font=("Courier New", 8), relief="flat",
+                cursor="hand2",
+                command=lambda: self._show_hidden(tw, btn)
+            )
+            tw.window_create("1.0", window=btn)
+            tw.insert("1.0", "\n")
+            # Hide tag – uses elide
+            tw.tag_config("_hidden", elide=True)
+        except Exception:
+            pass
+
+    def _show_hidden(self, tw: tk.Text, btn: tk.Widget) -> None:
+        """Reveal hidden messages and remove the Load More button."""
+        try:
+            tw.config(state="normal")
+            tw.tag_config("_hidden", elide=False)
+            btn.destroy()
+            tw.config(state="disabled")
+        except Exception:
+            pass
 
 
 class Room:
@@ -5378,15 +5630,16 @@ class GameEngine:
 			"location_type": "dungeon"
 		}
 
-	def display_message(self, message):
+	def display_message(self, message, msg_type=None):
 		"""
 		Display a message in the game window via the GUI.
-		
+
 		Args:
-			message: Text to display
+			message:  Text to display
+			msg_type: Optional type hint (combat/item/dialogue/status/warning/system/default)
 		"""
 		if self.gui and hasattr(self.gui, 'append'):
-			self.gui.append(message)
+			self.gui.append(message, msg_type)
 		else:
 			# Fallback to print if GUI not available
 			print(message)
@@ -5792,118 +6045,358 @@ class GameEngine:
 # GUI code: keep in same file for now; inventory UI updated to show Item | Count and search
 class AdventureGUI:
 	def __init__(self, root):
+		# ── Load config before building UI ───────────────────────────────────
+		self.config = self.load_config()
+
 		# Maximize window on launch
 		root.state("zoomed")
 		self.root = root
 		self.root.title("Estoria's Chronicles")
-		# Styling
-		self.font = font.Font(family="Courier New", size=10)
 
-		# Text area (read-only for user typing) - create immediately
-		self.text = tk.Text(root, wrap="word", bg="#1e1e1e", fg="#dcdcdc", insertbackground="#dcdcdc",
-							state="disabled", font=self.font)
-		self.text.pack(fill="both", expand=True, padx=6, pady=(6, 0))
-		
-		# Configure text tags for title screen effects
-		self.text.tag_config("title_gold", foreground="#FFD700", font=(self.font.actual("family"), self.font.actual("size"), "bold"))
-		self.text.tag_config("title_cyan", foreground="#00FFFF", font=(self.font.actual("family"), self.font.actual("size"), "bold"))
-		self.text.tag_config("title_green", foreground="#00FF00")
-		self.text.tag_config("title_purple", foreground="#DA70D6")
-		self.text.tag_config("normal", foreground="#dcdcdc")
-		
-		# Scrollbar
-		self.scroll = tk.Scrollbar(self.text)
-		self.scroll.pack(side="right", fill="y")
-		self.text.config(yscrollcommand=self.scroll.set)
-		self.scroll.config(command=self.text.yview)
+		# ── Font (driven by config) ───────────────────────────────────────────
+		vcfg = self.config["visual"]
+		self.font = font.Font(family=vcfg["font_family"], size=vcfg["font_size"])
 
-		# Controls frame (keeps layout consistent) with Inventory toggle
-		self.controls = tk.Frame(root)
-		self.controls.pack(fill="x", padx=6)
-		# Inventory toggle button
-		self.inv_button = tk.Button(self.controls, text="Inventory", command=self.toggle_inventory_window)
-		self.inv_button.pack(side="left", padx=(0, 6))
-		# Stats toggle button (placed beside Inventory)
-		self.stats_button = tk.Button(self.controls, text="Stats", command=self.toggle_stats_window)
-		self.stats_button.pack(side="left", padx=(0,6))
-		# Debug toggle button (placed beside Stats)
-		self.debug_button = tk.Button(self.controls, text="Debug", command=self.toggle_debug_window)
-		self.debug_button.pack(side="left", padx=(0,6))
-		# Skills toggle button (placed beside Debug) - for skill tree window
+		# ── Controls bar ─────────────────────────────────────────────────────
+		self.controls = tk.Frame(root, bg="#141414")
+		self.controls.pack(fill="x", padx=0, pady=0, side="top")
+
+		btn_kw = dict(bg="#1e1e1e", fg="#cccccc",
+					  activebackground="#2a2a2a", activeforeground="#ffffff",
+					  relief="flat", padx=8, pady=4, font=("Courier New", 9))
+
+		self.inv_button = tk.Button(self.controls, text="⊞ Inventory",
+									command=self.toggle_inventory_window, **btn_kw)
+		self.inv_button.pack(side="left", padx=(4, 0), pady=2)
+
+		self.stats_button = tk.Button(self.controls, text="♟ Stats",
+									  command=self.toggle_stats_window, **btn_kw)
+		self.stats_button.pack(side="left", padx=(4, 0), pady=2)
+
+		self.debug_button = tk.Button(self.controls, text="⚒ Debug",
+									  command=self.toggle_debug_window, **btn_kw)
+		self.debug_button.pack(side="left", padx=(4, 0), pady=2)
+
 		if PROGRESSION_AVAILABLE:
-			self.skills_button = tk.Button(self.controls, text="⚔ Skills", command=self.toggle_skills_window)
-			self.skills_button.pack(side="left", padx=(0,6))
-		# Quest Journal toggle button
-		if QUEST_AVAILABLE:
-			self.journal_button = tk.Button(self.controls, text="📜 Journal", command=self.toggle_journal_window)
-			self.journal_button.pack(side="left", padx=(0,6))
-		# Small status label (optional) to match UI style
-		self.status_label = tk.Label(self.controls, text="", font=self.font)
-		self.status_label.pack(side="left")
+			self.skills_button = tk.Button(self.controls, text="⚔ Skills",
+										   command=self.toggle_skills_window, **btn_kw)
+			self.skills_button.pack(side="left", padx=(4, 0), pady=2)
 
-		# Ability hotbar frame (between controls and entry)
+		if QUEST_AVAILABLE:
+			self.journal_button = tk.Button(self.controls, text="📜 Journal",
+											command=self.toggle_journal_window, **btn_kw)
+			self.journal_button.pack(side="left", padx=(4, 0), pady=2)
+
+		self.status_label = tk.Label(self.controls, text="",
+									 bg="#141414", fg="#888888",
+									 font=("Courier New", 8))
+		self.status_label.pack(side="left", padx=8)
+
+		# Settings gear button on far right
+		self.settings_button = tk.Button(
+			self.controls, text="⚙",
+			command=self._open_settings,
+			bg="#141414", fg="#888888",
+			activebackground="#2a2a2a", activeforeground="#FFD700",
+			relief="flat", padx=8, pady=4, font=("Courier New", 10)
+		)
+		self.settings_button.pack(side="right", padx=(0, 4), pady=2)
+
+		# ── Ability hotbar ────────────────────────────────────────────────────
 		self.hotbar_frame = tk.Frame(root, bg="#1a1a1a")
-		self.hotbar_frame.pack(fill="x", padx=6)
-		self._hotbar_buttons = []  # list of (btn, ability_data) tuples
+		self.hotbar_frame.pack(fill="x", padx=0, side="top")
+		self._hotbar_buttons = []
 		self._hotbar_visible = False
 
-		# Entry for commands - created early so user can type immediately
-		self.entry = tk.Entry(root, bg="#2e2e2e", fg="#ffffff", insertbackground="#ffffff", font=self.font)
-		self.entry.pack(fill="x", padx=6, pady=6)
-		# Ensure entry can take focus immediately
+		# ── Command entry (packed with side=bottom BEFORE panels so it stays visible) ──
+		self.entry = tk.Entry(root, bg="#2e2e2e", fg="#ffffff",
+							  insertbackground="#ffffff", font=self.font,
+							  relief="flat")
+		self.entry.pack(fill="x", padx=4, pady=(2, 4), side="bottom")
+
+		# ── Combat status bar (side=bottom just above entry) ─────────────────
+		self._combat_status_frame = tk.Frame(root, bg="#1a1a1a", pady=1)
+		# NOT packed yet — shown on demand by update_combat_status()
+		self._combat_status_visible = False
+
+		self._combat_player_lbl = tk.Label(
+			self._combat_status_frame,
+			text="",
+			bg="#1a1a1a", fg="#98FB98",
+			font=("Courier New", 9, "bold"), anchor="w"
+		)
+		self._combat_player_lbl.pack(side="left", padx=8)
+
+		self._combat_enemy_lbl = tk.Label(
+			self._combat_status_frame,
+			text="",
+			bg="#1a1a1a", fg="#FF6B6B",
+			font=("Courier New", 9, "bold"), anchor="e"
+		)
+		self._combat_enemy_lbl.pack(side="right", padx=8)
+
+		# ── Multi-panel layout (fills remaining space between hotbar and entry) ──
+		self._panels: dict[str, PanelWidget] = {}
+		self._build_panels(root)
+
+		# self.text is an alias to the main panel's text_widget for backward compat
+		self.text   = self._panels["main"].text_widget
+		self.scroll = None  # kept for compat — scrollbars live inside PanelWidget
+
 		try:
 			self.entry.focus_set()
 			self.root.after(0, lambda: self.entry.focus_set())
 		except Exception:
 			pass
 
-		# Bindings
+		# ── Bindings ──────────────────────────────────────────────────────────
 		self.entry.bind("<Return>", self.on_enter)
 		root.bind("<Control-s>", self.on_save_shortcut)
 		root.bind("<Control-S>", self.on_save_shortcut)
 		root.bind("<Control-l>", self.on_load_shortcut)
 		root.bind("<Control-L>", self.on_load_shortcut)
-		# Hotbar keybindings (1-8 use ability in that slot)
 		for i in range(1, 9):
 			root.bind(str(i), lambda e, slot=i: self._hotbar_key(slot, e))
 
-		# Engine will be initialized shortly via _init_engine to avoid blocking UI draw
+		# ── Engine + window references ────────────────────────────────────────
 		self.engine = None
 
-		# Inventory window handle (Toplevel or None)
-		self.inventory_win = None
-		self.inv_listbox = None
-		self.inv_examine_btn = None
-		self.inv_drop_btn = None
-		self.inv_search_var = None
+		self.inventory_win    = None
+		self.inv_listbox      = None
+		self.inv_examine_btn  = None
+		self.inv_drop_btn     = None
+		self.inv_search_var   = None
 
-		# Stats window references
-		self.stats_win = None
-		self.stats_listbox = None
+		self.stats_win        = None
+		self.stats_listbox    = None
 
-		# Debug window references
-		self.debug_win = None
-		self.debug_listbox = None
+		self.debug_win        = None
+		self.debug_listbox    = None
 
-		# Skill tree window reference
-		self.skill_tree_win = None
+		self.skill_tree_win   = None
 
-		# Quest journal window references
-		self.journal_win = None
-		self.journal_text_widget = None
+		self.journal_win          = None
+		self.journal_text_widget  = None
 
-		# Title screen state
+		# ── Title screen state ────────────────────────────────────────────────
 		self.title_screen_active = True
-		self._title_overlay = None
-		self._title_canvas = None
+		self._title_overlay  = None
+		self._title_canvas   = None
 		self._title_anim_ids = []
-		self._title_stars = []
+		self._title_stars    = []
 
-		# Ensure closing the window goes through our quit handler so we can save
 		self.root.protocol("WM_DELETE_WINDOW", lambda: self._on_app_quit())
-
-		# Show title screen after window is fully drawn
 		self.root.after(100, self._show_title_screen)
+
+	# ── Panel builder ─────────────────────────────────────────────────────────
+
+	def _build_panels(self, root) -> None:
+		"""
+		Create PanelWidget instances and lay them out.
+		Each panel is created with its ACTUAL parent container — never re-parented
+		with pack(in_=...) which breaks on Windows tkinter.
+		"""
+		ui      = self.config["ui"]
+		vcfg    = self.config["visual"]
+		bg      = vcfg["bg_color"]
+		fg      = vcfg["fg_color"]
+		layout  = ui.get("layout", "side_by_side")
+		panels_on = ui.get("panels", {})
+
+		panel_defs = [
+			("main",     "Main Output",     "default"),
+			("combat",   "Combat Log",      "combat"),
+			("items",    "Items / Loot",    "item"),
+			("dialogue", "Dialogue / NPC",  "dialogue"),
+			("system",   "Status / System", "system"),
+		]
+
+		def _make(parent, key, title, mtype):
+			pw = PanelWidget(parent, title, mtype, bg=bg, fg=fg, font_obj=self.font)
+			pw.apply_colors(vcfg["colors"])
+			self._panels[key] = pw
+			return pw
+
+		if layout == "single":
+			container = tk.Frame(root, bg="#0a0a0a")
+			container.pack(fill="both", expand=True, padx=4, pady=(4, 0))
+			_make(container, "main", "Main Output", "default").frame.pack(
+				fill="both", expand=True)
+			# Hidden off-screen panels for routing
+			hidden = tk.Frame(root)   # never packed — just a container
+			for key, title, mtype in panel_defs[1:]:
+				_make(hidden, key, title, mtype)
+
+		elif layout == "stacked":
+			container = tk.Frame(root, bg="#0a0a0a")
+			container.pack(fill="both", expand=True, padx=4, pady=(4, 0))
+			_make(container, "main", "Main Output", "default").frame.pack(
+				fill="both", expand=True)
+			hidden = tk.Frame(root)
+			for key, title, mtype in panel_defs[1:]:
+				parent = container if panels_on.get(key, False) else hidden
+				pw = _make(parent, key, title, mtype)
+				if panels_on.get(key, False):
+					pw.frame.pack(fill="x", pady=(2, 0))
+					pw.frame.config(height=140)
+
+		else:  # side_by_side (default)
+			paned = tk.PanedWindow(root, orient="horizontal",
+								   bg="#0a0a0a", sashwidth=4, sashrelief="flat")
+			paned.pack(fill="both", expand=True, padx=4, pady=(4, 0))
+			self._paned_window = paned
+
+			# ── Left pane: Main Output ───────────────────────────────────────
+			left = tk.Frame(paned, bg="#0a0a0a")
+			_make(left, "main", "Main Output", "default").frame.pack(
+				fill="both", expand=True)
+			paned.add(left, stretch="always", minsize=200)
+
+			# ── Right pane: secondary panels ─────────────────────────────────
+			right = tk.Frame(paned, bg="#0a0a0a")
+			right_keys = [k for k, _, _ in panel_defs[1:] if panels_on.get(k, False)]
+
+			if right_keys:
+				right_paned = tk.PanedWindow(right, orient="vertical",
+											 bg="#0a0a0a", sashwidth=4,
+											 sashrelief="flat")
+				right_paned.pack(fill="both", expand=True)
+				self._right_paned = right_paned
+				hidden = tk.Frame(root)
+				for key, title, mtype in panel_defs[1:]:
+					if key in right_keys:
+						rf = tk.Frame(right_paned, bg="#0a0a0a")
+						_make(rf, key, title, mtype).frame.pack(
+							fill="both", expand=True)
+						right_paned.add(rf, stretch="always", minsize=80)
+					else:
+						_make(hidden, key, title, mtype)
+				paned.add(right, stretch="always", minsize=120)
+			else:
+				# No right panels — all panels hidden, right pane collapsed
+				hidden = tk.Frame(root)
+				for key, title, mtype in panel_defs[1:]:
+					_make(hidden, key, title, mtype)
+				paned.add(right, stretch="never", minsize=0)
+
+	# ── Config persistence ────────────────────────────────────────────────────
+
+	@staticmethod
+	def load_config() -> dict:
+		import copy
+		try:
+			with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+				data = json.load(f)
+			# Deep-merge with defaults to fill any missing keys
+			def _merge(base, override):
+				result = copy.deepcopy(base)
+				for k, v in override.items():
+					if k in result and isinstance(result[k], dict) and isinstance(v, dict):
+						result[k] = _merge(result[k], v)
+					else:
+						result[k] = v
+				return result
+			return _merge(CONFIG_DEFAULTS, data)
+		except Exception:
+			import copy
+			return copy.deepcopy(CONFIG_DEFAULTS)
+
+	def save_config(self) -> None:
+		try:
+			with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+				json.dump(self.config, f, indent=4)
+		except Exception as e:
+			print(f"[Config] Could not save config: {e}")
+
+	def apply_config(self) -> None:
+		"""Apply the current self.config to all live widgets (font, colors, theme)."""
+		vcfg  = self.config["visual"]
+		theme = vcfg.get("theme", "dark")
+
+		# ── Theme → bg/fg colors ─────────────────────────────────────────────
+		if theme == "light":
+			bg         = "#f5f5f0"
+			fg         = "#1a1a1a"
+			entry_bg   = "#ffffff"
+			ctrl_bg    = "#e0e0d8"
+			hotbar_bg  = "#d8d8d0"
+			panel_hdr  = "#ccccb8"
+		else:  # dark
+			bg         = vcfg.get("bg_color",  "#1e1e1e")
+			fg         = vcfg.get("fg_color",  "#dcdcdc")
+			entry_bg   = "#2e2e2e"
+			ctrl_bg    = "#141414"
+			hotbar_bg  = "#1a1a1a"
+			panel_hdr  = "#141414"
+
+		# ── Font ──────────────────────────────────────────────────────────────
+		try:
+			self.font.config(family=vcfg["font_family"], size=vcfg["font_size"])
+		except Exception:
+			pass
+
+		# ── Colors (possibly overridden by high-contrast) ─────────────────────
+		colors = vcfg["colors"]
+		if self.config["accessibility"]["high_contrast"]:
+			colors = {
+				"combat":   "#FF4444",
+				"item":     "#44FF44",
+				"dialogue": "#44CCFF",
+				"status":   "#AAAAFF",
+				"warning":  "#FFFF00",
+				"system":   "#FF44FF",
+				"command":  "#FFFFFF",
+				"default":  "#FFFFFF",
+			}
+
+		# ── Update all panels ─────────────────────────────────────────────────
+		for pw in self._panels.values():
+			pw.apply_colors(colors)
+			pw.apply_font(self.font)
+			try:
+				pw.text_widget.config(bg=bg, fg=fg)
+				pw.frame.config(bg=panel_hdr)
+				# title bar inside the panel
+				for child in pw.frame.winfo_children():
+					try:
+						child.config(bg=panel_hdr)
+					except Exception:
+						pass
+				# also update "default" tag foreground to match fg
+				pw.text_widget.tag_config("default", foreground=fg)
+				pw.text_widget.tag_config("normal",  foreground=fg)
+			except Exception:
+				pass
+
+		# ── Chrome widgets ────────────────────────────────────────────────────
+		try:
+			self.controls.config(bg=ctrl_bg)
+		except Exception:
+			pass
+		try:
+			self.hotbar_frame.config(bg=hotbar_bg)
+		except Exception:
+			pass
+		try:
+			self.entry.config(bg=entry_bg, fg=fg, insertbackground=fg,
+							  font=self.font)
+		except Exception:
+			pass
+		try:
+			self._combat_status_frame.config(bg=hotbar_bg)
+			self._combat_player_lbl.config(bg=hotbar_bg)
+			self._combat_enemy_lbl.config(bg=hotbar_bg)
+		except Exception:
+			pass
+
+	# ── Settings launcher ─────────────────────────────────────────────────────
+
+	def _open_settings(self) -> None:
+		try:
+			from settings_window import SettingsWindow
+			SettingsWindow(self.root, self)
+		except Exception as e:
+			self.append(f"[Settings] Could not open: {e}", "warning")
 
 	def _show_title_screen(self):
 		"""Show a full-screen mossy stone medieval RPG title screen with magic motes."""
@@ -6119,23 +6612,19 @@ class AdventureGUI:
 			self._title_animate_pulse(True)
 
 	def _title_animate_pulse(self, bright=True):
-		"""Pulse the stone title carving + blink the magic prompt."""
+		"""Set title colours once (static — no blinking)."""
 		if not self.title_screen_active or self._title_canvas is None:
 			return
 		cv  = self._title_canvas
 		els = self._title_elements
 		try:
-			# Title pulses between bright silver-gold and dim stone
-			cv.itemconfig(els["title"],  fill="#d8d0a0" if bright else "#6a6850")
-			cv.itemconfig(els["shadow"], fill="#2a3020" if bright else "#111810")
-			# Subtitle pulses between mossy green and dim
-			cv.itemconfig(els["sub"],    fill="#8ac07a" if bright else "#3a5030")
-			# Prompt blinks between magic teal and invisible
-			cv.itemconfig(els["prompt"], fill="#50c8a8" if bright else self._title_bg)
+			cv.itemconfig(els["title"],  fill="#d8d0a0")
+			cv.itemconfig(els["shadow"], fill="#2a3020")
+			cv.itemconfig(els["sub"],    fill="#8ac07a")
+			cv.itemconfig(els["prompt"], fill="#50c8a8")
 		except Exception:
 			return
-		aid = self.root.after(600, lambda: self._title_animate_pulse(not bright))
-		self._title_anim_ids.append(aid)
+		# No recursive after() call — colours stay fixed
 
 	def _title_animate_stars(self):
 		"""Float magic motes upward with a gentle horizontal wobble."""
@@ -6236,12 +6725,176 @@ class AdventureGUI:
 		except Exception:
 			pass
 
-	def append(self, text):
-		# Append text to console area and auto-scroll
-		self.text.config(state="normal")
-		self.text.insert("end", text + "\n\n")
-		self.text.config(state="disabled")
-		self.text.see("end")
+	# ── Message type auto-detector ──────────────────────────────────────────
+
+	_COMBAT_KW = frozenset([
+		"attack", "attacks", "damage", "hp", "hit", "miss", "strike",
+		"slain", "defeated", "critical", "dodge", "parry", "block",
+		"spell", "cast", "kill", "combat", "fight", "round", "enemy",
+		"fallen", "dies", "dead", "wound", "bleeding", "stunned",
+	])
+	_ITEM_KW   = frozenset([
+		"received", "picked up", "dropped", "looted", "crafted",
+		"equipped", "unequipped", "enchanted", "item", "gold",
+		"purchased", "sold", "chest", "reward", "found",
+	])
+	_DIALOGUE_KW = frozenset([
+		" says", " asks", " replies", " whispers", " shouts",
+		"greets you", "dialogue", "speaks",
+	])
+	_WARNING_KW  = frozenset([
+		"warning", "cannot", "can't", "invalid", "error",
+		"failed", "unable", "not allowed", "not found",
+	])
+
+	@staticmethod
+	def _detect_type(text: str) -> str:
+		lower = text.lower()
+		words = set(lower.split())
+		if any(k in words for k in AdventureGUI._COMBAT_KW):
+			return "combat"
+		if any(k in lower for k in AdventureGUI._ITEM_KW):
+			return "item"
+		if any(k in lower for k in AdventureGUI._DIALOGUE_KW):
+			return "dialogue"
+		if any(k in lower for k in AdventureGUI._WARNING_KW):
+			return "warning"
+		return "default"
+
+	def append(self, text: str, msg_type: str = None) -> None:
+		"""
+		Append a message to the appropriate panel.
+
+		Parameters
+		----------
+		text     : message string (may be multi-line)
+		msg_type : one of  combat | item | dialogue | status | warning |
+		           system | command | default  — or None for auto-detection.
+		"""
+		if not text:
+			return
+
+		# Resolve type
+		if msg_type is None:
+			# Check first char for command echo
+			if text.startswith("> "):
+				msg_type = "command"
+			else:
+				msg_type = self._detect_type(text)
+
+		# Timestamp
+		ts = ""
+		if self.config.get("ui", {}).get("timestamps", False):
+			from datetime import datetime
+			ts = datetime.now().strftime("%H:%M")
+
+		max_msgs = self.config.get("ui", {}).get("max_messages", 50)
+
+		# Route to correct panel; fall back to main if panel disabled/missing
+		panel_map = {
+			"combat":   "combat",
+			"item":     "items",
+			"dialogue": "dialogue",
+			"system":   "system",
+			"status":   "system",
+		}
+		panel_key = panel_map.get(msg_type, "main")
+
+		# Use the routed panel if it's visible; otherwise use main
+		target_panel = self._panels.get(panel_key)
+		if target_panel is None or not target_panel.frame.winfo_viewable():
+			target_panel = self._panels["main"]
+
+		target_panel.insert_message(text, tag=msg_type,
+									timestamp=ts, max_messages=max_msgs)
+
+		# Mirror important non-combat messages to main panel too
+		# so the main log always stays complete
+		if panel_key != "main":
+			main_panel = self._panels.get("main")
+			if main_panel and main_panel is not target_panel:
+				main_panel.insert_message(text, tag=msg_type,
+										  timestamp=ts, max_messages=max_msgs)
+
+	# ── Combat status bar ─────────────────────────────────────────────────────
+
+	def update_combat_status(self, player=None, enemy=None) -> None:
+		"""
+		Update the slim combat status strip below the panels.
+		Pass player=None and enemy=None to hide it.
+		"""
+		if player is None and enemy is None:
+			if self._combat_status_visible:
+				try:
+					self._combat_status_frame.pack_forget()
+					self._combat_status_visible = False
+				except Exception:
+					pass
+			return
+
+		# Show the frame above the entry (side=bottom, packed before entry)
+		if not self._combat_status_visible:
+			try:
+				self._combat_status_frame.pack(fill="x", padx=4, side="bottom",
+											   before=self.entry)
+				self._combat_status_visible = True
+			except Exception:
+				self._combat_status_frame.pack(fill="x", padx=4, side="bottom")
+				self._combat_status_visible = True
+
+		if player:
+			hp   = getattr(player, "hp",  None) or player.stats.get("hp",  "?")
+			mhp  = getattr(player, "max_hp", None) or player.stats.get("max_hp", "?")
+			mp   = getattr(player, "mp",  None) or player.stats.get("mp",  0)
+			mmp  = getattr(player, "max_mp", None) or player.stats.get("max_mp", 0)
+			name = getattr(player, "name", "Player") or "Player"
+			bar_len = 12
+			try:
+				filled = round((int(hp) / max(int(mhp), 1)) * bar_len)
+				hp_bar = "█" * filled + "░" * (bar_len - filled)
+			except Exception:
+				hp_bar = ""
+			self._combat_player_lbl.config(
+				text=f"▶ {name}  HP [{hp_bar}] {hp}/{mhp}  MP {mp}/{mmp}"
+			)
+
+		if enemy:
+			ehp  = getattr(enemy, "hp",  None) or (enemy if isinstance(enemy, dict) and "hp" in enemy else None)
+			emhp = getattr(enemy, "max_hp", None)
+			ename = getattr(enemy, "name", str(enemy)[:20]) if not isinstance(enemy, str) else enemy
+			if ehp is not None and emhp:
+				bar_len = 12
+				try:
+					filled = round((int(ehp) / max(int(emhp), 1)) * bar_len)
+					e_bar = "█" * filled + "░" * (bar_len - filled)
+				except Exception:
+					e_bar = ""
+				self._combat_enemy_lbl.config(
+					text=f"{ename}  HP [{e_bar}] {ehp}/{emhp} ◀"
+				)
+			else:
+				self._combat_enemy_lbl.config(text=f"Enemy: {ename} ◀")
+		else:
+			self._combat_enemy_lbl.config(text="")
+
+	def _update_combat_status_from_engine(self) -> None:
+		"""Read engine state and refresh (or hide) the combat status bar."""
+		if not self.engine or not self.engine.player:
+			return
+		player = self.engine.player
+		pending = getattr(self.engine, "pending_combat", None)
+		if pending and isinstance(pending, dict):
+			# Build a simple enemy object the status bar can read
+			class _EnemyProxy:
+				pass
+			ep = _EnemyProxy()
+			ep.name   = pending.get("name",   "Enemy")
+			ep.hp     = pending.get("hp",     "?")
+			ep.max_hp = pending.get("max_hp", ep.hp)
+			self.update_combat_status(player, ep)
+		else:
+			# No active combat — hide the bar
+			self.update_combat_status()
 
 	def show_death_screen(self, respawn_text):
 		"""Display a 5-second death screen overlay, then show respawn text."""
@@ -6558,9 +7211,16 @@ class AdventureGUI:
 				self.show_death_screen(resp)
 				self.refresh_inventory_display()
 				self._refresh_hotbar()
+				# Hide combat status (player died)
+				self.update_combat_status()
 				return "break"
 			else:
-				self.append(resp)
+				# Determine msg_type from response content for better routing
+				msg_type = self._detect_type(resp)
+				self.append(resp, msg_type)
+
+		# Update combat status bar after every command
+		self._update_combat_status_from_engine()
 
 		# Clear entry and refocus immediately so typing feels responsive
 		self.entry.delete(0, "end")
