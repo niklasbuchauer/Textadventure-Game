@@ -93,10 +93,17 @@ class LiveMapWindow:
         self.visited_rooms: set = set()
         self.reveal_all = False
         self._resize_after_id = None          # debounce handle
+        self._zoom_after_id = None            # zoom debounce handle
         self._zoom = 1.0                      # zoom level
         self._pan_x = 0.0                     # pan offset in pixels
         self._pan_y = 0.0
         self._drag_start = None               # for click-drag panning
+        # ── performance caches ──────────────────────────────────────
+        self._cached_overworld_rooms = None    # cached {rid: {name,coords,...}}
+        self._cached_room_count = 0            # to detect new rooms
+        self._region_cache: dict = {}          # room_id -> region string
+        self._legend_drawn = False             # True once legend is painted
+        self._drag_redraw_id = None            # throttled redraw during drag
 
     # ── window lifecycle ────────────────────────────────────────────
     def create_window(self, x_offset=200, y_offset=100):
@@ -151,7 +158,7 @@ class LiveMapWindow:
         # ── canvas ──────────────────────────────────────────────────
         self.canvas = tk.Canvas(
             self.window,
-            bg=self.COLORS["bg"],
+            bg="#0a1525",               # match ocean colour to avoid grey flash
             highlightthickness=0,
             cursor="arrow",
         )
@@ -232,10 +239,19 @@ class LiveMapWindow:
             self._zoom_label.config(text=f"{int(self._zoom * 100)}%")
 
     def _on_mousewheel(self, event):
+        # Debounce rapid scroll-wheel events (30 ms)
         if event.delta > 0:
-            self._zoom_in()
+            self._zoom = min(self.ZOOM_MAX, self._zoom + self.ZOOM_STEP)
         else:
-            self._zoom_out()
+            self._zoom = max(self.ZOOM_MIN, self._zoom - self.ZOOM_STEP)
+        self._update_zoom_label()
+        if self._zoom_after_id:
+            self.canvas.after_cancel(self._zoom_after_id)
+        self._zoom_after_id = self.canvas.after(30, self._do_zoom_redraw)
+
+    def _do_zoom_redraw(self):
+        self._zoom_after_id = None
+        self.redraw_map()
 
     def _on_drag_start(self, event):
         self._drag_start = (event.x, event.y)
@@ -248,12 +264,26 @@ class LiveMapWindow:
             self._pan_x += dx
             self._pan_y += dy
             self._drag_start = (event.x, event.y)
-            self.redraw_map()
+            # Instant visual shift of existing map items
+            self.canvas.move("map", dx, dy)
+            # Schedule a throttled full redraw to fill in culled items (60 ms)
+            if not self._drag_redraw_id:
+                self._drag_redraw_id = self.canvas.after(60, self._drag_redraw)
+
+    def _drag_redraw(self):
+        """Throttled full redraw during drag to fill in newly-visible areas."""
+        self._drag_redraw_id = None
+        self.redraw_map()
 
     def _on_drag_end(self, _event=None):
         self._drag_start = None
         if self.canvas:
             self.canvas.config(cursor="arrow")
+            # Cancel any pending throttled redraw and do a final clean redraw
+            if self._drag_redraw_id:
+                self.canvas.after_cancel(self._drag_redraw_id)
+                self._drag_redraw_id = None
+            self.redraw_map()
 
     # ── rendering entry-point ───────────────────────────────────────
     def redraw_map(self):
@@ -262,6 +292,7 @@ class LiveMapWindow:
             return
 
         self.canvas.delete("all")
+        self._legend_drawn = False             # legend was deleted, must redraw
 
         if self._player_in_dungeon():
             self._render_dungeon_map()
@@ -333,15 +364,21 @@ class LiveMapWindow:
 
         for x in x_vals:
             self.canvas.create_line(x, y_lo, x, y_hi,
-                                    fill=self.COLORS["grid"], width=1, dash=(2, 6))
+                                    fill=self.COLORS["grid"], width=1, dash=(2, 6),
+                                    tags=("map",))
         for y in y_vals:
             self.canvas.create_line(x_lo, y, x_hi, y,
-                                    fill=self.COLORS["grid"], width=1, dash=(2, 6))
+                                    fill=self.COLORS["grid"], width=1, dash=(2, 6),
+                                    tags=("map",))
 
-    def _draw_connections(self, positions, rooms, visited):
-        """Draw lines between rooms that share an exit."""
+    def _draw_connections(self, positions, rooms, visited, canvas_w=None, canvas_h=None):
+        """Draw lines between rooms that share an exit (with viewport culling)."""
         drawn: set = set()
         boat_routes: list = []  # collect boat routes to draw as dashed
+        # Viewport culling margin
+        margin = 60
+        cw = canvas_w or self.canvas.winfo_width()
+        ch = canvas_h or self.canvas.winfo_height()
         for rid, rdata in rooms.items():
             if rid not in positions:
                 continue
@@ -360,6 +397,11 @@ class LiveMapWindow:
                 drawn.add(pair)
 
                 x2, y2 = positions[target_id]
+
+                # Viewport culling: skip lines entirely outside the visible area
+                if (max(x1, x2) < -margin or min(x1, x2) > cw + margin or
+                        max(y1, y2) < -margin or min(y1, y2) > ch + margin):
+                    continue
                 
                 # Check if this is a boat_travel exit — draw differently
                 is_boat = isinstance(target, dict) and target.get("type") == "boat_travel"
@@ -370,12 +412,14 @@ class LiveMapWindow:
                 both = rid in visited and target_id in visited
                 color = self.COLORS["connection_visited"] if both else self.COLORS["connection"]
                 width = 2 if both else 1
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=width)
+                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=width,
+                                        tags=("map",))
         
         # Draw boat routes as dashed blue lines
         for x1, y1, x2, y2 in boat_routes:
             self.canvas.create_line(x1, y1, x2, y2,
-                                    fill="#4488cc", width=2, dash=(8, 6))
+                                    fill="#4488cc", width=2, dash=(8, 6),
+                                    tags=("map",))
 
     def _get_room_style(self, tag, room_id=""):
         """Return (fill, outline, label_color) for a room-type tag."""
@@ -391,12 +435,21 @@ class LiveMapWindow:
 
         # For visited rooms, apply region-based coloring
         if tag == "visited" and room_id:
-            region = self._detect_region(room_id)
+            region = self._detect_region_cached(room_id)
             if region in self.REGION_COLORS:
                 fill, outline = self.REGION_COLORS[region]
                 return (fill, outline, outline)
 
         return styles.get(tag, styles["unexplored"])
+
+    def _detect_region_cached(self, room_id):
+        """Memoised region detection — room IDs never change."""
+        cached = self._region_cache.get(room_id)
+        if cached is not None:
+            return cached
+        result = self._detect_region(room_id)
+        self._region_cache[room_id] = result
+        return result
 
     @staticmethod
     def _detect_region(room_id):
@@ -492,12 +545,26 @@ class LiveMapWindow:
             return "diamond"  # docks use diamond shape like settlements
         return "circle"
 
-    def _draw_rooms(self, positions, rooms, visited):
-        """Draw shaped rooms with region colouring and labels."""
+    def _draw_rooms(self, positions, rooms, visited, canvas_w=None, canvas_h=None):
+        """Draw shaped rooms with region colouring, labels, and viewport culling."""
         r = int(self.ROOM_RADIUS * self._zoom)
         r = max(8, min(r, 40))  # clamp radius
+        # Viewport culling bounds
+        margin = r + 30
+        cw = canvas_w or self.canvas.winfo_width()
+        ch = canvas_h or self.canvas.winfo_height()
+
+        icon_size = max(8, int(14 * self._zoom))
+        show_labels = self._zoom >= 0.6
+        max_chars = max(6, int(16 * self._zoom)) if show_labels else 0
+        font_size = max(7, int(9 * self._zoom)) if show_labels else 0
+        label_offset = r + int(14 * self._zoom) if show_labels else 0
 
         for rid, (px, py) in positions.items():
+            # Viewport culling: skip rooms outside visible area
+            if px < -margin or px > cw + margin or py < -margin or py > ch + margin:
+                continue
+
             rdata = rooms.get(rid, {})
             is_visible = rid in visited or self.reveal_all
 
@@ -510,13 +577,14 @@ class LiveMapWindow:
                 self.canvas.create_oval(
                     px - r - 7, py - r - 7, px + r + 7, py + r + 7,
                     outline=self.COLORS["current_outline"], width=2, dash=(3, 3),
+                    tags=("map",),
                 )
 
             # draw room shape
             if shape == "square":
                 self.canvas.create_rectangle(
                     px - r, py - r, px + r, py + r,
-                    fill=fill, outline=outline, width=2,
+                    fill=fill, outline=outline, width=2, tags=("map",),
                 )
             elif shape == "diamond":
                 self.canvas.create_polygon(
@@ -524,45 +592,50 @@ class LiveMapWindow:
                     px + r, py,       # right
                     px, py + r,       # bottom
                     px - r, py,       # left
-                    fill=fill, outline=outline, width=2,
+                    fill=fill, outline=outline, width=2, tags=("map",),
                 )
             else:  # circle
                 self.canvas.create_oval(
                     px - r, py - r, px + r, py + r,
-                    fill=fill, outline=outline, width=2,
+                    fill=fill, outline=outline, width=2, tags=("map",),
                 )
 
             # icon / marker inside the shape
-            icon_size = max(8, int(14 * self._zoom))
             if tag == "current":
                 self.canvas.create_text(px, py, text="\u2605",
-                                        fill="#000000", font=("Consolas", icon_size, "bold"))
+                                        fill="#000000", font=("Consolas", icon_size, "bold"),
+                                        tags=("map",))
             elif tag == "dungeon_entrance" and is_visible:
                 self.canvas.create_text(px, py, text="\u2620",
                                         fill=self.COLORS["dungeon_entrance_outline"],
-                                        font=("Consolas", icon_size, "bold"))
+                                        font=("Consolas", icon_size, "bold"),
+                                        tags=("map",))
             elif tag == "stairs" and is_visible:
                 self.canvas.create_text(px, py, text="\u2193",
                                         fill=self.COLORS["stairs_outline"],
-                                        font=("Consolas", icon_size, "bold"))
+                                        font=("Consolas", icon_size, "bold"),
+                                        tags=("map",))
             elif not is_visible:
                 self.canvas.create_text(px, py, text="?",
                                         fill=self.COLORS["text_dim"],
-                                        font=("Consolas", icon_size, "bold"))
+                                        font=("Consolas", icon_size, "bold"),
+                                        tags=("map",))
 
             # name label below shape
-            if is_visible and self._zoom >= 0.6:
+            if show_labels and is_visible:
                 name = rdata.get("name", "???")
-                max_chars = max(6, int(16 * self._zoom))
                 if len(name) > max_chars:
                     name = name[:max_chars - 2] + ".."
-                font_size = max(7, int(9 * self._zoom))
-                self.canvas.create_text(px, py + r + int(14 * self._zoom), text=name,
+                self.canvas.create_text(px, py + label_offset, text=name,
                                         fill=label_color, font=("Consolas", font_size),
-                                        anchor="center")
+                                        anchor="center", tags=("map",))
 
     def _draw_legend(self, canvas_h):
-        """Draw colour legend along the bottom of the canvas."""
+        """Draw colour legend along the bottom of the canvas (cached)."""
+        if self._legend_drawn:
+            return
+        self._legend_drawn = True
+
         canvas_w = self.canvas.winfo_width()
         y = canvas_h - 25
 
@@ -594,7 +667,7 @@ class LiveMapWindow:
 
         # separator
         self.canvas.create_line(20, y - 38, canvas_w - 20, y - 38,
-                                fill=self.COLORS["grid"], width=1)
+                                fill=self.COLORS["grid"], width=1, tags=("legend",))
 
         # Row 1: mainland items
         y1 = y - 20
@@ -616,17 +689,19 @@ class LiveMapWindow:
         """Draw a single legend entry at the given position."""
         if shape == "square":
             self.canvas.create_rectangle(x, y - 6, x + 12, y + 6,
-                                         fill=fill, outline=outline, width=1)
+                                         fill=fill, outline=outline, width=1,
+                                         tags=("legend",))
         elif shape == "diamond":
             self.canvas.create_polygon(
                 x + 6, y - 6, x + 12, y, x + 6, y + 6, x, y,
-                fill=fill, outline=outline, width=1)
+                fill=fill, outline=outline, width=1, tags=("legend",))
         else:
             self.canvas.create_oval(x, y - 6, x + 12, y + 6,
-                                    fill=fill, outline=outline, width=1)
+                                    fill=fill, outline=outline, width=1,
+                                    tags=("legend",))
         self.canvas.create_text(x + 18, y, text=label,
                                 fill=self.COLORS["text"], font=("Consolas", 7),
-                                anchor="w")
+                                anchor="w", tags=("legend",))
 
     # ── dungeon renderer ────────────────────────────────────────────
     def _render_dungeon_map(self):
@@ -662,13 +737,13 @@ class LiveMapWindow:
         positions, spacing = self._compute_layout(coord_map, canvas_w, canvas_h)
 
         self._draw_grid(positions, spacing)
-        self._draw_connections(positions, rooms, visited)
-        self._draw_rooms(positions, rooms, visited)
+        self._draw_connections(positions, rooms, visited, canvas_w, canvas_h)
+        self._draw_rooms(positions, rooms, visited, canvas_w, canvas_h)
         self._draw_legend(canvas_h)
 
         # stats bar
         total = len(rooms)
-        found = len([r for r in rooms if r in visited])
+        found = sum(1 for r in rooms if r in visited)
         cur_name = rooms.get(self.current_location, {}).get("name", "Unknown")
         fog = "\U0001f513 Reveal ON" if self.reveal_all else "\U0001f512 Fog of War"
         if self.stats_var:
@@ -678,9 +753,13 @@ class LiveMapWindow:
             )
 
     # ── overworld renderer ──────────────────────────────────────────
-    def _render_overworld_map(self):
+    def _build_overworld_rooms(self):
+        """Build and cache the overworld rooms dict (expensive extraction)."""
+        cur_count = len(self.rooms_data)
+        if self._cached_overworld_rooms is not None and self._cached_room_count == cur_count:
+            return self._cached_overworld_rooms
+
         rooms: dict = {}
-        # Collect set of fixed dungeon room IDs to exclude from overworld
         fixed_ids = set()
         if self.game_engine and hasattr(self.game_engine, 'fixed_dungeon_room_ids'):
             fixed_ids = self.game_engine.fixed_dungeon_room_ids
@@ -699,6 +778,12 @@ class LiveMapWindow:
                 "exits": getattr(room_obj, "exits", None)
                          or (room_obj.get("exits", {}) if isinstance(room_obj, dict) else {}),
             }
+        self._cached_overworld_rooms = rooms
+        self._cached_room_count = cur_count
+        return rooms
+
+    def _render_overworld_map(self):
+        rooms = self._build_overworld_rooms()
 
         visited = set(self.visited_rooms) if not self.reveal_all else set(rooms.keys())
 
@@ -727,16 +812,17 @@ class LiveMapWindow:
 
         # Draw ocean background (fills entire canvas with deep blue)
         self.canvas.create_rectangle(0, 0, canvas_w, canvas_h,
-                                      fill="#0a1525", outline="", width=0)
+                                      fill="#0a1525", outline="", width=0,
+                                      tags=("map",))
 
         self._draw_grid(positions, spacing)
-        self._draw_connections(positions, rooms, visited)
-        self._draw_rooms(positions, rooms, visited)
+        self._draw_connections(positions, rooms, visited, canvas_w, canvas_h)
+        self._draw_rooms(positions, rooms, visited, canvas_w, canvas_h)
         self._draw_legend(canvas_h)
 
         # stats bar
         total = len(rooms)
-        found = len([r for r in rooms if r in visited])
+        found = sum(1 for r in rooms if r in visited)
         cur_name = rooms.get(self.current_location, {}).get("name", "Unknown")
         fog = "\U0001f513 Reveal ON" if self.reveal_all else "\U0001f512 Fog of War"
         if self.stats_var:
@@ -747,7 +833,7 @@ class LiveMapWindow:
 
         # update region label
         if hasattr(self, '_region_label') and self._region_label and self.current_location:
-            region = self._detect_region(self.current_location).title()
+            region = self._detect_region_cached(self.current_location).title()
             self._region_label.config(text=f"Region: {region}")
 
     # ── helpers (preserved from text-based version) ─────────────────

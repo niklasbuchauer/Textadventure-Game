@@ -111,7 +111,8 @@ try:
 		get_available_skills, get_active_abilities, unlock_skill,
 		use_ability, tick_effects, has_active_effect,
 		is_skill_unlocked, get_node_by_id,
-		get_synergy_bonuses, get_branch_counts, apply_synergy_bonuses
+		get_synergy_bonuses, get_branch_counts, apply_synergy_bonuses,
+		_apply_ability_effect
 	)
 	PROGRESSION_AVAILABLE = True
 except Exception as e:
@@ -1440,10 +1441,33 @@ class CommandHandler:
 			msg += self._handle_reveal_floor()
 		elif effect == "reveal_adjacent_traps":
 			msg += self._handle_reveal_adjacent_traps()
-		elif effect == "heal" and not combat:
+		elif effect in ("heal", "combat_heal"):
+			# Healing works outside combat as a self-heal
+			value = ability_data.get("value", 0) if ability_data else 0
+			if effect == "combat_heal" and not combat:
+				# Apply the heal directly since _apply_ability_effect wasn't called for combat effects
+				hp = self.engine.player.stats.get("health", 100)
+				hp_max = self.engine.player.stats.get("health_max", 100)
+				heal_amount = int(value)
+				self.engine.player.stats["health"] = min(hp + heal_amount, hp_max)
 			hp = self.engine.player.stats.get("health", 100)
 			hp_max = self.engine.player.stats.get("health_max", 100)
 			msg += f"\n  Health: {hp}/{hp_max}\n"
+		elif effect == "buff_attack" and not combat:
+			# Apply attack buff outside combat
+			value = ability_data.get("value", 0) if ability_data else 0
+			duration = ability_data.get("duration", 1) if ability_data else 1
+			active_effects = self.engine.player.state.get("active_effects", {})
+			active_effects["attack_boost"] = {"value": value, "duration": duration}
+			self.engine.player.stats["strength"] = self.engine.player.stats.get("strength", 0) + value
+			self.engine.player.state["active_effects"] = active_effects
+			msg += f"\n  Strength boosted by +{value} for {duration} moves!\n"
+		elif effect == "temp_defense" and not combat:
+			# Apply defense buff outside combat
+			value = ability_data.get("value", 0) if ability_data else 0
+			duration = ability_data.get("duration", 1) if ability_data else 1
+			_apply_ability_effect(self.engine.player, "temp_defense", duration, value)
+			msg += f"\n  Defense boosted by +{value} for {duration} moves!\n"
 
 		return msg
 
@@ -5518,7 +5542,7 @@ class AdventureGUI:
 		# Maximize window on launch
 		root.state("zoomed")
 		self.root = root
-		self.root.title("Unitopia-style Adventure Game")
+		self.root.title("Estoria's Chronicles")
 		# Styling
 		self.font = font.Font(family="Courier New", size=10)
 
@@ -5526,6 +5550,14 @@ class AdventureGUI:
 		self.text = tk.Text(root, wrap="word", bg="#1e1e1e", fg="#dcdcdc", insertbackground="#dcdcdc",
 							state="disabled", font=self.font)
 		self.text.pack(fill="both", expand=True, padx=6, pady=(6, 0))
+		
+		# Configure text tags for title screen effects
+		self.text.tag_config("title_gold", foreground="#FFD700", font=(self.font.actual("family"), self.font.actual("size"), "bold"))
+		self.text.tag_config("title_cyan", foreground="#00FFFF", font=(self.font.actual("family"), self.font.actual("size"), "bold"))
+		self.text.tag_config("title_green", foreground="#00FF00")
+		self.text.tag_config("title_purple", foreground="#DA70D6")
+		self.text.tag_config("normal", foreground="#dcdcdc")
+		
 		# Scrollbar
 		self.scroll = tk.Scrollbar(self.text)
 		self.scroll.pack(side="right", fill="y")
@@ -5607,12 +5639,293 @@ class AdventureGUI:
 		self.journal_win = None
 		self.journal_text_widget = None
 
-		# Show a minimal welcome immediately
-		self.append("Welcome to the Unitopia-style adventure!")
-		# Defer engine creation so the UI is responsive immediately
-		self.root.after(50, self._init_engine)
+		# Title screen state
+		self.title_screen_active = True
+		self._title_overlay = None
+		self._title_canvas = None
+		self._title_anim_ids = []
+		self._title_stars = []
+
 		# Ensure closing the window goes through our quit handler so we can save
 		self.root.protocol("WM_DELETE_WINDOW", lambda: self._on_app_quit())
+
+		# Show title screen after window is fully drawn
+		self.root.after(100, self._show_title_screen)
+
+	def _show_title_screen(self):
+		"""Show a full-screen mossy stone medieval RPG title screen with magic motes."""
+		import random, math
+
+		self.root.update_idletasks()
+		w = self.root.winfo_width()
+		h = self.root.winfo_height()
+		if w < 100: w = 1200
+		if h < 100: h = 700
+
+		# --- Overlay window ---
+		ov = tk.Toplevel(self.root)
+		ov.overrideredirect(True)
+		ov.geometry(f"{w}x{h}+{self.root.winfo_x()}+{self.root.winfo_y()}")
+		ov.configure(bg="#080a08")
+		ov.attributes('-topmost', True)
+		ov.lift()
+		ov.focus_force()
+		self._title_overlay = ov
+
+		def _relift(e=None):
+			if self.title_screen_active and self._title_overlay:
+				try:
+					self._title_overlay.lift()
+					self._title_overlay.focus_force()
+				except Exception:
+					pass
+		self.root.bind('<FocusIn>', _relift)
+		ov.bind('<FocusOut>', _relift)
+
+		BG = "#080a08"   # very dark stone-green black
+		cv = tk.Canvas(ov, bg=BG, highlightthickness=0)
+		cv.pack(fill="both", expand=True)
+		self._title_canvas = cv
+		cx, cy = w // 2, h // 2
+
+		# ── Background: large dim runic circle ──────────────────────────────
+		for r, col in [(210, "#101812"), (175, "#0e160e"), (140, "#0c1410"),
+					   (105, "#0e1610"), (70,  "#101812")]:
+			cv.create_oval(cx - r, cy - r, cx + r, cy + r, outline=col, width=1)
+		# Cardinal cross lines through circle
+		cv.create_line(cx - 205, cy, cx + 205, cy, fill="#0f1610", width=1)
+		cv.create_line(cx, cy - 205, cx, cy + 205, fill="#0f1610", width=1)
+		# Diagonal rune marks
+		d = 148
+		for dx, dy in [(d, d), (-d, d), (d, -d), (-d, -d)]:
+			cv.create_line(cx, cy, cx + dx // 3, cy + dy // 3, fill="#121a10", width=1)
+
+		# ── Floating magic motes ────────────────────────────────────────────
+		self._title_stars = []
+		mote_palettes = [
+			["#2ab8a0", "#40d0b0", "#30c8a8"],   # cyan-teal (main magic)
+			["#9060d0", "#b080e0", "#7040c0"],   # soft arcane purple
+			["#c0d8c0", "#a8c8a8", "#e0f0e0"],   # pale moss white
+			["#4880a0", "#60a0c0", "#3060a0"],   # cold blue
+		]
+		for _ in range(80):
+			ex = random.randint(0, w)
+			ey = random.randint(0, h)
+			sz = random.choice([1, 1, 1, 2, 2, 3])
+			palette = random.choice(mote_palettes)
+			col = random.choice(palette)
+			eid = cv.create_oval(ex, ey, ex + sz, ey + sz, fill=col, outline="")
+			self._title_stars.append({
+				"id": eid, "x": float(ex), "y": float(ey), "sz": sz,
+				"speed": random.uniform(0.25, 0.90),
+				"drift": random.uniform(-0.35, 0.35),
+				"wobble": random.uniform(0, math.pi * 2),
+				"w": w, "h": h,
+				"palette": palette,
+			})
+
+		# ── Stone border ─────────────────────────────────────────────────────
+		# Outer heavy stone frame (grey-green)
+		cv.create_rectangle(22, 22, w - 22, h - 22, outline="#2c3020", width=4)
+		# Stone block courses — horizontal dashes inside the border band
+		for y in range(26, 48, 7):
+			cv.create_line(26, y, w - 26, y, fill="#1a1e16", width=1)
+		for y in range(h - 47, h - 21, 7):
+			cv.create_line(26, y, w - 26, y, fill="#1a1e16", width=1)
+		# Second inner frame
+		cv.create_rectangle(46, 46, w - 46, h - 46, outline="#22281a", width=2)
+		# Innermost thin accent
+		cv.create_rectangle(52, 52, w - 52, h - 52, outline="#2a3022", width=1)
+
+		# Mossy fills in border corners (rough ovals)
+		for ox, oy, sz in [(22, 22, 18), (w - 22, 22, 18),
+						   (22, h - 22, 18), (w - 22, h - 22, 18)]:
+			cv.create_oval(ox - sz // 2, oy - sz // 2,
+						   ox + sz // 2, oy + sz // 2,
+						   fill="#182014", outline="#22281a", width=1)
+
+		# Corner rune ornaments
+		for ox, oy in [(68, 68), (w - 68, 68), (68, h - 68), (w - 68, h - 68)]:
+			cv.create_text(ox, oy, text="*", fill="#3a8060",
+						   font=("Courier New", 16, "bold"))
+			cv.create_text(ox, oy, text="o", fill="#1e3028",
+						   font=("Courier New", 22))
+
+		# ── Horizontal stone separator lines ────────────────────────────────
+		sep_y_top = cy - 110
+		sep_y_bot = cy + 82
+		for yy in [sep_y_top, sep_y_top + 4]:
+			cv.create_line(90, yy, w - 90, yy, fill="#283420", width=1)
+		for yy in [sep_y_bot, sep_y_bot + 4]:
+			cv.create_line(90, yy, w - 90, yy, fill="#283420", width=1)
+		# End runic markers on separators
+		for sx in [90, w - 90]:
+			cv.create_text(sx, sep_y_top + 2, text="-", fill="#3a6050",
+						   font=("Courier New", 10, "bold"))
+			cv.create_text(sx, sep_y_bot + 2, text="-", fill="#3a6050",
+						   font=("Courier New", 10, "bold"))
+
+		# ── Side moss streaks (atmospheric texture) ─────────────────────────
+		for _ in range(18):
+			sx = random.choice([random.randint(24, 50), random.randint(w - 50, w - 24)])
+			sy = random.randint(60, h - 60)
+			sl = random.randint(8, 28)
+			cv.create_line(sx, sy, sx + random.randint(-4, 4), sy + sl,
+						   fill=random.choice(["#1a2416", "#182014", "#1e2818"]),
+						   width=1)
+
+		# ── Text elements (all start as BG, fade in) ──────────────────────
+		shadow_id = cv.create_text(cx + 3, cy - 126, text="ESTORIA'S",
+								   font=("Georgia", 64, "bold"), fill=BG, anchor="center")
+		title_id  = cv.create_text(cx,     cy - 130, text="ESTORIA'S",
+								   font=("Georgia", 64, "bold"), fill=BG, anchor="center")
+		sub_id    = cv.create_text(cx, cy - 50, text="C H R O N I C L E S",
+								   font=("Georgia", 26, "italic"), fill=BG, anchor="center")
+		sep_id    = cv.create_text(cx, cy - 14,
+								   text="- * - * - * - * - * - * - * -",
+								   font=("Courier New", 11), fill=BG, anchor="center")
+		tag1_id   = cv.create_text(cx, cy + 22,
+								   text="Discover ancient dungeons. Master powerful skills.",
+								   font=("Courier New", 12), fill=BG, anchor="center")
+		tag2_id   = cv.create_text(cx, cy + 46,
+								   text="Grow stronger. Uncover the world's secrets.",
+								   font=("Courier New", 12), fill=BG, anchor="center")
+		prompt_id = cv.create_text(cx, cy + 126,
+								   text="-  Press  ANY BUTTON  to  Begin  Your  Journey  -",
+								   font=("Courier New", 13, "bold"), fill=BG, anchor="center")
+		ver_id    = cv.create_text(w - 65, h - 55, text="v1.0",
+								   font=("Courier New", 9), fill=BG, anchor="center")
+
+		self._title_elements = {
+			"shadow": shadow_id, "title": title_id,
+			"sub": sub_id, "sep": sep_id,
+			"tag1": tag1_id, "tag2": tag2_id,
+			"prompt": prompt_id, "ver": ver_id,
+		}
+		self._title_fade_step = 0
+		self._title_bg = BG
+
+		for widget in (ov, cv):
+			widget.bind("<space>",    lambda e: self._continue_from_title())
+			widget.bind("<Return>",   lambda e: self._continue_from_title())
+			widget.bind("<Button-1>", lambda e: self._continue_from_title())
+			widget.bind("<Escape>",   lambda e: self._continue_from_title())
+
+		self._title_animate_fadein()
+		self._title_animate_stars()
+
+	def _hex_lerp(self, start_hex, end_hex, t):
+		"""Interpolate between two hex colours. t = 0..1"""
+		def parse(h):
+			h = h.lstrip("#")
+			return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+		sr, sg, sb = parse(start_hex)
+		er, eg, eb = parse(end_hex)
+		r = int(sr + (er - sr) * t)
+		g = int(sg + (eg - sg) * t)
+		b = int(sb + (eb - sb) * t)
+		return f"#{r:02x}{g:02x}{b:02x}"
+
+	def _title_animate_fadein(self):
+		"""Staggered fade-in – stone/moss/magic palette."""
+		if not self.title_screen_active or self._title_canvas is None:
+			return
+		cv  = self._title_canvas
+		els = self._title_elements
+		BG  = self._title_bg
+		step = self._title_fade_step
+		t = min(step / 40.0, 1.0)
+
+		def lp(target, offset=0.0, span=1.0):
+			tt = min(max((t - offset) / span, 0.0), 1.0)
+			return self._hex_lerp(BG, target, tt)
+
+		try:
+			# Stone-shadow under title (dark slate)
+			cv.itemconfig(els["shadow"], fill=lp("#1a2414", 0.0, 0.5))
+			# Main title: worn silver-gold inscription on stone
+			cv.itemconfig(els["title"],  fill=lp("#c8c090", 0.0, 0.6))
+			# Subtitle: mossy sage green
+			cv.itemconfig(els["sub"],    fill=lp("#7aaa6a", 0.2, 0.6))
+			# Separator: dim arcane teal
+			cv.itemconfig(els["sep"],    fill=lp("#2a6050", 0.35, 0.5))
+			# Taglines: worn parchment-stone
+			cv.itemconfig(els["tag1"],   fill=lp("#7a7858", 0.45, 0.45))
+			cv.itemconfig(els["tag2"],   fill=lp("#7a7858", 0.55, 0.35))
+			# Prompt: magic cyan-teal (last)
+			cv.itemconfig(els["prompt"], fill=lp("#40a890", 0.70, 0.30))
+			cv.itemconfig(els["ver"],    fill=lp("#2a3820", 0.80, 0.20))
+		except Exception:
+			return
+
+		self._title_fade_step += 1
+		if step < 55:
+			aid = self.root.after(28, self._title_animate_fadein)
+			self._title_anim_ids.append(aid)
+		else:
+			self._title_animate_pulse(True)
+
+	def _title_animate_pulse(self, bright=True):
+		"""Pulse the stone title carving + blink the magic prompt."""
+		if not self.title_screen_active or self._title_canvas is None:
+			return
+		cv  = self._title_canvas
+		els = self._title_elements
+		try:
+			# Title pulses between bright silver-gold and dim stone
+			cv.itemconfig(els["title"],  fill="#d8d0a0" if bright else "#6a6850")
+			cv.itemconfig(els["shadow"], fill="#2a3020" if bright else "#111810")
+			# Subtitle pulses between mossy green and dim
+			cv.itemconfig(els["sub"],    fill="#8ac07a" if bright else "#3a5030")
+			# Prompt blinks between magic teal and invisible
+			cv.itemconfig(els["prompt"], fill="#50c8a8" if bright else self._title_bg)
+		except Exception:
+			return
+		aid = self.root.after(600, lambda: self._title_animate_pulse(not bright))
+		self._title_anim_ids.append(aid)
+
+	def _title_animate_stars(self):
+		"""Float magic motes upward with a gentle horizontal wobble."""
+		import random, math
+		if not self.title_screen_active or self._title_canvas is None:
+			return
+		cv = self._title_canvas
+		try:
+			for e in self._title_stars:
+				e["y"] -= e["speed"]
+				e["wobble"] += 0.04
+				xoff = e["drift"] + math.sin(e["wobble"]) * 0.5
+				e["x"] += xoff
+				if e["y"] < -4:
+					e["y"] = float(e["h"]) + 4
+					e["x"] = float(random.randint(0, e["w"]))
+					e["drift"] = random.uniform(-0.3, 0.3)
+					e["wobble"] = random.uniform(0, math.pi * 2)
+					cv.itemconfig(e["id"], fill=random.choice(e["palette"]))
+				cv.coords(e["id"], e["x"], e["y"],
+						  e["x"] + e["sz"], e["y"] + e["sz"])
+		except Exception:
+			return
+		aid = self.root.after(40, self._title_animate_stars)
+		self._title_anim_ids.append(aid)
+
+	def _continue_from_title(self):
+		"""Dismiss the title screen overlay and start the game."""
+		if not self.title_screen_active:
+			return
+		self.title_screen_active = False
+		self.root.unbind('<FocusIn>')
+		for aid in self._title_anim_ids:
+			try: self.root.after_cancel(aid)
+			except Exception: pass
+		self._title_anim_ids.clear()
+		if self._title_overlay:
+			try: self._title_overlay.destroy()
+			except Exception: pass
+			self._title_overlay = None
+		self._title_canvas = None
+		self.append("Welcome to Estoria's Chronicles!")
+		self.root.after(50, self._init_engine)
 
 	def _on_app_quit(self):
 		"""Save game (if running) and close the application."""
@@ -5921,6 +6234,16 @@ class AdventureGUI:
 		# Always ensure entry is ready to accept input
 		cmd = self.entry.get().strip()
 		if not cmd:
+			try:
+				self.root.after(0, lambda: self.entry.focus_set())
+			except Exception:
+				pass
+			return "break"
+
+		# Block commands during title screen
+		if self.title_screen_active:
+			self.append("Press SPACE or ENTER to begin your adventure!")
+			self.entry.delete(0, "end")
 			try:
 				self.root.after(0, lambda: self.entry.focus_set())
 			except Exception:
@@ -6263,7 +6586,11 @@ class AdventureGUI:
 		for idx, ab in enumerate(abilities):
 			cd_remaining = cooldowns.get(ab["skill_id"], 0)
 			ab_name = ab.get("name", "?")
+			effect = ab.get("effect", "")
 			is_combat_ability = ab.get("combat", False)
+
+			# Some 'combat' abilities are also useful outside combat
+			usable_outside = effect in ("combat_heal", "buff_attack", "temp_defense", "heal")
 
 			# Button text: [slot] Name (cd)
 			slot_num = idx + 1
@@ -6277,13 +6604,20 @@ class AdventureGUI:
 				bg_color = "#2a2a2a"
 				fg_color = "#666666"
 				state = "disabled"
-			elif is_combat_ability and not in_combat:
-				bg_color = "#2a2a2a"
-				fg_color = "#555555"
-				state = "disabled"
 			elif is_combat_ability and in_combat:
+				# In combat — combat abilities are fully active
 				bg_color = "#3a1a00"
 				fg_color = "#FF9800"
+				state = "normal"
+			elif is_combat_ability and not in_combat and usable_outside:
+				# Heal/buff abilities work outside combat too
+				bg_color = "#1a2a3a"
+				fg_color = "#42A5F5"
+				state = "normal"
+			elif is_combat_ability and not in_combat:
+				# Combat-only ability outside combat — clickable but dimmed
+				bg_color = "#1a1a1a"
+				fg_color = "#555555"
 				state = "normal"
 			else:
 				# Non-combat utility ability — always usable
@@ -6301,12 +6635,30 @@ class AdventureGUI:
 				state=state,
 				command=lambda n=cmd_name: self._hotbar_use(n))
 			btn.pack(side="left", padx=2, pady=2)
+			btn.bind("<Button-3>", lambda e, a=ab: self._hotbar_show_info(e, a))
 			self._hotbar_buttons.append((btn, ab))
 
 	def _hotbar_use(self, ability_cmd_name):
 		"""Execute an ability from the hotbar button click."""
 		if not self.engine:
 			return
+		# Check if this is a combat-only ability used outside combat
+		in_combat = getattr(self.engine, 'pending_combat', None) is not None
+		if not in_combat:
+			# Find the ability data to check if it's combat-only
+			try:
+				abilities = get_active_abilities(self.engine.player)
+				for ab in abilities:
+					ab_key = ab.get("name", "").lower().replace(" ", "_")
+					if ab_key == ability_cmd_name:
+						effect = ab.get("effect", "")
+						usable_outside = effect in ("combat_heal", "buff_attack", "temp_defense", "heal")
+						if ab.get("combat", False) and not usable_outside:
+							self.append(f"\n  \u26A0 {ab.get('name', 'This ability')} can only be used in combat!\n")
+							return
+						break
+			except Exception:
+				pass
 		# Run through the command handler so all combat logic is handled
 		resp = self.engine.process_command(f"ability {ability_cmd_name}")
 		if resp:
@@ -6339,6 +6691,87 @@ class AdventureGUI:
 		cmd_name = ab.get("name", "").lower().replace(" ", "_")
 		if cmd_name:
 			self._hotbar_use(cmd_name)
+
+	def _hotbar_show_info(self, event, ability):
+		"""Show a tooltip popup with ability details on right-click."""
+		name = ability.get("name", ability.get("skill_name", "Unknown"))
+		desc = ability.get("description", "")
+		cooldown = ability.get("cooldown", 0)
+		effect = ability.get("effect", "")
+		value = ability.get("value", 0)
+		duration = ability.get("duration", 0)
+		is_combat = ability.get("combat", False)
+		use_text = ability.get("use_text", "")
+
+		# Check current cooldown
+		cd_remaining = 0
+		if self.engine and self.engine.player:
+			cooldowns = self.engine.player.state.get("cooldowns", {})
+			cd_remaining = cooldowns.get(ability.get("skill_id", ""), 0)
+
+		# Build info text
+		lines = []
+		lines.append(f"── {name} ──")
+		if desc:
+			lines.append(desc)
+		lines.append("")
+		# Effect details
+		effect_nice = effect.replace("_", " ").replace("combat ", "").title()
+		if value:
+			if isinstance(value, float) and value < 10:
+				lines.append(f"Effect: {effect_nice} ({value:.1f}x)")
+			else:
+				lines.append(f"Effect: {effect_nice} ({value})")
+		else:
+			lines.append(f"Effect: {effect_nice}")
+		if duration and duration > 1:
+			lines.append(f"Duration: {duration} turns")
+		lines.append(f"Cooldown: {cooldown} turns")
+		if is_combat:
+			usable_outside = effect in ("combat_heal", "buff_attack", "temp_defense", "heal")
+			if usable_outside:
+				lines.append("Type: Combat + Exploration")
+			else:
+				lines.append("Type: Combat only")
+		else:
+			lines.append("Type: Exploration")
+		if cd_remaining > 0:
+			lines.append(f"Status: On cooldown ({cd_remaining} turns)")
+		else:
+			lines.append("Status: Ready")
+
+		info_text = "\n".join(lines)
+
+		# Create a tooltip popup near the button
+		tip = tk.Toplevel(self.root)
+		tip.overrideredirect(True)
+		tip.attributes("-topmost", True)
+		tip.configure(bg="#222222")
+
+		frame = tk.Frame(tip, bg="#222222", bd=1, relief="solid",
+						 highlightbackground="#555555", highlightthickness=1)
+		frame.pack(fill="both", expand=True)
+
+		lbl = tk.Label(frame, text=info_text, font=("Consolas", 9),
+					   bg="#222222", fg="#e0e0e0", justify="left",
+					   padx=10, pady=8, anchor="w")
+		lbl.pack(fill="both")
+
+		# Position near the mouse cursor
+		tip.geometry(f"+{event.x_root + 8}+{event.y_root - 120}")
+
+		# Auto-close on click anywhere or after 5 seconds
+		def close_tip(_e=None):
+			try:
+				tip.destroy()
+			except Exception:
+				pass
+
+		tip.bind("<Button-1>", close_tip)
+		tip.bind("<Button-3>", close_tip)
+		tip.bind("<Escape>", close_tip)
+		tip.bind("<Leave>", close_tip)
+		tip.after(5000, close_tip)
 
 	def refresh_inventory_display(self):
 		"""Refresh the inventory listbox (if open) and update status label."""

@@ -318,6 +318,7 @@ def get_active_abilities(player):
             ability = dict(node.get("ability", {}))
             ability["skill_id"] = node["id"]
             ability["skill_name"] = node["name"]
+            ability["description"] = node.get("description", "")
             abilities.append(ability)
 
     return abilities
