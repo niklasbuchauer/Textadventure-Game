@@ -4,7 +4,6 @@
 # zoneinfo itself is built-in to Python 3.9+
 tzdata
 
-# Add other dependencies below as needed
-# Example:
-# tkinter is built-in to Python
-# json is built-in to Python
+# Pygame UI framework
+pygame-ce
+pygame_gui

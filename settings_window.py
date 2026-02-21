@@ -1,134 +1,125 @@
 """
-settings_window.py  –  Settings panel for Estoria's Chronicles
-Opens as a Toplevel, reads from / writes to the AdventureGUI config dict.
+settings_window.py  –  Settings panel for Estoria's Chronicles (Pygame)
+Opens as a UIWindow overlay, reads from / writes to the PygameAdventureGUI config dict.
 """
 
 import copy
-import tkinter as tk
-from tkinter import ttk, colorchooser, font as tkfont
+import pygame
+import pygame_gui
+from pygame_gui.elements import (
+    UIButton, UILabel, UITextBox, UIWindow, UIPanel,
+    UIHorizontalSlider, UIDropDownMenu, UISelectionList,
+)
+from pygame_gui.core import ObjectID
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Helpers
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _pick_color(parent, current_color: str, on_change) -> None:
-    """Open system color picker; call on_change(hex) if a color was chosen."""
-    result = colorchooser.askcolor(color=current_color, parent=parent,
-                                   title="Choose colour")
-    if result and result[1]:
-        on_change(result[1])
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Main settings window
-# ─────────────────────────────────────────────────────────────────────────────
-
-class SettingsWindow(tk.Toplevel):
+class SettingsWindow:
     """
-    Settings Toplevel window.
+    Settings overlay window.
 
     Parameters
     ----------
-    parent  : tkinter parent widget
-    gui     : AdventureGUI instance  (has .config, .save_config(), .apply_config())
+    app : GameApp
+    gui : PygameAdventureGUI  (has .config, .save_config(), .apply_config())
     """
 
-    def __init__(self, parent, gui):
-        super().__init__(parent)
+    TAB_NAMES = ["Visual", "Gameplay", "Accessibility", "UI Layout"]
+
+    def __init__(self, app, gui):
+        self.app = app
         self.gui = gui
-        # Work on a deep copy so Cancel discards changes
+        self.manager = app.manager
         self._working = copy.deepcopy(gui.config)
 
-        self.title("⚙  Settings")
-        self.resizable(False, False)
-        self.grab_set()          # modal-ish
-        self.configure(bg="#1e1e1e")
+        W, H = app.width, app.height
+        ww, wh = 520, 540
+        self.window = UIWindow(
+            rect=pygame.Rect((W - ww) // 2, (H - wh) // 2, ww, wh),
+            manager=self.manager,
+            window_display_title="\u2699  Settings",
+            resizable=False,
+        )
 
-        # ── Tab bar ─────────────────────────────────────────────────────────
-        self._tabs: dict[str, tk.Frame] = {}
-        self._active_tab = tk.StringVar(value="Visual")
+        # Inner dimensions (window chrome takes some space)
+        iw = ww - 60
+        ih = wh - 80
 
-        tab_names = ["Visual", "Gameplay", "Accessibility", "UI Layout"]
-        tab_bar = tk.Frame(self, bg="#141414")
-        tab_bar.pack(fill="x", side="top")
-        for name in tab_names:
-            btn = tk.Button(
-                tab_bar, text=name,
-                command=lambda n=name: self._show_tab(n),
-                bg="#141414", fg="#cccccc", relief="flat",
-                activebackground="#2a2a2a", activeforeground="#ffffff",
-                padx=12, pady=6, font=("Courier New", 9)
+        # ── Tab bar ──────────────────────────────────────────────────────
+        self._tab_buttons = {}
+        bx = 10
+        for name in self.TAB_NAMES:
+            btn = UIButton(
+                relative_rect=pygame.Rect(bx, 6, 100, 28),
+                text=name, manager=self.manager,
+                container=self.window,
             )
-            btn.pack(side="left")
+            self._tab_buttons[name] = btn
+            bx += 104
 
-        # ── Content area ─────────────────────────────────────────────────────
-        self._content = tk.Frame(self, bg="#1e1e1e", padx=16, pady=12)
-        self._content.pack(fill="both", expand=True)
+        # ── Content panels (one per tab, stacked same position) ──────────
+        content_rect = pygame.Rect(10, 40, iw, ih - 90)
+        self._tab_panels = {}
+        self._active_tab = None
 
-        # ── Bottom buttons ────────────────────────────────────────────────────
-        btn_frame = tk.Frame(self, bg="#141414", pady=6)
-        btn_frame.pack(fill="x", side="bottom")
-        tk.Button(btn_frame, text="Save",          command=self._save,
-                  bg="#2a5a2a", fg="#ffffff", width=10,
-                  font=("Courier New", 9)).pack(side="left",  padx=8)
-        tk.Button(btn_frame, text="Reset Defaults", command=self._reset,
-                  bg="#5a3a1a", fg="#ffffff", width=14,
-                  font=("Courier New", 9)).pack(side="left",  padx=4)
-        tk.Button(btn_frame, text="Cancel",         command=self.destroy,
-                  bg="#3a1a1a", fg="#ffffff", width=10,
-                  font=("Courier New", 9)).pack(side="right", padx=8)
+        self._build_visual_tab(content_rect)
+        self._build_gameplay_tab(content_rect)
+        self._build_accessibility_tab(content_rect)
+        self._build_ui_tab(content_rect)
 
-        # Build all tab contents once, then show the first tab
-        self._build_visual_tab()
-        self._build_gameplay_tab()
-        self._build_accessibility_tab()
-        self._build_ui_tab()
+        # ── Bottom buttons ───────────────────────────────────────────────
+        by = ih - 40
+        self.save_btn = UIButton(
+            relative_rect=pygame.Rect(10, by, 100, 32),
+            text="Save", manager=self.manager,
+            container=self.window,
+        )
+        self.reset_btn = UIButton(
+            relative_rect=pygame.Rect(120, by, 130, 32),
+            text="Reset Defaults", manager=self.manager,
+            container=self.window,
+        )
+        self.cancel_btn = UIButton(
+            relative_rect=pygame.Rect(iw - 90, by, 100, 32),
+            text="Cancel", manager=self.manager,
+            container=self.window,
+        )
+
         self._show_tab("Visual")
 
-        self.update_idletasks()
-        # Center over parent
-        x = parent.winfo_rootx() + (parent.winfo_width()  - self.winfo_width())  // 2
-        y = parent.winfo_rooty() + (parent.winfo_height() - self.winfo_height()) // 2
-        self.geometry(f"+{x}+{y}")
+    # ── Helpers ──────────────────────────────────────────────────────────
 
-    # ── Tab management ────────────────────────────────────────────────────────
+    def is_open(self):
+        return self.window.alive()
 
-    def _show_tab(self, name: str) -> None:
-        for n, frame in self._tabs.items():
-            frame.pack_forget()
-        if name in self._tabs:
-            self._tabs[name].pack(fill="both", expand=True)
-        self._active_tab.set(name)
+    def _make_label(self, parent, text, rect):
+        return UILabel(
+            relative_rect=rect, text=text,
+            manager=self.manager, container=parent,
+        )
 
-    # ── Section heading helper ────────────────────────────────────────────────
+    # ── Tab switching ────────────────────────────────────────────────────
 
-    @staticmethod
-    def _section(parent, text: str) -> tk.Label:
-        lbl = tk.Label(parent, text=text, bg="#1e1e1e", fg="#FFD700",
-                       font=("Courier New", 9, "bold"), anchor="w")
-        lbl.pack(fill="x", pady=(10, 2))
-        tk.Frame(parent, height=1, bg="#333333").pack(fill="x", pady=(0, 6))
-        return lbl
+    def _show_tab(self, name):
+        for n, panel in self._tab_panels.items():
+            if n == name:
+                panel.show()
+            else:
+                panel.hide()
+        self._active_tab = name
 
-    @staticmethod
-    def _row(parent) -> tk.Frame:
-        f = tk.Frame(parent, bg="#1e1e1e")
-        f.pack(fill="x", pady=2)
-        return f
+    # ── VISUAL TAB ───────────────────────────────────────────────────────
 
-    @staticmethod
-    def _label(parent, text: str, width: int = 22) -> tk.Label:
-        return tk.Label(parent, text=text, bg="#1e1e1e", fg="#cccccc",
-                        font=("Courier New", 9), width=width, anchor="w")
+    def _build_visual_tab(self, rect):
+        panel = UIPanel(
+            relative_rect=rect, manager=self.manager,
+            container=self.window,
+        )
+        self._tab_panels["Visual"] = panel
 
-    # ── VISUAL TAB ───────────────────────────────────────────────────────────
-
-    def _build_visual_tab(self) -> None:
-        frame = tk.Frame(self._content, bg="#1e1e1e", width=440)
-        self._tabs["Visual"] = frame
-
-        self._section(frame, "Message Colours")
+        y = 10
+        self._make_label(panel, "Message Colours",
+                         pygame.Rect(10, y, 200, 24))
+        y += 30
 
         color_keys = [
             ("combat",   "Combat"),
@@ -140,270 +131,314 @@ class SettingsWindow(tk.Toplevel):
             ("command",  "Command echo"),
             ("default",  "Default text"),
         ]
-        self._color_buttons: dict[str, tk.Button] = {}
+
+        self._color_labels = {}
         for key, label in color_keys:
-            row = self._row(frame)
-            self._label(row, label + ":").pack(side="left")
-            current = self._working["visual"]["colors"].get(key, "#DCDCDC")
-            btn = tk.Button(
-                row, bg=current, width=6, relief="solid",
-                cursor="hand2",
-                command=lambda k=key: self._change_color(k)
+            self._make_label(panel, f"{label}:",
+                             pygame.Rect(10, y, 160, 22))
+            cur = self._working["visual"]["colors"].get(key, "#DCDCDC")
+            clbl = UILabel(
+                relative_rect=pygame.Rect(180, y, 100, 22),
+                text=cur, manager=self.manager, container=panel,
             )
-            btn.pack(side="left", padx=4)
-            self._color_buttons[key] = btn
+            self._color_labels[key] = clbl
+            y += 26
 
-        self._section(frame, "Font & Size")
+        y += 10
+        self._make_label(panel, "Font Size",
+                         pygame.Rect(10, y, 200, 24))
+        y += 28
 
-        # Font family
-        row = self._row(frame)
-        self._label(row, "Font family:").pack(side="left")
-        families = sorted(set(tkfont.families()))
-        self._font_var = tk.StringVar(value=self._working["visual"]["font_family"])
-        ttk.Combobox(row, textvariable=self._font_var, values=families,
-                     width=22, font=("Courier New", 9)).pack(side="left", padx=4)
+        fs = self._working["visual"]["font_size"]
+        self._fontsize_slider = UIHorizontalSlider(
+            relative_rect=pygame.Rect(10, y, 200, 24),
+            start_value=float(fs), value_range=(7.0, 20.0),
+            manager=self.manager, container=panel,
+        )
+        self._fontsize_label = UILabel(
+            relative_rect=pygame.Rect(220, y, 40, 24),
+            text=str(fs), manager=self.manager, container=panel,
+        )
 
-        # Font size slider
-        row = self._row(frame)
-        self._label(row, "Font size:").pack(side="left")
-        self._fontsize_var = tk.IntVar(value=self._working["visual"]["font_size"])
-        tk.Scale(row, from_=7, to=20, orient="horizontal",
-                 variable=self._fontsize_var,
-                 bg="#1e1e1e", fg="#cccccc", troughcolor="#333333",
-                 highlightthickness=0, length=160).pack(side="left")
-        tk.Label(row, textvariable=self._fontsize_var, bg="#1e1e1e",
-                 fg="#cccccc", font=("Courier New", 9), width=3).pack(side="left")
+    # ── GAMEPLAY TAB ─────────────────────────────────────────────────────
 
-        self._section(frame, "Theme")
-        self._theme_var = tk.StringVar(value=self._working["visual"]["theme"])
-        theme_row = self._row(frame)
-        for val, text in [("dark", "Dark"), ("light", "Light")]:
-            tk.Radiobutton(
-                theme_row, text=text, variable=self._theme_var, value=val,
-                bg="#1e1e1e", fg="#cccccc", selectcolor="#2a2a2a",
-                activebackground="#1e1e1e", activeforeground="#ffffff",
-                font=("Courier New", 9)
-            ).pack(side="left", padx=6)
+    def _build_gameplay_tab(self, rect):
+        panel = UIPanel(
+            relative_rect=rect, manager=self.manager,
+            container=self.window,
+        )
+        self._tab_panels["Gameplay"] = panel
 
-    def _change_color(self, key: str) -> None:
-        current = self._working["visual"]["colors"].get(key, "#DCDCDC")
-        def _apply(hex_color):
-            self._working["visual"]["colors"][key] = hex_color
-            self._color_buttons[key].config(bg=hex_color)
-        _pick_color(self, current, _apply)
+        y = 10
+        self._make_label(panel, "Combat Speed",
+                         pygame.Rect(10, y, 200, 24))
+        y += 28
 
-    # ── GAMEPLAY TAB ─────────────────────────────────────────────────────────
+        cur_speed = self._working["gameplay"]["combat_speed"]
+        speeds = ["slow", "normal", "fast"]
+        self._combat_speed_dd = UIDropDownMenu(
+            options_list=speeds,
+            starting_option=cur_speed if cur_speed in speeds else "normal",
+            relative_rect=pygame.Rect(10, y, 200, 30),
+            manager=self.manager, container=panel,
+        )
+        y += 40
 
-    def _build_gameplay_tab(self) -> None:
-        frame = tk.Frame(self._content, bg="#1e1e1e", width=440)
-        self._tabs["Gameplay"] = frame
+        self._make_label(panel, "Scroll Mode",
+                         pygame.Rect(10, y, 200, 24))
+        y += 28
+        cur_scroll = self._working["gameplay"]["scroll_mode"]
+        scrolls = ["auto", "lock"]
+        self._scroll_mode_dd = UIDropDownMenu(
+            options_list=scrolls,
+            starting_option=cur_scroll if cur_scroll in scrolls else "auto",
+            relative_rect=pygame.Rect(10, y, 200, 30),
+            manager=self.manager, container=panel,
+        )
+        y += 40
 
-        self._section(frame, "Combat Speed")
-        self._combat_speed = tk.StringVar(value=self._working["gameplay"]["combat_speed"])
-        row = self._row(frame)
-        for val, text in [("slow", "Slow"), ("normal", "Normal"), ("fast", "Fast")]:
-            tk.Radiobutton(
-                row, text=text, variable=self._combat_speed, value=val,
-                bg="#1e1e1e", fg="#cccccc", selectcolor="#2a2a2a",
-                activebackground="#1e1e1e", activeforeground="#ffffff",
-                font=("Courier New", 9)
-            ).pack(side="left", padx=8)
+        self._make_label(panel, "Difficulty Modifier",
+                         pygame.Rect(10, y, 200, 24))
+        y += 28
+        diff = self._working["gameplay"]["difficulty_modifier"]
+        self._difficulty_slider = UIHorizontalSlider(
+            relative_rect=pygame.Rect(10, y, 200, 24),
+            start_value=float(diff), value_range=(0.5, 2.0),
+            manager=self.manager, container=panel,
+        )
+        self._difficulty_label = UILabel(
+            relative_rect=pygame.Rect(220, y, 50, 24),
+            text=f"{diff:.1f}x", manager=self.manager, container=panel,
+        )
 
-        self._section(frame, "Scroll Mode")
-        self._scroll_mode = tk.StringVar(value=self._working["gameplay"]["scroll_mode"])
-        row = self._row(frame)
-        for val, text in [("auto", "Auto-scroll"), ("lock", "Manual / Locked")]:
-            tk.Radiobutton(
-                row, text=text, variable=self._scroll_mode, value=val,
-                bg="#1e1e1e", fg="#cccccc", selectcolor="#2a2a2a",
-                activebackground="#1e1e1e", activeforeground="#ffffff",
-                font=("Courier New", 9)
-            ).pack(side="left", padx=8)
+    # ── ACCESSIBILITY TAB ────────────────────────────────────────────────
 
-        self._section(frame, "Safety & Difficulty")
-        self._confirm_dangerous = tk.BooleanVar(
-            value=self._working["gameplay"]["confirm_dangerous"])
-        row = self._row(frame)
-        tk.Checkbutton(
-            row, text="Confirm dangerous actions (delete, quit without save…)",
-            variable=self._confirm_dangerous,
-            bg="#1e1e1e", fg="#cccccc", selectcolor="#2a2a2a",
-            activebackground="#1e1e1e", activeforeground="#ffffff",
-            font=("Courier New", 9)
-        ).pack(side="left")
+    def _build_accessibility_tab(self, rect):
+        panel = UIPanel(
+            relative_rect=rect, manager=self.manager,
+            container=self.window,
+        )
+        self._tab_panels["Accessibility"] = panel
 
-        row = self._row(frame)
-        self._label(row, "Difficulty modifier:").pack(side="left")
-        self._difficulty = tk.DoubleVar(
-            value=self._working["gameplay"]["difficulty_modifier"])
-        tk.Scale(
-            row, from_=0.5, to=2.0, resolution=0.1, orient="horizontal",
-            variable=self._difficulty,
-            bg="#1e1e1e", fg="#cccccc", troughcolor="#333333",
-            highlightthickness=0, length=160
-        ).pack(side="left")
-        difficulty_lbl = tk.Label(row, bg="#1e1e1e", fg="#cccccc",
-                                  font=("Courier New", 9), width=4)
-        difficulty_lbl.pack(side="left")
-        def _update_diff_lbl(*_):
-            difficulty_lbl.config(text=f"{self._difficulty.get():.1f}x")
-        self._difficulty.trace_add("write", _update_diff_lbl)
-        _update_diff_lbl()
+        y = 10
+        self._make_label(panel, "Accessibility",
+                         pygame.Rect(10, y, 200, 24))
+        y += 30
 
-    # ── ACCESSIBILITY TAB ─────────────────────────────────────────────────────
+        self._high_contrast_btn = UIButton(
+            relative_rect=pygame.Rect(10, y, 300, 30),
+            text=("High-contrast: ON" if self._working["accessibility"]["high_contrast"]
+                  else "High-contrast: OFF"),
+            manager=self.manager, container=panel,
+        )
+        self._high_contrast_on = self._working["accessibility"]["high_contrast"]
+        y += 40
 
-    def _build_accessibility_tab(self) -> None:
-        frame = tk.Frame(self._content, bg="#1e1e1e", width=440)
-        self._tabs["Accessibility"] = frame
+        self._make_label(panel, "Text Size",
+                         pygame.Rect(10, y, 200, 24))
+        y += 28
+        ts = self._working["accessibility"]["text_size"]
+        self._a11y_size_slider = UIHorizontalSlider(
+            relative_rect=pygame.Rect(10, y, 200, 24),
+            start_value=float(ts), value_range=(8.0, 24.0),
+            manager=self.manager, container=panel,
+        )
+        self._a11y_size_label = UILabel(
+            relative_rect=pygame.Rect(220, y, 40, 24),
+            text=str(ts), manager=self.manager, container=panel,
+        )
 
-        self._section(frame, "Accessibility")
+    # ── UI LAYOUT TAB ───────────────────────────────────────────────────
 
-        self._high_contrast = tk.BooleanVar(
-            value=self._working["accessibility"]["high_contrast"])
-        row = self._row(frame)
-        tk.Checkbutton(
-            row, text="High-contrast mode (overrides custom colours)",
-            variable=self._high_contrast,
-            bg="#1e1e1e", fg="#cccccc", selectcolor="#2a2a2a",
-            activebackground="#1e1e1e", activeforeground="#ffffff",
-            font=("Courier New", 9)
-        ).pack(side="left")
+    def _build_ui_tab(self, rect):
+        panel = UIPanel(
+            relative_rect=rect, manager=self.manager,
+            container=self.window,
+        )
+        self._tab_panels["UI Layout"] = panel
 
-        row = self._row(frame)
-        self._label(row, "Text size:").pack(side="left")
-        self._a11y_textsize = tk.IntVar(
-            value=self._working["accessibility"]["text_size"])
-        tk.Scale(
-            row, from_=8, to=24, orient="horizontal",
-            variable=self._a11y_textsize,
-            bg="#1e1e1e", fg="#cccccc", troughcolor="#333333",
-            highlightthickness=0, length=160
-        ).pack(side="left")
-        tk.Label(row, textvariable=self._a11y_textsize, bg="#1e1e1e",
-                 fg="#cccccc", font=("Courier New", 9), width=3).pack(side="left")
+        y = 10
+        self._make_label(panel, "Panel Layout",
+                         pygame.Rect(10, y, 200, 24))
+        y += 28
 
-    # ── UI LAYOUT TAB ─────────────────────────────────────────────────────────
+        layouts = ["side_by_side", "stacked", "single"]
+        cur_layout = self._working["ui"]["layout"]
+        self._layout_dd = UIDropDownMenu(
+            options_list=layouts,
+            starting_option=cur_layout if cur_layout in layouts else "side_by_side",
+            relative_rect=pygame.Rect(10, y, 260, 30),
+            manager=self.manager, container=panel,
+        )
+        y += 40
 
-    def _build_ui_tab(self) -> None:
-        frame = tk.Frame(self._content, bg="#1e1e1e", width=440)
-        self._tabs["UI Layout"] = frame
+        self._make_label(panel, "Active Panels",
+                         pygame.Rect(10, y, 200, 24))
+        y += 28
 
-        self._section(frame, "Panel Layout")
-        self._layout_var = tk.StringVar(value=self._working["ui"]["layout"])
-        row = self._row(frame)
-        for val, text in [
-            ("side_by_side", "Side-by-side (main left, combat+items right)"),
-            ("stacked",      "Stacked vertically"),
-            ("single",       "Single panel (no split)"),
-        ]:
-            tk.Radiobutton(
-                row, text=text, variable=self._layout_var, value=val,
-                bg="#1e1e1e", fg="#cccccc", selectcolor="#2a2a2a",
-                activebackground="#1e1e1e", activeforeground="#ffffff",
-                font=("Courier New", 9)
-            ).pack(anchor="w", padx=8, pady=1)
-
-        self._section(frame, "Active Panels")
         panel_defs = [
-            ("main",    "Main Output (always on)"),
             ("combat",  "Combat Log"),
             ("items",   "Items / Loot"),
             ("dialogue","Dialogue / NPC"),
             ("system",  "Status / System"),
         ]
-        self._panel_vars: dict[str, tk.BooleanVar] = {}
+        self._panel_toggle_btns = {}
         for key, label in panel_defs:
-            bv = tk.BooleanVar(value=self._working["ui"]["panels"].get(key, False))
-            if key == "main":
-                bv.set(True)   # always on
-            self._panel_vars[key] = bv
-            row = self._row(frame)
-            cb = tk.Checkbutton(
-                row, text=label, variable=bv,
-                bg="#1e1e1e", fg="#cccccc", selectcolor="#2a2a2a",
-                activebackground="#1e1e1e", activeforeground="#ffffff",
-                font=("Courier New", 9)
+            on = self._working["ui"]["panels"].get(key, False)
+            btn = UIButton(
+                relative_rect=pygame.Rect(10, y, 300, 28),
+                text=f"{'[X]' if on else '[ ]'} {label}",
+                manager=self.manager, container=panel,
             )
-            if key == "main":
-                cb.config(state="disabled")
-            cb.pack(side="left", padx=4)
+            self._panel_toggle_btns[key] = (btn, on, label)
+            y += 32
 
-        self._section(frame, "Messages & Scroll")
+        y += 10
+        self._make_label(panel, "Messages",
+                         pygame.Rect(10, y, 200, 24))
+        y += 28
 
-        self._timestamps_var = tk.BooleanVar(
-            value=self._working["ui"]["timestamps"])
-        row = self._row(frame)
-        tk.Checkbutton(
-            row, text="Show timestamps on messages",
-            variable=self._timestamps_var,
-            bg="#1e1e1e", fg="#cccccc", selectcolor="#2a2a2a",
-            activebackground="#1e1e1e", activeforeground="#ffffff",
-            font=("Courier New", 9)
-        ).pack(side="left")
+        ts_on = self._working["ui"]["timestamps"]
+        self._timestamps_btn = UIButton(
+            relative_rect=pygame.Rect(10, y, 300, 28),
+            text=f"{'[X]' if ts_on else '[ ]'} Show timestamps",
+            manager=self.manager, container=panel,
+        )
+        self._timestamps_on = ts_on
+        y += 32
 
-        row = self._row(frame)
-        self._label(row, "Max messages / panel:").pack(side="left")
-        self._max_msgs_var = tk.IntVar(value=self._working["ui"]["max_messages"])
-        tk.Spinbox(
-            row, from_=10, to=500, increment=10,
-            textvariable=self._max_msgs_var, width=6,
-            bg="#2e2e2e", fg="#ffffff", font=("Courier New", 9)
-        ).pack(side="left", padx=4)
+        self._make_label(panel, "Max messages / panel:",
+                         pygame.Rect(10, y, 200, 24))
+        y += 26
+        mm = self._working["ui"]["max_messages"]
+        self._max_msgs_slider = UIHorizontalSlider(
+            relative_rect=pygame.Rect(10, y, 200, 24),
+            start_value=float(mm), value_range=(10.0, 500.0),
+            manager=self.manager, container=panel,
+        )
+        self._max_msgs_label = UILabel(
+            relative_rect=pygame.Rect(220, y, 50, 24),
+            text=str(mm), manager=self.manager, container=panel,
+        )
 
-        # Note about layout changes
-        tk.Label(
-            frame,
-            text="⚠  Layout changes take effect after restart.",
-            bg="#1e1e1e", fg="#FFD700",
-            font=("Courier New", 8, "italic"), anchor="w"
-        ).pack(fill="x", pady=(14, 0))
+    # ── Event handler ────────────────────────────────────────────────────
 
-    # ── Bottom-button handlers ─────────────────────────────────────────────
+    def handle_event(self, event):
+        if not self.window.alive():
+            return False
 
-    def _collect(self) -> dict:
-        """Gather all widget values back into the working config dict."""
-        # Visual
-        self._working["visual"]["font_family"] = self._font_var.get()
-        self._working["visual"]["font_size"]   = self._fontsize_var.get()
-        self._working["visual"]["theme"]        = self._theme_var.get()
-        # Colors are updated live as user picks them
+        if event.type == pygame_gui.UI_BUTTON_PRESSED:
+            ui = event.ui_element
 
-        # Gameplay
-        self._working["gameplay"]["combat_speed"]       = self._combat_speed.get()
-        self._working["gameplay"]["scroll_mode"]        = self._scroll_mode.get()
-        self._working["gameplay"]["confirm_dangerous"]  = self._confirm_dangerous.get()
-        self._working["gameplay"]["difficulty_modifier"]= round(self._difficulty.get(), 2)
+            for name, btn in self._tab_buttons.items():
+                if ui == btn:
+                    self._show_tab(name)
+                    return True
 
-        # Accessibility
-        self._working["accessibility"]["high_contrast"] = self._high_contrast.get()
-        self._working["accessibility"]["text_size"]     = self._a11y_textsize.get()
+            if ui == self.save_btn:
+                self._save()
+                return True
+            if ui == self.reset_btn:
+                self._reset()
+                return True
+            if ui == self.cancel_btn:
+                self.window.kill()
+                return True
 
-        # UI
-        self._working["ui"]["layout"]       = self._layout_var.get()
-        self._working["ui"]["timestamps"]   = self._timestamps_var.get()
-        self._working["ui"]["max_messages"] = self._max_msgs_var.get()
-        for key, bv in self._panel_vars.items():
-            self._working["ui"]["panels"][key] = bv.get()
+            if hasattr(self, '_high_contrast_btn') and ui == self._high_contrast_btn:
+                self._high_contrast_on = not self._high_contrast_on
+                self._high_contrast_btn.set_text(
+                    "High-contrast: ON" if self._high_contrast_on
+                    else "High-contrast: OFF")
+                return True
 
-        return self._working
+            if hasattr(self, '_timestamps_btn') and ui == self._timestamps_btn:
+                self._timestamps_on = not self._timestamps_on
+                self._timestamps_btn.set_text(
+                    f"{'[X]' if self._timestamps_on else '[ ]'} Show timestamps")
+                return True
 
-    def _save(self) -> None:
+            for key, (btn, on, label) in list(self._panel_toggle_btns.items()):
+                if ui == btn:
+                    on = not on
+                    btn.set_text(f"{'[X]' if on else '[ ]'} {label}")
+                    self._panel_toggle_btns[key] = (btn, on, label)
+                    return True
+
+        return False
+
+    def update(self):
+        """Call per-frame to sync slider labels."""
+        if not self.window.alive():
+            return
+
+        try:
+            fs = int(self._fontsize_slider.get_current_value())
+            self._fontsize_label.set_text(str(fs))
+        except Exception:
+            pass
+
+        try:
+            d = self._difficulty_slider.get_current_value()
+            self._difficulty_label.set_text(f"{d:.1f}x")
+        except Exception:
+            pass
+
+        try:
+            ts = int(self._a11y_size_slider.get_current_value())
+            self._a11y_size_label.set_text(str(ts))
+        except Exception:
+            pass
+
+        try:
+            mm = int(self._max_msgs_slider.get_current_value())
+            self._max_msgs_label.set_text(str(mm))
+        except Exception:
+            pass
+
+    # ── Collect / Save / Reset ───────────────────────────────────────────
+
+    def _collect(self):
+        w = self._working
+
+        w["visual"]["font_size"] = int(self._fontsize_slider.get_current_value())
+
+        try:
+            w["gameplay"]["combat_speed"] = self._combat_speed_dd.selected_option[0]
+        except Exception:
+            pass
+        try:
+            w["gameplay"]["scroll_mode"] = self._scroll_mode_dd.selected_option[0]
+        except Exception:
+            pass
+        w["gameplay"]["difficulty_modifier"] = round(
+            self._difficulty_slider.get_current_value(), 2)
+
+        w["accessibility"]["high_contrast"] = self._high_contrast_on
+        w["accessibility"]["text_size"] = int(
+            self._a11y_size_slider.get_current_value())
+
+        try:
+            w["ui"]["layout"] = self._layout_dd.selected_option[0]
+        except Exception:
+            pass
+        w["ui"]["timestamps"] = self._timestamps_on
+        w["ui"]["max_messages"] = int(
+            self._max_msgs_slider.get_current_value())
+        for key, (btn, on, label) in self._panel_toggle_btns.items():
+            w["ui"]["panels"][key] = on
+
+        return w
+
+    def _save(self):
         cfg = self._collect()
         self.gui.config = cfg
         self.gui.save_config()
         self.gui.apply_config()
-        self.destroy()
+        self.window.kill()
 
-    def _reset(self) -> None:
-        """Reload defaults from CONFIG_DEFAULTS and refresh all widgets."""
+    def _reset(self):
         from engine import CONFIG_DEFAULTS
         self._working = copy.deepcopy(CONFIG_DEFAULTS)
-        # Destroy and rebuild tab contents with fresh data
-        for key in list(self._tabs.keys()):
-            self._tabs[key].destroy()
-        self._tabs.clear()
-        self._build_visual_tab()
-        self._build_gameplay_tab()
-        self._build_accessibility_tab()
-        self._build_ui_tab()
-        self._show_tab(self._active_tab.get())
+        self.window.kill()
+        SettingsWindow(self.app, self.gui)

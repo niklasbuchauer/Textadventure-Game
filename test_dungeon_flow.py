@@ -6,8 +6,6 @@ Complete end-to-end test of dungeon entry flow
 import json
 import os
 import sys
-import tkinter as tk
-
 # Add current directory to path
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -28,10 +26,7 @@ try:
         exit(1)
     
     # Create engine
-    root = tk.Tk()
-    root.withdraw()
-    
-    engine = GameEngine(root=root)
+    engine = GameEngine()
     print("✓ GameEngine initialized")
     
 except Exception as e:

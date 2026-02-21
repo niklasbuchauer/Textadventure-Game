@@ -20,7 +20,7 @@
         "combat_speed": "normal",
         "scroll_mode": "auto",
         "confirm_dangerous": true,
-        "difficulty_modifier": 1.0
+        "difficulty_modifier": 1.05
     },
     "accessibility": {
         "high_contrast": false,
@@ -34,8 +34,8 @@
             "main": true,
             "combat": true,
             "items": true,
-            "dialogue": false,
-            "system": false
+            "dialogue": true,
+            "system": true
         }
     }
 }

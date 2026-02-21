@@ -2,49 +2,8 @@
 import sys
 import os
 
-# Patch tkinter to prevent GUI windows
-import types
-tk_module = types.ModuleType('tkinter')
-tk_module.Tk = type('Tk', (), {'__init__': lambda s: None})
-tk_module.Toplevel = type('Toplevel', (), {'__init__': lambda s, *a: None})
-tk_module.Frame = type('Frame', (), {'__init__': lambda s, *a, **kw: None})
-tk_module.Label = type('Label', (), {'__init__': lambda s, *a, **kw: None})
-tk_module.Button = type('Button', (), {'__init__': lambda s, *a, **kw: None})
-tk_module.Entry = type('Entry', (), {'__init__': lambda s, *a, **kw: None})
-tk_module.Text = type('Text', (), {'__init__': lambda s, *a, **kw: None})
-tk_module.Scrollbar = type('Scrollbar', (), {'__init__': lambda s, *a, **kw: None})
-tk_module.Listbox = type('Listbox', (), {'__init__': lambda s, *a, **kw: None})
-tk_module.Canvas = type('Canvas', (), {'__init__': lambda s, *a, **kw: None})
-tk_module.StringVar = type('StringVar', (), {'__init__': lambda s, *a, **kw: None})
-tk_module.IntVar = type('IntVar', (), {'__init__': lambda s, *a, **kw: None})
-tk_module.BooleanVar = type('BooleanVar', (), {'__init__': lambda s, *a, **kw: None})
-font_module = types.ModuleType('tkinter.font')
-font_module.Font = type('Font', (), {'__init__': lambda s, *a, **kw: None})
-tk_module.font = font_module
-tk_module.messagebox = types.ModuleType('tkinter.messagebox')
-tk_module.messagebox.askyesno = lambda *a, **kw: False
-tk_module.messagebox.showwarning = lambda *a, **kw: None
-tk_module.messagebox.showerror = lambda *a, **kw: None
-simpledialog_module = types.ModuleType('tkinter.simpledialog')
-simpledialog_module.askstring = lambda *a, **kw: None
-tk_module.simpledialog = simpledialog_module
-sys.modules['tkinter.simpledialog'] = simpledialog_module
-tk_module.END = 'end'
-tk_module.BOTH = 'both'
-tk_module.LEFT = 'left'
-tk_module.RIGHT = 'right'
-tk_module.TOP = 'top'
-tk_module.BOTTOM = 'bottom'
-tk_module.X = 'x'
-tk_module.Y = 'y'
-tk_module.DISABLED = 'disabled'
-tk_module.NORMAL = 'normal'
-tk_module.WORD = 'word'
-sys.modules['tkinter'] = tk_module
-sys.modules['tkinter.font'] = font_module
-sys.modules['tkinter.messagebox'] = tk_module.messagebox
+sys.path.insert(0, os.path.dirname(__file__))
 
-# Now import engine components
 from engine import GameEngine, Player, CommandHandler
 
 print("=== Engine Import OK ===")

@@ -2,7 +2,7 @@
 Fishing Minigame System
 =======================
 Full fishing system with:
-  - Tkinter timing-bar minigame
+  - Pygame timing-bar minigame overlay
   - Bait types affecting catch quality
   - Location-specific fish pools
   - Fish rarity tiers
@@ -340,7 +340,7 @@ RARITY_SPEED = {
 
 
 class FishingMinigame:
-	"""Manages the fishing minigame logic and Tkinter timing bar."""
+	"""Manages the fishing minigame logic and pygame timing bar overlay."""
 
 	def __init__(self, engine):
 		self.engine = engine
@@ -429,7 +429,7 @@ class FishingMinigame:
 	def start_fishing(self, bait_id=None):
 		"""
 		Start fishing. Returns result text.
-		If Tkinter root is available, opens timing bar minigame.
+		If pygame GUI is available, opens timing bar minigame overlay.
 		Otherwise falls back to simple random catch.
 		"""
 		can, msg = self.can_fish()
@@ -447,10 +447,10 @@ class FishingMinigame:
 		else:
 			self.current_bait = None
 
-		# Try to use Tkinter timing bar
-		root = getattr(self.engine, 'root', None)
-		if root:
-			return self._open_timing_bar(root)
+		# Try to use Pygame timing bar
+		gui = getattr(self.engine, 'gui', None)
+		if gui:
+			return self._open_timing_bar()
 		else:
 			# Fallback: simple timing simulation
 			return self._simple_fishing()
@@ -473,9 +473,8 @@ class FishingMinigame:
 
 		return self._process_catch(pool, quality)
 
-	def _open_timing_bar(self, root):
-		"""Open a Tkinter toplevel window with a timing bar minigame."""
-		import tkinter as tk
+	def _open_timing_bar(self, _root_unused=None):
+		"""Open a Pygame overlay with a timing-bar minigame."""
 
 		# Consume bait before starting minigame
 		if self.current_bait:
@@ -495,128 +494,25 @@ class FishingMinigame:
 		good_size = GOOD_ZONE
 		sweet_start = random.uniform(0.2, 0.8 - sweet_size)
 		sweet_end = sweet_start + sweet_size
-
-		# Create the fishing window
-		win = tk.Toplevel(root)
-		win.title("🎣 Fishing!")
-		win.geometry("400x200")
-		win.resizable(False, False)
-		win.transient(root)
-
-		# Status text
-		bait_text = f" (using {bait.get('name', 'no bait')})" if self.current_bait else " (no bait)"
-		status_label = tk.Label(win, text=f"🎣 Cast your line!{bait_text}", font=("Consolas", 12))
-		status_label.pack(pady=5)
-
-		instruction = tk.Label(win, text="Press CATCH when the marker is in the green zone!", font=("Consolas", 9))
-		instruction.pack()
-
-		# Canvas for timing bar
-		canvas = tk.Canvas(win, width=BAR_WIDTH + 40, height=BAR_HEIGHT + 20, bg="#1a1a2e")
-		canvas.pack(pady=10)
-
-		bar_x = 20
-		bar_y = 10
-
-		# Draw zones
-		# Background bar
-		canvas.create_rectangle(bar_x, bar_y, bar_x + BAR_WIDTH, bar_y + BAR_HEIGHT,
-								fill="#333355", outline="#555577")
-
-		# Good zone (yellow)
 		good_start = max(0, sweet_start - good_size)
 		good_end = min(1, sweet_end + good_size)
-		canvas.create_rectangle(bar_x + int(good_start * BAR_WIDTH), bar_y,
-								bar_x + int(good_end * BAR_WIDTH), bar_y + BAR_HEIGHT,
-								fill="#8B8000", outline="")
 
-		# Sweet spot (green)
-		canvas.create_rectangle(bar_x + int(sweet_start * BAR_WIDTH), bar_y,
-								bar_x + int(sweet_end * BAR_WIDTH), bar_y + BAR_HEIGHT,
-								fill="#00AA00", outline="")
+		bait_text = f" (using {bait.get('name', 'no bait')})" if self.current_bait else " (no bait)"
 
-		# Moving marker
-		marker = canvas.create_rectangle(bar_x, bar_y, bar_x + 6, bar_y + BAR_HEIGHT,
-										  fill="#FFFFFF", outline="#FFFF00")
-
-		# Animation state
-		state = {"pos": 0.0, "direction": 1, "running": True, "quality": "miss"}
-
-		speed = BAR_SPEED
-
-		def animate():
-			if not state["running"]:
-				return
-			# Move marker
-			state["pos"] += state["direction"] * speed * 0.02
-			if state["pos"] >= 1.0:
-				state["pos"] = 1.0
-				state["direction"] = -1
-			elif state["pos"] <= 0.0:
-				state["pos"] = 0.0
-				state["direction"] = 1
-
-			px = bar_x + int(state["pos"] * BAR_WIDTH)
-			canvas.coords(marker, px, bar_y, px + 6, bar_y + BAR_HEIGHT)
-			win.after(20, animate)
-
-		def on_catch():
-			if not state["running"]:
-				return
-			state["running"] = False
-			pos = state["pos"]
-
-			# Determine quality
-			if sweet_start <= pos <= sweet_end:
-				quality = "perfect"
-				color = "#00FF00"
-				text = "⭐ PERFECT CATCH! ⭐"
-			elif good_start <= pos <= good_end:
-				quality = "good"
-				color = "#FFFF00"
-				text = "✓ Good catch!"
-			else:
-				# Check how far from zones
-				dist = min(abs(pos - sweet_start), abs(pos - sweet_end))
-				if dist < 0.15:
-					quality = "ok"
-					color = "#FF8800"
-					text = "~ Okay catch"
-				else:
-					quality = "miss"
-					color = "#FF0000"
-					text = "✗ Missed! Poor catch..."
-
-			state["quality"] = quality
-			canvas.itemconfig(marker, fill=color)
-			status_label.config(text=text)
-			catch_btn.config(state="disabled")
-
-			# Process after a brief delay
-			win.after(1200, lambda: finish_catch(quality))
-
-		def finish_catch(quality):
-			result = self._process_catch(pool, quality)
-			# Append to game output
-			if hasattr(self.engine, 'gui') and self.engine.gui:
-				self.engine.gui.append_output(result)
-			win.destroy()
-
-		catch_btn = tk.Button(win, text="🎣 CATCH!", font=("Consolas", 14, "bold"),
-							   bg="#2255AA", fg="white", command=on_catch,
-							   width=15, height=1)
-		catch_btn.pack(pady=5)
-
-		# Keybind
-		win.bind("<space>", lambda e: on_catch())
-		win.bind("<Return>", lambda e: on_catch())
-
-		# Start animation
-		animate()
-		win.focus_force()
+		# Create the overlay and attach to the GUI
+		overlay = FishingTimingOverlay(
+			minigame=self,
+			pool=pool,
+			sweet_start=sweet_start, sweet_end=sweet_end,
+			good_start=good_start, good_end=good_end,
+			bait_text=bait_text,
+		)
+		gui = getattr(self.engine, 'gui', None)
+		if gui:
+			gui._fishing_overlay = overlay
 
 		bait_name = bait.get("name", "")
-		return f"🎣 You cast your line{f' with {bait_name}' if bait_name else ''}... (Use the fishing window!)"
+		return f"🎣 You cast your line{f' with {bait_name}' if bait_name else ''}... (Press SPACE to catch!)"
 
 	def _process_catch(self, pool, timing_quality):
 		"""Process the catch result and add to inventory."""
@@ -787,3 +683,158 @@ class FishingMinigame:
 		if isinstance(data, dict):
 			self.fish_caught_count = data.get("fish_caught_count", 0)
 			self.biggest_catch_value = data.get("biggest_catch_value", 0)
+
+
+# =====================================================================
+# FISHING TIMING BAR OVERLAY (Pygame)
+# =====================================================================
+
+class FishingTimingOverlay:
+	"""Rendered as an overlay by the main game loop.
+	Bouncing marker, press Space/Enter to catch."""
+
+	def __init__(self, minigame, pool, sweet_start, sweet_end,
+				 good_start, good_end, bait_text=""):
+		self.minigame = minigame
+		self.pool = pool
+		self.sweet_start = sweet_start
+		self.sweet_end = sweet_end
+		self.good_start = good_start
+		self.good_end = good_end
+		self.bait_text = bait_text
+
+		self.pos = 0.0
+		self.direction = 1
+		self.running = True
+		self.done = False
+		self.result_text = ""
+		self._finish_timer = 0.0
+		self._quality = None
+		self._quality_text = ""
+		self._marker_color = (255, 255, 255)
+		self._font = None
+		self._small_font = None
+
+	def _ensure_fonts(self):
+		if self._font is None:
+			import pygame
+			self._font = pygame.font.SysFont("segoeui", 16, bold=True)
+			self._small_font = pygame.font.SysFont("segoeui", 11)
+
+	def handle_event(self, event):
+		import pygame
+		if self.done or not self.running:
+			return
+		if event.type == pygame.KEYDOWN:
+			if event.key in (pygame.K_SPACE, pygame.K_RETURN):
+				self._catch()
+
+	def _catch(self):
+		self.running = False
+		pos = self.pos
+		if self.sweet_start <= pos <= self.sweet_end:
+			self._quality = "perfect"
+			self._marker_color = (0, 255, 0)
+			self._quality_text = "PERFECT CATCH!"
+		elif self.good_start <= pos <= self.good_end:
+			self._quality = "good"
+			self._marker_color = (255, 255, 0)
+			self._quality_text = "Good catch!"
+		else:
+			dist = min(abs(pos - self.sweet_start), abs(pos - self.sweet_end))
+			if dist < 0.15:
+				self._quality = "ok"
+				self._marker_color = (255, 136, 0)
+				self._quality_text = "Okay catch"
+			else:
+				self._quality = "miss"
+				self._marker_color = (255, 0, 0)
+				self._quality_text = "Missed! Poor catch..."
+
+	def update(self, dt):
+		if self.done:
+			return
+		if self.running:
+			self.pos += self.direction * BAR_SPEED * dt
+			if self.pos >= 1.0:
+				self.pos = 1.0
+				self.direction = -1
+			elif self.pos <= 0.0:
+				self.pos = 0.0
+				self.direction = 1
+		else:
+			self._finish_timer += dt
+			if self._finish_timer >= 1.2:
+				self._finish()
+
+	def _finish(self):
+		result = self.minigame._process_catch(self.pool, self._quality or "miss")
+		gui = getattr(self.minigame.engine, 'gui', None)
+		if gui:
+			gui.append(result)
+		self.done = True
+
+	def render(self, surface):
+		import pygame
+		self._ensure_fonts()
+
+		sw, sh = surface.get_size()
+		ow, oh = 420, 180
+		ox = (sw - ow) // 2
+		oy = (sh - oh) // 2
+
+		# Dim background
+		dim = pygame.Surface((sw, sh), pygame.SRCALPHA)
+		dim.fill((0, 0, 0, 120))
+		surface.blit(dim, (0, 0))
+
+		# Panel
+		pygame.draw.rect(surface, (20, 20, 40), (ox, oy, ow, oh), border_radius=8)
+		pygame.draw.rect(surface, (80, 80, 120), (ox, oy, ow, oh), 2, border_radius=8)
+
+		# Title
+		title = self._font.render(f"Fishing!{self.bait_text}", True, (200, 200, 255))
+		surface.blit(title, (ox + ow // 2 - title.get_width() // 2, oy + 10))
+
+		# Instruction
+		if self.running:
+			inst = self._small_font.render("Press SPACE when marker is in the green zone!", True, (170, 170, 170))
+		else:
+			inst = self._font.render(self._quality_text, True, self._marker_color)
+		surface.blit(inst, (ox + ow // 2 - inst.get_width() // 2, oy + 36))
+
+		# Bar area
+		bar_x = ox + 20
+		bar_y = oy + 65
+		bar_w = ow - 40
+		bar_h = 40
+
+		# Background bar
+		pygame.draw.rect(surface, (51, 51, 85), (bar_x, bar_y, bar_w, bar_h))
+		pygame.draw.rect(surface, (85, 85, 119), (bar_x, bar_y, bar_w, bar_h), 1)
+
+		# Good zone (yellow)
+		gx0 = bar_x + int(self.good_start * bar_w)
+		gx1 = bar_x + int(self.good_end * bar_w)
+		pygame.draw.rect(surface, (139, 128, 0), (gx0, bar_y, gx1 - gx0, bar_h))
+
+		# Sweet spot (green)
+		sx0 = bar_x + int(self.sweet_start * bar_w)
+		sx1 = bar_x + int(self.sweet_end * bar_w)
+		pygame.draw.rect(surface, (0, 170, 0), (sx0, bar_y, sx1 - sx0, bar_h))
+
+		# Marker
+		mx = bar_x + int(self.pos * bar_w)
+		pygame.draw.rect(surface, self._marker_color, (mx, bar_y, 6, bar_h))
+		pygame.draw.rect(surface, (255, 255, 0), (mx, bar_y, 6, bar_h), 1)
+
+		# Labels
+		lbl_perfect = self._small_font.render("Perfect", True, (0, 200, 0))
+		surface.blit(lbl_perfect, ((sx0 + sx1) // 2 - lbl_perfect.get_width() // 2, bar_y + bar_h + 4))
+
+		lbl_good = self._small_font.render("Good", True, (200, 200, 0))
+		surface.blit(lbl_good, ((gx0 + sx0) // 2 - lbl_good.get_width() // 2, bar_y + bar_h + 4))
+
+		# Catch button hint
+		hint = self._small_font.render("[SPACE] to catch!", True, (100, 150, 220))
+		surface.blit(hint, (ox + ow // 2 - hint.get_width() // 2, oy + oh - 30))

@@ -6,8 +6,6 @@ Test that dungeon system is properly initialized in GameEngine
 import json
 import os
 import sys
-import tkinter as tk
-
 # Add current directory to path
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -30,11 +28,7 @@ print("\n[Test 2] Initializing GameEngine...")
 try:
     from engine import GameEngine
     
-    # Create a minimal Tk root
-    root = tk.Tk()
-    root.withdraw()  # Hide the window
-    
-    engine = GameEngine(root=root)
+    engine = GameEngine()
     print("✓ GameEngine created")
 except Exception as e:
     print(f"✗ Error creating GameEngine: {e}")

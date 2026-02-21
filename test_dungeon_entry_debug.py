@@ -6,8 +6,6 @@ Test dungeon entry with full debug output to identify the error source
 import json
 import os
 import sys
-import tkinter as tk
-
 # Add current directory to path
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -51,10 +49,7 @@ except Exception as e:
 # Test 2: Initialize GameEngine
 print("\n[TEST 2] Initializing GameEngine...")
 try:
-    root = tk.Tk()
-    root.withdraw()
-    
-    engine = GameEngine(root=root)
+    engine = GameEngine()
     print("✓ GameEngine initialized")
     
     # Need to start a new game to initialize player

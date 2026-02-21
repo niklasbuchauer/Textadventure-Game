@@ -6,7 +6,7 @@ from engine import GameEngine, Room
 
 def test_exit_conversion():
     """Test that _convert_dungeon_room_to_world preserves special exit types."""
-    engine = GameEngine(world_file='world.json', root=None, gui=None)
+    engine = GameEngine(world_file='world.json', gui=None)
     
     test_room = {
         'name': 'Test Room',
@@ -42,7 +42,7 @@ def test_exit_conversion():
 
 def test_dungeon_entry_flow():
     """Test entering a fixed dungeon via the command handler."""
-    engine = GameEngine(world_file='world.json', root=None, gui=None)
+    engine = GameEngine(world_file='world.json', gui=None)
     engine.player = engine.__class__.__dict__  # Will call new_game
     result = engine.new_game()
     
@@ -95,7 +95,7 @@ def test_dungeon_entry_flow():
 
 def test_crafting_altar():
     """Test crafting altar interaction."""
-    engine = GameEngine(world_file='world.json', root=None, gui=None)
+    engine = GameEngine(world_file='world.json', gui=None)
     result = engine.new_game()
     cmd = engine.cmd
     
@@ -125,7 +125,7 @@ def test_crafting_altar():
 
 def test_all_three_dungeons():
     """Test entering and leaving all three dungeons."""
-    engine = GameEngine(world_file='world.json', root=None, gui=None)
+    engine = GameEngine(world_file='world.json', gui=None)
     engine.new_game()
     cmd = engine.cmd
     

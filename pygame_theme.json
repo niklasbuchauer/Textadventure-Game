@@ -1,0 +1,392 @@
+{
+    "defaults": {
+        "colours": {
+            "dark_bg": "#0a0a0a",
+            "normal_bg": "#1e1e1e",
+            "hovered_bg": "#2a2a2a",
+            "selected_bg": "#3a3a3a",
+            "active_bg": "#2e2e2e",
+            "disabled_bg": "#1a1a1a",
+            "normal_text": "#dcdcdc",
+            "hovered_text": "#ffffff",
+            "selected_text": "#ffffff",
+            "disabled_text": "#666666",
+            "normal_border": "#333333",
+            "hovered_border": "#555555",
+            "disabled_border": "#222222",
+            "link_text": "#87CEEB",
+            "link_hover": "#ADD8E6",
+            "text_shadow": "#000000"
+        },
+        "font": {
+            "name": "Courier New",
+            "size": "14"
+        }
+    },
+
+    "button": {
+        "colours": {
+            "normal_bg": "#1e1e1e",
+            "hovered_bg": "#2a2a2a",
+            "selected_bg": "#3a3a3a",
+            "active_bg": "#2e2e2e",
+            "disabled_bg": "#1a1a1a",
+            "normal_text": "#cccccc",
+            "hovered_text": "#ffffff",
+            "disabled_text": "#666666",
+            "normal_border": "#333333",
+            "hovered_border": "#555555"
+        },
+        "font": {
+            "name": "Courier New",
+            "size": "13"
+        },
+        "misc": {
+            "border_width": "1",
+            "shadow_width": "0",
+            "shape": "rounded_rectangle",
+            "shape_corner_radius": "3"
+        }
+    },
+
+    "#toolbar_button": {
+        "colours": {
+            "normal_bg": "#1e1e1e",
+            "hovered_bg": "#2a2a2a",
+            "active_bg": "#333333",
+            "normal_text": "#cccccc",
+            "hovered_text": "#ffffff"
+        },
+        "font": {
+            "name": "Courier New",
+            "size": "13"
+        },
+        "misc": {
+            "border_width": "0",
+            "shadow_width": "0",
+            "shape": "rounded_rectangle",
+            "shape_corner_radius": "3"
+        }
+    },
+
+    "#settings_button": {
+        "colours": {
+            "normal_bg": "#141414",
+            "hovered_bg": "#2a2a2a",
+            "normal_text": "#888888",
+            "hovered_text": "#FFD700"
+        },
+        "font": {
+            "name": "Segoe UI Symbol",
+            "size": "16"
+        },
+        "misc": {
+            "border_width": "0",
+            "shadow_width": "0"
+        }
+    },
+
+    "#hotbar_button": {
+        "colours": {
+            "normal_bg": "#1a2a3a",
+            "hovered_bg": "#2a3a4a",
+            "disabled_bg": "#2a2a2a",
+            "normal_text": "#42A5F5",
+            "hovered_text": "#ffffff",
+            "disabled_text": "#666666"
+        },
+        "font": {
+            "name": "Segoe UI",
+            "size": "12"
+        },
+        "misc": {
+            "border_width": "1",
+            "shadow_width": "0",
+            "shape": "rounded_rectangle",
+            "shape_corner_radius": "2"
+        }
+    },
+
+    "#hotbar_combat_button": {
+        "colours": {
+            "normal_bg": "#3a1a00",
+            "hovered_bg": "#4a2a10",
+            "normal_text": "#FF9800",
+            "hovered_text": "#ffffff"
+        },
+        "font": {
+            "name": "Segoe UI",
+            "size": "12"
+        },
+        "misc": {
+            "border_width": "1",
+            "shadow_width": "0"
+        }
+    },
+
+    "#hotbar_dimmed_button": {
+        "colours": {
+            "normal_bg": "#1a1a1a",
+            "hovered_bg": "#2a2a2a",
+            "normal_text": "#555555",
+            "hovered_text": "#888888"
+        },
+        "font": {
+            "name": "Segoe UI",
+            "size": "12"
+        },
+        "misc": {
+            "border_width": "1",
+            "shadow_width": "0"
+        }
+    },
+
+    "#panel_title": {
+        "colours": {
+            "normal_text": "#FFD700",
+            "dark_bg": "#141414",
+            "normal_bg": "#141414"
+        },
+        "font": {
+            "name": "Courier New",
+            "size": "12",
+            "bold": "1"
+        }
+    },
+
+    "#panel_lock_button": {
+        "colours": {
+            "normal_bg": "#141414",
+            "hovered_bg": "#2a2a2a",
+            "normal_text": "#888888",
+            "hovered_text": "#FF6B6B"
+        },
+        "font": {
+            "name": "Courier New",
+            "size": "12"
+        },
+        "misc": {
+            "border_width": "0",
+            "shadow_width": "0"
+        }
+    },
+
+    "text_entry_line": {
+        "colours": {
+            "dark_bg": "#2e2e2e",
+            "normal_bg": "#2e2e2e",
+            "selected_bg": "#4a4a4a",
+            "normal_text": "#ffffff",
+            "selected_text": "#ffffff",
+            "normal_border": "#444444",
+            "hovered_border": "#666666"
+        },
+        "font": {
+            "name": "Courier New",
+            "size": "14"
+        },
+        "misc": {
+            "border_width": "1",
+            "shadow_width": "0",
+            "shape": "rounded_rectangle",
+            "shape_corner_radius": "3"
+        }
+    },
+
+    "text_box": {
+        "colours": {
+            "dark_bg": "#1e1e1e",
+            "normal_bg": "#1e1e1e",
+            "normal_text": "#dcdcdc",
+            "link_text": "#87CEEB",
+            "link_hover": "#ADD8E6",
+            "normal_border": "#333333"
+        },
+        "font": {
+            "name": "Courier New",
+            "size": "14"
+        },
+        "misc": {
+            "border_width": "0",
+            "shadow_width": "0",
+            "shape": "rectangle"
+        }
+    },
+
+    "window": {
+        "colours": {
+            "dark_bg": "#0a0a0a",
+            "normal_bg": "#141414",
+            "normal_text": "#dcdcdc",
+            "normal_border": "#333333"
+        },
+        "font": {
+            "name": "Courier New",
+            "size": "14"
+        },
+        "misc": {
+            "border_width": "1",
+            "shadow_width": "0",
+            "shape": "rounded_rectangle",
+            "shape_corner_radius": "4"
+        }
+    },
+
+    "window.button": {
+        "colours": {
+            "normal_bg": "#1e1e1e",
+            "hovered_bg": "#2a2a2a",
+            "normal_text": "#cccccc",
+            "hovered_text": "#ffffff"
+        },
+        "misc": {
+            "border_width": "1",
+            "shadow_width": "0"
+        }
+    },
+
+    "selection_list": {
+        "colours": {
+            "dark_bg": "#1a1a1a",
+            "normal_bg": "#1e1e1e",
+            "hovered_bg": "#2a2a2a",
+            "selected_bg": "#3a3a3a",
+            "normal_text": "#dcdcdc",
+            "hovered_text": "#ffffff",
+            "selected_text": "#ffffff",
+            "normal_border": "#333333"
+        },
+        "font": {
+            "name": "Courier New",
+            "size": "14"
+        }
+    },
+
+    "label": {
+        "colours": {
+            "dark_bg": "#00000000",
+            "normal_bg": "#00000000",
+            "normal_text": "#dcdcdc"
+        },
+        "font": {
+            "name": "Courier New",
+            "size": "14"
+        },
+        "misc": {
+            "shadow_width": "0"
+        }
+    },
+
+    "#status_label": {
+        "colours": {
+            "normal_text": "#888888",
+            "dark_bg": "#00000000",
+            "normal_bg": "#00000000"
+        },
+        "font": {
+            "name": "Courier New",
+            "size": "12"
+        }
+    },
+
+    "#combat_player_label": {
+        "colours": {
+            "normal_text": "#98FB98",
+            "dark_bg": "#00000000",
+            "normal_bg": "#00000000"
+        },
+        "font": {
+            "name": "Courier New",
+            "size": "13",
+            "bold": "1"
+        }
+    },
+
+    "#combat_enemy_label": {
+        "colours": {
+            "normal_text": "#FF6B6B",
+            "dark_bg": "#00000000",
+            "normal_bg": "#00000000"
+        },
+        "font": {
+            "name": "Courier New",
+            "size": "13",
+            "bold": "1"
+        }
+    },
+
+    "#hotbar_label": {
+        "colours": {
+            "normal_text": "#888888",
+            "dark_bg": "#00000000",
+            "normal_bg": "#00000000"
+        },
+        "font": {
+            "name": "Segoe UI",
+            "size": "12",
+            "bold": "1"
+        }
+    },
+
+    "horizontal_slider": {
+        "colours": {
+            "dark_bg": "#141414",
+            "normal_bg": "#2e2e2e",
+            "hovered_bg": "#3a3a3a",
+            "selected_bg": "#4a4a4a",
+            "normal_text": "#dcdcdc",
+            "normal_border": "#444444"
+        }
+    },
+
+    "drop_down_menu": {
+        "colours": {
+            "dark_bg": "#141414",
+            "normal_bg": "#1e1e1e",
+            "hovered_bg": "#2a2a2a",
+            "selected_bg": "#3a3a3a",
+            "normal_text": "#dcdcdc",
+            "hovered_text": "#ffffff",
+            "normal_border": "#444444"
+        },
+        "font": {
+            "name": "Courier New",
+            "size": "14"
+        }
+    },
+
+    "panel": {
+        "colours": {
+            "dark_bg": "#141414",
+            "normal_bg": "#141414",
+            "normal_border": "#333333"
+        },
+        "misc": {
+            "border_width": "1",
+            "shadow_width": "0"
+        }
+    },
+
+    "scroll_bar": {
+        "colours": {
+            "dark_bg": "#0a0a0a",
+            "normal_bg": "#2a2a2a",
+            "hovered_bg": "#3a3a3a",
+            "selected_bg": "#4a4a4a",
+            "normal_border": "#333333"
+        }
+    },
+
+    "scroll_bar.button": {
+        "colours": {
+            "normal_bg": "#2a2a2a",
+            "hovered_bg": "#3a3a3a",
+            "normal_text": "#888888",
+            "hovered_text": "#cccccc"
+        },
+        "misc": {
+            "border_width": "0",
+            "shadow_width": "0"
+        }
+    }
+}

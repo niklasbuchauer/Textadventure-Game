@@ -834,23 +834,21 @@ def _debug_open_items_window(engine):
 	except ImportError as e:
 		return f"Items window not available: {e}"
 
-	# Get the root tkinter widget from the engine
-	root = None
-	if hasattr(engine, 'root'):
-		root = engine.root
-	elif hasattr(engine, 'master'):
-		root = engine.master
-	else:
-		return "Items window requires a running GUI (tkinter root not found)."
+	# Get the pygame app from the engine's GUI
+	app = None
+	gui = getattr(engine, 'gui', None)
+	if gui:
+		app = getattr(gui, 'app', None)
+	if not app:
+		return "Items window requires a running GUI."
 
 	# Close existing window if open
 	existing = getattr(engine, 'items_search_window', None)
 	if existing and existing.is_open():
-		existing.window.lift()
-		return "  Items search window is already open (brought to front)."
+		return "  Items search window is already open."
 
 	# Create and open new window
-	win = SearchableItemsWindow(root, game_engine=engine)
+	win = SearchableItemsWindow(app, game_engine=engine)
 	win.create_window()
 	engine.items_search_window = win
 	return "  Opened item database search window."
