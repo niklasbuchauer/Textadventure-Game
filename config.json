@@ -29,7 +29,7 @@
     "ui": {
         "timestamps": false,
         "max_messages": 50,
-        "layout": "side_by_side",
+        "layout": "single",
         "panels": {
             "main": true,
             "combat": true,
