@@ -299,7 +299,8 @@ def use_ability(player, ability_name):
         return False, f"Not enough mana!  {found['name']} requires {mana_cost} MP  (you have {current_mana}).", None
 
     if mana_cost > 0:
-        player.stats["mana"] = current_mana - mana_cost
+        if not player.state.get("debug_infinite_mana"):
+            player.stats["mana"] = current_mana - mana_cost
 
     effect = found.get("effect", "")
     if "cooldowns" not in player.state:
@@ -311,7 +312,10 @@ def use_ability(player, ability_name):
         "combat_poison", "combat_freeze_attack", "combat_damage_burn",
         "combat_damage_stun", "combat_heal", "combat_execute",
         "combat_bleed_attack", "guaranteed_flee", "buff_attack",
-        "extra_gold", "restore_mana"
+        "extra_gold", "restore_mana", "temp_defense",
+        # Traveling / cross-room abilities
+        "traveling_fireball", "chain_bounce", "seismic_wave",
+        "shadow_drift", "smoke_cascade",
     )
     if effect not in combat_effects:
         _apply_ability_effect(player, effect, found.get("duration", 1), found.get("value", 0))
@@ -434,22 +438,38 @@ from pygame_gui.elements import (
     UIButton, UILabel, UIWindow, UIImage, UITextEntryLine,
 )
 
-NODE_R = 18
+NODE_R = 11
 RING_GAP = 110
 LOGICAL_SIZE = 3000
 LCENTER = LOGICAL_SIZE // 2
 MINIMAP_W = 180
 
 CLASS_BG = {
-    "warrior": (15, 13, 8),
-    "rogue":   (8, 13, 15),
-    "mage":    (13, 8, 15),
+    "warrior": (6, 8, 18),    # deep navy cosmos
+    "rogue":   (8, 5, 16),    # deep violet void
+    "mage":    (4, 10, 18),   # deep teal nebula
+}
+
+# Per-class star tint layered onto white stars for atmosphere
+_CLASS_STAR_TINT = {
+    "warrior": (100, 120, 220),  # cool blue
+    "rogue":   (160, 100, 220),  # violet
+    "mage":    (60, 200, 220),   # teal
 }
 
 
 def _hex_to_rgb(h):
     h = h.lstrip("#")
     return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
+
+def _st_font(size: int, bold: bool = False) -> "pygame.font.Font":
+    """Load the best available medieval serif font, falling back gracefully."""
+    for name in ("Palatino Linotype", "Georgia", "Times New Roman"):
+        path = pygame.font.match_font(name)
+        if path:
+            return pygame.font.SysFont(name, size, bold=bold)
+    return pygame.font.Font(None, max(8, size + 4))
 
 
 class SkillTreeWindow:
@@ -498,11 +518,11 @@ class SkillTreeWindow:
         if self._fonts:
             return
         self._fonts = {
-            "title":  pygame.font.SysFont("segoeui", 12),
-            "bold":   pygame.font.SysFont("segoeui", 10),
-            "normal": pygame.font.SysFont("segoeui", 9),
-            "small":  pygame.font.SysFont("segoeui", 8),
-            "tiny":   pygame.font.SysFont("segoeui", 7),
+            "title":  _st_font(12),
+            "bold":   _st_font(10, bold=True),
+            "normal": _st_font(9),
+            "small":  _st_font(8),
+            "tiny":   _st_font(7),
         }
 
     def is_open(self):
@@ -804,6 +824,32 @@ class SkillTreeWindow:
         bg = CLASS_BG.get(cls_id, (13, 13, 13))
         surf.fill(bg)
 
+        # ── Starfield pass (seeded on canvas size — stable, no flicker) ───────
+        _srng  = random.Random(sw * 31337 + sh)
+        _stint = _CLASS_STAR_TINT.get(cls_id, (200, 200, 255))
+        _tr, _tg, _tb = _stint
+        # Tier 1 — 280 tiny 1×1 dim stars
+        for _ in range(280):
+            _sx  = _srng.randint(0, sw - 1)
+            _sy  = _srng.randint(0, sh - 1)
+            _sa  = _srng.randint(30, 110)
+            _sc  = ((_tr * _sa) // 255, (_tg * _sa) // 255, (_tb * _sa) // 255)
+            surf.set_at((_sx, _sy), _sc)
+        # Tier 2 — 100 small 2×2 medium stars
+        for _ in range(100):
+            _sx  = _srng.randint(1, sw - 2)
+            _sy  = _srng.randint(1, sh - 2)
+            _sa  = _srng.randint(80, 180)
+            _sc  = ((_tr * _sa) // 255, (_tg * _sa) // 255, (_tb * _sa) // 255)
+            pygame.draw.rect(surf, _sc, pygame.Rect(_sx, _sy, 2, 2))
+        # Tier 3 — 25 bright 3×3 feature stars
+        for _ in range(25):
+            _sx  = _srng.randint(2, sw - 3)
+            _sy  = _srng.randint(2, sh - 3)
+            _sa  = _srng.randint(150, 240)
+            _sc  = ((_tr * _sa) // 255, (_tg * _sa) // 255, (_tb * _sa) // 255)
+            pygame.draw.rect(surf, _sc, pygame.Rect(_sx, _sy, 3, 3))
+
         tree = get_tree_for_class(cls_id)
         unlocked = set(get_unlocked_skills(self.player))
         avail = {n["id"] for n in get_available_skills(self.player)}
@@ -824,7 +870,7 @@ class SkillTreeWindow:
             if r > 4:
                 center = (int(ccx), int(ccy))
                 if -r < ccx < sw + r and -r < ccy < sh + r:
-                    pygame.draw.circle(surf, (22, 22, 22), center, r, 1)
+                    pygame.draw.circle(surf, (18, 28, 58, 60), center, r, 1)
 
         # Branch separators & labels
         branch_counts = {}
@@ -844,7 +890,7 @@ class SkillTreeWindow:
             outer = (max_t + 0.5) * RING_GAP * z
             ex = ccx + outer * math.cos(a_line)
             ey = ccy + outer * math.sin(a_line)
-            sep_color = (24, 24, 24) if bname not in self._hidden_branches else (13, 13, 13)
+            sep_color = (25, 35, 65) if bname not in self._hidden_branches else (18, 20, 32)
             pygame.draw.line(surf, sep_color, (int(ccx), int(ccy)), (int(ex), int(ey)), 1)
 
             mid = math.radians((bdef["angle_start"] + bdef["angle_end"]) / 2)
@@ -873,13 +919,13 @@ class SkillTreeWindow:
                 both = nid in unlocked and pid in unlocked
                 on_path = (pid, nid) in self._path_edges or (nid, pid) in self._path_edges
                 if on_path:
-                    color = (255, 215, 0)
+                    color = (80, 160, 255)   # electric blue beam
                     w = 3
                 elif both:
-                    color = (58, 122, 58)
+                    color = (40, 100, 55)    # dim green chain
                     w = 2
                 else:
-                    color = (42, 42, 42)
+                    color = (20, 28, 50)     # dark space mortar
                     w = 1
                 pygame.draw.line(surf, color, (int(pcx), int(pcy)), (int(ncx), int(ncy)), w)
 
@@ -887,7 +933,6 @@ class SkillTreeWindow:
         nr = NODE_R * z
         pulse_t = abs((self._pulse_phase % 16) - 8) / 8.0
         pulse_alpha = 0.3 + 0.7 * pulse_t
-        pulse_color = (int(66 * pulse_alpha), int(165 * pulse_alpha), int(245 * pulse_alpha))
 
         icon_font = self._fonts["tiny"]
 
@@ -909,34 +954,35 @@ class SkillTreeWindow:
             is_on_path = nid in self._path_nodes if self._path_nodes else False
             dimmed = (bool(self._search_matches) and not is_search_match and not is_on_path) or branch_hidden
 
-            # State colours
+            # State colours — cosmic / nebula palette
             if nid in unlocked:
                 if node["type"] == "active":
-                    fill, out = (74, 42, 0), (255, 152, 0)
+                    fill, out = (55, 22, 8),  (220, 140, 40)   # amber supernova
                 else:
-                    fill, out = (26, 74, 26), (102, 187, 106)
+                    fill, out = (15, 48, 22), (60, 200, 100)   # emerald nebula
             elif nid in avail:
-                fill, out = (26, 58, 90), (66, 165, 245)
+                fill, out = (42, 52, 15),  (150, 220, 60)      # lime-green available
             else:
-                fill, out = (42, 42, 42), (68, 68, 68)
+                fill, out = (18, 22, 40),  (45, 55, 90)        # locked — dark space
 
             if dimmed:
-                fill = (26, 26, 26)
-                out = (42, 42, 42)
+                fill = (12, 14, 24)
+                out  = (28, 32, 50)
 
             # Search match glow
             if is_search_match:
                 gr = int(nr + 7)
-                pygame.draw.circle(surf, (255, 215, 0), (isx, isy), gr, 3)
+                pygame.draw.circle(surf, (255, 230, 60), (isx, isy), gr, 3)
 
             # Path highlight glow
             if is_on_path and not is_search_match:
                 gr = int(nr + 5)
-                pygame.draw.circle(surf, (0, 229, 255), (isx, isy), gr, 2)
+                pygame.draw.circle(surf, (80, 160, 255), (isx, isy), gr, 2)  # electric blue path
 
             # Available pulse glow
             if nid in avail and not dimmed:
-                gr = int(nr + 4 + pulse_t * 2)
+                gr = int(nr + 4 + pulse_t * 3)
+                pulse_color = (int(150 * pulse_alpha), int(220 * pulse_alpha), int(60 * pulse_alpha))  # lime nebula pulse
                 pygame.draw.circle(surf, pulse_color, (isx, isy), gr, 2)
 
             # Origin node is larger
@@ -957,11 +1003,11 @@ class SkillTreeWindow:
                 name = node["name"]
                 if z < 0.7 and len(name) > 10:
                     name = name[:8] + ".."
-                text_fill = (224, 224, 224)
+                text_fill = (210, 225, 255)   # cool white starlight
                 if dimmed:
-                    text_fill = (85, 85, 85)
+                    text_fill = (50, 55, 80)
                 elif is_search_match:
-                    text_fill = (255, 215, 0)
+                    text_fill = (255, 230, 60)
 
                 max_w = max(20, int(r * 2 - 4))
                 # Simple word wrapping for node names
@@ -986,43 +1032,36 @@ class SkillTreeWindow:
                     surf.blit(txt, (isx - txt.get_width() // 2, ty))
                     ty += self._fonts["tiny"].get_height()
 
-            # Active ability lightning bolt
+            # Active ability ✦ marker
             if node["type"] == "active" and z >= 0.5:
-                txt = icon_font.render("\u26a1", True, (255, 152, 0))
+                txt = icon_font.render("\u2726", True, (220, 140, 40))  # amber supernova ✦
                 surf.blit(txt, (isx - txt.get_width() // 2, isy + r + int(6 * z)))
 
         # Legend at bottom-left
         self._draw_legend(surf, sw, sh)
 
     def _draw_node_shape(self, surf, cls_id, cx, cy, r, fill, outline):
-        if cls_id == "warrior":
-            pts = []
-            for i in range(6):
-                a = math.radians(60 * i - 30)
-                pts.append((cx + int(r * math.cos(a)), cy + int(r * math.sin(a))))
-            pygame.draw.polygon(surf, fill, pts)
-            pygame.draw.polygon(surf, outline, pts, 2)
-        elif cls_id == "rogue":
-            pts = [(cx, cy - r), (cx + r, cy), (cx, cy + r), (cx - r, cy)]
-            pygame.draw.polygon(surf, fill, pts)
-            pygame.draw.polygon(surf, outline, pts, 2)
-        else:
-            pygame.draw.circle(surf, fill, (cx, cy), r)
-            pygame.draw.circle(surf, outline, (cx, cy), r, 2)
+        """Uniform circular nodes for all classes — cosmic starfield style."""
+        pygame.draw.circle(surf, fill, (cx, cy), r)
+        pygame.draw.circle(surf, outline, (cx, cy), r, 2)
+        # Tiny center dot for visual depth (slightly brighter fill)
+        if r >= 5:
+            cdot = (min(255, fill[0] + 40), min(255, fill[1] + 40), min(255, fill[2] + 40))
+            pygame.draw.circle(surf, cdot, (cx, cy), max(1, r // 3))
 
     def _draw_legend(self, surf, sw, sh):
         """Draw a small legend in the bottom-left corner."""
         items = [
-            ("Locked",    (42, 42, 42), (68, 68, 68)),
-            ("Available", (26, 58, 90), (66, 165, 245)),
-            ("Unlocked",  (26, 74, 26), (102, 187, 106)),
-            ("Active",    (74, 42, 0),  (255, 152, 0)),
+            ("Locked",    (18, 22, 40),   (45, 55, 90)),
+            ("Available", (42, 52, 15),   (150, 220, 60)),
+            ("Passive",   (15, 48, 22),   (60, 200, 100)),
+            ("Active",    (55, 22, 8),    (220, 140, 40)),
         ]
         x, y = 10, sh - 24
         for label, fill, out in items:
             pygame.draw.circle(surf, fill, (x + 6, y + 6), 6)
             pygame.draw.circle(surf, out, (x + 6, y + 6), 6, 1)
-            txt = self._fonts["tiny"].render(label, True, (136, 136, 136))
+            txt = self._fonts["tiny"].render(label, True, (140, 165, 220))  # steel-blue starlight
             surf.blit(txt, (x + 16, y + 1))
             x += txt.get_width() + 26
 
@@ -1058,10 +1097,10 @@ class SkillTreeWindow:
                 color = (255, 215, 0)
                 dr = 4
             elif nid in self._path_nodes:
-                color = (0, 229, 255)
+                color = (215, 175, 65)   # gold path highlight
                 dr = 3
             elif nid in unlocked:
-                color = (102, 187, 106)
+                color = (90, 145, 65)    # emerald unlocked
                 dr = 2
             else:
                 color = _hex_to_rgb(bdef.get("color", "#555555"))

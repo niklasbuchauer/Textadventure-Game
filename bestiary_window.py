@@ -1,58 +1,100 @@
-"""
-Bestiary Window (Pygame)
-========================
-Browse every enemy, mini-boss and boss in the game.
-Uses pygame_gui UIWindow with UISelectionList + UITextBox.
-"""
+# bestiary_window.py  –  Parchment book bestiary overlay
+#
+# Pure-pygame, no pygame_gui widgets.  Follows the same pattern as
+# journal_window.py for full visual consistency.
+#
+# Public interface:
+#   handle_event(event) -> bool      consumed?
+#   update(dt=0.016)
+#   draw(surface)
+#   is_open() -> bool
 
 import pygame
-import pygame_gui
-from pygame_gui.elements import (
-    UIButton, UILabel, UITextBox, UITextEntryLine,
-    UIWindow, UISelectionList, UIPanel,
-)
-import textwrap
-import html as html_module
+import math
+import random
 
-# ── Colour palette ──────────────────────────────────────────────────────────
-COLORS = {
-    "header":       "#ff4444",
-    "text":         "#cccccc",
-    "dim":          "#666666",
-    "bright":       "#ffffff",
-    "detail_key":   "#ff6644",
-    "stat_hp":      "#ff8888",
-    "stat_atk":     "#ffaa44",
-    "stat_def":     "#88aaff",
-    "stat_xp":      "#88ff88",
-    "stat_gold":    "#ffcc00",
-    "loot":         "#ffcc88",
-    "ability":      "#cc88ff",
-    "cat_crystal":  "#88ccff",
-    "cat_iron":     "#aaaaaa",
-    "cat_shadow":   "#cc88ff",
-    "cat_sunken":   "#88ddcc",
-    "cat_overworld":"#88ff88",
-    "cat_miniboss": "#ffcc44",
-    "cat_boss":     "#ff4444",
-    "cat_other":    "#888888",
+# ── Shared colour palette (mirrors journal_window.py) ────────────────────────
+C_PARCHMENT    = (238, 220, 178)
+C_PARCHMENT_L  = (248, 234, 196)
+C_INK          = ( 38,  22,   6)
+C_INK_MID      = ( 80,  50,  18)
+C_INK_LIGHT    = (130,  98,  50)
+C_HEADER       = (128,  30,  20)
+C_LEATHER      = ( 72,  38,  12)
+C_COVER        = ( 88,  50,  18)
+C_SPINE_LINE   = ( 52,  26,   8)
+C_SELECT_BG    = (210, 180, 118)
+C_DIVIDER      = (175, 152, 108)
+C_SEARCH_BORDER= (130,  98,  50)
+C_SEARCH_BG    = (228, 210, 168)
+
+# Category accent colours (ink-tinted)
+CAT_COLORS = {
+    "CRYSTAL CAVERNS":  ( 80, 110, 140),
+    "IRON HALLS":       (110, 110,  90),
+    "SHADOW DEPTHS":    (100,  70, 120),
+    "SUNKEN CATACOMBS": ( 70, 120, 110),
+    "OVERWORLD":        ( 70, 120,  70),
+    "MINI-BOSSES":      (160, 120,  40),
+    "BOSSES":           (148,  40,  30),
+    "OTHER":            ( 90,  90,  90),
 }
 
 CATEGORIES = [
-    ("CRYSTAL CAVERNS",  ["crystal_caverns"],  "cat_crystal"),
-    ("IRON HALLS",       ["iron_halls"],        "cat_iron"),
-    ("SHADOW DEPTHS",    ["shadow_depths"],     "cat_shadow"),
-    ("SUNKEN CATACOMBS", ["sunken_catacombs"],  "cat_sunken"),
-    ("OVERWORLD",        ["any"],               "cat_overworld"),
-    ("MINI-BOSSES",      ["__miniboss__"],      "cat_miniboss"),
-    ("BOSSES",           ["__boss__"],          "cat_boss"),
-    ("OTHER",            [],                    "cat_other"),
+    ("CRYSTAL CAVERNS",  ["crystal_caverns"]),
+    ("IRON HALLS",       ["iron_halls"]),
+    ("SHADOW DEPTHS",    ["shadow_depths"]),
+    ("SUNKEN CATACOMBS", ["sunken_catacombs"]),
+    ("OVERWORLD",        ["any"]),
+    ("MINI-BOSSES",      ["__miniboss__"]),
+    ("BOSSES",           ["__boss__"]),
+    ("OTHER",            []),
 ]
 CATEGORY_ORDER = [c[0] for c in CATEGORIES]
 
 
-def _esc(t):
-    return html_module.escape(str(t))
+# ── Easing helpers ────────────────────────────────────────────────────
+def _ease_out_cubic(t):
+    t = max(0.0, min(1.0, t))
+    return 1.0 - (1.0 - t) ** 3
+
+def _blend(col, bg, alpha):
+    a = max(0.0, min(1.0, alpha))
+    return tuple(int(c * a + b * (1 - a)) for c, b in zip(col[:3], bg[:3]))
+
+def _wrap_text(text, font, max_w):
+    words = str(text).split()
+    lines, cur = [], ""
+    for word in words:
+        test = (cur + " " + word).strip()
+        if font.size(test)[0] <= max_w:
+            cur = test
+        else:
+            if cur:
+                lines.append(cur)
+            cur = word
+    if cur:
+        lines.append(cur)
+    return lines or [str(text)]
+
+def _font_pick(size, bold=False):
+    for name in ("Palatino Linotype", "Book Antiqua", "Georgia",
+                 "Times New Roman", "serif"):
+        f = pygame.font.SysFont(name, size, bold=bold)
+        if f is not None:
+            return f
+    return pygame.font.Font(None, size)
+
+
+# ── Data helpers ────────────────────────────────────────────────────
+def _dungeon_to_cat(k):
+    return {
+        "crystal_caverns": "CRYSTAL CAVERNS",
+        "iron_halls":      "IRON HALLS",
+        "shadow_depths":   "SHADOW DEPTHS",
+        "sunken_catacombs":"SUNKEN CATACOMBS",
+        "any":             "OVERWORLD",
+    }.get(k, "OTHER")
 
 
 def _build_bestiary():
@@ -82,75 +124,78 @@ def _build_bestiary():
     return registry
 
 
-def _dungeon_to_cat(k):
-    return {"crystal_caverns": "CRYSTAL CAVERNS", "iron_halls": "IRON HALLS",
-            "shadow_depths": "SHADOW DEPTHS", "sunken_catacombs": "SUNKEN CATACOMBS",
-            "any": "OVERWORLD"}.get(k, "OTHER")
 
+# ═══════════════════════════════════════════════════════════════════════════════
+class BestiaryOverlay:
+    """
+    Full-screen parchment bestiary overlay.
+    Left page: search + creature list.  Right page: selected creature detail.
+    """
 
-class BestiaryWindow:
-    """Searchable bestiary overlay using pygame_gui."""
+    OPEN_DUR    = 0.38
+    CLOSE_DUR   = 0.26
+    CONTENT_DUR = 0.30
+    _SPOTS_SEED = 5519
 
-    def __init__(self, app):
-        self.app = app
-        self.manager = app.manager
-        self._registry = {}
-        self._filtered_ids = []
+    def __init__(self, gui):
+        self.gui = gui
+        self._alive   = True
+        self._closing = False
+        self._anim    = 0.0
+        self._cfade   = 0.0
 
-        W, H = app.width, app.height
-        ww, wh = 1020, 680
-        self.window = UIWindow(
-            rect=pygame.Rect((W - ww) // 2, (H - wh) // 2, ww, wh),
-            manager=self.manager,
-            window_display_title="Bestiary",
-            resizable=True,
-        )
-        iw = ww - 60
+        self._registry: dict = {}
+        self._flat:     list = []
+        self._sel_idx:  int  = -1
 
-        # Search bar
-        self._search = UITextEntryLine(
-            relative_rect=pygame.Rect(10, 10, iw - 120, 28),
-            manager=self.manager, container=self.window,
-            placeholder_text="Search creatures...",
-        )
-        self._status = UILabel(
-            relative_rect=pygame.Rect(iw - 100, 12, 100, 24),
-            text="Loading...", manager=self.manager, container=self.window,
-        )
+        self._search_text:   str  = ""
+        self._search_active: bool = False
+        self._scroll:        int  = 0
+        self._rows_visible:  int  = 0
 
-        # Left list
-        lw = int(iw * 0.38)
-        self._list = UISelectionList(
-            relative_rect=pygame.Rect(10, 46, lw, wh - 130),
-            item_list=[], manager=self.manager, container=self.window,
-        )
+        self._book_rect   = pygame.Rect(0, 0, 0, 0)
+        self._close_rect  = pygame.Rect(0, 0, 0, 0)
+        self._search_rect = pygame.Rect(0, 0, 0, 0)
+        self._row_rects: list = []
+        self._sf    = 1.0
+        self._dst_x = 0
+        self._dst_y = 0
 
-        # Right detail
-        self._detail = UITextBox(
-            html_text='<font color="#666666">Click a creature to see details.</font>',
-            relative_rect=pygame.Rect(lw + 18, 46, iw - lw - 18, wh - 130),
-            manager=self.manager, container=self.window,
-        )
+        self._fcache: dict = {}
+        self._load_data()
 
-        self._last_search = ""
-        self._load_registry()
+    # ── Lifecycle ──────────────────────────────────────────────────────────────
 
-    def is_open(self):
-        return self.window.alive()
+    def is_open(self) -> bool:
+        return self._alive
 
-    def _load_registry(self):
+    def close(self):
+        if not self._closing:
+            self._closing = True
+
+    # ── Fonts ──────────────────────────────────────────────────────────────────
+
+    def _f(self, size, bold=False):
+        key = (size, bold)
+        if key not in self._fcache:
+            self._fcache[key] = _font_pick(size, bold)
+        return self._fcache[key]
+
+    # ── Data ───────────────────────────────────────────────────────────────────
+
+    def _load_data(self):
         self._registry = _build_bestiary()
         self._apply_filter("")
 
     def _apply_filter(self, query):
-        query = query.lower()
-        if query:
+        q = query.lower().strip()
+        if q:
             matches = {
                 eid: d for eid, d in self._registry.items()
-                if query in eid.lower()
-                or query in d.get("name", "").lower()
-                or query in d.get("category", "").lower()
-                or query in d.get("description", "").lower()
+                if q in eid.lower()
+                or q in d.get("name", "").lower()
+                or q in d.get("category", "").lower()
+                or q in d.get("description", "").lower()
             }
         else:
             matches = self._registry
@@ -161,105 +206,406 @@ class BestiaryWindow:
         for g in groups:
             groups[g].sort(key=lambda x: x[1].get("name", x[0]).lower())
 
-        items = []
-        self._filtered_ids = []
-        total = 0
+        flat = []
         for cat_name in CATEGORY_ORDER:
             group = groups.get(cat_name)
             if not group:
                 continue
-            items.append(f"── {cat_name} ({len(group)}) ──")
-            self._filtered_ids.append(None)
+            flat.append((cat_name, None, f"{cat_name}  ({len(group)})"))
             for eid, d in group:
                 tier = d.get("tier", "normal")
-                icon = {"normal": "[E]", "miniboss": "[M]", "boss": "[B]"}[tier]
-                items.append(f"  {icon} {d.get('name', eid)}")
-                self._filtered_ids.append(eid)
-                total += 1
+                icon = {"normal": "·", "miniboss": "★", "boss": "☠"}[tier]
+                flat.append((None, eid, f"  {icon}  {d.get('name', eid)}"))
 
-        self._list.set_item_list(items)
-        self._status.set_text(f"{total} creatures")
+        self._flat   = flat
+        self._scroll = 0
+        if self._sel_idx >= len(flat):
+            self._sel_idx = -1
 
-        # Build direct text→id lookup for selection matching
-        self._text_to_eid = {}
-        for i, label in enumerate(items):
-            eid = self._filtered_ids[i]
-            if eid is not None:
-                self._text_to_eid[label] = eid
+    # ── Update ─────────────────────────────────────────────────────────────────
 
-    def handle_event(self, event):
-        if not self.window.alive():
+    def update(self, dt=0.016):
+        if self._closing:
+            self._anim = max(0.0, self._anim - dt / self.CLOSE_DUR)
+            if self._anim <= 0.0:
+                self._alive = False
+            return
+        self._anim  = min(1.0, self._anim  + dt / self.OPEN_DUR)
+        self._cfade = min(1.0, self._cfade + dt / self.CONTENT_DUR)
+
+    # ── Events ─────────────────────────────────────────────────────────────────
+
+    def handle_event(self, event) -> bool:
+        if not self._alive or self._closing:
             return False
 
-        # Search text changed
-        cur = self._search.get_text().strip()
-        if cur != self._last_search:
-            self._last_search = cur
-            self._apply_filter(cur)
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                self.close(); return True
+            if self._search_active:
+                if event.key == pygame.K_BACKSPACE:
+                    self._search_text = self._search_text[:-1]
+                    self._apply_filter(self._search_text)
+                    return True
+                elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                    self._search_active = False; return True
+                elif event.unicode and event.unicode.isprintable():
+                    self._search_text += event.unicode
+                    self._apply_filter(self._search_text)
+                    return True
+            if event.key == pygame.K_UP:
+                self._move_sel(-1); return True
+            if event.key == pygame.K_DOWN:
+                self._move_sel(1); return True
 
-        if event.type == pygame_gui.UI_SELECTION_LIST_NEW_SELECTION:
-            if event.ui_element == self._list:
-                sel = event.text
-                eid = self._text_to_eid.get(sel)
-                if eid and eid in self._registry:
-                    self._show_detail(eid, self._registry[eid])
-                return True
+        if event.type == pygame.MOUSEWHEEL:
+            self._scroll = max(0, self._scroll - event.y)
+            return True
+
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            pos = event.pos
+            if self._close_rect.collidepoint(pos):
+                self.close(); return True
+            if self._search_rect.collidepoint(pos):
+                self._search_active = True; return True
+            else:
+                self._search_active = False
+            for rect, fidx in self._row_rects:
+                if rect.collidepoint(pos):
+                    _, eid, _ = self._flat[fidx]
+                    if eid is not None:
+                        self._sel_idx = fidx
+                    return True
+            if not self._book_rect.collidepoint(pos):
+                self.close()
+            return True
+
         return False
 
-    def _show_detail(self, eid, d):
-        cat = d.get("category", "UNKNOWN")
-        _, _, ck = next((c for c in CATEGORIES if c[0] == cat), (None, None, "cat_other"))
-        tier = d.get("tier", "normal")
-        tier_label = {"normal": "CREATURE", "miniboss": "\u2605 MINI-BOSS",
-                      "boss": "\u2620 BOSS"}[tier]
-        tier_col = {"normal": "#aaaaaa", "miniboss": "#ffcc44", "boss": "#ff4444"}[tier]
-        cat_col = COLORS.get(ck, "#888888")
+    def _move_sel(self, delta):
+        ci_list = [i for i, (_, eid, _) in enumerate(self._flat) if eid is not None]
+        if not ci_list:
+            return
+        if self._sel_idx < 0 or self._sel_idx not in ci_list:
+            self._sel_idx = ci_list[0] if delta > 0 else ci_list[-1]
+        else:
+            ci = ci_list.index(self._sel_idx)
+            ci = max(0, min(len(ci_list) - 1, ci + delta))
+            self._sel_idx = ci_list[ci]
+        self._ensure_sel_visible()
 
-        lines = []
-        lines.append(f'<font color="#ffffff" size="4"><b>{_esc(d.get("name", eid))}</b></font>')
-        lines.append(f'<font color="#666666">{_esc(eid)}</font>')
-        lines.append(f'<font color="{tier_col}">{_esc(tier_label)}</font>'
-                      f'  <font color="{cat_col}">{_esc(cat)}</font>')
-        lines.append(f'<font color="#2a2a2a">{"─" * 42}</font>')
+    def _ensure_sel_visible(self):
+        if self._sel_idx < 0 or self._rows_visible == 0:
+            return
+        if self._sel_idx < self._scroll:
+            self._scroll = self._sel_idx
+        elif self._sel_idx >= self._scroll + self._rows_visible:
+            self._scroll = self._sel_idx - self._rows_visible + 1
+
+    # ── Draw ───────────────────────────────────────────────────────────────────
+
+    def draw(self, surface):
+        if not self._alive:
+            return
+        scale = _ease_out_cubic(self._anim)
+        if scale < 0.02:
+            return
+
+        sw, sh = surface.get_size()
+        BW = min(860, sw - 40)
+        BH = min(590, sh - 40)
+
+        bg_s = pygame.Surface((sw, sh), pygame.SRCALPHA)
+        bg_s.fill((0, 0, 0, int(165 * scale)))
+        surface.blit(bg_s, (0, 0))
+
+        # Pre-compute blit position BEFORE drawing so hover detection works
+        if scale < 0.995:
+            sbw = max(2, int(BW * scale))
+            sbh = max(2, int(BH * scale))
+            self._sf    = sbw / BW
+            self._dst_x = (sw - sbw) // 2
+            self._dst_y = (sh - sbh) // 2
+        else:
+            sbw = sbh = 0
+            self._sf    = 1.0
+            self._dst_x = (sw - BW) // 2
+            self._dst_y = (sh - BH) // 2
+
+        book_surf = pygame.Surface((BW, BH), pygame.SRCALPHA)
+        self._draw_book(book_surf, BW, BH)
+
+        if scale < 0.995:
+            scaled = pygame.transform.smoothscale(book_surf, (sbw, sbh))
+            surface.blit(scaled, (self._dst_x, self._dst_y))
+        else:
+            surface.blit(book_surf, (self._dst_x, self._dst_y))
+
+        # Translate rects from book-surface-local → screen coords
+        def _tr(r):
+            return pygame.Rect(int(self._dst_x + r.x * self._sf),
+                               int(self._dst_y + r.y * self._sf),
+                               max(1, int(r.width  * self._sf)),
+                               max(1, int(r.height * self._sf)))
+
+        self._book_rect   = pygame.Rect(self._dst_x, self._dst_y,
+                                         int(BW * self._sf), int(BH * self._sf))
+        self._close_rect  = _tr(self._close_rect)
+        self._search_rect = _tr(self._search_rect)
+        self._row_rects   = [(_tr(r), fi) for r, fi in self._row_rects]
+
+    # ── Core book draw ─────────────────────────────────────────────────────────
+
+    def _draw_book(self, surf, BW, BH):
+        MID = BW // 2
+        cf  = self._cfade
+
+        sh_s = pygame.Surface((BW + 28, BH + 28), pygame.SRCALPHA)
+        pygame.draw.rect(sh_s, (0, 0, 0, 85), pygame.Rect(16, 16, BW, BH), border_radius=10)
+        surf.blit(sh_s, (-14, -14))
+
+        pygame.draw.rect(surf, C_PARCHMENT,   pygame.Rect(0,       0, BW // 2 + 3, BH), border_radius=8)
+        pygame.draw.rect(surf, C_PARCHMENT_L, pygame.Rect(MID - 2, 0, BW // 2 + 2, BH), border_radius=8)
+
+        rng = random.Random(self._SPOTS_SEED)
+        spot_s = pygame.Surface((BW, BH), pygame.SRCALPHA)
+        for _ in range(130):
+            pygame.draw.circle(spot_s, (90, 60, 22, rng.randint(10, 30)),
+                               (rng.randint(6, BW - 6), rng.randint(6, BH - 6)),
+                               rng.randint(2, 7))
+        surf.blit(spot_s, (0, 0))
+
+        pygame.draw.rect(surf, C_LEATHER, pygame.Rect(MID - 11, 0, 22, BH))
+        pygame.draw.rect(surf, C_COVER,   pygame.Rect(MID - 4,  0,  4, BH))
+        for i in range(1, 7):
+            ly = int(BH * i / 7)
+            pygame.draw.rect(surf, C_SPINE_LINE, pygame.Rect(MID - 11, ly - 2, 22, 4), border_radius=1)
+
+        pygame.draw.rect(surf, C_COVER, pygame.Rect(0, 0, BW, BH), width=3, border_radius=8)
+
+        pad = 16
+        lf = pygame.Rect(pad,      pad, BW // 2 - pad - 14, BH - pad * 2)
+        rf = pygame.Rect(MID + 14, pad, BW // 2 - pad - 14, BH - pad * 2)
+        pygame.draw.rect(surf, C_INK_LIGHT, lf, width=1)
+        pygame.draw.rect(surf, C_INK_LIGHT, rf, width=1)
+
+        self._draw_left_page(surf, lf, cf)
+        self._draw_right_page(surf, rf, cf, 0, 0)
+
+        fade_a = int(255 * (1.0 - cf))
+        if fade_a > 4:
+            for rect, base in ((lf, C_PARCHMENT), (rf, C_PARCHMENT_L)):
+                fs = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+                fs.fill((*base, fade_a))
+                surf.blit(fs, (rect.x, rect.y))
+
+        cbr = pygame.Rect(BW - 34, 6, 26, 26)
+        sf = self._sf if self._sf else 1.0
+        mx_r, my_r = pygame.mouse.get_pos()
+        mx_l = (mx_r - self._dst_x) / sf
+        my_l = (my_r - self._dst_y) / sf
+        c_col = (190, 80, 60) if cbr.collidepoint(mx_l, my_l) else (148, 56, 40)
+        pygame.draw.rect(surf, c_col, cbr, border_radius=5)
+        _xs = self._f(13, bold=True).render("✕", True, (255, 238, 228))
+        surf.blit(_xs, _xs.get_rect(center=cbr.center))
+        self._close_rect = cbr  # book-local; translated to screen in draw()
+
+    # ── Left page ──────────────────────────────────────────────────────────────
+
+    def _draw_left_page(self, surf, frame, cf):
+        ink   = _blend(C_INK,       C_PARCHMENT, cf)
+        mid   = _blend(C_INK_MID,   C_PARCHMENT, cf)
+        head  = _blend(C_HEADER,    C_PARCHMENT, cf)
+        light = _blend(C_INK_LIGHT, C_PARCHMENT, cf)
+        div   = _blend(C_DIVIDER,   C_PARCHMENT, cf)
+
+        surf.blit(self._f(17, bold=True).render("Bestiary", True, head),
+                  (frame.x + 6, frame.y + 3))
+        pygame.draw.line(surf, div, (frame.x + 4, frame.y + 25),
+                         (frame.x + frame.width - 4, frame.y + 25), 1)
+
+        # Search bar
+        sb_y = frame.y + 31
+        sbr  = pygame.Rect(frame.x + 2, sb_y, frame.width - 4, 22)
+        self._search_rect = sbr  # book-local; translated to screen in draw()
+        pygame.draw.rect(surf, _blend(C_SEARCH_BG,     C_PARCHMENT, cf), sbr, border_radius=3)
+        pygame.draw.rect(surf, _blend(C_SEARCH_BORDER, C_PARCHMENT, cf), sbr, width=1, border_radius=3)
+        disp  = self._search_text[-28:] if self._search_text else "Search creatures…"
+        t_col = ink if self._search_text else light
+        ss    = self._f(10).render(disp, True, t_col)
+        surf.blit(ss, (sbr.x + 5, sbr.y + 4))
+        if self._search_active and int(pygame.time.get_ticks() / 530) % 2 == 0:
+            pygame.draw.line(surf, ink,
+                             (sbr.x + 5 + ss.get_width() + 1, sbr.y + 4),
+                             (sbr.x + 5 + ss.get_width() + 1, sbr.y + 18), 1)
+        pygame.draw.line(surf, div, (frame.x + 4, sb_y + 26),
+                         (frame.x + frame.width - 4, sb_y + 26), 1)
+
+        list_top = sb_y + 30
+        row_h    = 20
+        avail_h  = frame.bottom - list_top - 18
+        self._rows_visible = max(1, avail_h // row_h)
+
+        max_scroll = max(0, len(self._flat) - self._rows_visible)
+        self._scroll = max(0, min(self._scroll, max_scroll))
+
+        self._row_rects = []
+        y = list_top
+        # Transform mouse to book-local for hover detection
+        sf = self._sf if self._sf else 1.0
+        mx_s = int((pygame.mouse.get_pos()[0] - self._dst_x) / sf)
+        my_s = int((pygame.mouse.get_pos()[1] - self._dst_y) / sf)
+
+        for fi in range(self._scroll, min(self._scroll + self._rows_visible, len(self._flat))):
+            cat, eid, label = self._flat[fi]
+            abs_r = pygame.Rect(frame.x, y, frame.width, row_h)  # book-local
+
+            if eid is None:
+                cat_col = _blend(CAT_COLORS.get(cat, (90, 90, 90)), C_PARCHMENT, cf)
+                surf.blit(self._f(9, bold=True).render(label, True, cat_col),
+                          (frame.x + 4, y + 2))
+                pygame.draw.line(surf, _blend(C_DIVIDER, C_PARCHMENT, cf * 0.6),
+                                 (frame.x + 4, y + row_h - 1),
+                                 (frame.x + frame.width - 4, y + row_h - 1), 1)
+            else:
+                self._row_rects.append((abs_r, fi))
+                is_sel = (fi == self._sel_idx)
+                is_hov = abs_r.collidepoint(mx_s, my_s)
+                if is_sel:
+                    hs = pygame.Surface((frame.width, row_h), pygame.SRCALPHA)
+                    hs.fill((*C_SELECT_BG, int(175 * cf)))
+                    surf.blit(hs, (frame.x, y))
+                elif is_hov:
+                    hs = pygame.Surface((frame.width, row_h), pygame.SRCALPHA)
+                    hs.fill((*C_SELECT_BG, int(70 * cf)))
+                    surf.blit(hs, (frame.x, y))
+                surf.blit(self._f(10, bold=is_sel).render(label[:38], True,
+                                                           ink if is_sel else mid),
+                          (frame.x + 6, y + 4))
+            y += row_h
+
+        # Scrollbar
+        if len(self._flat) > self._rows_visible:
+            th = max(14, int(avail_h * self._rows_visible / len(self._flat)))
+            ty = list_top + int((avail_h - th) * self._scroll / max(1, max_scroll))
+            pygame.draw.rect(surf, light,
+                             pygame.Rect(frame.right - 5, list_top, 3, avail_h), border_radius=1)
+            pygame.draw.rect(surf, _blend(C_INK_MID, C_PARCHMENT, cf),
+                             pygame.Rect(frame.right - 5, ty, 3, th), border_radius=1)
+
+        n = sum(1 for _, eid, _ in self._flat if eid is not None)
+        surf.blit(self._f(10).render(f"{n} creatures  ·  Esc to close", True, light),
+                  (frame.x + 4, frame.bottom - 14))
+
+    # ── Right page ─────────────────────────────────────────────────────────────
+
+    def _draw_right_page(self, surf, frame, cf, ox, oy):
+        ink   = _blend(C_INK,       C_PARCHMENT_L, cf)
+        mid   = _blend(C_INK_MID,   C_PARCHMENT_L, cf)
+        head  = _blend(C_HEADER,    C_PARCHMENT_L, cf)
+        light = _blend(C_INK_LIGHT, C_PARCHMENT_L, cf)
+        div   = _blend(C_DIVIDER,   C_PARCHMENT_L, cf)
+
+        if self._sel_idx < 0 or self._sel_idx >= len(self._flat):
+            return self._draw_empty_right(surf, frame, head, mid, light, div)
+        _, eid, _ = self._flat[self._sel_idx]
+        if eid is None:
+            return self._draw_empty_right(surf, frame, head, mid, light, div)
+        d = self._registry.get(eid)
+        if not d:
+            return self._draw_empty_right(surf, frame, head, mid, light, div)
+
+        tier = d.get("tier", "normal")
+        tier_lbl = {"normal": "CREATURE", "miniboss": "★ MINI-BOSS", "boss": "☠ BOSS"}[tier]
+        tier_col = {"normal": _blend((100, 100, 100), C_PARCHMENT_L, cf),
+                    "miniboss": _blend((150, 120, 40), C_PARCHMENT_L, cf),
+                    "boss": _blend(C_HEADER, C_PARCHMENT_L, cf)}[tier]
+
+        surf.blit(self._f(16, bold=True).render(d.get("name", eid)[:34], True, head),
+                  (frame.x + 5, frame.y + 3))
+        pygame.draw.line(surf, div, (frame.x + 4, frame.y + 25),
+                         (frame.x + frame.width - 4, frame.y + 25), 1)
+
+        y = frame.y + 30
+        surf.blit(self._f(10).render(f"{tier_lbl}  ·  {d.get('category','OTHER')}", True, tier_col),
+                  (frame.x + 6, y)); y += 18
+        surf.blit(self._f(9).render(eid, True, light), (frame.x + 6, y)); y += 14
+        pygame.draw.line(surf, div, (frame.x + 4, y), (frame.x + frame.width - 4, y), 1); y += 6
 
         desc = d.get("description", "")
         if desc:
-            lines.append(f'<br><font color="{COLORS["detail_key"]}"><b>DESCRIPTION</b></font>')
-            for ln in textwrap.wrap(desc, width=52):
-                lines.append(f'<font color="#cccccc"> {_esc(ln)}</font>')
+            for line in _wrap_text(desc, self._f(10), frame.width - 12):
+                surf.blit(self._f(10).render(line, True, mid), (frame.x + 6, y))
+                y += 15
+                if y > frame.y + 120:
+                    break
+            y += 4
+        pygame.draw.line(surf, div, (frame.x + 4, y), (frame.x + frame.width - 4, y), 1); y += 6
 
-        hp = d.get("hp", "?"); atk = d.get("attack", "?")
-        dfn = d.get("defense", "?"); xp = d.get("xp_reward", "?")
+        surf.blit(self._f(11, bold=True).render("STATS", True, ink), (frame.x + 6, y)); y += 16
+
+        def _stat(label, val, col):
+            nonlocal y
+            ls = self._f(10, bold=True).render(f"{label}:", True, _blend(C_INK_MID, C_PARCHMENT_L, cf))
+            surf.blit(ls, (frame.x + 8, y))
+            surf.blit(self._f(10).render(str(val), True, col),
+                      (frame.x + 8 + ls.get_width() + 4, y))
+            y += 14
+
+        _stat("HP",      d.get("hp", "?"),      _blend((160,  70,  60), C_PARCHMENT_L, cf))
+        _stat("Attack",  d.get("attack", "?"),   _blend((165, 100,  40), C_PARCHMENT_L, cf))
+        _stat("Defense", d.get("defense", "?"),  _blend(( 70,  90, 160), C_PARCHMENT_L, cf))
+        _stat("XP",      d.get("xp_reward", "?"),_blend(( 60, 140,  60), C_PARCHMENT_L, cf))
         gold = d.get("gold_reward", "?")
-        lines.append(f'<br><font color="{COLORS["detail_key"]}"><b>STATS</b></font>')
-        lines.append(f'<font color="{COLORS["stat_hp"]}"> HP:      {hp}</font>')
-        lines.append(f'<font color="{COLORS["stat_atk"]}"> Attack:  {atk}</font>')
-        lines.append(f'<font color="{COLORS["stat_def"]}"> Defense: {dfn}</font>')
-        lines.append(f'<font color="{COLORS["stat_xp"]}"> XP:     {xp}</font>')
-        if isinstance(gold, (list, tuple)) and len(gold) == 2:
-            lines.append(f'<font color="{COLORS["stat_gold"]}"> Gold:    {gold[0]}–{gold[1]}</font>')
-        else:
-            lines.append(f'<font color="{COLORS["stat_gold"]}"> Gold:    {gold}</font>')
-
+        _stat("Gold",
+              f"{gold[0]}–{gold[1]}" if isinstance(gold, (list, tuple)) and len(gold) == 2 else gold,
+              _blend((175, 140, 40), C_PARCHMENT_L, cf))
         fr = d.get("floor_range")
         if fr:
-            lines.append(f'<font color="#cccccc"> Floors:  {fr[0]}–{fr[1]}</font>')
+            _stat("Floors", f"{fr[0]}–{fr[1]}", mid)
+
+        if y < frame.bottom - 60:
+            y += 4
+            pygame.draw.line(surf, div, (frame.x + 4, y), (frame.x + frame.width - 4, y), 1)
+            y += 6
 
         abilities = d.get("abilities") or []
-        if abilities:
-            lines.append(f'<br><font color="{COLORS["detail_key"]}"><b>ABILITIES</b></font>')
+        if abilities and y < frame.bottom - 55:
+            surf.blit(self._f(11, bold=True).render("ABILITIES", True, ink), (frame.x + 6, y)); y += 15
             for ab in abilities:
-                lines.append(f'<font color="{COLORS["ability"]}"> \u2022 {_esc(ab)}</font>')
+                if y > frame.bottom - 40:
+                    surf.blit(self._f(9).render("…", True, light), (frame.x + 8, y)); break
+                surf.blit(self._f(10).render(f"• {ab[:40]}", True,
+                                              _blend((110, 70, 140), C_PARCHMENT_L, cf)),
+                          (frame.x + 8, y)); y += 14
 
         loot = d.get("loot") or []
-        if loot:
-            lines.append(f'<br><font color="{COLORS["detail_key"]}"><b>LOOT TABLE</b></font>')
+        if loot and y < frame.bottom - 40:
+            y += 4
+            surf.blit(self._f(11, bold=True).render("LOOT", True, ink), (frame.x + 6, y)); y += 15
+            lc = _blend((100, 130, 70), C_PARCHMENT_L, cf)
             for entry in loot:
+                if y > frame.bottom - 20:
+                    break
                 if isinstance(entry, (list, tuple)) and len(entry) == 2:
-                    item_id, chance = entry
-                    pct = int(chance * 100)
-                    lines.append(f'<font color="{COLORS["loot"]}"> {pct:>3}%  {_esc(item_id)}</font>')
+                    txt_l = f"{int(entry[1] * 100):>3}%  {entry[0]}"
                 else:
-                    lines.append(f'<font color="{COLORS["loot"]}"> {_esc(entry)}</font>')
+                    txt_l = str(entry)
+                surf.blit(self._f(10).render(txt_l[:42], True, lc), (frame.x + 8, y)); y += 13
 
-        self._detail.set_text("<br>".join(lines))
+    def _draw_empty_right(self, surf, frame, head, mid, light, div):
+        surf.blit(self._f(16, bold=True).render("The Bestiary", True, head),
+                  (frame.x + 6, frame.y + 3))
+        pygame.draw.line(surf, div, (frame.x + 4, frame.y + 25),
+                         (frame.x + frame.width - 4, frame.y + 25), 1)
+        y = frame.y + 38
+        for line in ["", "Every creature in Estoria's",
+                     "Chronicles is catalogued here.",
+                     "", "Search by name, category,",
+                     "or description.", "",
+                     "Click a name to read details.",
+                     "", "", "— Esc to close —"]:
+            surf.blit(self._f(12).render(line, True, light if line.startswith("—") else mid),
+                      (frame.x + 8, y))
+            y += 18
+

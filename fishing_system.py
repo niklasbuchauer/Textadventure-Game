@@ -718,8 +718,12 @@ class FishingTimingOverlay:
 	def _ensure_fonts(self):
 		if self._font is None:
 			import pygame
-			self._font = pygame.font.SysFont("segoeui", 16, bold=True)
-			self._small_font = pygame.font.SysFont("segoeui", 11)
+			self._font       = pygame.font.SysFont("Courier New", 15, bold=True)
+			self._small_font = pygame.font.SysFont("Courier New", 11)
+		# store extra fields if not present
+		if not hasattr(self, '_anim_frame'):
+			self._anim_frame = 0
+			self._anim_t     = 0.0
 
 	def handle_event(self, event):
 		import pygame
@@ -754,6 +758,14 @@ class FishingTimingOverlay:
 	def update(self, dt):
 		if self.done:
 			return
+		# Advance ASCII animation frame
+		if not hasattr(self, '_anim_frame'):
+			self._anim_frame = 0
+			self._anim_t     = 0.0
+		self._anim_t += dt
+		if self._anim_t >= 0.25:
+			self._anim_t   = 0.0
+			self._anim_frame += 1
 		if self.running:
 			self.pos += self.direction * BAR_SPEED * dt
 			if self.pos >= 1.0:
@@ -764,7 +776,7 @@ class FishingTimingOverlay:
 				self.direction = 1
 		else:
 			self._finish_timer += dt
-			if self._finish_timer >= 1.2:
+			if self._finish_timer >= 1.8:
 				self._finish()
 
 	def _finish(self):
@@ -778,63 +790,127 @@ class FishingTimingOverlay:
 		import pygame
 		self._ensure_fonts()
 
+		# Try to load ASCII art helpers (graceful fallback to legacy render)
+		_ascii_ok = False
+		try:
+			from ascii_art import (ANIMATION_FRAMES, render_ascii_block,
+			                       draw_dim_overlay, draw_panel, render_label,
+			                       _ensure_fonts as _af)
+			_af()
+			_ascii_ok = True
+		except ImportError:
+			pass
+
 		sw, sh = surface.get_size()
-		ow, oh = 420, 180
+
+		if not _ascii_ok:
+			# ─── Fallback legacy render (unchanged) ───────────────────────────
+			ow, oh = 420, 180
+			ox = (sw - ow) // 2
+			oy = (sh - oh) // 2
+			dim = pygame.Surface((sw, sh), pygame.SRCALPHA)
+			dim.fill((0, 0, 0, 120))
+			surface.blit(dim, (0, 0))
+			pygame.draw.rect(surface, (20, 20, 40), (ox, oy, ow, oh), border_radius=8)
+			pygame.draw.rect(surface, (80, 80, 120), (ox, oy, ow, oh), 2, border_radius=8)
+			title = self._font.render(f"Fishing!{self.bait_text}", True, (200, 200, 255))
+			surface.blit(title, (ox + ow // 2 - title.get_width() // 2, oy + 10))
+			if self.running:
+				inst = self._small_font.render("Press SPACE when marker is in the green zone!", True, (170, 170, 170))
+			else:
+				inst = self._font.render(self._quality_text, True, self._marker_color)
+			surface.blit(inst, (ox + ow // 2 - inst.get_width() // 2, oy + 36))
+			bar_x = ox + 20; bar_y = oy + 65; bar_w = ow - 40; bar_h = 40
+			pygame.draw.rect(surface, (51, 51, 85), (bar_x, bar_y, bar_w, bar_h))
+			gx0 = bar_x + int(self.good_start * bar_w);  gx1 = bar_x + int(self.good_end * bar_w)
+			pygame.draw.rect(surface, (139, 128, 0), (gx0, bar_y, gx1 - gx0, bar_h))
+			sx0 = bar_x + int(self.sweet_start * bar_w); sx1 = bar_x + int(self.sweet_end * bar_w)
+			pygame.draw.rect(surface, (0, 170, 0), (sx0, bar_y, sx1 - sx0, bar_h))
+			mx = bar_x + int(self.pos * bar_w)
+			pygame.draw.rect(surface, self._marker_color, (mx, bar_y, 6, bar_h))
+			hint = self._small_font.render("[SPACE] to catch!", True, (100, 150, 220))
+			surface.blit(hint, (ox + ow // 2 - hint.get_width() // 2, oy + oh - 30))
+			return
+
+		# ─── Upgraded ASCII render ─────────────────────────────────────────────
+		ow, oh = 540, 300
 		ox = (sw - ow) // 2
 		oy = (sh - oh) // 2
 
-		# Dim background
-		dim = pygame.Surface((sw, sh), pygame.SRCALPHA)
-		dim.fill((0, 0, 0, 120))
-		surface.blit(dim, (0, 0))
+		draw_dim_overlay(surface, 145)
+		draw_panel(surface, (ox, oy, ow, oh), title=f"FISHING{self.bait_text}")
 
-		# Panel
-		pygame.draw.rect(surface, (20, 20, 40), (ox, oy, ow, oh), border_radius=8)
-		pygame.draw.rect(surface, (80, 80, 120), (ox, oy, ow, oh), 2, border_radius=8)
+		# Fisher animation (left side)
+		fisher_frames = ANIMATION_FRAMES.get(
+			"fish_jump" if not self.running else "fisher_cast", [[]])
+		fisher_frame  = fisher_frames[getattr(self, '_anim_frame', 0) % max(len(fisher_frames), 1)]
+		render_ascii_block(surface, fisher_frame, ox + 18, oy + 50,
+		                   color=(100, 180, 255) if self.running else (255, 200, 60))
 
-		# Title
-		title = self._font.render(f"Fishing!{self.bait_text}", True, (200, 200, 255))
-		surface.blit(title, (ox + ow // 2 - title.get_width() // 2, oy + 10))
+		# Water ripple line (ASCII)
+		ripple_chars = ["~  ~  ~  ~  ~", "  ~  ~  ~  ~ ", " ~  ~~  ~   ~"]
+		ripple = ripple_chars[getattr(self, '_anim_frame', 0) % 3]
+		rip_surf = self._small_font.render(ripple, True, (60, 120, 200))
+		surface.blit(rip_surf, (ox + 18, oy + 50 + len(fisher_frame) * 14 + 4))
 
-		# Instruction
-		if self.running:
-			inst = self._small_font.render("Press SPACE when marker is in the green zone!", True, (170, 170, 170))
-		else:
-			inst = self._font.render(self._quality_text, True, self._marker_color)
-		surface.blit(inst, (ox + ow // 2 - inst.get_width() // 2, oy + 36))
-
-		# Bar area
+		# ── Timing bar (block characters + pygame rects) ──────────────────────
 		bar_x = ox + 20
-		bar_y = oy + 65
+		bar_y = oy + 185
 		bar_w = ow - 40
-		bar_h = 40
+		bar_h = 32
 
-		# Background bar
-		pygame.draw.rect(surface, (51, 51, 85), (bar_x, bar_y, bar_w, bar_h))
-		pygame.draw.rect(surface, (85, 85, 119), (bar_x, bar_y, bar_w, bar_h), 1)
+		# Background
+		pygame.draw.rect(surface, (20, 30, 50), (bar_x, bar_y, bar_w, bar_h), border_radius=5)
 
-		# Good zone (yellow)
+		# Good zone
 		gx0 = bar_x + int(self.good_start * bar_w)
-		gx1 = bar_x + int(self.good_end * bar_w)
-		pygame.draw.rect(surface, (139, 128, 0), (gx0, bar_y, gx1 - gx0, bar_h))
+		gx1 = bar_x + int(self.good_end   * bar_w)
+		pygame.draw.rect(surface, (120, 100, 0), (gx0, bar_y, gx1 - gx0, bar_h), border_radius=3)
 
-		# Sweet spot (green)
+		# Sweet zone
 		sx0 = bar_x + int(self.sweet_start * bar_w)
-		sx1 = bar_x + int(self.sweet_end * bar_w)
-		pygame.draw.rect(surface, (0, 170, 0), (sx0, bar_y, sx1 - sx0, bar_h))
+		sx1 = bar_x + int(self.sweet_end   * bar_w)
+		pygame.draw.rect(surface, (0, 150, 0),   (sx0, bar_y, sx1 - sx0, bar_h), border_radius=3)
+
+		# Block-char overlay for texture
+		total_cells = (bar_w - 2) // 8
+		bar_str = ""
+		for i in range(total_cells):
+			frac = i / max(total_cells - 1, 1)
+			if self.sweet_start <= frac <= self.sweet_end:
+				bar_str += "▓"
+			elif self.good_start <= frac <= self.good_end:
+				bar_str += "▒"
+			else:
+				bar_str += "░"
+		blk_surf = self._small_font.render(bar_str, True, (80, 80, 80))
+		surface.blit(blk_surf, (bar_x + 1, bar_y + bar_h // 2 - blk_surf.get_height() // 2))
 
 		# Marker
 		mx = bar_x + int(self.pos * bar_w)
-		pygame.draw.rect(surface, self._marker_color, (mx, bar_y, 6, bar_h))
-		pygame.draw.rect(surface, (255, 255, 0), (mx, bar_y, 6, bar_h), 1)
+		pygame.draw.rect(surface, self._marker_color, (mx - 3, bar_y - 4, 6, bar_h + 8), border_radius=3)
+		pygame.draw.rect(surface, (255, 255, 200), (mx - 3, bar_y - 4, 6, bar_h + 8), 1, border_radius=3)
 
-		# Labels
-		lbl_perfect = self._small_font.render("Perfect", True, (0, 200, 0))
-		surface.blit(lbl_perfect, ((sx0 + sx1) // 2 - lbl_perfect.get_width() // 2, bar_y + bar_h + 4))
+		# Border
+		pygame.draw.rect(surface, (60, 80, 120), (bar_x, bar_y, bar_w, bar_h), 2, border_radius=5)
 
-		lbl_good = self._small_font.render("Good", True, (200, 200, 0))
-		surface.blit(lbl_good, ((gx0 + sx0) // 2 - lbl_good.get_width() // 2, bar_y + bar_h + 4))
+		# Zone labels inside bar
+		lbl_sw = self._small_font.render("●SWEET", True, (0, 230, 0))
+		surface.blit(lbl_sw, ((sx0 + sx1) // 2 - lbl_sw.get_width() // 2,
+		                       bar_y + bar_h // 2 - lbl_sw.get_height() // 2))
 
-		# Catch button hint
-		hint = self._small_font.render("[SPACE] to catch!", True, (100, 150, 220))
-		surface.blit(hint, (ox + ow // 2 - hint.get_width() // 2, oy + oh - 30))
+		# ── Status text ───────────────────────────────────────────────────────
+		if self.running:
+			render_label(surface, "Press  [SPACE]  when marker hits the sweet zone!",
+			             ox + ow // 2, oy + 155, color=(170, 200, 255))
+		else:
+			render_label(surface, self._quality_text,
+			             ox + ow // 2, oy + 155, color=self._marker_color)
+
+		# ── Catch hint ────────────────────────────────────────────────────────
+		if self.running:
+			render_label(surface, "[SPACE] — cast!",
+			             ox + ow // 2, oy + oh - 28, color=(80, 120, 200), small=True)
+		else:
+			render_label(surface, "Reeling in...",
+			             ox + ow // 2, oy + oh - 28, color=(140, 140, 180), small=True)

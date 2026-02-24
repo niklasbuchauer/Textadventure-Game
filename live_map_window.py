@@ -8,6 +8,7 @@ displayed inside a pygame_gui UIWindow via UIImage.
 
 import re
 import math
+import random
 import pygame
 import pygame_gui
 from pygame_gui.elements import (
@@ -19,69 +20,90 @@ class LiveMapWindow:
     """Graphical map window using pygame drawing + UIWindow overlay."""
 
     # ── colour palette ──────────────────────────────────────────────
+    # ── medieval parchment colour palette ───────────────────────────
     COLORS = {
-        "bg":                 "#0e0c09",   # dungeon: dark stone
-        "ocean":              "#0d1a26",   # deep sea
-        "land":               "#1e1a10",   # dark parchment land base
-        "grid":               "#1a1a1a",
-        "connection":         "#2c2518",   # unvisited trail (barely visible)
-        "connection_border":  "#1a1208",   # road shadow undercoat
-        "connection_visited": "#7a5c28",   # travelled dirt road
-        "connection_vis_hi":  "#a07838",   # road highlight
-        "text":               "#d4b896",   # parchment ink
-        "text_dim":           "#4a3e2e",   # dim parchment
-        # room markers
-        "current_fill":       "#f5c842",   # golden
-        "current_outline":    "#ff9900",   # amber
-        "current_glow":       "#ff6600",   # orange glow ring
-        "visited_fill":       "#2a3a1e",
-        "visited_outline":    "#5a8a3a",
-        "unexplored_fill":    "#1e1a12",
-        "unexplored_dot":     "#3a3028",
-        "entrance_fill":      "#1a2e3e",
-        "entrance_outline":   "#4499cc",
-        "stairs_fill":        "#1e1030",
-        "stairs_outline":     "#9955cc",
-        "treasure_fill":      "#2e2208",
-        "treasure_outline":   "#cc9922",
-        "dungeon_entrance_fill":    "#2a0e0e",
-        "dungeon_entrance_outline": "#cc3322",
+        # backgrounds
+        "bg":                 "#2e2618",   # dungeon: dark stone
+        "ocean":              "#b8cfd8",   # aged sea — pale blue-grey
+        "ocean_deep":         "#8aaebb",   # deeper ocean
+        "ocean_lines":        "#9bbac6",   # cartouche grid lines on sea
+        "land":               "#e2c988",   # warm aged parchment cream
+        "land_inner":         "#ead8a0",   # inner land lighter
+        "land_shadow":        "#c4aa6c",   # land edge vignette
+        "grid":               "#c8b480",
+        # roads / connections
+        "connection":         "#c8b490",   # unvisited trail — faint dust
+        "connection_border":  "#6e4820",   # road border ink
+        "connection_visited": "#7a4e1c",   # worn dirt road
+        "connection_vis_hi":  "#a87030",   # road highlight
+        # text
+        "text":               "#2c1804",   # iron-gall ink
+        "text_dim":           "#9a8060",   # fog label
+        "text_label_bg":      "#ecddb0",   # label parchment backing
+        # player marker
+        "current_fill":       "#be1818",   # heraldic red
+        "current_outline":    "#7a0c0c",   # dark red outline
+        "current_glow":       "#e06028",   # warm pulse
+        # visited
+        "visited_fill":       "#d8c48c",
+        "visited_outline":    "#7a5828",
+        # fog of war
+        "unexplored_fill":    "#ccb87c",
+        "unexplored_dot":     "#b8a46a",
+        # special tags
+        "entrance_fill":      "#cad8b8",
+        "entrance_outline":   "#4e7830",
+        "stairs_fill":        "#d4cce0",
+        "stairs_outline":     "#6850a0",
+        "treasure_fill":      "#f0e090",
+        "treasure_outline":   "#a07818",
+        "dungeon_entrance_fill":    "#c0a888",
+        "dungeon_entrance_outline": "#6e2010",
         # UI
-        "header_fg":          "#c8a050",
-        "stats_bg":           "#0e0c09",
-        "boat_line":          "#2255aa",
-        "boat_line_hi":       "#4488dd",
+        "header_fg":          "#5a2e08",
+        "stats_bg":           "#f0e4c0",
+        "boat_line":          "#3a6888",
+        "boat_line_hi":       "#7aaac8",
+        # decoration
+        "ink":                "#2c1804",
+        "ink_mid":            "#7a5028",
+        "border_outer":       "#7a5028",
+        "border_inner":       "#a87838",
+        "compass_fg":         "#5c2e08",
+        "compass_bg":         "#ecddb0",
+        "dungeon_wall":       "#3a3028",
+        "dungeon_stone":      "#484038",
     }
 
-    # ── region colour themes (fill, accent) ──
+    # ── region colour themes (fill, ink-outline) — parchment naturalistic ──
     REGION_COLORS = {
-        "forest":    ("#182e12", "#4a8a32"),
-        "swamp":     ("#141824", "#6633aa"),
-        "mountain":  ("#1a1e2a", "#6677aa"),
-        "village":   ("#2e2410", "#c8973c"),
-        "river":     ("#0e1e2e", "#3378aa"),
-        "graveyard": ("#200c0c", "#884433"),
-        "ruins":     ("#221808", "#aa7733"),
-        "building":  ("#151828", "#556699"),
-        "desert":    ("#2e2610", "#cc9933"),
-        "tundra":    ("#141e2e", "#6699bb"),
-        "coast":     ("#0e2030", "#3399aa"),
-        "castle":    ("#201428", "#9966bb"),
-        "dock":      ("#101428", "#4466aa"),
-        "sunstone":  ("#2a2008", "#ddaa33"),
-        "emerald":   ("#0c2e10", "#33bb44"),
-        "stormbreak":("#101428", "#5566cc"),
-        "cinderforge":("#2a1008", "#cc5522"),
-        "dreadmist": ("#1e0818", "#884488"),
-        "wyrmscale": ("#2a1c08", "#bb7722"),
-        "abyssal":   ("#100828", "#6633bb"),
-        "default":   ("#182410", "#4a7a34"),
+        "forest":     ("#a0bf7c", "#3c6018"),
+        "swamp":      ("#90a882", "#305038"),
+        "mountain":   ("#c0b4a0", "#706050"),
+        "village":    ("#d8c484", "#886018"),
+        "river":      ("#98c0d0", "#2e6888"),
+        "graveyard":  ("#b0a8a0", "#505050"),
+        "ruins":      ("#c8b888", "#786028"),
+        "building":   ("#c0c0cc", "#486080"),
+        "desert":     ("#e0c87c", "#987020"),
+        "tundra":     ("#c8d8e4", "#5888a4"),
+        "coast":      ("#90bcd0", "#286882"),
+        "castle":     ("#c0b0c8", "#604890"),
+        "dock":       ("#98b8cc", "#2c5878"),
+        "sunstone":   ("#e4d07c", "#a07818"),
+        "emerald":    ("#84c898", "#186838"),
+        "stormbreak": ("#98a8c4", "#284890"),
+        "cinderforge":("#d09078", "#882810"),
+        "dreadmist":  ("#a898b8", "#503870"),
+        "wyrmscale":  ("#c8b084", "#806018"),
+        "abyssal":    ("#8888b0", "#282870"),
+        "default":    ("#c8b888", "#786038"),
     }
 
     ROOM_RADIUS = 14
     MIN_SPACING = 80
-    ZOOM_MIN = 0.4
-    ZOOM_MAX = 2.5
+    ZOOM_MIN = 0.05
+    ZOOM_MAX = 0.69
     ZOOM_STEP = 0.15
 
     # ── construction ────────────────────────────────────────────────
@@ -109,7 +131,7 @@ class LiveMapWindow:
         self.visited_rooms: set = set()
         self.reveal_all = False
 
-        self._zoom = 1.0
+        self._zoom = self.ZOOM_MAX
         self._pan_x = 0.0
         self._pan_y = 0.0
         self._drag_start = None
@@ -123,7 +145,15 @@ class LiveMapWindow:
         self._needs_redraw = True
         self._font_cache: dict = {}         # keyed by int size
         self._text_surf_cache: dict = {}    # keyed by (text, color_tuple, size)
-        self._hex_pts_cache: dict = {}      # radius → list of (dx,dy) offsets for dungeon hexagon
+        self._hex_pts_cache: dict = {}      # radius -> list of (dx,dy) offsets for dungeon hexagon
+
+        # Island-cluster cache: avoids O(n^2) proximity recomputation each frame.
+        # Keyed on (spacing, frozenset(room_ids)); invalidated when zoom or rooms change.
+        self._island_cache_kv = None        # ((spacing, frozenset), [frozenset, ...])
+        # Actual screen-px spacing from last _compute_layout — used for cluster threshold
+        self._last_layout_spacing = 0.0
+        # Pre-computed wave jitter offsets — built once, reused every frame (~27x speedup)
+        self._wave_jitter_table = None      # list of (gx_idx, gy_idx, jx_off, jy_off)
 
         # Pre-compute RGB colour tuples once so _c() / _hex_to_rgb() are O(1)
         self._rgb_colors = {k: self._hex_to_rgb(v) for k, v in self.COLORS.items()}
@@ -139,10 +169,20 @@ class LiveMapWindow:
     def _init_fonts(self):
         if self._font_label is not None:
             return
-        self._font_label = pygame.font.SysFont("consolas", 9)
-        self._font_icon  = pygame.font.SysFont("consolas", 14)
-        self._font_legend = pygame.font.SysFont("consolas", 8)
-        self._font_header = pygame.font.SysFont("consolas", 12)
+        # Try medieval-feeling faces first, fall back to generic serif
+        def _best(size):
+            for name in ("palatino linotype", "palatino", "georgia",
+                         "times new roman", "serif"):
+                try:
+                    f = pygame.font.SysFont(name, size)
+                    return f
+                except Exception:
+                    pass
+            return pygame.font.SysFont(None, size)
+        self._font_label  = _best(9)
+        self._font_icon   = _best(14)
+        self._font_legend = _best(8)
+        self._font_header = _best(13)
 
     # ── window lifecycle ────────────────────────────────────────────
     def create_window(self, x_offset=200, y_offset=100):
@@ -292,13 +332,13 @@ class LiveMapWindow:
                 self._reset_view()
             return
 
-        # Mouse wheel zoom over map area
+        # Mouse wheel zoom over map area — zooms toward cursor position
         if event.type == pygame.MOUSEWHEEL:
             if self._is_mouse_over_map():
                 if event.y > 0:
-                    self._zoom_in()
+                    self._apply_zoom_at(1.20, pygame.mouse.get_pos())
                 elif event.y < 0:
-                    self._zoom_out()
+                    self._apply_zoom_at(1.0 / 1.20, pygame.mouse.get_pos())
             return
 
         # Click-drag pan
@@ -375,19 +415,51 @@ class LiveMapWindow:
 
     # ── zoom / pan controls ─────────────────────────────────────────
     def _zoom_in(self):
-        self._zoom = min(self.ZOOM_MAX, self._zoom + self.ZOOM_STEP)
+        old_z = self._zoom
+        new_z = min(self.ZOOM_MAX, old_z + self.ZOOM_STEP)
+        ratio = new_z / old_z if old_z else 1.0
+        self._pan_x *= ratio
+        self._pan_y *= ratio
+        self._zoom = new_z
         self._update_zoom_label()
         self._needs_redraw = True
         self.redraw_map()
 
     def _zoom_out(self):
-        self._zoom = max(self.ZOOM_MIN, self._zoom - self.ZOOM_STEP)
+        old_z = self._zoom
+        new_z = max(self.ZOOM_MIN, old_z - self.ZOOM_STEP)
+        ratio = new_z / old_z if old_z else 1.0
+        self._pan_x *= ratio
+        self._pan_y *= ratio
+        self._zoom = new_z
+        self._update_zoom_label()
+        self._needs_redraw = True
+        self.redraw_map()
+
+    def _apply_zoom_at(self, factor, cursor_abs_pos):
+        """Zoom by factor, keeping the map point under cursor_abs_pos stationary."""
+        if not self._map_image or not self._map_image.alive():
+            return
+        rect = self._map_image.get_abs_rect()
+        mcx = cursor_abs_pos[0] - rect.x
+        mcy = cursor_abs_pos[1] - rect.y
+        sw, sh = rect.width, rect.height
+        old_z = self._zoom
+        new_z = max(self.ZOOM_MIN, min(self.ZOOM_MAX, old_z * factor))
+        ratio = new_z / old_z
+        # Offset of cursor from the layout centre (in screen pixels)
+        ox = mcx - (sw / 2 + self._pan_x)
+        oy = mcy - ((sh - 60) / 2 + self._pan_y)
+        # Shift pan so the world point under the cursor stays fixed
+        self._pan_x = mcx - sw / 2 - ox * ratio
+        self._pan_y = mcy - (sh - 60) / 2 - oy * ratio
+        self._zoom = new_z
         self._update_zoom_label()
         self._needs_redraw = True
         self.redraw_map()
 
     def _reset_view(self):
-        self._zoom = 1.0
+        self._zoom = self.ZOOM_MAX
         self._pan_x = 0.0
         self._pan_y = 0.0
         self._update_zoom_label()
@@ -451,11 +523,19 @@ class LiveMapWindow:
 
         base_spacing = max(self.MIN_SPACING, min(spacing_x, spacing_y, 200))
         spacing = base_spacing * self._zoom
+        self._last_layout_spacing = spacing  # stored for island clustering threshold
 
         cx = sw / 2 + self._pan_x
         cy = (sh - 60) / 2 + self._pan_y
         mid_x = (min_x + max_x) / 2
         mid_y = (min_y + max_y) / 2
+
+        # Store for world↔screen transforms used by island drawing
+        self._layout_cx      = cx
+        self._layout_cy      = cy
+        self._layout_mid_x   = mid_x
+        self._layout_mid_y   = mid_y
+        self._layout_spacing = spacing
 
         positions = {}
         for (gx, gy), rid in coord_map.items():
@@ -464,6 +544,16 @@ class LiveMapWindow:
             positions[rid] = (px, py)
 
         return positions, spacing
+
+    def _world_to_screen(self, wx, wy):
+        """Convert a world-space (grid) coordinate to screen pixels."""
+        s  = getattr(self, '_layout_spacing', self._last_layout_spacing)
+        cx = getattr(self, '_layout_cx', 0)
+        cy = getattr(self, '_layout_cy', 0)
+        mx = getattr(self, '_layout_mid_x', 0)
+        my = getattr(self, '_layout_mid_y', 0)
+        return (cx + (wx - mx) * s,
+                cy - (wy - my) * s)
 
     # ── drawing helpers ─────────────────────────────────────────────
     @staticmethod
@@ -476,10 +566,18 @@ class LiveMapWindow:
         return self._rgb_colors[key]
 
     def _get_font(self, size: int) -> pygame.font.Font:
-        """Return a cached SysFont at *size* — avoids repeated filesystem scans."""
+        """Return a cached medieval-style font at *size*."""
         f = self._font_cache.get(size)
         if f is None:
-            f = pygame.font.SysFont("consolas", size)
+            for name in ("palatino linotype", "palatino", "georgia",
+                         "times new roman", "serif"):
+                try:
+                    f = pygame.font.SysFont(name, size)
+                    break
+                except Exception:
+                    pass
+            if f is None:
+                f = pygame.font.SysFont(None, size)
             self._font_cache[size] = f
         return f
 
@@ -495,34 +593,256 @@ class LiveMapWindow:
                 self._text_surf_cache.clear()
         return s
 
-    def _draw_land_mass(self, surf, positions):
-        """Paint a subtle parchment-land ellipse behind all known room positions.
-        Draws directly onto surf (pygame clips to surface bounds automatically),
-        so no intermediate surface is needed regardless of zoom level."""
+    def _find_island_components(self, positions, world_positions=None):
+        """Split positions into island clusters by SPATIAL proximity.
+        When world_positions is provided (grid-coordinate space), clustering is
+        done in world-space with a fixed threshold so islands never merge or split
+        as the player zooms.  The screen-space positions dict is still used for
+        the returned position dicts (for drawing).
+        Returns list of position-dicts, largest component first.
+        The grouping is cached so repeated calls are O(n) on a cache hit."""
+        rids = list(positions.keys())
+        if not rids:
+            return []
+        if len(rids) == 1:
+            return [{rids[0]: positions[rids[0]]}]
+
+        # Use a zoom-independent cache key when world_positions are available
+        if world_positions:
+            cache_key = frozenset(rids)
+        else:
+            cache_key = (round(self._last_layout_spacing, 1), frozenset(rids))
+
+        if self._island_cache_kv is not None and self._island_cache_kv[0] == cache_key:
+            # Fast O(n) path: rebuild position dicts from the cached room-ID groups
+            result = [
+                {rid: positions[rid] for rid in g if rid in positions}
+                for g in self._island_cache_kv[1]
+            ]
+            result = [c for c in result if c]
+            result.sort(key=lambda c: -len(c))
+            return result
+
+        # O(n^2) Union-Find proximity clustering
+        if world_positions:
+            # Cluster in world-space (grid units) — zoom-independent.
+            # Rooms within 2.5 grid steps merge into the same island.
+            threshold = 2.5
+            cluster_src = world_positions
+        elif self._last_layout_spacing > 0:
+            threshold = max(120, self._last_layout_spacing * 1.8)
+            cluster_src = positions
+        else:
+            threshold = max(120, self.MIN_SPACING * self._zoom * 1.8)
+            cluster_src = positions
+
+        parent = {r: r for r in rids}
+
+        def find(x):
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            return x
+
+        def union(a, b):
+            parent[find(a)] = find(b)
+
+        for i, rid_a in enumerate(rids):
+            ax, ay = cluster_src[rid_a]
+            for rid_b in rids[i + 1:]:
+                bx, by = cluster_src[rid_b]
+                if math.hypot(ax - bx, ay - by) < threshold:
+                    union(rid_a, rid_b)
+
+        clusters: dict = {}
+        for r in rids:
+            root = find(r)
+            clusters.setdefault(root, {})[r] = positions[r]
+
+        result = list(clusters.values())
+        result.sort(key=lambda c: -len(c))
+        # Cache the group structure (room IDs only, not positions)
+        self._island_cache_kv = (cache_key, [frozenset(c.keys()) for c in result])
+        return result
+
+    def _draw_single_island(self, surf, screen_positions, world_positions=None, rng_seed=42, num_spots=60):
+        """Paint one bumpy coastline island polygon.
+        When world_positions are supplied the hull is built and expanded in
+        world-space (grid units) then transformed to screen-space — so the
+        island shape is completely stable across zoom levels."""
+        if not screen_positions:
+            return
+
+        def _convex_hull(points):
+            pts = sorted(set(points))
+            if len(pts) <= 1:
+                return pts
+            def cross(o, a, b):
+                return (a[0]-o[0])*(b[1]-o[1]) - (a[1]-o[1])*(b[0]-o[0])
+            lower, upper = [], []
+            for p in pts:
+                while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+                    lower.pop()
+                lower.append(p)
+            for p in reversed(pts):
+                while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+                    upper.pop()
+                upper.append(p)
+            return lower[:-1] + upper[:-1]
+
+        if world_positions and len(world_positions) >= 1:
+            # ── World-space path (zoom-stable) ─────────────────────
+            wpts = list(world_positions.values())
+            wxs = [p[0] for p in wpts]
+            wys = [p[1] for p in wpts]
+            wcx = (min(wxs) + max(wxs)) / 2
+            wcy = (min(wys) + max(wys)) / 2
+
+            hull_w = _convex_hull([(x, y) for x, y in wpts])
+            if len(hull_w) < 3:
+                r = max(2.0, (max(wxs) - min(wxs) + max(wys) - min(wys)) / 2 + 2.0)
+                hull_w = [(wcx + math.cos(2*math.pi*i/12)*r,
+                           wcy + math.sin(2*math.pi*i/12)*r) for i in range(12)]
+
+            # Expand each hull vertex outward from centroid by WORLD_PAD grid units
+            WORLD_PAD = 2.5
+            expanded_w = []
+            for hx, hy in hull_w:
+                dx, dy = hx - wcx, hy - wcy
+                d = max(0.001, math.hypot(dx, dy))
+                expanded_w.append((hx + dx/d * WORLD_PAD,
+                                   hy + dy/d * WORLD_PAD))
+
+            # Subdivide, transform to screen, add tiny outward jitter
+            rng = random.Random(rng_seed)
+            n = len(expanded_w)
+            SUBDIV = max(3, 80 // max(1, n))
+            pts_outer = []
+            scx, scy = self._world_to_screen(wcx, wcy)
+            for i, (ax, ay) in enumerate(expanded_w):
+                bx, by = expanded_w[(i + 1) % n]
+                for k in range(SUBDIV):
+                    t = k / SUBDIV
+                    wx_ = ax + (bx - ax) * t
+                    wy_ = ay + (by - ay) * t
+                    sx, sy = self._world_to_screen(wx_, wy_)
+                    ddx, ddy = sx - scx, sy - scy
+                    dd = max(1, math.hypot(ddx, ddy))
+                    j = rng.uniform(0, 12)
+                    pts_outer.append((int(sx + ddx/dd * j),
+                                      int(sy + ddy/dd * j)))
+            cx, cy = scx, scy
+
+        else:
+            # ── Screen-space fallback ───────────────────────────────
+            spts = list(screen_positions.values())
+            xs = [p[0] for p in spts]
+            ys = [p[1] for p in spts]
+            cx = (min(xs) + max(xs)) / 2
+            cy = (min(ys) + max(ys)) / 2
+
+            hull_s = _convex_hull([(int(x), int(y)) for x, y in spts])
+            if len(hull_s) < 3:
+                hull_s = [(int(cx + math.cos(2*math.pi*i/12)*80),
+                           int(cy + math.sin(2*math.pi*i/12)*80)) for i in range(12)]
+
+            PAD = max(80, self._last_layout_spacing * 1.2)
+            expanded_s = []
+            for hx, hy in hull_s:
+                dx, dy = hx - cx, hy - cy
+                d = max(0.001, math.hypot(dx, dy))
+                expanded_s.append((hx + dx/d * PAD, hy + dy/d * PAD))
+
+            rng = random.Random(rng_seed)
+            n = len(expanded_s)
+            SUBDIV = max(3, 80 // max(1, n))
+            pts_outer = []
+            for i, (ax, ay) in enumerate(expanded_s):
+                bx, by = expanded_s[(i + 1) % n]
+                for k in range(SUBDIV):
+                    t = k / SUBDIV
+                    mx_ = ax + (bx - ax) * t
+                    my_ = ay + (by - ay) * t
+                    ddx, ddy = mx_ - cx, my_ - cy
+                    dd = max(1, math.hypot(ddx, ddy))
+                    j = rng.uniform(0, 12)
+                    pts_outer.append((int(mx_ + ddx/dd * j),
+                                      int(my_ + ddy/dd * j)))
+
+        if len(pts_outer) < 3:
+            return
+
+        shadow_col = self._rgb_colors["land_shadow"]
+        for shrink in (18, 10, 4):
+            pts_s = []
+            for px, py in pts_outer:
+                dx, dy = px - cx, py - cy
+                dist = max(1, math.hypot(dx, dy))
+                pts_s.append((int(cx + dx * (1 - shrink / dist)),
+                               int(cy + dy * (1 - shrink / dist))))
+            pygame.draw.polygon(surf, shadow_col, pts_s)
+
+        land_outer = self._rgb_colors["land"]
+        land_inner = self._rgb_colors["land_inner"]
+        pygame.draw.polygon(surf, land_outer, pts_outer)
+
+        pts_inner = []
+        for px, py in pts_outer:
+            dx, dy = px - cx, py - cy
+            dist = max(1, math.hypot(dx, dy))
+            pts_inner.append((int(cx + dx * (1 - 20 / dist)),
+                               int(cy + dy * (1 - 20 / dist))))
+        pygame.draw.polygon(surf, land_inner, pts_inner)
+
+        contour_col = self._rgb_colors["land_shadow"]
+        for shrink_f in (0.72, 0.52, 0.34):
+            pts_c = [(int(cx + (px - cx) * shrink_f), int(cy + (py - cy) * shrink_f))
+                     for px, py in pts_outer]
+            if len(pts_c) >= 3:
+                pygame.draw.lines(surf, contour_col, True, pts_c, 1)
+
+        bx_all = [p[0] for p in pts_outer]
+        by_all = [p[1] for p in pts_outer]
+        rw = (max(bx_all) - min(bx_all)) / 2
+        rh = (max(by_all) - min(by_all)) / 2
+        rng2 = random.Random(rng_seed + 57)
+        land_inner_rgb = self._rgb_colors["land_inner"]
+        for _ in range(num_spots):
+            angle = rng2.uniform(0, 2 * math.pi)
+            dist_f = rng2.uniform(0.0, 0.80)
+            sx2 = int(cx + math.cos(angle) * rw * dist_f)
+            sy2 = int(cy + math.sin(angle) * rh * dist_f)
+            r2 = rng2.randint(1, 3)
+            alpha = rng2.randint(4, 16)
+            spot_col = tuple(max(0, c - alpha) for c in land_inner_rgb)
+            pygame.draw.circle(surf, spot_col, (sx2, sy2), r2)
+
+    def _draw_land_mass(self, surf, positions, rooms=None):
+        """Draw one bumpy island per spatial cluster of rooms."""
         if not positions:
             return
-        xs = [p[0] for p in positions.values()]
-        ys = [p[1] for p in positions.values()]
-        if not xs:
+        # Build world-space positions for zoom-independent clustering + hull
+        world_pos = {}
+        if rooms:
+            for rid in positions:
+                if rid in rooms:
+                    c = rooms[rid].get("coordinates", [0, 0])
+                    world_pos[rid] = (float(c[0]), float(c[1]))
+        world_pos = world_pos if len(world_pos) == len(positions) else None
+        components = self._find_island_components(positions, world_pos)
+        if not components:
             return
-        sw, sh = surf.get_size()
-        cx = (min(xs) + max(xs)) / 2
-        cy = (min(ys) + max(ys)) / 2
-        # Cap radii to surface size — at high zoom rooms extend far off-screen,
-        # but we only need to fill the visible area.
-        rw = max(80, min((max(xs) - min(xs)) / 2 + 100, sw * 0.85))
-        rh = max(80, min((max(ys) - min(ys)) / 2 + 100, sh * 0.85))
-
-        land_col = self._rgb_colors["land"]
-        steps = 5
-        icx, icy = int(cx), int(cy)
-        for i in range(steps, 0, -1):
-            frac = i / steps
-            ew = max(2, int(rw * 2 * frac))
-            eh = max(2, int(rh * 2 * frac))
-            brightness = int(frac * 30)
-            col = tuple(min(255, land_col[v] + brightness) for v in range(3))
-            pygame.draw.ellipse(surf, col, (icx - ew // 2, icy - eh // 2, ew, eh))
+        total = sum(len(c) for c in components)
+        largest = len(components[0])
+        min_size = max(5, int(largest * 0.06))
+        for i, comp_pos in enumerate(components):
+            if len(comp_pos) < min_size:
+                continue
+            comp_world = ({rid: world_pos[rid] for rid in comp_pos if rid in world_pos}
+                          if world_pos else None)
+            spots = max(20, int(60 * len(comp_pos) // max(1, total)))
+            self._draw_single_island(surf, comp_pos, comp_world,
+                                     rng_seed=42 + i * 17, num_spots=spots)
 
     def _draw_grid(self, surf, positions, spacing):
         pass  # Removed: dashed-grid drawing iterated O(rooms²) tiny segments — major perf cost
@@ -585,32 +905,58 @@ class LiveMapWindow:
                 else:
                     unvisited_routes.append((x1, y1, x2, y2))
 
-        # Unvisited: single faint trail
+        # Unvisited: single faint dotted trail
         trail_col = self._rgb_colors["connection"]
         for x1, y1, x2, y2 in unvisited_routes:
-            pygame.draw.line(surf, trail_col,
-                             (int(x1), int(y1)), (int(x2), int(y2)), 1)
+            self._draw_dashed_line(surf, trail_col,
+                                   (int(x1), int(y1)), (int(x2), int(y2)),
+                                   dash=5, gap=4, width=1)
 
-        # Visited: double-pass dirt road (dark border then warm road colour)
+        # Visited: hand-drawn wobbled ink road — dark border + warm fill
         road_border = self._rgb_colors["connection_border"]
         road_col    = self._rgb_colors["connection_visited"]
         road_hi     = self._rgb_colors["connection_vis_hi"]
+        rng = random.Random(12345)
         for x1, y1, x2, y2 in visited_routes:
-            pygame.draw.line(surf, road_border,
-                             (int(x1), int(y1)), (int(x2), int(y2)), 5)
-            pygame.draw.line(surf, road_col,
-                             (int(x1), int(y1)), (int(x2), int(y2)), 3)
+            # Break into 4 sub-segments with seeded jitter for a quill-stroke look
+            dx = x2 - x1
+            dy = y2 - y1
+            dist = max(1, math.hypot(dx, dy))
+            # perpendicular unit vector
+            nx = -dy / dist
+            ny =  dx / dist
+            segs = 4
+            pts = [(x1, y1)]
+            for k in range(1, segs):
+                t = k / segs
+                mx_ = x1 + dx * t + nx * rng.uniform(-2.0, 2.0)
+                my_ = y1 + dy * t + ny * rng.uniform(-2.0, 2.0)
+                pts.append((int(mx_), int(my_)))
+            pts.append((x2, y2))
+            # Border pass (wider, darker)
+            for i in range(len(pts) - 1):
+                pygame.draw.line(surf, road_border, pts[i], pts[i+1], 4)
+            # Road fill
+            for i in range(len(pts) - 1):
+                pygame.draw.line(surf, road_col, pts[i], pts[i+1], 2)
 
-        # Boat sea-routes: dashed blue
+        # Boat sea-routes: dashed with small wave marks
         boat_col = self._rgb_colors["boat_line"]
         boat_hi  = self._rgb_colors["boat_line_hi"]
         for x1, y1, x2, y2 in boat_routes:
             self._draw_dashed_line(surf, boat_col,
                                    (int(x1), int(y1)), (int(x2), int(y2)),
-                                   dash=10, gap=5, width=3)
+                                   dash=12, gap=6, width=3)
             self._draw_dashed_line(surf, boat_hi,
                                    (int(x1), int(y1)), (int(x2), int(y2)),
-                                   dash=10, gap=5, width=1)
+                                   dash=12, gap=6, width=1)
+            # Small "~" wave tick at midpoint
+            mx_ = int((x1 + x2) / 2)
+            my_ = int((y1 + y2) / 2)
+            for wx in (-6, 0, 6):
+                pygame.draw.arc(surf, boat_hi,
+                                (mx_ + wx - 3, my_ - 3, 6, 6),
+                                0, math.pi, 1)
 
     def _get_room_style(self, tag, room_id=""):
         styles = {
@@ -722,51 +1068,169 @@ class LiveMapWindow:
         return ""
 
     def _draw_terrain_marker(self, surf, ipx, ipy, r, fill, outline, tag, room_data):
-        """Draw a cartographic-style terrain marker instead of uniform node circles."""
+        """Draw a medieval cartographic icon for each room type."""
         loc_type = (room_data.get("location_type") or "wilderness").lower() if room_data else ""
+        region   = self._detect_region_cached(room_data.get("_rid", "")) if room_data else "default"
+        ink  = self._rgb_colors["ink"]
+        ink2 = self._rgb_colors["ink_mid"]
 
+        # ── CURRENT PLAYER: 8-pointed heraldic star ─────────────────
         if tag == "current":
-            # Glowing golden compass-rose style: outer glow, main circle, inner dot
-            glow = self._c("current_glow")
-            for glow_r in (r + 9, r + 6):
-                pygame.draw.circle(surf, glow, (ipx, ipy), glow_r, 1)
-            pygame.draw.circle(surf, fill, (ipx, ipy), r)
-            pygame.draw.circle(surf, outline, (ipx, ipy), r, 2)
-            # Cross-hair lines inside
-            hl = r - 4
-            pygame.draw.line(surf, outline, (ipx - hl, ipy), (ipx + hl, ipy), 1)
-            pygame.draw.line(surf, outline, (ipx, ipy - hl), (ipx, ipy + hl), 1)
+            glow = self._rgb_colors["current_glow"]
+            # outer glow rings
+            for gr in (r + 10, r + 6):
+                pygame.draw.circle(surf, glow, (ipx, ipy), gr, 1)
+            # 8-pointed star: 4 long + 4 short diamond points
+            star_pts = []
+            for i in range(8):
+                angle = math.radians(i * 45 - 90)
+                rad = r if (i % 2 == 0) else r * 0.48
+                star_pts.append((int(ipx + math.cos(angle) * rad),
+                                 int(ipy + math.sin(angle) * rad)))
+            pygame.draw.polygon(surf, fill, star_pts)
+            pygame.draw.polygon(surf, outline, star_pts, 1)
+            # white center dot
+            pygame.draw.circle(surf, (255, 250, 240), (ipx, ipy), max(2, r // 4))
             return
 
+        # ── DUNGEON ENTRANCE: dark arch (rectangle + semicircle top) ─
         if tag == "dungeon_entrance":
-            # Dark hexagon with red accent — cache offset points by radius
-            offsets = self._hex_pts_cache.get(r)
-            if offsets is None:
-                offsets = [(int(r * math.cos(math.radians(a * 60 - 30))),
-                            int(r * math.sin(math.radians(a * 60 - 30))))
-                           for a in range(6)]
-                self._hex_pts_cache[r] = offsets
-            pts = [(ipx + dx, ipy + dy) for dx, dy in offsets]
+            hw = max(5, r - 2)
+            hh = max(6, int(r * 1.1))
+            arch_rect = pygame.Rect(ipx - hw, ipy - hh // 2, hw * 2, hh)
+            # body
+            pygame.draw.rect(surf, fill, arch_rect, border_radius=hw)
+            pygame.draw.rect(surf, outline, arch_rect, 2, border_radius=hw)
+            # skull glyph inside (simplistic: two dots + horizontal line)
+            ey = ipy - r // 5
+            for ex in (-r // 3, r // 3):
+                pygame.draw.circle(surf, outline, (ipx + ex, ey), max(1, r // 6))
+            pygame.draw.line(surf, outline,
+                             (ipx - r // 3, ipy + r // 5), (ipx + r // 3, ipy + r // 5), 1)
+            return
+
+        # ── STAIRS: downward pointing pennant ────────────────────────
+        if tag == "stairs":
+            pts = [(ipx - r + 2, ipy - r + 2), (ipx + r - 2, ipy - r + 2),
+                   (ipx, ipy + r - 2)]
             pygame.draw.polygon(surf, fill, pts)
             pygame.draw.polygon(surf, outline, pts, 2)
             return
 
-        if loc_type in ("settlement",):
-            # Settlement: filled square rotated 45° (diamond)
-            pts = [(ipx, ipy - r), (ipx + r, ipy), (ipx, ipy + r), (ipx - r, ipy)]
+        # ── TREASURE: small octagon in gold ──────────────────────────
+        if tag == "treasure":
+            oct_pts = [(int(ipx + r * math.cos(math.radians(a * 45 - 22.5))),
+                        int(ipy + r * math.sin(math.radians(a * 45 - 22.5))))
+                       for a in range(8)]
+            pygame.draw.polygon(surf, fill, oct_pts)
+            pygame.draw.polygon(surf, outline, oct_pts, 2)
+            # cross inside
+            pygame.draw.line(surf, outline, (ipx - r + 3, ipy), (ipx + r - 3, ipy), 1)
+            pygame.draw.line(surf, outline, (ipx, ipy - r + 3), (ipx, ipy + r - 3), 1)
+            return
+
+        # ── ENTRANCE: arrow pointing right (gateway) ─────────────────
+        if tag == "entrance":
+            pts = [(ipx - r + 2, ipy - r // 2), (ipx + r // 2, ipy - r // 2),
+                   (ipx + r - 2, ipy), (ipx + r // 2, ipy + r // 2),
+                   (ipx - r + 2, ipy + r // 2)]
             pygame.draw.polygon(surf, fill, pts)
             pygame.draw.polygon(surf, outline, pts, 2)
             return
 
+        # ── MOUNTAIN: layered peaks ───────────────────────────────────
+        if region in ("mountain",) or loc_type in ("mountain", "highland"):
+            # back peak (slightly offset for depth)
+            back_pts = [(ipx - r + 2, ipy + r - 2),
+                        (ipx + r // 3, ipy - r + 4),
+                        (ipx + r + 2, ipy + r - 2)]
+            pygame.draw.polygon(surf, ink2, back_pts)
+            # front peak
+            front_pts = [(ipx - r - 2, ipy + r - 2),
+                         (ipx - r // 4, ipy - r + 2),
+                         (ipx + r // 2, ipy + r - 2)]
+            pygame.draw.polygon(surf, fill, front_pts)
+            pygame.draw.polygon(surf, outline, front_pts, 1)
+            # snow cap on front peak
+            cap_y = ipy - r + 2 + int((r * 2 - 4) * 0.28)
+            cap_pts = [(ipx - r // 4, ipy - r + 2),
+                       (ipx - r // 4 + int(r * 0.3), cap_y),
+                       (ipx - r // 4 - int(r * 0.12), cap_y)]
+            pygame.draw.polygon(surf, (240, 240, 235), cap_pts)
+            return
+
+        # ── FOREST: canopy circle on trunk ───────────────────────────
+        if region in ("forest",) or loc_type in ("forest",):
+            trunk_h = max(3, r // 2)
+            trunk_w = max(2, r // 3)
+            # trunk
+            pygame.draw.rect(surf, ink2,
+                             (ipx - trunk_w // 2, ipy + r - trunk_h - 2, trunk_w, trunk_h))
+            # canopy (two overlapping circles for layered crown look)
+            cr = max(4, r - 2)
+            pygame.draw.circle(surf, fill, (ipx, ipy - r // 6), cr)
+            pygame.draw.circle(surf, outline, (ipx, ipy - r // 6), cr, 1)
+            return
+
+        # ── CASTLE: tower with crenellations ─────────────────────────
+        if region in ("castle",) or loc_type in ("castle", "keep"):
+            tw = max(6, r - 2)
+            th = max(8, int(r * 1.2))
+            bx_ = ipx - tw
+            by_ = ipy - th // 2
+            pygame.draw.rect(surf, fill, (bx_, by_, tw * 2, th))
+            pygame.draw.rect(surf, outline, (bx_, by_, tw * 2, th), 1)
+            # crenellations (3 merlons)
+            merlon_w = max(3, tw * 2 // 5)
+            merlon_h = max(2, th // 4)
+            for mi in range(3):
+                mx_ = bx_ + mi * (tw * 2 - merlon_w) // 2
+                pygame.draw.rect(surf, fill, (mx_, by_ - merlon_h, merlon_w, merlon_h))
+                pygame.draw.rect(surf, outline, (mx_, by_ - merlon_h, merlon_w, merlon_h), 1)
+            return
+
+        # ── VILLAGE / SETTLEMENT: house silhouette ────────────────────
+        if region in ("village",) or loc_type in ("settlement", "village"):
+            hw = max(5, r - 1)
+            wall_h = max(5, int(r * 0.8))
+            wx = ipx - hw
+            wy = ipy - wall_h // 2
+            # walls
+            pygame.draw.rect(surf, fill, (wx, wy, hw * 2, wall_h))
+            pygame.draw.rect(surf, outline, (wx, wy, hw * 2, wall_h), 1)
+            # roof (triangle)
+            roof_pts = [(wx - 1, wy), (ipx + hw + 1, wy),
+                        (ipx, wy - max(4, int(r * 0.7)))]
+            pygame.draw.polygon(surf, ink2, roof_pts)
+            pygame.draw.polygon(surf, outline, roof_pts, 1)
+            return
+
+        # ── DOCK / PORT: anchor shape ─────────────────────────────────
+        if region in ("dock", "coast") or loc_type in ("dock", "port"):
+            # vertical staff
+            pygame.draw.line(surf, fill, (ipx, ipy - r), (ipx, ipy + r), 2)
+            # crossbar
+            pygame.draw.line(surf, fill, (ipx - r // 2, ipy - r // 2),
+                             (ipx + r // 2, ipy - r // 2), 2)
+            # anchor ring at top
+            pygame.draw.circle(surf, fill, (ipx, ipy - r), max(2, r // 4), 1)
+            # flukes at bottom
+            pygame.draw.line(surf, fill, (ipx, ipy + r),
+                             (ipx - r // 2, ipy + r // 2), 2)
+            pygame.draw.line(surf, fill, (ipx, ipy + r),
+                             (ipx + r // 2, ipy + r // 2), 2)
+            pygame.draw.circle(surf, outline, (ipx, ipy), r + 1, 1)
+            return
+
+        # ── BUILDING / SETTLEMENT (generic square): upright square ───
         if loc_type == "building":
-            # Building: small upright square
-            hw = max(6, r - 2)
+            hw = max(5, r - 2)
             rect = pygame.Rect(ipx - hw, ipy - hw, hw * 2, hw * 2)
             pygame.draw.rect(surf, fill, rect, border_radius=1)
             pygame.draw.rect(surf, outline, rect, 2, border_radius=1)
             return
 
-        # Default: flat circle with no thick node outline — just a terrain patch
+        # ── DEFAULT: filled circle — region coloured ──────────────────
         pygame.draw.circle(surf, fill, (ipx, ipy), r)
         if tag != "unexplored":
             pygame.draw.circle(surf, outline, (ipx, ipy), r, 1)
@@ -794,9 +1258,11 @@ class LiveMapWindow:
             is_visible = rid in visited or self.reveal_all
 
             if not is_visible:
-                # Fog-of-war: tiny dark smudge, no label
+                # Fog-of-war: tiny × cross in dim ink
                 dot_col = self._c("unexplored_dot")
-                pygame.draw.circle(surf, dot_col, (ipx, ipy), small_dot_r)
+                cr = max(2, small_dot_r - 1)
+                pygame.draw.line(surf, dot_col, (ipx - cr, ipy - cr), (ipx + cr, ipy + cr), 1)
+                pygame.draw.line(surf, dot_col, (ipx + cr, ipy - cr), (ipx - cr, ipy + cr), 1)
                 continue
 
             tag = self._room_tag(rid, rdata, self.current_location, visited)
@@ -813,90 +1279,294 @@ class LiveMapWindow:
                                         sym_size)
                 surf.blit(txt, (ipx - txt.get_width() // 2, ipy - txt.get_height() // 2))
 
-            # Name label below marker — solid dark backing rect (no SRCALPHA per room)
+            # Name label below marker — parchment-toned backing
             if show_labels:
                 name = (rdata.get("name", "???") if isinstance(rdata, dict)
                         else (getattr(rdata, "name", None) or "???"))
                 if len(name) > max_chars:
                     name = name[:max_chars - 2] + ".."
-                lbl = self._render_text(name, label_color, font_size)
+                lbl_col = self._c("text") if tag != "unexplored" else self._c("text_dim")
+                lbl = self._render_text(name, lbl_col, font_size)
                 lx = ipx - lbl.get_width() // 2
-                ly = ipy + label_offset
+                ly = ipy + label_offset + 2
                 pad = 2
-                box = pygame.Rect(lx - pad, ly - 1, lbl.get_width() + pad * 2, lbl.get_height())
-                pygame.draw.rect(surf, (8, 6, 4), box)  # solid near-black backing
+                box = pygame.Rect(lx - pad, ly - 1, lbl.get_width() + pad * 2, lbl.get_height() + 1)
+                pygame.draw.rect(surf, self._c("text_label_bg"), box)
+                pygame.draw.rect(surf, self._c("ink_mid"), box, 1)
                 surf.blit(lbl, (lx, ly))
 
     def _draw_legend(self, surf, sh):
+        """Draw a parchment scroll legend box in the bottom-right corner."""
         sw = surf.get_width()
-        y = sh - 25
+        ink  = self._rgb_colors["ink"]
+        ink2 = self._rgb_colors["ink_mid"]
+        bg   = self._rgb_colors["text_label_bg"]
+        bord = self._rgb_colors["border_inner"]
 
-        mainland_items = [
-            ("\u2605 You",     self._c("current_fill"),  self._c("current_outline"),         "circle"),
-            ("\u2620 Dungeon", self._c("dungeon_entrance_fill"), self._c("dungeon_entrance_outline"), "hex"),
-            ("Forest",   *self._rgb_region["forest"],    "circle"),
-            ("Village",  *self._rgb_region["village"],   "diamond"),
-            ("Mountain", *self._rgb_region["mountain"],  "circle"),
-            ("Swamp",    *self._rgb_region["swamp"],     "circle"),
-            ("Desert",   *self._rgb_region["desert"],    "circle"),
-            ("Tundra",   *self._rgb_region["tundra"],    "circle"),
-            ("Coast",    *self._rgb_region["coast"],     "circle"),
-            ("Castle",   *self._rgb_region["castle"],    "diamond"),
-            ("Dock",     *self._rgb_region["dock"],      "square"),
+        items_col1 = [
+            ("You \u2605",       self._c("current_fill"),  self._c("current_outline"),  "star"),
+            ("Dungeon",    self._c("dungeon_entrance_fill"), self._c("dungeon_entrance_outline"), "arch"),
+            ("Village",    *self._rgb_region["village"],   "house"),
+            ("Forest",     *self._rgb_region["forest"],    "tree"),
+            ("Mountain",   *self._rgb_region["mountain"],  "peak"),
+            ("Castle",     *self._rgb_region["castle"],    "castle"),
         ]
-        island_items = [
-            ("Sunstone",  *self._rgb_region["sunstone"],    "circle"),
-            ("Emerald",   *self._rgb_region["emerald"],     "circle"),
-            ("Storm",     *self._rgb_region["stormbreak"],  "circle"),
-            ("Cinder",    *self._rgb_region["cinderforge"], "circle"),
-            ("Dread",     *self._rgb_region["dreadmist"],   "circle"),
-            ("Wyrm",      *self._rgb_region["wyrmscale"],   "circle"),
-            ("Abyssal",   *self._rgb_region["abyssal"],     "circle"),
-            ("\u2693 Sea", self._rgb_colors["connection_border"], self._rgb_colors["boat_line_hi"], "circle"),
+        items_col2 = [
+            ("Swamp",      *self._rgb_region["swamp"],     "circle"),
+            ("Desert",     *self._rgb_region["desert"],    "circle"),
+            ("Coast",      *self._rgb_region["coast"],     "circle"),
+            ("Ruins",      *self._rgb_region["ruins"],     "circle"),
+            ("Tundra",     *self._rgb_region["tundra"],    "circle"),
+            ("Sea route",  self._rgb_colors["boat_line"],  self._rgb_colors["boat_line_hi"], "dash"),
         ]
 
-        # Separator line
-        pygame.draw.line(surf, self._rgb_colors["connection_border"],
-                         (20, y - 38), (sw - 20, y - 38), 1)
+        ITEM_H  = 16
+        COL_W   = 88
+        PAD     = 8
+        rows    = max(len(items_col1), len(items_col2))
+        BOX_W   = COL_W * 2 + PAD * 2
+        BOX_H   = rows * ITEM_H + PAD + 18   # +18 for header
+        BX      = sw - BOX_W - 10
+        BY      = sh - BOX_H - 10
 
-        y1 = y - 20
-        total_w1 = len(mainland_items) * 80
-        sx1 = (sw - total_w1) / 2
-        for i, (label, fill, outline, shape) in enumerate(mainland_items):
-            x = int(sx1 + i * 80)
-            self._draw_legend_item(surf, x, y1, label, fill, outline, shape)
+        # Box background
+        pygame.draw.rect(surf, bg,   (BX, BY, BOX_W, BOX_H), border_radius=4)
+        pygame.draw.rect(surf, bord, (BX, BY, BOX_W, BOX_H), 2, border_radius=4)
 
-        y2 = y + 2
-        total_w2 = len(island_items) * 80
-        sx2 = (sw - total_w2) / 2
-        for i, (label, fill, outline, shape) in enumerate(island_items):
-            x = int(sx2 + i * 80)
-            self._draw_legend_item(surf, x, y2, label, fill, outline, shape)
+        # Header
+        hdr = self._font_legend.render("\u2014  L E G E N D  \u2014", True, ink)
+        surf.blit(hdr, (BX + (BOX_W - hdr.get_width()) // 2, BY + 4))
+        pygame.draw.line(surf, ink2, (BX + PAD, BY + 16), (BX + BOX_W - PAD, BY + 16), 1)
+
+        # Items
+        for col_idx, items in enumerate((items_col1, items_col2)):
+            cx = BX + PAD + col_idx * COL_W
+            cy = BY + 20
+            for label, fill, outline, shape in items:
+                self._draw_legend_item(surf, cx, cy + ITEM_H // 2, label, fill, outline, shape)
+                cy += ITEM_H
 
     def _draw_legend_item(self, surf, x, y, label, fill, outline, shape):
-        if shape == "square":
-            pygame.draw.rect(surf, fill, (x, y - 5, 11, 11))
-            pygame.draw.rect(surf, outline, (x, y - 5, 11, 11), 1)
-        elif shape == "diamond":
-            pts = [(x+6, y-6), (x+12, y), (x+6, y+6), (x, y)]
+        """Draw one legend entry with a mini icon + label."""
+        ink = self._rgb_colors["ink"]
+        ICON_R = 5
+        ix, iy = x + ICON_R + 1, y
+
+        if shape == "star":
+            pts = [(int(ix + ICON_R * math.cos(math.radians(i * 45 - 90))),
+                    int(iy + ICON_R * (1 if i % 2 == 0 else 0.46) * math.sin(math.radians(i * 45 - 90))))
+                   for i in range(8)]
+            # fix: recompute properly
+            pts = []
+            for i in range(8):
+                ang = math.radians(i * 45 - 90)
+                rad = ICON_R if (i % 2 == 0) else ICON_R * 0.46
+                pts.append((int(ix + math.cos(ang) * rad), int(iy + math.sin(ang) * rad)))
             pygame.draw.polygon(surf, fill, pts)
             pygame.draw.polygon(surf, outline, pts, 1)
-        elif shape == "hex":
-            pts = [(x + 6 + int(6*math.cos(math.radians(a*60-30))),
-                    y     + int(6*math.sin(math.radians(a*60-30)))) for a in range(6)]
-            pygame.draw.polygon(surf, fill, pts)
-            pygame.draw.polygon(surf, outline, pts, 1)
-        else:
-            pygame.draw.circle(surf, fill, (x + 6, y), 6)
-            pygame.draw.circle(surf, outline, (x + 6, y), 6, 1)
-        txt = self._font_legend.render(label, True, self._rgb_colors["text"])
-        surf.blit(txt, (x + 18, y - txt.get_height() // 2))
+        elif shape == "arch":
+            pygame.draw.rect(surf, fill,    (ix - ICON_R, iy - ICON_R, ICON_R * 2, ICON_R * 2), border_radius=ICON_R)
+            pygame.draw.rect(surf, outline, (ix - ICON_R, iy - ICON_R, ICON_R * 2, ICON_R * 2), 1, border_radius=ICON_R)
+        elif shape == "house":
+            hw = ICON_R
+            pygame.draw.rect(surf, fill,    (ix - hw, iy - 2,     hw * 2, ICON_R + 2))
+            pygame.draw.rect(surf, outline, (ix - hw, iy - 2,     hw * 2, ICON_R + 2), 1)
+            roof_pts = [(ix - hw - 1, iy - 2), (ix + hw + 1, iy - 2), (ix, iy - ICON_R - 2)]
+            pygame.draw.polygon(surf, outline, roof_pts, 1)
+        elif shape == "tree":
+            pygame.draw.circle(surf, fill,    (ix, iy - 2), ICON_R)
+            pygame.draw.circle(surf, outline, (ix, iy - 2), ICON_R, 1)
+            pygame.draw.line(surf, outline,   (ix, iy + ICON_R - 2), (ix, iy + ICON_R + 1), 1)
+        elif shape == "peak":
+            p = [(ix - ICON_R, iy + ICON_R - 1), (ix, iy - ICON_R),
+                 (ix + ICON_R, iy + ICON_R - 1)]
+            pygame.draw.polygon(surf, fill,    p)
+            pygame.draw.polygon(surf, outline, p, 1)
+        elif shape == "castle":
+            pygame.draw.rect(surf, fill,    (ix - ICON_R, iy - 3, ICON_R * 2, ICON_R + 3))
+            pygame.draw.rect(surf, outline, (ix - ICON_R, iy - 3, ICON_R * 2, ICON_R + 3), 1)
+            for mi in range(3):
+                mx_ = ix - ICON_R + mi * ICON_R - 1
+                pygame.draw.rect(surf, fill,    (mx_, iy - 3 - 3, 4, 3))
+                pygame.draw.rect(surf, outline, (mx_, iy - 3 - 3, 4, 3), 1)
+        elif shape == "dash":
+            for di in range(3):
+                pygame.draw.line(surf, fill,
+                                 (ix - ICON_R + di * 4, iy),
+                                 (ix - ICON_R + di * 4 + 2, iy), 2)
+        elif shape == "square":
+            pygame.draw.rect(surf, fill,    (ix - ICON_R, iy - ICON_R, ICON_R * 2, ICON_R * 2))
+            pygame.draw.rect(surf, outline, (ix - ICON_R, iy - ICON_R, ICON_R * 2, ICON_R * 2), 1)
+        else:  # circle
+            pygame.draw.circle(surf, fill,    (ix, iy), ICON_R)
+            pygame.draw.circle(surf, outline, (ix, iy), ICON_R, 1)
+
+        txt = self._font_legend.render(label, True, ink)
+        surf.blit(txt, (x + ICON_R * 2 + 4, y - txt.get_height() // 2))
+
+    # ── decorative helpers ──────────────────────────────────────────
+
+    def _draw_sea_waves(self, surf, positions, rooms=None):
+        """Scatter hand-drawn ~ wave marks in the ocean, avoiding all island polygons."""
+        if not positions:
+            return
+        sw, sh = surf.get_size()
+        xs = [p[0] for p in positions.values()]
+        ys = [p[1] for p in positions.values()]
+        if not xs:
+            return
+
+        # Build world-space positions for zoom-independent clustering
+        world_pos = {}
+        if rooms:
+            for rid in positions:
+                if rid in rooms:
+                    c = rooms[rid].get("coordinates", [0, 0])
+                    world_pos[rid] = (float(c[0]), float(c[1]))
+        world_pos = world_pos if len(world_pos) == len(positions) else None
+
+        # Build per-island exclusion ellipses from the same spatial clusters
+        components = self._find_island_components(positions, world_pos)
+        island_ellipses = []
+        for comp in components:
+            cxs = [p[0] for p in comp.values()]
+            cys = [p[1] for p in comp.values()]
+            if not cxs:
+                continue
+            icx = (min(cxs) + max(cxs)) / 2
+            icy = (min(cys) + max(cys)) / 2
+            # match exactly the rw/rh used in _draw_single_island, × max jitter (1.18)
+            irw = max(70, (max(cxs) - min(cxs)) / 2 + 75) * 1.18
+            irh = max(70, (max(cys) - min(cys)) / 2 + 75) * 1.18 * 0.78
+            island_ellipses.append((icx, icy, irw, irh))
+
+        # Anchor wave grid to the overall bounding-box centre so waves pan with land
+        cx = (min(xs) + max(xs)) / 2
+        cy = (min(ys) + max(ys)) / 2
+
+        wave_col = self._rgb_colors["ocean_deep"]
+        step = 52
+        # Build the jitter offset table once — creating 425 random.Random() objects per
+        # bake costs ~5 ms; pre-computing reduces sea-wave bake overhead to < 0.2 ms.
+        if self._wave_jitter_table is None:
+            tbl = []
+            for gy_idx in range(-8, 9):
+                for gx_idx in range(-12, 13):
+                    cell_rng = random.Random(gx_idx * 997 + gy_idx * 31)
+                    tbl.append((gx_idx, gy_idx,
+                                cell_rng.randint(-18, 18),
+                                cell_rng.randint(-14, 14)))
+            self._wave_jitter_table = tbl
+
+        for gx_idx, gy_idx, jx_off, jy_off in self._wave_jitter_table:
+            jx = int(cx + gx_idx * step + jx_off)
+            jy = int(cy + gy_idx * step + jy_off)
+            # Skip if inside any island ellipse
+            in_land = any(
+                ((jx - icx) / max(1, irw)) ** 2
+                + ((jy - icy) / max(1, irh)) ** 2 < 1.0
+                for icx, icy, irw, irh in island_ellipses
+            )
+            if in_land:
+                continue
+            if jx < 4 or jy < 4 or jx > sw - 4 or jy > sh - 4:
+                continue
+            for wk in range(2):
+                ox = jx + wk * 7
+                try:
+                    pygame.draw.arc(surf, wave_col,
+                                    (ox - 3, jy - 2, 6, 4), 0, math.pi, 1)
+                except Exception:
+                    pass
+
+    def _draw_compass_rose(self, surf, sw, sh):
+        """Draw a medieval compass rose in the bottom-left corner."""
+        SIZE  = 52
+        cx    = 18 + SIZE // 2
+        cy    = sh - 18 - SIZE // 2
+        fg    = self._rgb_colors["compass_fg"]
+        bg    = self._rgb_colors["compass_bg"]
+        bord  = self._rgb_colors["border_inner"]
+
+        # Background circle
+        pygame.draw.circle(surf, bg,   (cx, cy), SIZE // 2)
+        pygame.draw.circle(surf, bord, (cx, cy), SIZE // 2, 1)
+
+        # 4 cardinal spear-points (N/S long, E/W shorter)
+        lengths = {"N": SIZE // 2 - 3, "S": SIZE // 2 - 3,
+                   "E": SIZE // 2 - 8, "W": SIZE // 2 - 8}
+        half_w = {"N": 5, "S": 5, "E": 4, "W": 4}
+        directions = {
+            "N": (0, -1), "S": (0, 1), "E": (1, 0), "W": (-1, 0),
+        }
+        for name, (dx, dy) in directions.items():
+            tip  = (cx + dx * lengths[name], cy + dy * lengths[name])
+            perp = (-dy, dx)
+            hw   = half_w[name]
+            base_l = (cx + perp[0] * hw, cy + perp[1] * hw)
+            base_r = (cx - perp[0] * hw, cy - perp[1] * hw)
+            # front half (bright)
+            pygame.draw.polygon(surf, fg,   [tip, base_l, base_r])
+            pygame.draw.polygon(surf, bord, [tip, base_l, base_r], 1)
+
+        # 4 diagonal small points
+        diag_len = SIZE // 2 - 12
+        for ang in (45, 135, 225, 315):
+            rad = math.radians(ang)
+            tip = (cx + int(math.cos(rad) * diag_len),
+                   cy + int(math.sin(rad) * diag_len))
+            perp_ang = rad + math.pi / 2
+            hw = 3
+            base_l = (cx + int(math.cos(perp_ang) * hw),
+                      cy + int(math.sin(perp_ang) * hw))
+            base_r = (cx - int(math.cos(perp_ang) * hw),
+                      cy - int(math.sin(perp_ang) * hw))
+            pygame.draw.polygon(surf, fg,   [tip, base_l, base_r])
+
+        # Center dot
+        pygame.draw.circle(surf, bg,   (cx, cy), 5)
+        pygame.draw.circle(surf, bord, (cx, cy), 5, 1)
+        pygame.draw.circle(surf, fg,   (cx, cy), 2)
+
+        # Cardinal letters
+        font = self._font_legend
+        for letter, (dx, dy) in [("N", (0, -1)), ("S", (0, 1)),
+                                   ("E", (1, 0)),  ("W", (-1, 0))]:
+            lsurf = font.render(letter, True, fg)
+            off   = SIZE // 2 + 3
+            lx    = cx + dx * off - lsurf.get_width() // 2
+            ly    = cy + dy * off - lsurf.get_height() // 2
+            surf.blit(lsurf, (lx, ly))
+
+    def _draw_map_border(self, surf, sw, sh):
+        """Draw a decorative double-line frame with corner ornaments."""
+        outer_col  = self._rgb_colors["border_outer"]
+        inner_col  = self._rgb_colors["border_inner"]
+        # outer frame
+        pygame.draw.rect(surf, outer_col, (2, 2, sw - 4, sh - 4), 3)
+        # inner frame (4 px gap)
+        pygame.draw.rect(surf, inner_col, (8, 8, sw - 16, sh - 16), 1)
+        # Corner ornament squares
+        for ox, oy in ((2, 2), (sw - 12, 2), (2, sh - 12), (sw - 12, sh - 12)):
+            pygame.draw.rect(surf, outer_col, (ox, oy, 10, 10))
+            pygame.draw.rect(surf, inner_col, (ox + 2, oy + 2, 6, 6))
 
     # ── dungeon renderer ────────────────────────────────────────────
     def _render_dungeon_map(self):
         surf = self._map_surface
         sw, sh = surf.get_size()
+        # Dark stone background
         surf.fill(self._rgb_colors["bg"])
+
+        # Stone-block texture: seeded small rects slightly lighter than bg
+        rng = random.Random(314)
+        stone_col = self._rgb_colors["dungeon_stone"]
+        for _ in range(180):
+            bx = rng.randint(0, sw - 8)
+            by = rng.randint(0, sh - 8)
+            bw = rng.randint(4, 9)
+            bh = rng.randint(3, 7)
+            pygame.draw.rect(surf, stone_col, (bx, by, bw, bh))
 
         floor_num = self._current_floor_number()
         total_floors = self._get_dungeon_total_floors()
@@ -906,13 +1576,14 @@ class LiveMapWindow:
 
         if self._header_label:
             self._header_label.set_text(
-                f"\u2694 DUNGEON MAP \u2014 FLOOR {floor_num} / {total_floors} \u2694"
+                f"\u2694  DUNGEON  \u2014  FLOOR {floor_num} / {total_floors}  \u2694"
             )
 
         if not rooms:
             txt = self._font_header.render("No dungeon rooms on this floor.", True,
-                                           self._hex_to_rgb(self.COLORS["text_dim"]))
+                                           self._rgb_colors["ink_mid"])
             surf.blit(txt, (sw//2 - txt.get_width()//2, sh//2 - txt.get_height()//2))
+            self._draw_map_border(surf, sw, sh)
             return
 
         coord_map = {}
@@ -922,11 +1593,12 @@ class LiveMapWindow:
 
         positions, spacing = self._compute_layout(coord_map, sw, sh)
 
-        self._draw_land_mass(surf, positions)
+        self._draw_land_mass(surf, positions, rooms)
         self._draw_grid(surf, positions, spacing)
         self._draw_connections(surf, positions, rooms, visited, sw, sh)
         self._draw_rooms(surf, positions, rooms, visited, sw, sh)
         self._draw_legend(surf, sh)
+        self._draw_map_border(surf, sw, sh)
 
         total = len(rooms)
         found = sum(1 for r in rooms if r in visited)
@@ -969,18 +1641,19 @@ class LiveMapWindow:
     def _render_overworld_map(self):
         surf = self._map_surface
         sw, sh = surf.get_size()
-        surf.fill(self._rgb_colors["ocean"])
 
         rooms = self._build_overworld_rooms()
         visited = set(self.visited_rooms) if not self.reveal_all else set(rooms.keys())
 
         if self._header_label:
-            self._header_label.set_text("\U0001f5fa OVERWORLD MAP \U0001f5fa")
+            self._header_label.set_text("\u2014  OVERWORLD MAP  \u2014")
 
         if not rooms:
+            surf.fill(self._rgb_colors["ocean"])
             txt = self._font_header.render("No rooms found.", True,
-                                           self._hex_to_rgb(self.COLORS["text_dim"]))
+                                           self._rgb_colors["ink_mid"])
             surf.blit(txt, (sw//2 - txt.get_width()//2, sh//2 - txt.get_height()//2))
+            self._draw_map_border(surf, sw, sh)
             return
 
         coord_map = {}
@@ -988,13 +1661,30 @@ class LiveMapWindow:
             c = rdata["coordinates"]
             coord_map[(c[0], c[1])] = rid
 
+        # ── Background: ocean, grid, island, waves (drawn directly every frame) ──
+        # A surface-bake cache was tried but always crashes or clips at high zoom
+        # because the bake surface must be sized to hold the full island polygon
+        # which grows enormous at ZOOM_MAX with a large world.  Drawing directly
+        # is fast enough (~1.6 ms) thanks to the wave-jitter table (built once)
+        # and the island-cluster cache (O(n) on cache hit, O(n²) on zoom change).
         positions, spacing = self._compute_layout(coord_map, sw, sh)
 
-        self._draw_land_mass(surf, positions)
-        self._draw_grid(surf, positions, spacing)
+        surf.fill(self._rgb_colors["ocean"])
+        grid_col = self._rgb_colors["ocean_lines"]
+        for gx_px in range(0, sw, 32):
+            pygame.draw.line(surf, grid_col, (gx_px, 0), (gx_px, sh), 1)
+        for gy_px in range(0, sh, 32):
+            pygame.draw.line(surf, grid_col, (0, gy_px), (sw, gy_px), 1)
+        self._draw_sea_waves(surf, positions, rooms)
+        self._draw_land_mass(surf, positions, rooms)
+
+        # Dynamic layers — fast (~1 ms total)
         self._draw_connections(surf, positions, rooms, visited, sw, sh)
         self._draw_rooms(surf, positions, rooms, visited, sw, sh)
+        # Fixed UI elements (screen-space, not panned)
+        self._draw_compass_rose(surf, sw, sh)
         self._draw_legend(surf, sh)
+        self._draw_map_border(surf, sw, sh)
 
         total = len(rooms)
         found = sum(1 for r in rooms if r in visited)
@@ -1004,7 +1694,6 @@ class LiveMapWindow:
             self._stats_label.set_text(
                 f"Location: {cur_name}  |  Discovered: {found}/{total}  |  {fog}"
             )
-
         if self._region_label and self.current_location:
             region = self._detect_region_cached(self.current_location).title()
             self._region_label.set_text(f"Region: {region}")

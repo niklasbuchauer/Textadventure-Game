@@ -1639,6 +1639,106 @@ def process_ability_in_combat(player, combat, ability_data):
         actual = player.stats["mana"] - old_mana
         result += f"\n  💙 You restore {actual} MP!  ({player.stats['mana']}/{max_mana})"
 
+    elif effect == "traveling_fireball":
+        # Damage + burn locally, then fireball travels through connected rooms
+        dmg = calculate_player_damage(player, combat, multiplier=value)
+        combat.hp -= dmg
+        burn_dmg = ability_data.get("burn", 4)
+        burn_dur = ability_data.get("duration", 3)
+        _apply_status(combat.enemy_statuses, "burn", burn_dmg, burn_dur)
+        result += f"\n  🔥 TRUE FIREBALL! You deal {dmg} damage!"
+        result += f"\n  🔥 The {combat.enemy_name} ignites! ({burn_dmg}/turn for {burn_dur} turns)"
+        player.state["pending_travel"] = {
+            "source": ability_data.get("name", "True Fireball"),
+            "type": "fireball",
+            "range_left": ability_data.get("travel_range", 3),
+            "damage": ability_data.get("travel_damage", 20),
+            "burn": ability_data.get("travel_burn", 3),
+            "burn_dur": ability_data.get("travel_burn_dur", 2),
+        }
+        result += f"\n  🔥 The fireball streaks off into the next room..."
+
+    elif effect == "chain_bounce":
+        # Damage to current enemy + pre-damages adjacent rooms
+        dmg = calculate_player_damage(player, combat, multiplier=value)
+        combat.hp -= dmg
+        result += f"\n  ⚡ You deal {dmg} damage!"
+        bounce_dmg  = ability_data.get("bounce_damage", 15)
+        bounce_range = ability_data.get("bounce_range", 2)
+        player.state["pending_travel"] = {
+            "source": ability_data.get("name", "Chain Bounce"),
+            "type": "bounce",
+            "range_left": bounce_range,
+            "damage": bounce_dmg,
+            "stun": ability_data.get("bounce_stun", 0),
+        }
+        result += f"\n  ⚡ The effect bounces off into {bounce_range} nearby room(s)..."
+
+    elif effect == "seismic_wave":
+        # Damage + optional stun/freeze locally + shockwave pre-damages 1 adjacent room
+        dmg = calculate_player_damage(player, combat, multiplier=value)
+        combat.hp -= dmg
+        wave_effect = ability_data.get("wave_effect", "none")
+        wave_dur    = ability_data.get("wave_dur", 1)
+        if wave_effect == "stun":
+            _apply_status(combat.enemy_statuses, "stun", 0, wave_dur)
+            result += f"\n  🌍 SHOCKWAVE! {dmg} damage + {combat.enemy_name} STUNNED {wave_dur} turn(s)!"
+        elif wave_effect == "freeze":
+            _apply_status(combat.enemy_statuses, "freeze", 0, wave_dur)
+            result += f"\n  ❄️ FROST WAVE! {dmg} damage + {combat.enemy_name} FROZEN {wave_dur} turn(s)!"
+        else:
+            result += f"\n  🌍 SEISMIC STOMP! You deal {dmg} damage!"
+        player.state["pending_travel"] = {
+            "source": ability_data.get("name", "Seismic Wave"),
+            "type": "wave",
+            "range_left": ability_data.get("travel_range", 1),
+            "damage": ability_data.get("wave_damage", 14),
+            "wave_effect": wave_effect,
+            "wave_dur": wave_dur,
+        }
+        result += f"\n  🌍 A shockwave ripples into the next room..."
+
+    elif effect == "shadow_drift":
+        # Normal damage + poison current + optionally pre-poisons / pre-stuns adjacent room
+        dmg = calculate_player_damage(player, combat, multiplier=value)
+        combat.hp -= dmg
+        poison_dmg = ability_data.get("poison_dmg", 5)
+        poison_dur = ability_data.get("poison_dur", 3)
+        if poison_dmg > 0:
+            _apply_status(combat.enemy_statuses, "poison", poison_dmg, poison_dur)
+            result += f"\n  ☠️ You deal {dmg} damage!"
+            result += f"\n  ☠️ The {combat.enemy_name} is POISONED! ({poison_dmg}/turn for {poison_dur} turns)"
+        else:
+            result += f"\n  🌑 SHADOW BLINK! You deal {dmg} damage!"
+        player.state["pending_travel"] = {
+            "source": ability_data.get("name", "Shadow Drift"),
+            "type": "drift",
+            "range_left": ability_data.get("travel_range", 1),
+            "damage": 0,
+            "poison_dmg": ability_data.get("travel_poison_dmg", 4),
+            "poison_dur": ability_data.get("travel_poison_dur", 2),
+            "stun": ability_data.get("shadow_stun", 0),
+        }
+        result += f"\n  ☠️ A shadow trace drifts into the next room..."
+
+    elif effect == "smoke_cascade":
+        # Flee current combat (non-boss) + pre-stuns enemies in adjacent rooms
+        cascade_range = ability_data.get("cascade_range", 1)
+        cascade_stun  = ability_data.get("cascade_stun", 1)
+        if combat.is_boss:
+            result += f"\n  The smoke clears... The {combat.enemy_name} cannot be escaped!"
+        else:
+            combat.player_fled = True
+            player.state["pending_travel"] = {
+                "source": ability_data.get("name", "Smoke Cascade"),
+                "type": "stun_wave",
+                "range_left": cascade_range,
+                "damage": 0,
+                "stun": cascade_stun,
+            }
+            result += f"\n  💨 SMOKE CASCADE! You vanish and smoke blinds the surrounding rooms!"
+            return result + "\n"
+
     # Check if enemy died from ability
     if combat.hp <= 0:
         combat.hp = 0

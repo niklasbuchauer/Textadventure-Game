@@ -661,13 +661,201 @@ class StatsOverlay(BookOverlay):
 #  DEBUG OVERLAY
 # ═══════════════════════════════════════════════════════════════════════════
 class DebugOverlay(BookOverlay):
+    """Two-spread debug book.
+    Spread 0 (pages 1-2): player.state viewer
+    Spread 1 (pages 3-4): toggleable debug flags + quick-action buttons
+    """
+    _FLIP_DUR = 0.32   # seconds for page-turn animation
 
     def __init__(self, gui):
         super().__init__(gui, "Debug Flags", "Game State", 780, 560)
+        self._page          = 0          # 0 = state viewer, 1 = debug controls
+        self._btn_hits: list = []        # [(abs_rect, action_str), ...]
+        self._flip_t        = 1.0        # 1.0 = settled; 0→1 = animating
+        self._flip_dir      = 0          # +1 forward, -1 backward
+        self._flip_target   = 0          # page to switch to mid-flip
+        self._flip_switched = False      # whether page swap happened this flip
+        self._draw_ox       = 0          # ox from current _draw_book call
+        self._draw_oy       = 0          # oy from current _draw_book call
+        self._press_flash: dict = {}     # action -> remaining seconds (press feedback)
+
+    # ── draw_book override (captures ox/oy for coord correction) ─────────────
+
+    def _draw_book(self, surf, BW, BH, ox, oy):
+        self._draw_ox = ox
+        self._draw_oy = oy
+        super()._draw_book(surf, BW, BH, ox, oy)
+
+    # ── public ───────────────────────────────────────────────────────────────
+
+    def _on_update(self, dt):
+        if self._flip_t < 1.0:
+            self._flip_t = min(1.0, self._flip_t + dt / self._FLIP_DUR)
+            # Switch page mid-flip (at the fold peak)
+            if not self._flip_switched and self._flip_t >= 0.5:
+                self._page = self._flip_target
+                self._flip_switched = True
+                self._start_turn()
+        # advance press-flash timers
+        expired = [a for a, t in self._press_flash.items() if t <= 0]
+        for a in expired:
+            del self._press_flash[a]
+        for a in list(self._press_flash):
+            self._press_flash[a] -= dt
 
     def _on_keydown(self, ev):
-        if ev.key==pygame.K_r: self._start_turn(); return True
+        if ev.key == pygame.K_r:
+            self._start_turn(); return True
+        if ev.key in (pygame.K_RIGHT, pygame.K_TAB):
+            self._flip_page(+1); return True
+        if ev.key == pygame.K_LEFT:
+            self._flip_page(-1); return True
         return False
+
+    def _on_click(self, pos) -> bool:
+        for rect, action in self._btn_hits:
+            if rect.collidepoint(pos):
+                self._dispatch(action)
+                return True
+        return True
+
+    # ── page flip ────────────────────────────────────────────────────────────
+
+    def _flip_page(self, delta):
+        target = max(0, min(1, self._page + delta))
+        if target == self._page or self._flip_t < 1.0:
+            return
+        self._flip_target   = target
+        self._flip_dir      = delta
+        self._flip_t        = 0.0
+        self._flip_switched = False
+
+    # ── draw override (adds animated page-fold on top) ────────────────────────
+
+    def draw(self, surface: pygame.Surface):
+        super().draw(surface)
+        if self._flip_t >= 1.0 or self._anim < 0.02:
+            return
+        sc   = _ease_out(self._anim)
+        sw, sh = surface.get_size()
+        bw   = min(self._bw, sw - 40)
+        bh   = min(self._bh, sh - 40)
+        bx   = (sw - bw) // 2
+        by   = (sh - bh) // 2
+
+        # Ease-in/out progress for the fold sweep
+        t    = _ease_io(self._flip_t)
+        # fold_x: x position of the leading edge of the turning page
+        # Forward (0→1): sweeps right→left; Backward (1→0): sweeps left→right
+        if self._flip_dir > 0:
+            fold_x  = bx + bw - int(t * bw)
+            page_x  = fold_x
+            page_w  = bx + bw - fold_x
+        else:
+            fold_x  = bx + int(t * bw)
+            page_x  = bx
+            page_w  = fold_x - bx
+
+        if page_w <= 0:
+            return
+
+        # — turning page surface (parchment back/face)
+        pg = pygame.Surface((page_w, bh), pygame.SRCALPHA)
+        # pick: before midpoint show the page we're leaving, after show arriving
+        col = C_PARCHMENT if (self._flip_dir > 0) == (self._flip_t < 0.5) else C_PARCHMENT_L
+        pg.fill((*col, int(230 * sc)))
+        # add subtle age spots so it looks like real parchment
+        rng = random.Random(7777)
+        for _ in range(35):
+            sx2 = rng.randint(2, max(3, page_w - 2))
+            sy2 = rng.randint(2, bh - 2)
+            r2  = rng.randint(2, 4)
+            a2  = rng.randint(5, 18)
+            pygame.draw.circle(pg, (90, 60, 22, a2), (sx2, sy2), r2)
+        surface.blit(pg, (page_x, by))
+
+        # — fold highlight (bright strip at the crease edge)
+        crease_w = max(4, min(16, page_w))
+        crease_x = fold_x if self._flip_dir > 0 else (fold_x - crease_w)
+        for i in range(crease_w):
+            ratio = i / crease_w if self._flip_dir > 0 else (1 - i / crease_w)
+            alpha = int(140 * (1 - ratio) * sc)
+            if alpha > 2:
+                pygame.draw.line(surface, (255, 248, 225, alpha),
+                                 (crease_x + i, by), (crease_x + i, by + bh))
+
+        # — drop shadow on the page behind the fold
+        shad_w = min(18, page_w)
+        shad_x = (fold_x - shad_w) if self._flip_dir > 0 else fold_x
+        for i in range(shad_w):
+            ratio = i / shad_w if self._flip_dir > 0 else (1 - i / shad_w)
+            alpha = int(55 * ratio * sc)
+            if alpha > 2:
+                x = shad_x + i
+                if bx <= x < bx + bw:
+                    pygame.draw.line(surface, (0, 0, 0, alpha),
+                                     (x, by), (x, by + bh))
+
+    # ── action dispatch ───────────────────────────────────────────────────────
+
+    def _dispatch(self, action: str):
+        # page-flip actions don't need the engine
+        if action == "flip_forward":
+            self._flip_page(+1)
+            return
+        if action == "flip_back":
+            self._flip_page(-1)
+            return
+        try:
+            e = self.gui.engine
+            p = e.player
+        except Exception:
+            return
+        # record press flash (1 second)
+        self._press_flash[action] = 1.0
+        if action == "toggle_god_mode":
+            e.debug_god_mode = not getattr(e, "debug_god_mode", False)
+        elif action == "toggle_infinite_mana":
+            new = not getattr(e, "debug_infinite_mana", False)
+            e.debug_infinite_mana = new
+            p.state["debug_infinite_mana"] = new
+        elif action == "toggle_disarm_free":
+            e.debug_disarm_free = not getattr(e, "debug_disarm_free", False)
+        elif action == "toggle_map_reveal":
+            new = not getattr(e, "debug_map_reveal", False)
+            e.debug_map_reveal = new
+            mw = getattr(e, "map_window", None)
+            if mw and hasattr(mw, "reveal_all"):
+                mw.reveal_all = new
+        elif action == "heal_full":
+            p.stats["health"] = p.state.get("health_max",
+                                 p.stats.get("health_max", 100))
+        elif action == "fill_mana":
+            p.stats["mana"] = p.stats.get("mana_max",
+                              p.state.get("mana_max", 50))
+        elif action == "add_gold":
+            p.stats["gold"] = p.stats.get("gold", 0) + 100
+        elif action == "add_sp":
+            p.stats["skill_points"] = p.stats.get("skill_points", 0) + 10
+        elif action == "level_up":
+            p.stats["level"] = p.stats.get("level", 1) + 1
+
+    # ── routing ───────────────────────────────────────────────────────────────
+
+    def _draw_left_page(self, surf, frame, cf):
+        self._btn_hits = []
+        if self._page == 0:
+            self._draw_state_left(surf, frame, cf)
+        else:
+            self._draw_toggles(surf, frame, cf)
+
+    def _draw_right_page(self, surf, frame, cf):
+        if self._page == 0:
+            self._draw_state_right(surf, frame, cf)
+        else:
+            self._draw_actions(surf, frame, cf)
+
+    # ── spread 0: state viewer ────────────────────────────────────────────────
 
     def _get_state(self):
         try:
@@ -676,59 +864,216 @@ class DebugOverlay(BookOverlay):
         except Exception:
             return []
 
-    def _draw_left_page(self, surf, frame, cf):
-        bg=C_PARCHMENT
-        ink=_blend(C_INK,bg,cf); mid=_blend(C_INK_MID,bg,cf)
-        light=_blend(C_INK_LIGHT,bg,cf); div=_blend(C_DIVIDER,bg,cf)
-        y=self._page_title(surf,frame,self.title_left,cf,True)
-        items=self._get_state()
-        half=max(1,(len(items)+1)//2)
-        left_items=items[:half]
-        if not left_items:
-            surf.blit(self._f(12).render("No flags set.",True,mid),(frame.x+8,y+8))
-        else:
-            for k,v in left_items:
-                vc = _blend(C_GREEN,bg,cf) if v else _blend(C_RED,bg,cf)
-                ks=self._f(11,True).render(str(k)+":",True,mid)
-                surf.blit(ks,(frame.x+6,y))
-                vs=self._f(11).render(str(v),True,vc)
-                surf.blit(vs,(frame.x+6+ks.get_width()+4,y))
-                y+=18
-                if y>frame.bottom-30: break
-        self._footer_hint(surf,frame,"R = refresh",cf,True)
+    def _draw_state_left(self, surf, frame, cf):
+        bg  = C_PARCHMENT
+        mid = _blend(C_INK_MID, bg, cf)
+        y   = self._page_title(surf, frame, "Debug Flags", cf, True)
+        items = self._get_state()
+        half  = max(1, (len(items) + 1) // 2)
+        for k, v in items[:half]:
+            vc = _blend(C_GREEN, bg, cf) if v else _blend(C_RED, bg, cf)
+            ks = self._f(10, True).render(str(k) + ":", True, mid)
+            surf.blit(ks, (frame.x + 6, y))
+            vs = self._f(10).render(str(v), True, vc)
+            surf.blit(vs, (frame.x + 6 + ks.get_width() + 3, y))
+            y += 16
+            if y > frame.bottom - 44: break
+        if not items:
+            surf.blit(self._f(11).render("No flags set.", True,
+                      _blend(C_INK_LIGHT, bg, cf)), (frame.x + 8, y + 8))
+        # nav button + hint
+        self._nav_btn(surf, frame, cf, "Controls \u25ba", "flip_forward",
+                      left=True, right_aligned=True)
+        self._footer_hint(surf, frame, "R = refresh  \u2192 = controls", cf, True)
 
-    def _draw_right_page(self, surf, frame, cf):
-        bg=C_PARCHMENT_L
-        ink=_blend(C_INK,bg,cf); mid=_blend(C_INK_MID,bg,cf)
-        light=_blend(C_INK_LIGHT,bg,cf); div=_blend(C_DIVIDER,bg,cf)
-        y=self._page_title(surf,frame,self.title_right,cf,False)
-        items=self._get_state()
-        half=max(1,(len(items)+1)//2)
-        right_items=items[half:]
-        if not right_items:
-            # show engine info
-            try:
-                e=self.gui.engine
-                lines=[
-                    f"Room: {e.player.location}",
-                    f"Rooms loaded: {len(e.rooms)}",
-                    f"Save file: savegame.json",
-                ]
-                for l in lines:
-                    s=self._f(11).render(l,True,mid)
-                    surf.blit(s,(frame.x+6,y)); y+=18
-            except Exception:
-                surf.blit(self._f(12).render("(continued…)",True,mid),(frame.x+8,y+8))
+    def _draw_state_right(self, surf, frame, cf):
+        bg  = C_PARCHMENT_L
+        mid = _blend(C_INK_MID, bg, cf)
+        y   = self._page_title(surf, frame, "Game State", cf, False)
+        items = self._get_state()
+        half  = max(1, (len(items) + 1) // 2)
+        right_items = items[half:]
+        if right_items:
+            for k, v in right_items:
+                vc = _blend(C_GREEN, bg, cf) if v else _blend(C_RED, bg, cf)
+                ks = self._f(10, True).render(str(k) + ":", True, mid)
+                surf.blit(ks, (frame.x + 6, y))
+                vs = self._f(10).render(str(v), True, vc)
+                surf.blit(vs, (frame.x + 6 + ks.get_width() + 3, y))
+                y += 16
+                if y > frame.bottom - 44: break
         else:
-            for k,v in right_items:
-                vc=_blend(C_GREEN,bg,cf) if v else _blend(C_RED,bg,cf)
-                ks=self._f(11,True).render(str(k)+":",True,mid)
-                surf.blit(ks,(frame.x+6,y))
-                vs=self._f(11).render(str(v),True,vc)
-                surf.blit(vs,(frame.x+6+ks.get_width()+4,y))
-                y+=18
-                if y>frame.bottom-30: break
-        self._footer_hint(surf,frame,"Esc to close",cf,False)
+            try:
+                e = self.gui.engine
+                for line in [f"Room: {e.player.current_room}",
+                              f"Rooms loaded: {len(e.rooms)}",
+                              f"Level: {e.player.stats.get('level', 1)}"]:
+                    surf.blit(self._f(10).render(line, True, mid), (frame.x + 6, y))
+                    y += 16
+            except Exception:
+                pass
+        self._footer_hint(surf, frame, "Esc to close", cf, False)
+
+    # ── spread 1: toggles ─────────────────────────────────────────────────────
+
+    def _draw_toggles(self, surf, frame, cf):
+        bg  = C_PARCHMENT
+        y   = self._page_title(surf, frame, "Debug Toggles", cf, True) + 4
+        try:
+            e = self.gui.engine
+        except Exception:
+            e = None
+
+        def _tval(attr):
+            return bool(getattr(e, attr, False)) if e else False
+
+        y = self._dbg_toggle(surf, frame, y, cf,
+            "God Mode",        _tval("debug_god_mode"),      "toggle_god_mode")
+        y = self._dbg_toggle(surf, frame, y, cf,
+            "Infinite Mana",   _tval("debug_infinite_mana"), "toggle_infinite_mana")
+        y = self._dbg_toggle(surf, frame, y, cf,
+            "Free Trap Disarm",_tval("debug_disarm_free"),   "toggle_disarm_free")
+        map_on = bool(getattr(e, "debug_map_reveal", False))
+        y = self._dbg_toggle(surf, frame, y, cf,
+            "Full Map Reveal",  map_on,                       "toggle_map_reveal")
+
+        # small description labels
+        descs = [
+            "Cannot die (HP stuck at 1)",
+            "Abilities cost no mana",
+            "Traps cost no items",
+            "Reveal all map rooms",
+        ]
+        y += 4
+        lgt = _blend(C_INK_LIGHT, bg, cf)
+        for d in descs:
+            surf.blit(self._f(9).render("\u2014 " + d, True, lgt), (frame.x + 10, y))
+            y += 14
+
+        self._nav_btn(surf, frame, cf, "\u25c4 State View", "flip_back",
+                      left=True, right_aligned=False)
+        self._footer_hint(surf, frame, "\u2190 = state view", cf, True)
+
+    # ── spread 1: actions ─────────────────────────────────────────────────────
+
+    def _draw_actions(self, surf, frame, cf):
+        y = self._page_title(surf, frame, "Quick Actions", cf, False) + 4
+
+        y = self._dbg_btn(surf, frame, y, cf,
+            "\u2665  Heal to Full",     "heal_full",
+            (55, 110, 50), (80, 155, 75), right=True)
+        y = self._dbg_btn(surf, frame, y, cf,
+            "\u25c6  Fill Mana",         "fill_mana",
+            (42, 70, 150), (65, 105, 200), right=True)
+        y = self._dbg_btn(surf, frame, y, cf,
+            "+100  Add Gold",            "add_gold",
+            (120, 90, 20), (170, 135, 35), right=True)
+        y = self._dbg_btn(surf, frame, y, cf,
+            "+10  Skill Points",         "add_sp",
+            (75, 42, 115), (108, 65, 160), right=True)
+        y = self._dbg_btn(surf, frame, y, cf,
+            "+1  Level Up",              "level_up",
+            (100, 55, 20), (148, 88, 35), right=True)
+
+        self._nav_btn(surf, frame, cf, "\u25c4 State View", "flip_back",
+                      left=False, right_aligned=False)
+        self._footer_hint(surf, frame, "Esc to close", cf, False)
+
+    # ── button helpers ────────────────────────────────────────────────────────
+
+    def _dbg_toggle(self, surf, frame, y, cf, label, value, action, right=False):
+        """Render a labelled ON/OFF toggle row and register its hit rect."""
+        bg    = C_PARCHMENT_L if right else C_PARCHMENT
+        ink   = _blend(C_INK,     bg, cf)
+        mid   = _blend(C_INK_MID, bg, cf)
+        ROW_H = 26; BOX_W = 44; BOX_H = 18
+        ls    = self._f(11).render(label, True, ink)
+        surf.blit(ls, (frame.x + 8, y + (ROW_H - ls.get_height()) // 2))
+        bx_   = frame.x + frame.width - BOX_W - 8
+        bby   = y + (ROW_H - BOX_H) // 2
+        br    = pygame.Rect(bx_, bby, BOX_W, BOX_H)
+        mx, my = pygame.mouse.get_pos()
+        _ox = self._book_rect.x - self._draw_ox
+        _oy = self._book_rect.y - self._draw_oy
+        hover  = br.collidepoint(mx - _ox, my - _oy)
+        pressed = action in self._press_flash
+        on_col = (52, 148, 68)   # green when on
+        off_col = (120, 95, 60)  # warm grey when off
+        fl = on_col if value else off_col
+        if pressed:
+            fl = tuple(max(0, c - 38) for c in fl)
+        elif hover:
+            fl = tuple(min(255, c + 25) for c in fl)
+        pygame.draw.rect(surf, fl,  br, border_radius=9)
+        pygame.draw.rect(surf, mid, br, width=1, border_radius=9)
+        # knob
+        kx = bx_ + BOX_W - BOX_H + 2 if value else bx_ + 2
+        pygame.draw.circle(surf, (248, 238, 218), (kx + BOX_H // 2 - 2, bby + BOX_H // 2), BOX_H // 2 - 2)
+        lbl2 = "ON " if value else "OFF"
+        ts2  = self._f(8, True).render(lbl2, True, (20, 14, 6) if value else (100, 80, 50))
+        loff = bx_ + 5 if value else bx_ + BOX_H - 2
+        surf.blit(ts2, (loff, bby + (BOX_H - ts2.get_height()) // 2))
+        # divider
+        _blend_c = _blend(C_DIVIDER, bg, cf * 0.5)
+        pygame.draw.line(surf, _blend_c,
+                         (frame.x + 4, y + ROW_H), (frame.x + frame.width - 4, y + ROW_H), 1)
+        self._btn_hits.append((
+            pygame.Rect(self._book_rect.x - self._draw_ox + br.x,
+                        self._book_rect.y - self._draw_oy + br.y,
+                        br.width, br.height), action))
+        return y + ROW_H + 3
+
+    def _dbg_btn(self, surf, frame, y, cf, label, action,
+                 normal_col, hover_col, right=False):
+        """Render a full-width action button and register its hit rect."""
+        bg    = C_PARCHMENT_L if right else C_PARCHMENT
+        BTN_H = 30; BTN_W = frame.width - 12
+        br    = pygame.Rect(frame.x + 6, y, BTN_W, BTN_H)
+        mx, my = pygame.mouse.get_pos()
+        _ox = self._book_rect.x - self._draw_ox
+        _oy = self._book_rect.y - self._draw_oy
+        hover  = br.collidepoint(mx - _ox, my - _oy)
+        pressed = action in self._press_flash
+        if pressed:
+            col = tuple(max(0, c - 42) for c in normal_col)
+        else:
+            col = hover_col if hover else normal_col
+        bs     = pygame.Surface((BTN_W, BTN_H), pygame.SRCALPHA)
+        pygame.draw.rect(bs, (*col, 220), (0, 0, BTN_W, BTN_H), border_radius=6)
+        pygame.draw.rect(bs, (220, 200, 140, 140), (0, 0, BTN_W, BTN_H), width=1, border_radius=6)
+        surf.blit(bs, (br.x, br.y))
+        ts = self._f(11, True).render(label, True, (245, 238, 218))
+        surf.blit(ts, ts.get_rect(center=br.center))
+        self._btn_hits.append((
+            pygame.Rect(self._book_rect.x - self._draw_ox + br.x,
+                        self._book_rect.y - self._draw_oy + br.y,
+                        br.width, br.height), action))
+        return y + BTN_H + 5
+
+    def _nav_btn(self, surf, frame, cf, label, action, left=True, right_aligned=True):
+        """Small navigation button pinned above the footer hint."""
+        bg    = C_PARCHMENT_L if not left else C_PARCHMENT
+        mid   = _blend(C_INK_MID, bg, cf)
+        div   = _blend(C_DIVIDER, bg, cf)
+        ts    = self._f(10, True).render(label, True, mid)
+        BTN_W = ts.get_width() + 16; BTN_H = 18
+        bx_   = (frame.x + frame.width - BTN_W - 4) if right_aligned else (frame.x + 4)
+        by_   = frame.bottom - 46
+        br    = pygame.Rect(bx_, by_, BTN_W, BTN_H)
+        mx, my = pygame.mouse.get_pos()
+        _ox = self._book_rect.x - self._draw_ox
+        _oy = self._book_rect.y - self._draw_oy
+        hover  = br.collidepoint(mx - _ox, my - _oy)
+        pressed = action in self._press_flash
+        c      = tuple(max(0, x - 28) for x in _blend(C_GOLD, bg, cf)[:3]) if pressed else \
+                 (_blend(C_GOLD, bg, cf) if hover else div)
+        pygame.draw.rect(surf, (*c[:3], 180), br, border_radius=4)
+        pygame.draw.rect(surf, mid, br, width=1, border_radius=4)
+        surf.blit(ts, ts.get_rect(center=br.center))
+        self._btn_hits.append((
+            pygame.Rect(self._book_rect.x - self._draw_ox + br.x,
+                        self._book_rect.y - self._draw_oy + br.y,
+                        br.width, br.height), action))
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -886,7 +1231,7 @@ class SkillTreeBookOverlay(BookOverlay):
                 try:
                     from skill_tree import NODE_R
                 except ImportError:
-                    NODE_R = 18
+                    NODE_R = 11
                 tr   = self._tree_screen_rect
                 sx   = event.pos[0] - tr.x
                 sy   = event.pos[1] - tr.y
@@ -956,7 +1301,7 @@ class SkillTreeBookOverlay(BookOverlay):
         try:
             from skill_tree import NODE_R
         except ImportError:
-            NODE_R = 18
+            NODE_R = 11
 
         best_id, best_d = None, float("inf")
         thresh = NODE_R * 2.2 / self._zoom
@@ -1016,17 +1361,15 @@ class SkillTreeBookOverlay(BookOverlay):
         pygame.draw.rect(sh_s, (0, 0, 0, 80), pygame.Rect(16, 16, BW, BH), border_radius=10)
         surf.blit(sh_s, (ox - 14, oy - 14))
 
-        # parchment left panel
-        pygame.draw.rect(surf, C_PARCHMENT, pygame.Rect(ox, oy, LW, BH), border_radius=8)
-        rng = random.Random(self._SPOT_SEED)
-        sp  = pygame.Surface((LW, BH), pygame.SRCALPHA)
-        for _ in range(55):
-            sx2 = rng.randint(4, LW - 4); sy2 = rng.randint(4, BH - 4)
-            r2  = rng.randint(2, 5);      a2  = rng.randint(7, 22)
-            pygame.draw.circle(sp, (90, 60, 22, a2), (sx2, sy2), r2)
-        surf.blit(sp, (ox, oy))
+        # dark cosmic left panel
+        pygame.draw.rect(surf, (8, 10, 24), pygame.Rect(ox, oy, LW, BH), border_radius=8)
+        _sp_rng = random.Random(self._SPOT_SEED + 1)
+        for _ in range(30):
+            _sx2 = _sp_rng.randint(4, LW - 4); _sy2 = _sp_rng.randint(4, BH - 4)
+            _sa2 = _sp_rng.randint(15, 45)
+            surf.set_at((ox + _sx2, oy + _sy2), (40 + _sa2, 50 + _sa2, 100 + _sa2))
         lf = pygame.Rect(ox + pad, oy + pad, LW - pad - SPW // 2, BH - pad * 2)
-        pygame.draw.rect(surf, C_INK_LIGHT, lf, width=1)
+        pygame.draw.rect(surf, (25, 35, 70), lf, width=1)
 
         # decorative spine between panels
         sx_sp = ox + LW
@@ -1037,14 +1380,36 @@ class SkillTreeBookOverlay(BookOverlay):
             pygame.draw.rect(surf, C_SPINE_LINE,
                              pygame.Rect(sx_sp, ly2 - 2, SPW, 4), border_radius=1)
 
-        # dark tree canvas area — medieval stone tones
+        # dark tree canvas area — deep-space cosmos
         tx = ox + LW + SPW
         tw = BW - LW - SPW
-        cls_bg = {"warrior": (16, 13, 9),    # warm dark stone
-                  "rogue":   (10, 13, 16),    # cold slate
-                  "mage":    (13, 9,  16)}.get(self._cls_id, (14, 12, 10))
+        _STAR_TINT = {"warrior": (100, 120, 220),
+                      "rogue":   (160, 100, 220),
+                      "mage":    (60, 200, 220)}
+        cls_bg = {"warrior": (6, 8, 18),
+                  "rogue":   (8, 5, 16),
+                  "mage":    (4, 10, 18)}.get(self._cls_id, (10, 10, 20))
         tree_surf = pygame.Surface((tw, BH))
         tree_surf.fill(cls_bg)
+        # ── Starfield pass (seeded — stable, no flicker) ──────────────────
+        import random as _rand_sf
+        _srng  = _rand_sf.Random(tw * 31337 + BH)
+        _stint = _STAR_TINT.get(self._cls_id, (200, 200, 255))
+        _tr, _tg, _tb = _stint
+        for _ in range(280):
+            _sx = _srng.randint(0, tw - 1); _sy = _srng.randint(0, BH - 1)
+            _sa = _srng.randint(30, 110)
+            tree_surf.set_at((_sx, _sy), ((_tr*_sa)//255, (_tg*_sa)//255, (_tb*_sa)//255))
+        for _ in range(100):
+            _sx = _srng.randint(1, tw - 2); _sy = _srng.randint(1, BH - 2)
+            _sa = _srng.randint(80, 180)
+            pygame.draw.rect(tree_surf, ((_tr*_sa)//255, (_tg*_sa)//255, (_tb*_sa)//255),
+                             pygame.Rect(_sx, _sy, 2, 2))
+        for _ in range(25):
+            _sx = _srng.randint(2, tw - 3); _sy = _srng.randint(2, BH - 3)
+            _sa = _srng.randint(150, 240)
+            pygame.draw.rect(tree_surf, ((_tr*_sa)//255, (_tg*_sa)//255, (_tb*_sa)//255),
+                             pygame.Rect(_sx, _sy, 3, 3))
         self._draw_tree(tree_surf, tw, BH, cf)
         surf.blit(tree_surf, (tx, oy))
         pygame.draw.rect(surf, C_COVER, pygame.Rect(tx, oy, tw, BH), width=2)
@@ -1060,7 +1425,7 @@ class SkillTreeBookOverlay(BookOverlay):
         fadea = int(255 * (1.0 - cf))
         if fadea > 4:
             fs = pygame.Surface((lf.width, lf.height), pygame.SRCALPHA)
-            fs.fill((*C_PARCHMENT, fadea))
+            fs.fill((8, 10, 24, fadea))
             surf.blit(fs, (lf.x, lf.y))
 
         # left panel content
@@ -1086,53 +1451,36 @@ class SkillTreeBookOverlay(BookOverlay):
     # ── left information panel ────────────────────────────────────────────────
 
     def _draw_left_panel(self, surf, frame, cf):
-        bg  = C_PARCHMENT
-        ink = _blend(C_INK,       bg, cf)
-        mid = _blend(C_INK_MID,   bg, cf)
-        lgt = _blend(C_INK_LIGHT, bg, cf)
-        div = _blend(C_DIVIDER,   bg, cf)
-        hd  = _blend(C_HEADER,    bg, cf)
-        grn = _blend(C_GREEN,     bg, cf)
-        gld = _blend(C_GOLD,      bg, cf)
+        # Cosmic palette (blended with dark bg for fade-in)
+        _bg = (8, 10, 24)
+        C_TITLE = _blend((140, 180, 255), _bg, cf)
+        C_LABEL = _blend((90, 120, 180),  _bg, cf)
+        C_VAL   = _blend((210, 225, 255), _bg, cf)
+        C_DIM   = _blend((60, 75, 115),   _bg, cf)
+        C_DIV   = _blend((28, 38, 75),    _bg, cf)
+        C_GLD   = _blend((220, 175, 55),  _bg, cf)
+        C_GRN   = _blend((80, 210, 110),  _bg, cf)
+        C_AMB   = _blend((220, 140, 40),  _bg, cf)
+        C_LCK   = _blend((55, 65, 105),   _bg, cf)
 
-        y = frame.y + 6
+        y = frame.y + 8
 
-        # title
-        ts = self._f(15, True).render("Skill Tree", True, hd)
-        surf.blit(ts, (frame.x + 4, y)); y += 22
-        pygame.draw.line(surf, div, (frame.x + 4, y), (frame.x + frame.width - 4, y)); y += 6
+        # title row
+        ts = self._f(13, True).render("✶  SKILL TREE", True, C_TITLE)
+        surf.blit(ts, (frame.x + 6, y)); y += 20
+        pygame.draw.line(surf, C_DIV, (frame.x + 4, y), (frame.right - 4, y)); y += 7
 
-        # class
-        cs2 = self._f(12, True).render(f"Class: {self._cls_id.capitalize()}", True, ink)
-        surf.blit(cs2, (frame.x + 4, y)); y += 18
-
-        # skill points
+        # class + SP row
+        cs2 = self._f(11, True).render(self._cls_id.upper(), True, C_VAL)
+        surf.blit(cs2, (frame.x + 6, y))
         try:
             sp = self.gui.engine.player.stats.get("skill_points", 0) if self.gui.engine else 0
         except Exception:
             sp = 0
-        sps = self._f(12).render(f"Skill Points: {sp}", True, gld)
-        surf.blit(sps, (frame.x + 4, y)); y += 20
+        sps = self._f(11).render(f"{sp} SP", True, C_GLD)
+        surf.blit(sps, (frame.right - sps.get_width() - 6, y)); y += 19
+        pygame.draw.line(surf, C_DIV, (frame.x + 4, y), (frame.right - 4, y)); y += 8
 
-        pygame.draw.line(surf, div, (frame.x + 4, y), (frame.x + frame.width - 4, y)); y += 7
-
-        # legend
-        ls = self._f(10, True).render("Legend:", True, hd)
-        surf.blit(ls, (frame.x + 4, y)); y += 15
-        for label, fill, out in [
-            ("Locked",    (42, 42, 42),   (68, 68, 68)),
-            ("Available", (26, 58, 90),   (66, 165, 245)),
-            ("Passive",   (26, 74, 26),   (102, 187, 106)),
-            ("Active",    (74, 42, 0),    (255, 152, 0)),
-        ]:
-            pygame.draw.circle(surf, fill, (frame.x + 11, y + 6), 6)
-            pygame.draw.circle(surf, out,  (frame.x + 11, y + 6), 6, 1)
-            ls2 = self._f(10).render(label, True, mid)
-            surf.blit(ls2, (frame.x + 23, y)); y += 16
-
-        pygame.draw.line(surf, div, (frame.x + 4, y), (frame.x + frame.width - 4, y)); y += 7
-
-        # selected node details
         sel = self._selected_id
         if sel and self._tree:
             node = next((n for n in self._tree if n["id"] == sel), None)
@@ -1141,65 +1489,82 @@ class SkillTreeBookOverlay(BookOverlay):
                 is_avl = sel in self._avail
 
                 # name
-                ns = self._f(12, True).render(node["name"], True, ink)
-                surf.blit(ns, (frame.x + 4, y)); y += 18
+                name_s = self._f(12, True).render(node["name"], True, C_VAL)
+                surf.blit(name_s, (frame.x + 6, y)); y += 18
 
-                # status badge
-                st_lbl = "UNLOCKED" if is_unl else ("AVAILABLE" if is_avl else "LOCKED")
-                st_bg  = (_blend(C_GREEN, bg, cf * 0.5) if is_unl else
-                          _blend(C_BLUE,  bg, cf * 0.4) if is_avl else
-                          _blend(C_DIVIDER, bg, cf * 0.3))
-                st_col = (grn if is_unl else
-                          _blend(C_BLUE, bg, cf) if is_avl else lgt)
-                sbr = pygame.Rect(frame.x + 4, y, 92, 16)
-                pygame.draw.rect(surf, st_bg, sbr, border_radius=3)
-                sts = self._f(9, True).render(st_lbl, True, st_col)
-                surf.blit(sts, sts.get_rect(center=sbr.center))
-                y += 22
+                # status pill
+                if is_unl:
+                    pill_bg = (20, 70, 30);  pill_tc = C_GRN;  pill_lbl = "UNLOCKED"
+                elif is_avl:
+                    pill_bg = (30, 65, 15);  pill_tc = (150, 220, 60); pill_lbl = "AVAILABLE"
+                else:
+                    pill_bg = (18, 20, 42);  pill_tc = C_LCK;  pill_lbl = "LOCKED"
+                sbr = pygame.Rect(frame.x + 6, y, frame.width - 12, 15)
+                ps  = pygame.Surface((sbr.width, sbr.height), pygame.SRCALPHA)
+                pygame.draw.rect(ps, (*pill_bg, 210), (0, 0, sbr.width, sbr.height), border_radius=4)
+                pygame.draw.rect(ps, (*pill_tc, 130), (0, 0, sbr.width, sbr.height), width=1, border_radius=4)
+                surf.blit(ps, (sbr.x, sbr.y))
+                sts = self._f(9, True).render(pill_lbl, True, pill_tc)
+                surf.blit(sts, sts.get_rect(center=sbr.center)); y += 22
 
                 # meta
-                for lbl, val in [("Tier", str(node.get("tier", "?"))),
-                                  ("Cost", f"{node.get('cost', '?')} SP"),
-                                  ("Type", node.get("type", "passive").capitalize())]:
-                    l3 = self._f(10, True).render(lbl + ":", True, hd)
-                    surf.blit(l3, (frame.x + 4, y))
-                    v3 = self._f(10).render(val, True, ink)
-                    surf.blit(v3, (frame.x + 58, y)); y += 15
+                for lbl2, val in [
+                    ("Tier", str(node.get("tier", "?"))),
+                    ("Type", node.get("type", "passive").capitalize()),
+                    ("Cost", f"{node.get('cost', '?')} SP"),
+                ]:
+                    l3 = self._f(9, True).render(lbl2, True, C_LABEL)
+                    surf.blit(l3, (frame.x + 6, y))
+                    v3 = self._f(9).render(val, True, C_VAL)
+                    surf.blit(v3, (frame.x + 46, y)); y += 14
 
-                pygame.draw.line(surf, div, (frame.x + 4, y), (frame.x + frame.width - 4, y)); y += 5
+                pygame.draw.line(surf, C_DIV, (frame.x + 4, y), (frame.right - 4, y)); y += 5
 
                 # description
-                for line in _wrap(node.get("description", ""), self._f(10), frame.width - 10):
-                    ds = self._f(10).render(line, True, mid)
-                    surf.blit(ds, (frame.x + 4, y)); y += 14
-                    if y > frame.bottom - 50:
+                for line in _wrap(node.get("description", ""), self._f(10), frame.width - 12):
+                    ds = self._f(10).render(line, True, C_DIM)
+                    surf.blit(ds, (frame.x + 6, y)); y += 13
+                    if y > frame.bottom - 52:
                         break
 
-                # bonuses
+                # stat bonuses
                 bonuses = node.get("stat_bonuses", {})
                 if bonuses and y < frame.bottom - 38:
-                    pygame.draw.line(surf, div, (frame.x + 4, y),
-                                     (frame.x + frame.width - 4, y)); y += 4
+                    pygame.draw.line(surf, C_DIV, (frame.x + 4, y),
+                                     (frame.right - 4, y)); y += 4
                     for stat, mod in bonuses.items():
-                        bs3 = self._f(9).render(f"+{mod} {stat}", True,
-                                                _blend(C_GREEN, bg, cf))
-                        surf.blit(bs3, (frame.x + 4, y)); y += 13
+                        bs3 = self._f(9).render(f"+{mod} {stat}", True, C_GRN)
+                        surf.blit(bs3, (frame.x + 6, y)); y += 13
                         if y > frame.bottom - 28: break
 
                 # unlock hint
-                if is_avl and not is_unl and y < frame.bottom - 20:
-                    hint = self._f(10).render("← Click node to unlock", True, gld)
-                    surf.blit(hint, (frame.x + 4, frame.bottom - 23))
-        else:
-            hs  = self._f(11).render("Click a node to view", True, lgt)
-            hs2 = self._f(11).render("details here.", True, lgt)
-            surf.blit(hs,  (frame.x + 4, y)); y += 16
-            surf.blit(hs2, (frame.x + 4, y))
+                if is_avl and not is_unl:
+                    hint = self._f(10).render("← Click to unlock", True, C_GLD)
+                    surf.blit(hint, (frame.x + 6, frame.bottom - 24))
 
-        # footer hint
-        self._row_divider(surf, frame, frame.bottom - 26, cf, True)
-        fh = self._f(10).render("Scroll=zoom  Drag=pan  R=refresh", True, lgt)
-        surf.blit(fh, (frame.x + 4, frame.bottom - 17))
+        else:
+            # idle: legend
+            for label, fill, out in [
+                ("Locked",    (18, 22, 40),  (45, 55, 90)),
+                ("Available", (42, 52, 15),  (150, 220, 60)),
+                ("Passive",   (15, 48, 22),  (60, 200, 100)),
+                ("Active",    (55, 22, 8),   (220, 140, 40)),
+            ]:
+                pygame.draw.circle(surf, fill, (frame.x + 11, y + 6), 6)
+                pygame.draw.circle(surf, out,  (frame.x + 11, y + 6), 6, 1)
+                ls2 = self._f(10).render(label, True, C_LABEL)
+                surf.blit(ls2, (frame.x + 23, y)); y += 17
+            y += 6
+            hs = self._f(10).render("Click a node to", True, C_DIM)
+            hs2 = self._f(10).render("view details.", True, C_DIM)
+            surf.blit(hs,  (frame.x + 6, y)); y += 14
+            surf.blit(hs2, (frame.x + 6, y))
+
+        # footer
+        pygame.draw.line(surf, C_DIV, (frame.x + 4, frame.bottom - 25),
+                         (frame.right - 4, frame.bottom - 25))
+        fh = self._f(9).render("Scroll=zoom  Drag=pan", True, C_DIM)
+        surf.blit(fh, (frame.x + 6, frame.bottom - 16))
 
     # ── radial tree canvas ────────────────────────────────────────────────────
 
@@ -1248,7 +1613,7 @@ class SkillTreeBookOverlay(BookOverlay):
             rr = int(t * RING_GAP * z)
             if rr > 4 and -rr < ccx < sw + rr and -rr < ccy < sh + rr:
                 alpha = max(10, 32 - t * 4)
-                pygame.draw.circle(rg_surf, (140, 115, 60, alpha),
+                pygame.draw.circle(rg_surf, (18, 28, 58, 60),
                                    (int(ccx), int(ccy)), rr, 1)
         surf.blit(rg_surf, (0, 0))
 
@@ -1312,13 +1677,13 @@ class SkillTreeBookOverlay(BookOverlay):
                 p1     = (int(pcx), int(pcy))
                 p2     = (int(ncx), int(ncy))
                 if both:
-                    pygame.draw.line(cn_surf, (105, 85, 42, 180), p1, p2, 3)
-                    pygame.draw.line(cn_surf, (165, 138, 75, 80), p1, p2, 1)
+                    pygame.draw.line(cn_surf, (80, 160, 255, 180), p1, p2, 3)
+                    pygame.draw.line(cn_surf, (120, 200, 255, 80), p1, p2, 1)
                 elif either:
                     a = int(55 + 65 * pulse_t)
-                    pygame.draw.line(cn_surf, (195, 150, 35, a), p1, p2, 2)
+                    pygame.draw.line(cn_surf, (150, 220, 60, a), p1, p2, 2)
                 else:
-                    pygame.draw.line(cn_surf, (52, 44, 32, 100), p1, p2, 1)
+                    pygame.draw.line(cn_surf, (20, 28, 50, 100), p1, p2, 1)
         surf.blit(cn_surf, (0, 0))
 
         # ── nodes ─────────────────────────────────────────────────────────
@@ -1328,10 +1693,10 @@ class SkillTreeBookOverlay(BookOverlay):
         # Passive unlocked: forest sage
         # Active unlocked:  crimson fire
         _COLS = {
-            "locked":    ((30, 25, 18),  (70, 60, 44),  (95, 82, 58)),
-            "avail":     ((68, 50, 10),  (218, 170, 42), (255, 215, 120)),
-            "passive":   ((18, 46, 22),  (88, 165, 68),  (155, 230, 135)),
-            "active":    ((62, 15, 10),  (210, 62, 28),  (255, 150, 90)),
+            "locked":    ((18, 22, 40),  (45, 55, 90),   (70, 80, 120)),
+            "avail":     ((42, 52, 15),  (150, 220, 60),  (200, 255, 100)),
+            "passive":   ((15, 48, 22),  (60, 200, 100),  (120, 230, 150)),
+            "active":    ((55, 22, 8),   (220, 140, 40),  (255, 200, 90)),
         }
         nr   = NODE_R * z
         spin = self._spin_angle
@@ -1374,24 +1739,24 @@ class SkillTreeBookOverlay(BookOverlay):
             # selected: gold sun-halo
             elif is_sel:
                 for gi in range(5, 0, -1):
-                    pygame.draw.circle(gw_s, (225, 185, 40, 12 + gi * 16),
+                    pygame.draw.circle(gw_s, (80, 160, 255, 12 + gi * 16),
                                        (isx, isy), r + 3 + gi * 5)
-            # hover: soft warm tint
+            # hover: cosmic blue tint
             elif is_hover:
                 for gi in range(3, 0, -1):
-                    pygame.draw.circle(gw_s, (210, 190, 140, 10 + gi * 12),
+                    pygame.draw.circle(gw_s, (120, 180, 255, 10 + gi * 12),
                                        (isx, isy), r + 2 + gi * 3)
-            # available: amber candlelight pulse
+            # available: lime starfield pulse
             elif key == "avail":
-                pr2 = int(r + 5 + pulse_t * 6)
+                pr2 = int(r + 4 + pulse_t * 3)
                 pa  = int(50 + 70 * pulse_t)
-                pygame.draw.circle(gw_s, (220, 168, 38, pa), (isx, isy), pr2, 2)
-                pygame.draw.circle(gw_s, (255, 210, 80, pa // 3), (isx, isy), pr2 + 5, 1)
-            # unlocked: faint aura
+                pygame.draw.circle(gw_s, (150, 220, 60, pa), (isx, isy), pr2, 2)
+                pygame.draw.circle(gw_s, (100, 180, 40, pa // 3), (isx, isy), pr2 + 5, 1)
+            # unlocked: faint cosmic aura
             elif key == "active":
-                pygame.draw.circle(gw_s, (210, 55, 20, 22), (isx, isy), r + 8)
+                pygame.draw.circle(gw_s, (220, 140, 40, 25), (isx, isy), r + 8)
             elif key == "passive":
-                pygame.draw.circle(gw_s, (70, 155, 60, 16), (isx, isy), r + 7)
+                pygame.draw.circle(gw_s, (60, 200, 100, 20), (isx, isy), r + 7)
 
         surf.blit(gw_s, (0, 0))
 
@@ -1426,62 +1791,7 @@ class SkillTreeBookOverlay(BookOverlay):
                                   brd_w=brd_w, is_act=is_act, is_orig=is_orig)
 
             if z < 0.42:
-                continue   # skip inner detail when zoomed out
-
-            # ── inner emblem ──────────────────────────────────────────────
-            if is_orig:
-                # Sun-cross for origin node
-                arm  = max(3, int(r * 0.45))
-                for i in range(4):
-                    ang = i * _math.pi / 2
-                    x1  = isx + int(4 * _math.cos(ang))
-                    y1  = isy + int(4 * _math.sin(ang))
-                    x2  = isx + int(arm * _math.cos(ang))
-                    y2  = isy + int(arm * _math.sin(ang))
-                    pygame.draw.line(dc_s, (*inner_col, 140), (x1, y1), (x2, y2),
-                                     max(2, r // 6))
-                pygame.draw.circle(dc_s, (*inner_col, 130), (isx, isy), max(2, r // 4))
-                # slow rotating outer petals
-                for i in range(8):
-                    ang  = spin * 0.3 + i * _math.pi / 4
-                    tip  = (isx + int((r - 2) * _math.cos(ang)),
-                            isy + int((r - 2) * _math.sin(ang)))
-                    b1   = (isx + int((r - 5) * _math.cos(ang - 0.22)),
-                            isy + int((r - 5) * _math.sin(ang - 0.22)))
-                    b2   = (isx + int((r - 5) * _math.cos(ang + 0.22)),
-                            isy + int((r - 5) * _math.sin(ang + 0.22)))
-                    pygame.draw.polygon(dc_s, (*out, 110), [tip, b1, b2])
-            elif is_act and key != "locked":
-                # Rotating 4-arm cross (heraldic fleur-de-lis hint)
-                arm = max(2, int(r * 0.5))
-                sa  = 150 if key != "locked" else 60
-                for i in range(4):
-                    ang  = spin + i * _math.pi / 2
-                    x2   = isx + int(arm * _math.cos(ang))
-                    y2   = isy + int(arm * _math.sin(ang))
-                    pygame.draw.line(dc_s, (*inner_col, sa),
-                                     (isx, isy), (x2, y2), max(2, r // 5))
-                # centre dot
-                pygame.draw.circle(dc_s, (*inner_col, 180), (isx, isy), max(2, r // 4))
-            elif key == "passive" and key != "locked":
-                # Small centered ring with a dot
-                ir = max(2, r // 3)
-                pygame.draw.circle(dc_s, (*inner_col, 70), (isx, isy), ir, max(1, ir // 2))
-                pygame.draw.circle(dc_s, (*inner_col, 120), (isx, isy), max(1, r // 5))
-            elif key == "avail":
-                # Pulsing diamond outline inside
-                pt = abs((self._pulse_phase % 16) - 8) / 8.0
-                ir = max(3, int(r * (0.45 + pt * 0.12)))
-                pts_d = [(isx, isy - ir), (isx + ir, isy),
-                         (isx, isy + ir),  (isx - ir, isy)]
-                pygame.draw.polygon(dc_s, (*inner_col, int(80 + 80 * pt)), pts_d, 1)
-
-            # top-left sheen
-            if r >= 6:
-                shx = isx - r // 3
-                shy = isy - r // 3
-                pygame.draw.circle(dc_s, (*inner_col, 40 if key == "locked" else 70),
-                                   (shx, shy), max(2, r // 4))
+                continue   # skip labels when zoomed out
 
             # ── name label ────────────────────────────────────────────────
             if z >= 0.35:
@@ -1498,9 +1808,9 @@ class SkillTreeBookOverlay(BookOverlay):
                         lines.append(cur); cur = wrd
                 if cur: lines.append(cur)
                 ty = isy + r + 3
-                lc = (255, 225, 100) if is_sel else \
-                     (230, 210, 155) if (is_hover or key == "avail") else \
-                     (190, 182, 165) if key != "locked" else (84, 72, 54)
+                lc = (255, 255, 120) if is_sel else \
+                     (210, 225, 255) if (is_hover or key != "locked") else \
+                     (50, 55, 80)
                 for line in lines:
                     t_ = self._tf(7).render(line, True, lc)
                     surf.blit(t_, (isx - t_.get_width() // 2, ty))
@@ -1511,72 +1821,24 @@ class SkillTreeBookOverlay(BookOverlay):
         # ── HUD ───────────────────────────────────────────────────────────
         hud_s = self._tf(9).render(
             f"Scroll = zoom  ·  Drag = pan  ·  R = refresh",
-            True, (65, 58, 46))
+            True, (80, 100, 160))
         surf.blit(hud_s, (6, sh - 17))
 
     def _draw_node_shape(self, surf, cls_id, cx, cy, r, fill, outline,
                          brd_w=2, is_act=False, is_orig=False):
-        """Medieval class-specific shapes.
-        Warrior → octagon (iron shield)
-        Rogue   → elongated diamond (blade)
-        Mage    → circle with outer pip-ring hint
-        """
-        if cls_id == "warrior":
-            # Octagon — flat-top iron shield
-            pts = []
-            for i in range(8):
-                a = _math.radians(i * 45)
-                pts.append((cx + int(r * _math.cos(a)), cy + int(r * _math.sin(a))))
-            pygame.draw.polygon(surf, fill, pts)
-            pygame.draw.polygon(surf, outline, pts, brd_w)
-            if is_act and not is_orig:
-                r2  = r + max(3, r // 3)
-                pad = r2 + 3
-                rs  = pygame.Surface((pad * 2, pad * 2), pygame.SRCALPHA)
-                pts2 = []
-                for i in range(8):
-                    a = _math.radians(i * 45)
-                    pts2.append((pad + int(r2 * _math.cos(a)), pad + int(r2 * _math.sin(a))))
-                pygame.draw.polygon(rs, (*outline, 60), pts2, 1)
-                surf.blit(rs, (cx - pad, cy - pad))
-        elif cls_id == "rogue":
-            # Elongated diamond — dagger blade (taller than wide)
-            ry   = int(r * 1.25)
-            rx   = int(r * 0.80)
-            pts  = [(cx,      cy - ry),
-                    (cx + rx, cy),
-                    (cx,      cy + ry),
-                    (cx - rx, cy)]
-            pygame.draw.polygon(surf, fill, pts)
-            pygame.draw.polygon(surf, outline, pts, brd_w)
-            if is_act and not is_orig:
-                ry2 = ry + max(3, r // 3)
-                rx2 = rx + max(2, r // 4)
-                pad = ry2 + 3
-                rs  = pygame.Surface((pad * 2, pad * 2 + 10), pygame.SRCALPHA)
-                off = 5
-                pts2 = [(pad,       off + 0),
-                        (pad + rx2, off + ry2),
-                        (pad,       off + ry2 * 2),
-                        (pad - rx2, off + ry2)]
-                pygame.draw.polygon(rs, (*outline, 60), pts2, 1)
-                surf.blit(rs, (cx - pad, cy - ry2 - off))
-        else:
-            # Circle (mage) with small outer pips
-            pygame.draw.circle(surf, fill,    (cx, cy), r)
-            pygame.draw.circle(surf, outline, (cx, cy), r, brd_w)
-            if is_act and not is_orig and r >= 6:
-                r2  = r + max(3, r // 3)
-                pad = r2 + 5
-                rs  = pygame.Surface((pad * 2, pad * 2), pygame.SRCALPHA)
-                pygame.draw.circle(rs, (*outline, 55), (pad, pad), r2, 1)
-                # cardinal pips
-                for i in range(6):
-                    a   = _math.radians(i * 60)
-                    px2 = pad + int(r2 * _math.cos(a))
-                    py2 = pad + int(r2 * _math.sin(a))
-                    pygame.draw.circle(rs, (*outline, 90), (px2, py2), max(1, r // 5))
-                surf.blit(rs, (cx - pad, cy - pad))
+        """Uniform circular nodes — cosmic starfield style (all classes)."""
+        pygame.draw.circle(surf, fill, (cx, cy), r)
+        pygame.draw.circle(surf, outline, (cx, cy), r, brd_w)
+        # Centre dot for visual depth
+        if r >= 5:
+            cdot = (min(255, fill[0] + 40), min(255, fill[1] + 40), min(255, fill[2] + 40))
+            pygame.draw.circle(surf, cdot, (cx, cy), max(1, r // 3))
+        # Active: extra outer ring
+        if is_act and not is_orig and r >= 5:
+            pad = r + max(3, r // 3) + 5
+            rs  = pygame.Surface((pad * 2, pad * 2), pygame.SRCALPHA)
+            pygame.draw.circle(rs, (*outline, 55), (pad, pad), r + max(3, r // 3), 1)
+            surf.blit(rs, (cx - pad, cy - pad))
 
 
 # ═══════════════════════════════════════════════════════════════════════════

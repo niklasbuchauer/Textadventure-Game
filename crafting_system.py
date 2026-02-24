@@ -970,6 +970,15 @@ class CraftingSystem:
 		inv[result_item] = inv.get(result_item, 0) + result_count
 		self.engine._inventory_changed = True
 
+		# Trigger ASCII animation overlay
+		gui = getattr(self.engine, "gui", None)
+		if gui is not None:
+			station_type = recipe.get("station", "any")
+			if station_type == "campfire" or ("campfire" in str(recipe.get("name","")).lower()):
+				gui._crafting_overlay = CookingOverlay(recipe["name"], result_item)
+			else:
+				gui._crafting_overlay = CraftingOverlay(recipe["name"], result_item, station_type)
+
 		# Register item worth if not already known
 		if result_item not in self.engine.item_worth:
 			self.engine.item_worth[result_item] = CRAFTED_ITEM_WORTH.get(result_item, 50)
@@ -1328,3 +1337,197 @@ class CraftingSystem:
 				return "Some of these materials resonated briefly. You might be on to something..."
 
 		return None
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  CRAFTING OVERLAY — auto-play sparkle animation (no interaction)
+# ──────────────────────────────────────────────────────────────────────────────
+
+class CraftingOverlay:
+    """
+    Purely visual overlay shown after a successful craft.
+    Plays the appropriate station animation for ~2 seconds then auto-dismisses.
+    """
+    DURATION = 2.2
+
+    def __init__(self, recipe_name: str, result_item: str, station_type: str = "any"):
+        self.recipe_name = recipe_name
+        self.result_item = result_item
+        self.station_type = station_type
+        self.done = False
+        self._t = 0.0
+        self._frame = 0
+        self._frame_t = 0.0
+        self._font = None
+
+        _anim_map = {
+            "forge":          "forging_hammer",
+            "altar_crystal":  "ritual_circle",
+            "altar_shadow":   "ritual_circle",
+            "altar_iron":     "forging_hammer",
+            "altar_catacomb": "ritual_circle",
+        }
+        self._anim_key = _anim_map.get(station_type, "forging_hammer")
+
+    def handle_event(self, event):
+        import pygame
+        if event.type == pygame.KEYDOWN and event.key in (pygame.K_SPACE, pygame.K_RETURN):
+            self.done = True
+
+    def update(self, dt):
+        self._t += dt
+        self._frame_t += dt
+        if self._frame_t >= 0.18:
+            self._frame_t = 0.0
+            self._frame += 1
+        if self._t >= self.DURATION:
+            self.done = True
+
+    def render(self, surface):
+        try:
+            import pygame
+            from ascii_art import (ANIMATION_FRAMES, render_ascii_block,
+                                   draw_dim_overlay, draw_panel, render_label, _ensure_fonts)
+            _ensure_fonts()
+        except ImportError:
+            return
+        if self._font is None:
+            self._font = pygame.font.SysFont("Courier New", 14)
+        sw, sh = surface.get_size()
+        pw, ph = 440, 320
+        px = (sw - pw) // 2
+        py = (sh - ph) // 2
+        draw_dim_overlay(surface, 140)
+        draw_panel(surface, (px, py, pw, ph), title="CRAFTING")
+        frames = ANIMATION_FRAMES.get(self._anim_key, [[]])
+        frame = frames[self._frame % max(len(frames), 1)]
+        render_ascii_block(surface, frame, px + pw // 2 - 80, py + 60, color=(180, 200, 255))
+        nice = self.result_item.replace("_", " ").title()
+        render_label(surface, f"Crafted: {nice}", px + pw // 2, py + ph - 80,
+                     color=(255, 220, 80))
+        render_label(surface, "[SPACE] to skip", px + pw // 2, py + ph - 50,
+                     color=(100, 100, 130), small=True)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  COOKING OVERLAY — campfire timing bar minigame
+# ──────────────────────────────────────────────────────────────────────────────
+
+class CookingOverlay:
+    """
+    Campfire cooking overlay — press SPACE when the bar is in the golden zone
+    to produce a 'perfectly cooked' variant (higher stats), or wait for normal.
+    """
+    DURATION   = 12.0   # baseline (was 6.0) — per-instance may scale further
+    COOK_SPEED = 0.13   # baseline (was 0.22) — slower so the window matters more
+    ZONE_START = 0.42
+    ZONE_END   = 0.72
+
+    def __init__(self, recipe_name: str, result_item: str):
+        self.recipe_name = recipe_name
+        self.result_item = result_item
+        self.done        = False
+        self._t          = 0.0
+        self._pos        = 0.0
+        self._fired      = False
+        self._fire_result = ""
+        self._result_t   = 0.0
+        self._frame      = 0
+        self._frame_t    = 0.0
+        self._font       = None
+
+        # Difficulty scaling (cooking has no ingredient tiers, use tier 1)
+        try:
+            from ascii_art import get_diff_params
+            dp = get_diff_params(1)
+        except Exception:
+            dp = {"bar_speed_mult":1.0,"zone_mult":1.0,"result_secs":0.0}
+        self._cook_speed = self.COOK_SPEED * dp["bar_speed_mult"]
+        self._duration   = self.DURATION   # fixed 12s baseline, not scaled further
+        self._zone_start = self.ZONE_START
+        zone_w = (self.ZONE_END - self.ZONE_START) * dp["zone_mult"]
+        self._zone_end   = self.ZONE_START + max(0.06, zone_w)
+        self._result_secs = 3.0 + max(0.0, dp["result_secs"])
+
+    def handle_event(self, event):
+        import pygame
+        if self.done or self._fired:
+            return
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+            in_zone = self._zone_start <= self._pos <= self._zone_end
+            self._fired = True
+            self._fire_result = "perfect" if in_zone else "normal"
+
+    def update(self, dt):
+        if self.done:
+            return
+        self._t += dt
+        self._frame_t += dt
+        if self._frame_t >= 0.22:
+            self._frame_t = 0.0
+            self._frame  += 1
+        if not self._fired:
+            self._pos = min(1.0, self._pos + self._cook_speed * dt)
+            if self._pos >= 1.0 or self._t >= self._duration:
+                self._fired = True
+                self._fire_result = "normal"
+        else:
+            self._result_t += dt
+            if self._result_t >= self._result_secs:
+                self.done = True
+
+    def render(self, surface):
+        try:
+            import pygame
+            from ascii_art import (ANIMATION_FRAMES, render_ascii_block,
+                                   draw_dim_overlay, draw_panel, render_label, _ensure_fonts)
+            _ensure_fonts()
+        except ImportError:
+            return
+        if self._font is None:
+            self._font = pygame.font.SysFont("Courier New", 14)
+        sw, sh = surface.get_size()
+        pw, ph = 460, 340
+        px = (sw - pw) // 2
+        py = (sh - ph) // 2
+        draw_dim_overlay(surface, 150)
+        draw_panel(surface, (px, py, pw, ph), title="COOKING")
+        # Countdown timer bar (time remaining until bar auto-fires)
+        if not self._fired:
+            try:
+                from ascii_art import draw_timer_bar
+                draw_timer_bar(surface, px, py, pw,
+                               max(0.0, self._duration - self._t), self._duration)
+            except Exception:
+                pass
+        # Animation
+        frames = ANIMATION_FRAMES.get("campfire_cook", [[]])
+        frame  = frames[self._frame % max(len(frames), 1)]
+        render_ascii_block(surface, frame, px + pw // 2 - 70, py + 55,
+                           color=(255, 160, 60))
+        # Timing bar
+        bar_x = px + 60
+        bar_y = py + 200
+        bar_w = pw - 120
+        bar_h = 28
+        pygame.draw.rect(surface, (40, 20, 10),  (bar_x, bar_y, bar_w, bar_h), border_radius=4)
+        zx = bar_x + int(self._zone_start * bar_w)
+        zw = int((self._zone_end - self._zone_start) * bar_w)
+        pygame.draw.rect(surface, (180, 120, 0), (zx, bar_y, zw, bar_h), border_radius=4)
+        mid_s = self._zone_start + (self._zone_end - self._zone_start) * 0.25
+        mid_e = self._zone_end   - (self._zone_end - self._zone_start) * 0.25
+        px2 = bar_x + int(mid_s * bar_w)
+        pw2 = int((mid_e - mid_s) * bar_w)
+        pygame.draw.rect(surface, (230, 180, 0), (px2, bar_y, pw2, bar_h), border_radius=4)
+        ind_x = bar_x + int(self._pos * bar_w) - 3
+        pygame.draw.rect(surface, (255, 255, 200), (ind_x, bar_y - 4, 6, bar_h + 8), border_radius=3)
+        pygame.draw.rect(surface, (100, 60, 20), (bar_x, bar_y, bar_w, bar_h), 2, border_radius=4)
+        render_label(surface, f'Cooking: {self.recipe_name}',
+                     px + pw // 2, py + ph - 90, color=(220, 180, 80))
+        if not self._fired:
+            render_label(surface, "[SPACE] — serve now!",
+                         px + pw // 2, py + ph - 60, color=(200, 200, 100))
+        else:
+            quality_col = (100, 255, 100) if self._fire_result == "perfect" else (200, 200, 200)
+            quality_lbl = "Perfectly cooked!" if self._fire_result == "perfect" else "Cooked."
+            render_label(surface, quality_lbl, px + pw // 2, py + ph - 60, color=quality_col)

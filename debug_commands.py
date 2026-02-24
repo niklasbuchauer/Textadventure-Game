@@ -71,7 +71,7 @@ def handle_debug_commands(engine, args):
         return _debug_show_stats(engine)
     elif subcommand == "dungeon":
         if len(args) < 2:
-            return "Usage: debug dungeon open [room_id] | debug dungeon close <dungeon_id> | debug dungeon list | debug dungeon check"
+            return "Usage: debug dungeon open [room_id] | debug dungeon close <dungeon_id> | debug dungeon list | debug dungeon check | debug dungeon entrance"
         action = args[1].lower()
         if action == "open":
             room_id = args[2] if len(args) > 2 else None
@@ -84,7 +84,9 @@ def handle_debug_commands(engine, args):
             return _debug_dungeon_list(engine)
         elif action == "check":
             return _debug_dungeon_check_integrity(engine)
-        return "Usage: debug dungeon open [room_id] | debug dungeon close <dungeon_id> | debug dungeon list | debug dungeon check"
+        elif action == "entrance":
+            return _debug_dungeon_entrance_animation(engine)
+        return "Usage: debug dungeon open [room_id] | debug dungeon close <dungeon_id> | debug dungeon list | debug dungeon check | debug dungeon entrance"
     elif subcommand == "mode":
         if len(args) < 2:
             return "Usage: debug mode traps"
@@ -92,6 +94,10 @@ def handle_debug_commands(engine, args):
         if mode == "traps":
             return _debug_toggle_free_disarm(engine)
         return f"Unknown mode: {mode}\nUsage: debug mode traps"
+    elif subcommand == "minigame":
+        if len(args) < 2:
+            return _debug_minigame_list()
+        return _debug_minigame(engine, args[1:])
     else:
         return f"Unknown debug command: {subcommand}\n{_show_debug_menu()}"
 
@@ -126,6 +132,7 @@ Dungeons:
   debug dungeon close <id>      - Remove force-open override
   debug dungeon list            - List force-opened dungeons
   debug dungeon check           - Check dungeon integrity
+  debug dungeon entrance        - Test dungeon entrance animation (5s)
 
 Skills & Stats:
   debug skill points <amount>   - Set skill points
@@ -134,6 +141,18 @@ Skills & Stats:
 
 Debug Modes:
   debug mode traps              - Toggle free disarm (no items required)
+
+Minigame Overlays (no prereqs, works anywhere):
+  debug minigame                      - List all overlay IDs and types
+  debug minigame forge [id]           - Forging rhythm minigame
+  debug minigame brew  [id]           - Alchemy heat-gauge minigame
+  debug minigame smelt [ore]          - Smelting timing-bar minigame
+  debug minigame ritual [id]          - Ritual Simon Says memory puzzle
+  debug minigame craft [id]           - Crafting sparkle animation
+  debug minigame cook  [name]         - Campfire cooking timing bar
+  debug minigame rune  [tier]         - Rune inscription trace (tier 1/2/3)
+  debug minigame difficulty           - Show current difficulty setting
+  debug minigame difficulty [level]   - Set difficulty: easy | normal | hard
 
 ───────────────────────────────────────────────────────────────────────────────
 Examples:
@@ -1337,4 +1356,292 @@ Debug:
   debug <command>               - Access debug menu
   debug commands                - Show all debug commands
 """.strip()
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  DEBUG MINIGAME COMMANDS
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _debug_minigame_list():
+    """Print all overlay IDs grouped by system."""
+    lines = [
+        "",
+        "=" * 65,
+        "  DEBUG MINIGAME — available IDs",
+        "=" * 65,
+    ]
+
+    # ── Forging ───────────────────────────────────────────────────────────────
+    try:
+        from forging_system import FORGING_RECIPES
+        lines.append("\n  [FORGE]  debug minigame forge <id>")
+        lines.append("  " + "-" * 50)
+        for rid, r in FORGING_RECIPES.items():
+            mats = ", ".join(f"{v}x {k}" for k, v in r.get("ingredients", r.get("materials", {})).items())
+            result_id = r["result"][0] if isinstance(r["result"], tuple) else r["result"]
+            lines.append(f"    {rid:<35}  ->  {result_id}   ({mats})")
+    except ImportError:
+        lines.append("  [FORGE]  (forging_system not available)")
+
+    # ── Alchemy ───────────────────────────────────────────────────────────────
+    try:
+        from alchemy_system import ALCHEMY_RECIPES
+        lines.append("\n  [BREW]   debug minigame brew <id>")
+        lines.append("  " + "-" * 50)
+        for rid, r in ALCHEMY_RECIPES.items():
+            mats = ", ".join(f"{v}x {k}" for k, v in r.get("ingredients", {}).items())
+            result_id = r["result"][0] if isinstance(r["result"], tuple) else r["result"]
+            lines.append(f"    {rid:<35}  ->  {result_id}   ({mats})")
+    except ImportError:
+        lines.append("  [BREW]   (alchemy_system not available)")
+
+    # ── Smelting ──────────────────────────────────────────────────────────────
+    try:
+        from smelting_system import SMELT_RECIPES
+        lines.append("\n  [SMELT]  debug minigame smelt <ore_id>")
+        lines.append("  " + "-" * 50)
+        for rid, r in SMELT_RECIPES.items():
+            lines.append(f"    {rid:<35}  ->  {r['result']}   (speed {r['bar_speed']:.1f}, zone {int(r['zone_width']*100)}%)")
+    except ImportError:
+        lines.append("  [SMELT]  (smelting_system not available)")
+
+    # ── Ritual ────────────────────────────────────────────────────────────────
+    try:
+        from ritual_system import RITUAL_DATABASE
+        lines.append("\n  [RITUAL] debug minigame ritual <id>")
+        lines.append("  " + "-" * 50)
+        for rid, r in RITUAL_DATABASE.items():
+            mats = ", ".join(f"{v}x {k}" for k, v in r["materials"].items())
+            lines.append(f"    {rid:<38}  altar: {r['altar']:<18}  seq: {r['sequence_len']}   ({mats})")
+    except ImportError:
+        lines.append("  [RITUAL] (ritual_system not available)")
+
+    # ── Crafting (station types for the sparkle animation) ────────────────────
+    lines.append("\n  [CRAFT]  debug minigame craft [station_type]")
+    lines.append("  " + "-" * 50)
+    for sid in ("forge", "altar_crystal", "altar_shadow", "altar_iron", "altar_catacomb", "any"):
+        lines.append(f"    {sid}")
+
+    # ── Cooking ───────────────────────────────────────────────────────────────
+    lines.append("\n  [COOK]   debug minigame cook [item_name]")
+    lines.append("  " + "-" * 50)
+    lines.append("    (any item name — e.g.  'grilled_bass'  or  'campfire_stew')")
+
+    # ── Rune Inscription ──────────────────────────────────────────────────────
+    lines.append("\n  [RUNE]   debug minigame rune [tier]")
+    try:
+        from ascii_art import get_difficulty
+        lines.append(f"\n  [DIFF]   debug minigame difficulty easy|normal|hard")
+        lines.append(f"           Current difficulty: {get_difficulty()}")
+    except Exception:
+        pass
+    lines.append("  " + "-" * 50)
+    for t in (1, 2, 3):
+        try:
+            from ascii_art import RUNE_SEQUENCES
+            key = {1: "tier1", 2: "tier2", 3: "tier3"}[t]
+            seqs = RUNE_SEQUENCES.get(key, [])
+            sample = " / ".join("".join(s) for s in seqs[:3])
+            lines.append(f"    tier {t}  — sequences: {sample}")
+        except ImportError:
+            lines.append(f"    tier {t}")
+
+    lines.append("\n" + "=" * 65)
+    return "\n".join(lines)
+
+
+def _debug_minigame(engine, args):
+    """
+    Route   debug minigame <type> [id]
+    to the correct overlay, bypassing all prerequisites.
+    """
+    if not args:
+        return _debug_minigame_list()
+
+    kind = args[0].lower()
+    sub  = args[1] if len(args) > 1 else None
+
+    # ── DIFFICULTY ────────────────────────────────────────────────────────────
+    if kind in ("difficulty", "diff"):
+        try:
+            from ascii_art import get_difficulty, set_difficulty, DIFFICULTY_PRESETS
+        except ImportError:
+            return "ascii_art not available."
+        if sub is None:
+            cur = get_difficulty()
+            opts = " | ".join(DIFFICULTY_PRESETS.keys())
+            return f"Current minigame difficulty: [{cur}]\nAvailable: {opts}"
+        new = set_difficulty(sub.lower())
+        if new == sub.lower():
+            return f"[DEBUG] Minigame difficulty set to: {new}"
+        return f"[DEBUG] Unknown difficulty '{sub}'. Options: easy | normal | hard"
+
+    gui = getattr(engine, "gui", None)
+    if gui is None:
+        return "No GUI active — run the game with the Pygame window open."
+
+    # ── FORGE ─────────────────────────────────────────────────────────────────
+    if kind == "forge":
+        try:
+            from forging_system import ForgingSystem, ForgingOverlay, FORGING_RECIPES
+        except ImportError:
+            return "forging_system not available."
+        recipe_id = sub or next(iter(FORGING_RECIPES))
+        recipe = FORGING_RECIPES.get(recipe_id)
+        if recipe is None:
+            ids = list(FORGING_RECIPES.keys())
+            return (f"Unknown forge recipe '{recipe_id}'.\n"
+                    f"Available: {', '.join(ids)}")
+        system = getattr(engine, "forging_system", None) or ForgingSystem(engine)
+        gui._forging_overlay = ForgingOverlay(system, recipe)
+        return f"[DEBUG] Forging overlay opened for '{recipe_id}'."
+
+    # ── BREW ──────────────────────────────────────────────────────────────────
+    if kind in ("brew", "alchemy"):
+        try:
+            from alchemy_system import AlchemySystem, AlchemyOverlay, ALCHEMY_RECIPES
+        except ImportError:
+            return "alchemy_system not available."
+        recipe_id = sub or next(iter(ALCHEMY_RECIPES))
+        recipe = ALCHEMY_RECIPES.get(recipe_id)
+        if recipe is None:
+            ids = list(ALCHEMY_RECIPES.keys())
+            return (f"Unknown brew recipe '{recipe_id}'.\n"
+                    f"Available: {', '.join(ids)}")
+        system = getattr(engine, "alchemy_system", None) or AlchemySystem(engine)
+        gui._alchemy_overlay = AlchemyOverlay(system, recipe)
+        return f"[DEBUG] Alchemy overlay opened for '{recipe_id}'."
+
+    # ── SMELT ─────────────────────────────────────────────────────────────────
+    if kind == "smelt":
+        try:
+            from smelting_system import SmeltingSystem, SmeltingOverlay, SMELT_RECIPES
+        except ImportError:
+            return "smelting_system not available."
+        ore_id = sub or next(iter(SMELT_RECIPES))
+        recipe = SMELT_RECIPES.get(ore_id)
+        if recipe is None:
+            ids = list(SMELT_RECIPES.keys())
+            return (f"Unknown ore id '{ore_id}'.\n"
+                    f"Available: {', '.join(ids)}")
+        system = getattr(engine, "smelting_system", None) or SmeltingSystem(engine)
+        gui._smelting_overlay = SmeltingOverlay(system, ore_id, recipe, quantity=1)
+        return f"[DEBUG] Smelting overlay opened for '{ore_id}'."
+
+    # ── RITUAL ────────────────────────────────────────────────────────────────
+    if kind == "ritual":
+        try:
+            from ritual_system import RitualSystem, RitualOverlay, RITUAL_DATABASE
+        except ImportError:
+            return "ritual_system not available."
+        ritual_id = sub or next(iter(RITUAL_DATABASE))
+        ritual = RITUAL_DATABASE.get(ritual_id)
+        if ritual is None:
+            ids = list(RITUAL_DATABASE.keys())
+            return (f"Unknown ritual id '{ritual_id}'.\n"
+                    f"Available: {', '.join(ids)}")
+        system = getattr(engine, "ritual_system", None) or RitualSystem(engine)
+        gui._ritual_overlay = RitualOverlay(system, ritual_id, ritual)
+        return f"[DEBUG] Ritual overlay opened for '{ritual_id}'."
+
+    # ── CRAFT (sparkle animation) ─────────────────────────────────────────────
+    if kind == "craft":
+        try:
+            from crafting_system import CraftingOverlay
+        except ImportError:
+            return "crafting_system not available."
+        station = sub or "forge"
+        gui._crafting_overlay = CraftingOverlay(
+            recipe_name=f"Debug {station} Craft",
+            result_item="debug_item",
+            station_type=station,
+        )
+        return f"[DEBUG] Crafting overlay opened (station='{station}')."
+
+    # ── COOK (campfire timing bar) ─────────────────────────────────────────────
+    if kind == "cook":
+        try:
+            from crafting_system import CookingOverlay
+        except ImportError:
+            return "crafting_system not available."
+        item_name = sub or "grilled_fish"
+        gui._crafting_overlay = CookingOverlay(
+            recipe_name=item_name.replace("_", " ").title(),
+            result_item=item_name,
+        )
+        return f"[DEBUG] Cooking overlay opened for '{item_name}'."
+
+    # ── RUNE (inscription trace) ───────────────────────────────────────────────
+    if kind == "rune":
+        try:
+            from enchanting_system import RuneInscriptionOverlay
+        except ImportError:
+            return "enchanting_system not available."
+        try:
+            tier = int(sub) if sub else 1
+            tier = max(1, min(3, tier))
+        except ValueError:
+            tier = 1
+        # Build a stub enchant entry matching what RuneInscriptionOverlay expects
+        stub_ench = {
+            "name":        f"Debug Rune (Tier {tier})",
+            "description": "Debug enchantment.",
+            "stats":       {"strength": tier},
+            "tier":        tier,
+            "materials":   {},
+        }
+        stub_data = {
+            "enchant_id": f"debug_rune_{tier}",
+            "name":       stub_ench["name"],
+            "stats":      dict(stub_ench["stats"]),
+            "tier":       tier,
+        }
+        enchanting_system = getattr(engine, "enchanting_system", None)
+        if enchanting_system is None:
+            # Minimal stub so the overlay doesn't crash
+            class _StubEnch:
+                def __init__(self, eng): self.engine = eng
+            enchanting_system = _StubEnch(engine)
+        gui._rune_overlay = RuneInscriptionOverlay(enchanting_system, stub_ench, stub_data)
+        return f"[DEBUG] Rune inscription overlay opened (tier {tier})."
+
+    return (f"Unknown minigame type '{kind}'.\n"
+            "Valid types: forge, brew, smelt, ritual, craft, cook, rune\n"
+            "Run 'debug minigame' for full ID list.")
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  DUNGEON ENTRANCE ANIMATION (TEST)
+# ════════════════════════════════════════════════════════════════════════════
+
+def _debug_dungeon_entrance_animation(engine):
+    """Test the dungeon entrance animation overlay without entering a dungeon."""
+    try:
+        from dungeon_entrance_overlay import DungeonEntranceOverlay
+    except ImportError:
+        return "[DEBUG] ❌ dungeon_entrance_overlay module not found.\nMake sure dungeon_entrance_overlay.py exists."
+    
+    # Get GUI reference
+    gui = getattr(engine, 'gui', None)
+    if not gui:
+        return "[DEBUG] ❌ GUI not available. Cannot display animation."
+    
+    # Check if an animation is already playing
+    if hasattr(gui, '_dungeon_entrance_overlay') and gui._dungeon_entrance_overlay and not gui._dungeon_entrance_overlay.is_done():
+        return "[DEBUG] ⚠️ Dungeon entrance animation already playing.\nWait for it to finish or skip it."
+    
+    # Get screen dimensions from app if available
+    if hasattr(gui, 'app'):
+        screen_w = gui.app.width
+        screen_h = gui.app.height
+    else:
+        screen_w = getattr(gui, 'width', 1920)
+        screen_h = getattr(gui, 'height', 1440)
+    
+    # Create and start the animation on the GUI
+    gui._dungeon_entrance_overlay = DungeonEntranceOverlay(screen_w=screen_w, screen_h=screen_h)
+    
+    return (f"[DEBUG] ✓ Dungeon entrance animation started!\n"
+            f"Duration: 5 seconds (can be skipped with SPACE, ESC, or click)\n"
+            f"Screen: {screen_w}x{screen_h}")
 

@@ -465,6 +465,12 @@ class EnchantingSystem:
 		for stat, val in ench["stats"].items():
 			player.stats[stat] = player.stats.get(stat, 0) + val
 
+		# Launch Rune Inscription overlay if GUI available (bonus if perfect trace)
+		gui = getattr(self.engine, "gui", None)
+		if gui is not None:
+			overlay = RuneInscriptionOverlay(self, ench, ench_data)
+			gui._rune_overlay = overlay
+
 		# Build result
 		eq_data = EQUIPMENT_DATABASE.get(item_id, {})
 		eq_name = eq_data.get("name", item_id.replace("_", " "))
@@ -522,3 +528,209 @@ class EnchantingSystem:
 			return ""
 		tier_icon = TIER_ICONS.get(ench.get("tier", 1), "✦")
 		return f" {tier_icon} {ench['name']}"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  RUNE INSCRIPTION OVERLAY  —  W/A/S/D tracing minigame
+# ──────────────────────────────────────────────────────────────────────────────
+
+class RuneInscriptionOverlay:
+    """
+    W/A/S/D direction-tracing minigame shown after an enchantment is applied.
+    Perfect trace → bonus stat (+1 to first enchanted stat).
+    Partial trace → no bonus.
+    Uses RUNE_SEQUENCES from ascii_art.py (tier-appropriate length).
+    """
+    DURATION_RESULT = 2.4   # seconds to show result before dismissing
+
+    _KEY_LABELS = {
+        "W": "▲", "A": "◀", "S": "▼", "D": "▶",
+    }
+
+    def __init__(self, enchanting_system, ench: dict, ench_data: dict):
+        self.enchanting_system = enchanting_system
+        self.ench      = ench
+        self.ench_data = ench_data
+        self.done      = False
+        self._phase    = "input"  # "input" | "result"
+        self._result_t = 0.0
+        self._result_text  = ""
+        self._result_color = (220, 220, 220)
+        self._font  = None
+        self._small = None
+        self._title = None
+
+        # Pick sequence by tier
+        try:
+            from ascii_art import RUNE_SEQUENCES
+            tier = ench.get("tier", 1)
+            key  = {1: "tier1", 2: "tier2", 3: "tier3"}.get(tier, "tier1")
+            import random
+            sequences = RUNE_SEQUENCES.get(key, [])
+            self._sequence = list(random.choice(sequences)) if sequences else list("WASD")
+        except ImportError:
+            import random
+            from itertools import product
+            self._sequence = random.choices(["W","A","S","D"], k=4)
+
+        self._idx      = 0   # current step
+        self._mistakes = 0
+        self._lit_key  = None
+        self._lit_t    = 0.0
+        self._lit_col  = (60, 220, 60)
+
+    def handle_event(self, event):
+        import pygame
+        if self.done or self._phase != "input":
+            return
+        key_map = {
+            pygame.K_w: "W", pygame.K_a: "A",
+            pygame.K_s: "S", pygame.K_d: "D",
+        }
+        if event.type == pygame.KEYDOWN:
+            pressed = key_map.get(event.key)
+            if pressed:
+                self._process(pressed)
+
+    def _process(self, key: str):
+        expected = self._sequence[self._idx]
+        if key == expected:
+            self._lit_key = key
+            self._lit_t   = 0.38
+            self._lit_col = (60, 220, 60)
+            self._idx    += 1
+            if self._idx >= len(self._sequence):
+                self._finish_input()
+        else:
+            self._mistakes += 1
+            self._lit_key = key
+            self._lit_t   = 0.38
+            self._lit_col = (220, 60, 60)
+            self._idx     = 0   # reset
+
+    def _finish_input(self):
+        self._phase = "result"
+        if self._mistakes == 0:
+            # Perfect — award +1 bonus to first enchanted stat
+            player = self.enchanting_system.engine.player
+            stat_bonuses = self.ench_data.get("stats", {})
+            first_stat   = next(iter(stat_bonuses), None)
+            if first_stat:
+                player.stats[first_stat] = player.stats.get(first_stat, 0) + 1
+                # Update stored ench_data too
+                enc_stored = player.state.get("enchantments", {})
+                for slot_data in enc_stored.values():
+                    if slot_data.get("enchant_id") == self.ench_data.get("enchant_id"):
+                        slot_data["stats"][first_stat] = slot_data["stats"].get(first_stat, 0) + 1
+                        break
+            self._result_text  = f"Perfect rune trace!  +1 {(first_stat or '').upper()} bonus!"
+            self._result_color = (100, 255, 100)
+        else:
+            self._result_text  = f"Trace complete  ({self._mistakes} mistake{'s' if self._mistakes>1 else ''}) — no bonus."
+            self._result_color = (220, 180, 80)
+
+    def update(self, dt):
+        if self.done:
+            return
+        if self._lit_t > 0:
+            self._lit_t = max(0.0, self._lit_t - dt)
+        if self._phase == "result":
+            self._result_t += dt
+            if self._result_t >= self.DURATION_RESULT:
+                self.done = True
+
+    def render(self, surface):
+        try:
+            import pygame
+            from ascii_art import (RUNES, render_ascii_block, draw_dim_overlay,
+                                   draw_panel, render_label, _ensure_fonts)
+            _ensure_fonts()
+        except ImportError:
+            return
+
+        if self._font is None:
+            import pygame
+            self._font  = pygame.font.SysFont("Courier New", 14, bold=True)
+            self._small = pygame.font.SysFont("Courier New", 11)
+            self._title = pygame.font.SysFont("Courier New", 18, bold=True)
+
+        sw, sh = surface.get_size()
+        pw, ph = 460, 320
+        px = (sw - pw) // 2
+        py = (sh - ph) // 2
+
+        draw_dim_overlay(surface, 150)
+        draw_panel(surface, (px, py, pw, ph),
+                   title=f"RUNE INSCRIPTION — {self.ench.get('name','').upper()}")
+
+        if self._phase == "input":
+            render_label(surface,
+                         f"Trace the rune sequence  ({self._idx}/{len(self._sequence)} complete)",
+                         px + pw // 2, py + 44, color=(180, 180, 255))
+        else:
+            render_label(surface, self._result_text,
+                         px + pw // 2, py + 44, color=self._result_color)
+
+        # Draw WASD key tiles
+        tile_s = 62
+        tile_gap = 10
+        keys = ["W", "A", "S", "D"]
+        total_w = len(keys) * tile_s + (len(keys)-1) * tile_gap
+        start_x = px + (pw - total_w) // 2
+        tile_y  = py + 80
+
+        for i, k in enumerate(keys):
+            tx = start_x + i * (tile_s + tile_gap)
+            is_next = (self._phase == "input"
+                       and self._idx < len(self._sequence)
+                       and self._sequence[self._idx] == k)
+            is_done = (self._phase == "input"
+                       and any(self._sequence[j] == k for j in range(self._idx)))
+            is_lit  = (self._lit_key == k and self._lit_t > 0)
+
+            if is_lit:
+                bg_col = (int(self._lit_col[0]*0.3), int(self._lit_col[1]*0.3), int(self._lit_col[2]*0.3))
+                bd_col = self._lit_col
+                txt_col = (255, 255, 255)
+            elif is_next:
+                bg_col  = (20, 40, 80)
+                bd_col  = (120, 160, 255)
+                txt_col = (220, 220, 255)
+            elif is_done:
+                bg_col  = (15, 50, 15)
+                bd_col  = (60, 160, 60)
+                txt_col = (120, 200, 120)
+            else:
+                bg_col  = (22, 22, 40)
+                bd_col  = (55, 55, 80)
+                txt_col = (100, 100, 130)
+
+            import pygame
+            pygame.draw.rect(surface, bg_col,  (tx, tile_y, tile_s, tile_s), border_radius=6)
+            pygame.draw.rect(surface, bd_col,  (tx, tile_y, tile_s, tile_s), 2, border_radius=6)
+            sym = self._KEY_LABELS.get(k, k)
+            sym_surf = self._title.render(sym, True, txt_col)
+            surface.blit(sym_surf, (tx + tile_s//2 - sym_surf.get_width()//2,
+                                    tile_y + tile_s//2 - sym_surf.get_height()//2))
+            key_surf = self._small.render(k, True, (60, 60, 80))
+            surface.blit(key_surf, (tx + 4, tile_y + 4))
+
+        # Sequence progress dots
+        dot_y  = tile_y + tile_s + 20
+        dot_cx = px + pw // 2
+        total  = len(self._sequence)
+        for j in range(total):
+            dx = dot_cx - (total * 14) // 2 + j * 14 + 7
+            col = (80, 200, 80) if j < self._idx else (60, 60, 90)
+            pygame.draw.circle(surface, col, (dx, dot_y), 5)
+
+        # Instruction
+        if self._phase == "input":
+            seq_hint = " → ".join(self._sequence)
+            render_label(surface, f"Sequence: {seq_hint}",
+                         px + pw // 2, py + ph - 64, color=(130, 130, 180), small=True)
+            render_label(surface, "Press  W / A / S / D  to trace the rune",
+                         px + pw // 2, py + ph - 44, color=(100, 100, 160), small=True)
+        else:
+            render_label(surface, "Enchantment complete!",
+                         px + pw // 2, py + ph - 44, color=(160, 220, 160), small=True)

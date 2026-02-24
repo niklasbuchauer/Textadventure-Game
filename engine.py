@@ -144,7 +144,8 @@ try:
 		get_enemies_for_dungeon, get_boss_for_dungeon, get_mini_boss_for_dungeon,
 		should_spawn_enemy, create_enemy_instance, create_boss_instance,
 		create_mini_boss_instance,
-		ENEMY_SPAWN_CHANCE, DUNGEON_BOSS_MAP, DUNGEON_MINI_BOSS_MAP
+		ENEMY_SPAWN_CHANCE, DUNGEON_BOSS_MAP, DUNGEON_MINI_BOSS_MAP,
+		_apply_status,
 	)
 	COMBAT_AVAILABLE = True
 except Exception as e:
@@ -223,6 +224,46 @@ try:
 except Exception as e:
 	ENCHANTING_AVAILABLE = False
 	print(f"[INIT] ⚠ Enchanting system DISABLED: {e}")
+
+# =====================================================================
+# FORGING SYSTEM INITIALIZATION
+# =====================================================================
+try:
+	from forging_system import ForgingSystem
+	FORGING_AVAILABLE = True
+except Exception as e:
+	FORGING_AVAILABLE = False
+	print(f"[INIT] ⚠ Forging system DISABLED: {e}")
+
+# =====================================================================
+# ALCHEMY SYSTEM INITIALIZATION
+# =====================================================================
+try:
+	from alchemy_system import AlchemySystem
+	ALCHEMY_AVAILABLE = True
+except Exception as e:
+	ALCHEMY_AVAILABLE = False
+	print(f"[INIT] ⚠ Alchemy system DISABLED: {e}")
+
+# =====================================================================
+# SMELTING SYSTEM INITIALIZATION
+# =====================================================================
+try:
+	from smelting_system import SmeltingSystem
+	SMELTING_AVAILABLE = True
+except Exception as e:
+	SMELTING_AVAILABLE = False
+	print(f"[INIT] ⚠ Smelting system DISABLED: {e}")
+
+# =====================================================================
+# RITUAL SYSTEM INITIALIZATION
+# =====================================================================
+try:
+	from ritual_system import RitualSystem
+	RITUAL_AVAILABLE = True
+except Exception as e:
+	RITUAL_AVAILABLE = False
+	print(f"[INIT] ⚠ Ritual system DISABLED: {e}")
 
 WORLD_FILE  = os.path.join(os.path.dirname(__file__), "world.json")
 SAVE_FILE   = os.path.join(os.path.dirname(__file__), "savegame.json")
@@ -578,7 +619,13 @@ class CommandHandler:
 			return self.engine.load_game(interactive=False)
 		if verb == "disarm":
 			return self._disarm_trap()
-		if verb in ("craft", "forge", "altar"):
+		if verb in ("craft", "altar"):
+			return self._use_crafting_altar()
+		if verb == "forge":
+			if FORGING_AVAILABLE and self.engine.forging_system:
+				if args:
+					return self.engine.forging_system.start_forge(" ".join(args))
+				return self.engine.forging_system.show_forge_menu()
 			return self._use_crafting_altar()
 		if verb == "experiment":
 			if CRAFTING_AVAILABLE and self.engine.crafting_system:
@@ -741,6 +788,30 @@ class CommandHandler:
 			if not FISHING_AVAILABLE or not self.engine.fishing_system:
 				return "The fishing system is not available."
 			return self.engine.fishing_system.show_bait_info()
+
+		# Alchemy / brewing commands
+		if verb in ("brew", "alchemy"):
+			if not ALCHEMY_AVAILABLE or not self.engine.alchemy_system:
+				return "The alchemy system is not available."
+			if args:
+				return self.engine.alchemy_system.start_brew(" ".join(args))
+			return self.engine.alchemy_system.show_brew_menu()
+
+		# Smelting commands
+		if verb == "smelt":
+			if not SMELTING_AVAILABLE or not self.engine.smelting_system:
+				return "The smelting system is not available."
+			if args:
+				return self.engine.smelting_system.start_smelt(args)
+			return self.engine.smelting_system.show_smelt_menu()
+
+		# Ritual commands
+		if verb == "ritual":
+			if not RITUAL_AVAILABLE or not self.engine.ritual_system:
+				return "The ritual system is not available."
+			if args:
+				return self.engine.ritual_system.start_ritual(" ".join(args))
+			return self.engine.ritual_system.show_ritual_menu()
 
 		# Enchanting command — use an altar to enchant equipment
 		if verb == "enchant":
@@ -1238,6 +1309,106 @@ class CommandHandler:
 
 		return self._start_overworld_combat(enemy_data)
 
+	# ── Traveling Ability System ──────────────────────────────────────────
+
+	def _resolve_traveling_ability(self, origin_room_id):
+		"""Process pending_travel state left by a combat ability.
+		For fireball: follows the first available path up to range_left rooms.
+		For wave/bounce/drift/stun_wave: hits ALL directly adjacent rooms.
+		Fills player.state['room_pre_damage'] with pre-hit data."""
+		pending = self.engine.player.state.pop("pending_travel", None)
+		if not pending:
+			return
+		room = self.engine.get_room_data(origin_room_id)
+		if not room:
+			return
+		source      = pending.get("source", "A traveling effect")
+		travel_type = pending.get("type", "wave")
+		range_left  = pending.get("range_left", 1)
+		damage      = pending.get("damage", 0)
+		if range_left <= 0:
+			return
+
+		def _get_exits(r):
+			exits = r.exits if hasattr(r, 'exits') else r.get('exits', {})
+			targets = []
+			for _, ex_data in exits.items():
+				if isinstance(ex_data, str):
+					targets.append(ex_data)
+				elif isinstance(ex_data, dict):
+					t = ex_data.get('target', '')
+					if t:
+						targets.append(t)
+			return targets
+
+		def _mark_room(room_id):
+			"""Write a pre-damage hit entry for room_id."""
+			pre = self.engine.player.state.setdefault("room_pre_damage", {})
+			pre.setdefault(room_id, []).append({
+				"source":      source,
+				"damage":      damage,
+				"stun":        pending.get("stun", 0),
+				"poison_dmg":  pending.get("poison_dmg", 0),
+				"poison_dur":  pending.get("poison_dur", 0),
+				"burn":        pending.get("burn", 0),
+				"burn_dur":    pending.get("burn_dur", 0),
+			})
+
+		if travel_type == "fireball":
+			# BFS beam — travels forward, stops on first room found each hop
+			visited = {origin_room_id}
+			current  = [origin_room_id]
+			for _ in range(range_left):
+				next_rooms = []
+				for rid in current:
+					r = self.engine.get_room_data(rid)
+					if not r:
+						continue
+					for target in _get_exits(r):
+						if target not in visited:
+							visited.add(target)
+							next_rooms.append(target)
+				if not next_rooms:
+					break
+				for target in next_rooms:
+					_mark_room(target)
+				current = next_rooms[:1]  # fireball follows first path only
+		else:
+			# wave / bounce / drift / stun_wave — hit all directly adjacent rooms
+			for target in _get_exits(room):
+				if target != origin_room_id:
+					_mark_room(target)
+
+	def _consume_room_pre_damage(self, room_id):
+		"""Apply pending traveling-ability pre-damage to pending_combat for room_id.
+		Returns flavor text string (may be empty)."""
+		pre_list = self.engine.player.state.get("room_pre_damage", {}).pop(room_id, None)
+		if not pre_list or not getattr(self.engine, 'pending_combat', None):
+			return ""
+		combat = self.engine.pending_combat
+		msgs   = []
+		for hit in pre_list:
+			src = hit.get("source", "A traveling effect")
+			dmg = hit.get("damage", 0)
+			if dmg > 0:
+				# Leave enemy with at least 1 HP (finish in actual combat)
+				combat.hp = max(1, combat.hp - dmg)
+				msgs.append(f"  💥 {src} slams into the {combat.enemy_name} for {dmg} pre-emptive damage!")
+			if hit.get("stun", 0) > 0 and COMBAT_AVAILABLE:
+				_apply_status(combat.enemy_statuses, "stun", 0, hit["stun"])
+				msgs.append(f"  💫 {src} left the {combat.enemy_name} STUNNED!")
+			if hit.get("poison_dmg", 0) > 0 and COMBAT_AVAILABLE:
+				_apply_status(combat.enemy_statuses, "poison", hit["poison_dmg"], hit.get("poison_dur", 2))
+				msgs.append(f"  ☠️ {src} has already POISONED the {combat.enemy_name}!")
+			if hit.get("burn", 0) > 0 and COMBAT_AVAILABLE:
+				_apply_status(combat.enemy_statuses, "burn", hit["burn"], hit.get("burn_dur", 2))
+				msgs.append(f"  🔥 {src} left the {combat.enemy_name} already BURNING!")
+		if msgs:
+			return "\n".join(msgs) + "\n"
+		return ""
+
+	# ──────────────────────────────────────────────────────────────────────
+
 	def _start_overworld_combat(self, enemy_data):
 		"""Start combat with an overworld enemy (from scaled data dict)."""
 		if not COMBAT_AVAILABLE:
@@ -1254,6 +1425,9 @@ class CommandHandler:
 	def _check_player_death(self):
 		"""Check if the player has died and handle respawn."""
 		hp = self.engine.player.stats.get("health", 1)
+		if hp <= 0 and getattr(self.engine, 'debug_god_mode', False):
+			self.engine.player.stats["health"] = 1
+			return ""
 		if hp > 0:
 			return ""
 
@@ -1872,7 +2046,12 @@ class CommandHandler:
 			return self._describe_exits(room, location_type)
 		
 		# Move player
+		origin_room_id = self.engine.player.current_room
 		self.engine.player.current_room = target_room_id
+
+		# Resolve traveling abilities from the last room's combat
+		# (fills room_pre_damage for target and connected rooms)
+		self._resolve_traveling_ability(origin_room_id)
 		
 		# Tick ability effects and cooldowns on movement
 		effect_msgs = ""
@@ -1904,6 +2083,11 @@ class CommandHandler:
 		combat_msg = ""
 		if COMBAT_AVAILABLE and not getattr(self.engine, 'pending_combat', None):
 			combat_msg = self._check_room_enemy(target_room_id, dest_room)
+
+		# Apply any pending traveling-ability pre-damage to the new combat
+		pre_dmg_msg = self._consume_room_pre_damage(target_room_id)
+		if pre_dmg_msg:
+			combat_msg = pre_dmg_msg + combat_msg
 
 		# Get visible enemy text (if any visible enemy lingers but didn't trigger random combat)
 		visible_enemy_msg = ""
@@ -4491,6 +4675,9 @@ Do you wish to enter? (yes/no)
 				)
 			
 			self.engine.map_window.create_window()
+			# sync debug reveal flag
+			if getattr(self.engine, 'debug_map_reveal', False):
+				self.engine.map_window.reveal_all = True
 			
 			# Update map with current player info
 			if self.engine.player and hasattr(self.engine.player, 'visited_rooms'):
@@ -4858,7 +5045,11 @@ class GameEngine:
 		# Debug overrides for dungeons
 		self.debug_force_open_dungeons = set()  # Stores dungeon_ids that are force-opened
 		# Debug mode: free disarm (no items required)
-		self.debug_disarm_free = False
+		self.debug_disarm_free     = False
+		# Debug toggles (editable via Debug window page 3-4)
+		self.debug_god_mode        = False   # health floored at 1, no death
+		self.debug_infinite_mana   = False   # mana never consumed
+		self.debug_map_reveal      = False   # reveal all map rooms
 		
 		# Fixed dungeon tracking
 		self.current_fixed_dungeon = None  # Loaded fixed dungeon JSON data
@@ -4926,6 +5117,30 @@ class GameEngine:
 			self.fishing_system = FishingMinigame(self)
 		else:
 			self.fishing_system = None
+
+		# Initialize forging system
+		if FORGING_AVAILABLE:
+			self.forging_system = ForgingSystem(self)
+		else:
+			self.forging_system = None
+
+		# Initialize alchemy system
+		if ALCHEMY_AVAILABLE:
+			self.alchemy_system = AlchemySystem(self)
+		else:
+			self.alchemy_system = None
+
+		# Initialize smelting system
+		if SMELTING_AVAILABLE:
+			self.smelting_system = SmeltingSystem(self)
+		else:
+			self.smelting_system = None
+
+		# Initialize ritual system
+		if RITUAL_AVAILABLE:
+			self.ritual_system = RitualSystem(self)
+		else:
+			self.ritual_system = None
 		
 		# Initialize crafting system
 		if CRAFTING_AVAILABLE:

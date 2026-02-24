@@ -333,8 +333,22 @@ class GameApp:
                     elif self.scene == "game" and self.gui:
                         self.gui.on_resize(self.width, self.height)
 
-                # Let pygame_gui process the event
-                self.manager.process_events(event)
+                # Block KEYDOWN/KEYUP from pygame_gui when a minigame overlay
+                # is active — prevents keys from typing into the command box.
+                _overlay_active = False
+                if self.scene == "game" and self.gui:
+                    _overlay_active = any(
+                        getattr(self.gui, _n, None) and
+                        not getattr(self.gui, _n).done
+                        for _n in (
+                            '_fishing_overlay', '_forging_overlay',
+                            '_alchemy_overlay', '_smelting_overlay',
+                            '_ritual_overlay', '_crafting_overlay',
+                            '_rune_overlay',
+                        )
+                    )
+                if not (_overlay_active and event.type in (pygame.KEYDOWN, pygame.KEYUP)):
+                    self.manager.process_events(event)
 
                 # Route to active scene
                 if self.scene == "title" and self.title_screen:
@@ -437,14 +451,24 @@ class PygameAdventureGUI:
         self.skill_tree_win  = None
         self.skills_book_win = None
         self.settings_win    = None
+        self.bestiary_win   = None
+        self.rooms_win      = None
+        self.commands_win   = None
         self._popup_windows  = {}     # name -> UIWindow
         self._sub_windows    = []     # windows with handle_event() (rooms/bestiary/items)
 
         # ── Overlay states ───────────────────────────────────────────────
-        self._death_overlay  = None
-        self._travel_overlay = None
+        self._death_overlay    = None
+        self._travel_overlay  = None
+        self._dungeon_entrance_overlay = None
         self._fishing_overlay = None
-        self._tooltip        = None
+        self._forging_overlay = None
+        self._alchemy_overlay = None
+        self._smelting_overlay = None
+        self._ritual_overlay  = None
+        self._crafting_overlay = None
+        self._rune_overlay    = None
+        self._tooltip         = None
 
         # ── Hotbar ───────────────────────────────────────────────────────
         self._hotbar_buttons  = []    # (UIButton, ability_dict)
@@ -538,34 +562,40 @@ class PygameAdventureGUI:
 
         self.inv_btn = UIButton(
             relative_rect=pygame.Rect(bx, btn_y, btn_w, btn_h),
-            text="\u229e Inventory", manager=m,
+            text="■ Inventory", manager=m,
             container=self.toolbar_panel, object_id=oid)
         bx += btn_w + 4
 
         self.stats_btn = UIButton(
             relative_rect=pygame.Rect(bx, btn_y, 80, btn_h),
-            text="\u265f Stats", manager=m,
+            text="▲ Stats", manager=m,
             container=self.toolbar_panel, object_id=oid)
         bx += 84
 
         self.debug_btn = UIButton(
             relative_rect=pygame.Rect(bx, btn_y, 80, btn_h),
-            text="\u2692 Debug", manager=m,
+            text="● Debug", manager=m,
             container=self.toolbar_panel, object_id=oid)
         bx += 84
 
         # Conditional buttons (always created; hidden if system unavailable)
         self.skills_btn = UIButton(
             relative_rect=pygame.Rect(bx, btn_y, 80, btn_h),
-            text="\u2694 Skills", manager=m,
+            text="★ Skills", manager=m,
             container=self.toolbar_panel, object_id=oid)
         bx += 84
 
         self.journal_btn = UIButton(
             relative_rect=pygame.Rect(bx, btn_y, 90, btn_h),
-            text="\U0001F4DC Journal", manager=m,
+            text="○ Journal", manager=m,
             container=self.toolbar_panel, object_id=oid)
         bx += 94
+
+        self.commands_btn = UIButton(
+            relative_rect=pygame.Rect(bx, btn_y, 106, btn_h),
+            text="► Commands", manager=m,
+            container=self.toolbar_panel, object_id=oid)
+        bx += 110
 
         # Status label
         self.status_label = UILabel(
@@ -578,7 +608,7 @@ class PygameAdventureGUI:
         # Settings button (far right)
         self.settings_btn = UIButton(
             relative_rect=pygame.Rect(W - 44, btn_y, 36, btn_h),
-            text="\u2699", manager=m,
+            text="◆", manager=m,
             container=self.toolbar_panel,
             object_id=ObjectID("#settings_button", "button"),
         )
@@ -601,8 +631,8 @@ class PygameAdventureGUI:
             relative_rect=pygame.Rect(
                 MG, H - IH - MG, W - MG * 2, IH),
             manager=m,
-            placeholder_text="Type a command...",
         )
+        self._hint_font = None  # lazy-loaded for the hint text drawn in render_overlay
 
         # ── Combat status bar (above input, hidden initially) ────────────
         csy = H - IH - MG - self._COMBAT_H - 2
@@ -815,15 +845,25 @@ class PygameAdventureGUI:
     # ------------------------------------------------------------------
 
     def handle_event(self, event):
-        # ── Fishing overlay intercepts all input ─────────────────────────
-        if self._fishing_overlay and not self._fishing_overlay.done:
-            self._fishing_overlay.handle_event(event)
+        # ── Dungeon entrance overlay (highest priority) ─────────────────
+        if self._dungeon_entrance_overlay and not self._dungeon_entrance_overlay.is_done():
+            self._dungeon_entrance_overlay.handle_event(event)
             return
 
-        # ── Book overlays (inventory/stats/debug/skills/journal/settings) ─
+        # ── Overlay input intercepts ─
+        for _ov in (self._fishing_overlay, self._forging_overlay,
+                    self._alchemy_overlay, self._smelting_overlay,
+                    self._ritual_overlay, self._crafting_overlay,
+                    self._rune_overlay):
+            if _ov and not _ov.done:
+                _ov.handle_event(event)
+                return
+
+        # ── Book overlays (inventory/stats/debug/skills/journal/settings/commands/bestiary/rooms) ─
         for _bov in (self.journal_win, self.inventory_win,
                      self.stats_win, self.debug_win, self.skills_book_win,
-                     self.settings_win):
+                     self.settings_win, self.commands_win,
+                     self.bestiary_win, self.rooms_win):
             if _bov and hasattr(_bov, 'is_open') and _bov.is_open() \
                     and hasattr(_bov, 'handle_event'):
                 if _bov.handle_event(event):
@@ -852,6 +892,8 @@ class PygameAdventureGUI:
                 self.toggle_skills_window()
             elif ui == self.journal_btn:
                 self.toggle_journal_window()
+            elif ui == self.commands_btn:
+                self.toggle_commands_window()
             elif ui == self.settings_btn:
                 self._open_settings()
             else:
@@ -882,11 +924,10 @@ class PygameAdventureGUI:
             # Ctrl+L  load
             elif event.key == pygame.K_l and (mods & pygame.KMOD_CTRL):
                 self.on_load_shortcut()
-            # Number keys 1-8 for hotbar (only if entry not focused)
+            # Number keys 1-8 for hotbar
             elif event.key in range(pygame.K_1, pygame.K_9):
-                if not self.entry.is_focused:
-                    slot = event.key - pygame.K_1 + 1
-                    self._hotbar_key(slot)
+                slot = event.key - pygame.K_1 + 1
+                self._hotbar_key(slot)
 
         # ── Window close events ──────────────────────────────────────────
         if event.type == pygame_gui.UI_WINDOW_CLOSE:
@@ -930,6 +971,12 @@ class PygameAdventureGUI:
                 self.refresh_inventory_display()
                 self._refresh_hotbar()
 
+        # Update dungeon entrance overlay
+        if self._dungeon_entrance_overlay:
+            self._dungeon_entrance_overlay.update(dt)
+            if self._dungeon_entrance_overlay.is_done():
+                self._dungeon_entrance_overlay = None
+
         # Update travel overlay
         if self._travel_overlay:
             self._travel_overlay.update(dt)
@@ -941,11 +988,16 @@ class PygameAdventureGUI:
                 self.refresh_inventory_display()
                 self._refresh_hotbar()
 
-        # Update fishing overlay
-        if self._fishing_overlay:
-            self._fishing_overlay.update(dt)
-            if self._fishing_overlay.done:
-                self._fishing_overlay = None
+        # Update overlays
+        for _ovname in ('_fishing_overlay', '_forging_overlay',
+                        '_alchemy_overlay', '_smelting_overlay',
+                        '_ritual_overlay', '_crafting_overlay',
+                        '_rune_overlay'):
+            _ov = getattr(self, _ovname, None)
+            if _ov:
+                _ov.update(dt)
+                if _ov.done:
+                    setattr(self, _ovname, None)
 
         # Tick sub-windows (settings slider labels, etc.)
         self._sub_windows = [w for w in self._sub_windows if w.is_open()]
@@ -955,7 +1007,8 @@ class PygameAdventureGUI:
 
         # Book overlays tick
         _bov_refs = ['journal_win','inventory_win','stats_win',
-                     'debug_win','skills_book_win','settings_win']
+                     'debug_win','skills_book_win','settings_win',
+                     'commands_win','bestiary_win','rooms_win']
         for _rn in _bov_refs:
             _w = getattr(self, _rn, None)
             if _w and hasattr(_w,'is_open'):
@@ -974,12 +1027,28 @@ class PygameAdventureGUI:
     # ------------------------------------------------------------------
 
     def render_overlay(self, surface, dt):
+        # ── Command-input hint text (purely visual, non-interactive) ─────────
+        # Drawn when the entry box is empty so the user knows what it's for.
+        if self.entry and not self.entry.get_text():
+            if self._hint_font is None:
+                self._hint_font = pygame.font.SysFont("Courier New", 14)
+            r = self.entry.get_abs_rect()
+            hint_surf = self._hint_font.render(
+                "Type a command...", True, (90, 90, 110))
+            surface.blit(hint_surf, (r.x + 8, r.y + (r.height - hint_surf.get_height()) // 2))
+
         if self._death_overlay:
             self._death_overlay.render(surface)
+        if self._dungeon_entrance_overlay:
+            self._dungeon_entrance_overlay.draw(surface)
         if self._travel_overlay:
             self._travel_overlay.render(surface)
-        if self._fishing_overlay and not self._fishing_overlay.done:
-            self._fishing_overlay.render(surface)
+        for _ov in (self._fishing_overlay, self._forging_overlay,
+                    self._alchemy_overlay, self._smelting_overlay,
+                    self._ritual_overlay, self._crafting_overlay,
+                    self._rune_overlay):
+            if _ov and not _ov.done:
+                _ov.render(surface)
         # Live map — single direct blit bypassing pygame_gui compositing
         _mw = getattr(self.engine, 'map_window', None)
         if _mw and _mw.is_open():
@@ -987,7 +1056,8 @@ class PygameAdventureGUI:
         # Book overlays drawn last (always on top)
         for _bov in (self.journal_win, self.inventory_win,
                      self.stats_win, self.debug_win, self.skills_book_win,
-                     self.settings_win):
+                     self.settings_win, self.commands_win,
+                     self.bestiary_win, self.rooms_win):
             if _bov and hasattr(_bov,'is_open') and _bov.is_open() and hasattr(_bov,'draw'):
                 _bov.draw(surface)
 
@@ -1419,19 +1489,33 @@ class PygameAdventureGUI:
 
     def _open_rooms_window(self):
         try:
-            from searchable_rooms_window import SearchableRoomsWindow
-            win = SearchableRoomsWindow(self.app, self.engine)
-            self._sub_windows.append(win)
+            if self.rooms_win and self.rooms_win.is_open():
+                self.rooms_win.close()
+                return
+            from searchable_rooms_window import RoomsOverlay
+            self.rooms_win = RoomsOverlay(self, self.engine)
         except Exception as e:
             self.append(f"[Room Browser] Could not open: {e}")
 
     def _open_bestiary_window(self):
         try:
-            from bestiary_window import BestiaryWindow
-            win = BestiaryWindow(self.app)
-            self._sub_windows.append(win)
+            if self.bestiary_win and self.bestiary_win.is_open():
+                self.bestiary_win.close()
+                return
+            from bestiary_window import BestiaryOverlay
+            self.bestiary_win = BestiaryOverlay(self)
         except Exception as e:
             self.append(f"[Bestiary] Could not open: {e}")
+
+    def toggle_commands_window(self):
+        try:
+            if self.commands_win and self.commands_win.is_open():
+                self.commands_win.close()
+                return
+            from commands_window import CommandsOverlay
+            self.commands_win = CommandsOverlay(self)
+        except Exception as e:
+            self.append(f"[Commands] Could not open: {e}")
 
     # ------------------------------------------------------------------
     #  ENGINE INIT
