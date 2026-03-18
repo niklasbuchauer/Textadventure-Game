@@ -241,3 +241,31 @@ Type 'look' to see what's available.
 ## Status: ✅ COMPLETE
 
 All requested features have been implemented and tested successfully. The command system is now comprehensive, user-friendly, and context-aware.
+
+---
+
+## Home Debug Commands (March 2026)
+
+Added dedicated home-debug commands for rapid QA and content iteration:
+
+- `debug home free` - Grants home ownership and initializes home state.
+- `debug home items` - Grants one copy of every home item.
+- `debug home reset` - Full home wipe: removes ownership and resets name, layout, upgrades, and bonuses.
+
+## Home Use Command (March 2026)
+
+Added a new player-facing command:
+
+- `home use` - Lists all currently usable placed home objects and shows the exact `use <item_id>` command for each.
+
+Debug command visibility updated in:
+
+- Player command handler in `engine.py`
+- Pygame command reference in `commands_window.py`
+- Quick reference doc in `COMMAND_QUICK_REFERENCE.md`
+
+Command visibility updated in:
+
+- Debug text menu in `debug_commands.py`
+- Pygame command reference in `commands_window.py`
+- Quick reference doc in `COMMAND_QUICK_REFERENCE.md`

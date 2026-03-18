@@ -69,6 +69,17 @@ def handle_debug_commands(engine, args):
         return "Usage: debug spawn enemy <id> [level] | debug spawn item <id>"
     elif subcommand == "stats":
         return _debug_show_stats(engine)
+    elif subcommand == "home":
+        if len(args) < 2:
+            return _debug_home_usage()
+        action = args[1].lower()
+        if action == "free":
+            return _debug_home_free(engine)
+        if action == "items":
+            return _debug_home_items(engine)
+        if action == "reset":
+            return _debug_home_reset(engine)
+        return _debug_home_usage()
     elif subcommand == "dungeon":
         if len(args) < 2:
             return "Usage: debug dungeon open [room_id] | debug dungeon close <dungeon_id> | debug dungeon list | debug dungeon check | debug dungeon entrance"
@@ -127,6 +138,11 @@ Items & Inventory:
   debug spawn item <id>         - Add item to inventory
   debug gold <amount>           - Set gold amount
 
+Home:
+    debug home free               - Grant home ownership + initialize home state
+    debug home items              - Add one copy of every home item
+    debug home reset              - Full wipe (ownership, layout, upgrades, bonuses)
+
 Dungeons:
   debug dungeon open [room_id]  - Force open dungeon for testing
   debug dungeon close <id>      - Remove force-open override
@@ -161,6 +177,9 @@ Examples:
   debug spawn item iron_sword
   debug teleport mountain_peak
   debug dungeon open dungeon_forest_entrance
+    debug home free
+    debug home items
+    debug home reset
 """.strip()
 
 
@@ -378,6 +397,75 @@ def _debug_set_level(engine, level):
         return "No player found"
     except ValueError:
         return f"Invalid level: {level}"
+
+
+def _debug_home_usage():
+    return "Usage: debug home free | debug home items | debug home reset"
+
+
+def _debug_home_free(engine):
+    if not getattr(engine, "player", None):
+        return "No player found"
+    try:
+        from home_system import ensure_player_home_state
+    except Exception as exc:
+        return f"Home system not available: {exc}"
+
+    ensure_player_home_state(engine.player)
+    engine.player.state["home_owned"] = True
+    if hasattr(engine, "refresh_home_room_description"):
+        try:
+            engine.refresh_home_room_description()
+        except Exception:
+            pass
+    return "Home granted. You now own a home and can use 'home' immediately."
+
+
+def _debug_home_items(engine):
+    if not getattr(engine, "player", None):
+        return "No player found"
+    try:
+        from home_items import HOME_ITEMS
+    except Exception as exc:
+        return f"Home items not available: {exc}"
+
+    inventory = getattr(engine.player, "inventory", None)
+    if not isinstance(inventory, dict):
+        return "Player inventory is unavailable"
+
+    added = 0
+    for item_id in sorted(HOME_ITEMS.keys()):
+        inventory[item_id] = inventory.get(item_id, 0) + 1
+        added += 1
+
+    if hasattr(engine, "_inventory_changed"):
+        engine._inventory_changed = True
+    return f"Added one copy of every home item ({added} total) to inventory."
+
+
+def _debug_home_reset(engine):
+    if not getattr(engine, "player", None):
+        return "No player found"
+    try:
+        from home_system import reset_player_home_state, HOME_ROOM_ID, HOME_FALLBACK_ROOM
+    except Exception as exc:
+        return f"Home system not available: {exc}"
+
+    reset_player_home_state(engine.player)
+
+    # If currently inside home, move to fallback room so state is coherent.
+    if getattr(engine.player, "current_room", "") == HOME_ROOM_ID:
+        target = HOME_FALLBACK_ROOM
+        if hasattr(engine, "rooms") and target not in engine.rooms and "village_square" in engine.rooms:
+            target = "village_square"
+        engine.player.current_room = target
+
+    if hasattr(engine, "refresh_home_room_description"):
+        try:
+            engine.refresh_home_room_description()
+        except Exception:
+            pass
+    return "Home fully reset. Ownership removed and home state restored to fresh defaults."
 
 
 def _debug_list_items(engine):
@@ -1355,6 +1443,9 @@ General:
 Debug:
   debug <command>               - Access debug menu
   debug commands                - Show all debug commands
+    debug home free               - Free home ownership
+    debug home items              - Free one copy of every home item
+    debug home reset              - Full home wipe/reset
 """.strip()
 
 

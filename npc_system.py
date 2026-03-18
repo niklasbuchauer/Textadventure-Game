@@ -462,7 +462,22 @@ NPC_DATABASE = {
 			"dungeon_tips": {
 				"text": "\"I've served enough adventurers to know what works:\n\n  1. Search every room — traps hide everywhere\n  2. Carry healing potions — the hermit can teach you to make them\n  3. Use torches in dungeons — you'll spot traps better\n  4. The time-gated dungeons close on schedule — don't get trapped inside!\n  5. The Shadow Depths is always open — good for practice\n  6. Every dungeon has a crafting altar on the bottom floor\n  7. Inspect walls in boss rooms — sometimes there's... more\n\nAnd if things go bad, just 'leave' — no shame in living to fight another day.\"",
 				"options": [
+					{"label": "Any secrets I should know about?", "next": "hidden_hints"},
 					{"label": "Thanks! Let me ask something else.", "next": "root"},
+				],
+			},
+			"hidden_hints": {
+				"text": "Bren lowers his voice to barely a whisper.\n\n\"I've heard... things. From old salts and wandering scholars.\n\n  • The sea cave south of here — there's an old sailor who swears there's a vault behind the back wall. A pirate vault. Examine it carefully.\n  • The woodland shrine in the forest — apparently someone left a puzzle there centuries ago. The altar knows if you've done your research.\n  • The castle library — there's a scholar who mentioned a locked cabinet. Something about an alchemist's key.\n  • And that old clocktower? People say the inside is sealed, but if you look at the gears...\n\nI'm a bartender. I hear things.\"",
+				"options": [
+					{"label": "Where do I find the alchemist's key?", "next": "alchemist_key_hint"},
+					{"label": "Let me ask something else.", "next": "root"},
+				],
+			},
+			"alchemist_key_hint": {
+				"text": "\"The alchemist's key? A traveling potion merchant passed through a few months back. Left a strange brass key as payment for his drinks.\"\n\nBren reaches under the bar and slides a small key across the counter.\n\n\"I've been meaning to figure out what it opens. Take it — maybe you'll have more luck than I did.\"",
+				"effects": {"give_items": {"alchemist_key": 1}},
+				"options": [
+					{"label": "Thank you! Let me ask something else.", "next": "root"},
 				],
 			},
 			"farewell": {
@@ -1708,6 +1723,104 @@ NPC_DATABASE = {
 			},
 		},
 	},
+
+	"developer": {
+		"id": "developer",
+		"name": "The Developer",
+		"title": "Author of This Reality",
+		"location": "developers_corner",
+		"greeting": "A figure sits at a plain desk covered in papers, empty cups, and what looks suspiciously like a game engine's source code. They look up at you with wide eyes.\n\n\"Oh. Oh wow. You actually found this place. I didn't think anyone would.\"\n\nThey close their laptop quickly. Too quickly.",
+		"dialogue": {
+			"root": {
+				"text": None,
+				"options": [
+					{"label": "Where exactly am I?", "next": "where_am_i"},
+					{"label": "Are you... the developer?", "next": "are_you_dev"},
+					{"label": "What's in that notebook?", "next": "notebook"},
+					{"label": "Do you know this is a game?", "next": "fourth_wall"},
+					{"label": "Can I have a gift?", "next": "gift_ask"},
+					{"label": "Goodbye.", "next": "farewell"},
+				],
+			},
+			"where_am_i": {
+				"text": "\"This is... the Development Corner. It's where I — they — work on the world.\"\n\nThey gesture at the walls. Now that you look closely, you can see blueprint sketches of dungeons, NPC dialogue trees, item balance spreadsheets, and a whiteboard that reads 'PHASE 3: HIDDEN CONTENT — DONE? MAYBE'.\n\n\"You weren't supposed to be able to get in here. The plain wall was supposed to look, well, plain.\"\n\nThey sigh. \"Well done, honestly.\"",
+				"options": [
+					{"label": "What is Phase 3?", "next": "phase3"},
+					{"label": "Let me ask something else.", "next": "root"},
+				],
+			},
+			"phase3": {
+				"text": "\"Phase 3 is... well, you're living in it. Hidden rooms, secret bosses, mythic items, easter eggs.\"\n\nThey count on their fingers.\n\n\"There's the Underground Archive under the chapel — lots of books, don't touch the restricted section. The Pirate Vault down in the sea caves. The Forgotten Shrine puzzle in the forest. The Hidden Alchemy Lab in the castle — you'll need a key for that. The Void Sanctuary in the void rift. The Clocktower Interior — examine the gears. And this place.\"\n\nThey pause. \"Also there's a secret boss if you collect the right three items. Try 'invoke ritual' when you have them all.\"",
+				"options": [
+					{"label": "What three items for the boss?", "next": "ritual_hint"},
+					{"label": "Let me ask something else.", "next": "root"},
+				],
+			},
+			"ritual_hint": {
+				"text": "\"A shadow shard, a blood sigil, and a void crystal. All three. In your inventory.\"\n\nThey look at you seriously.\n\n\"The Void Titan is not a joke. It's... it's very strong. I may have over-tuned it slightly.\"\n\nA pause.\n\n\"Okay, significantly over-tuned. I was having a day.\"",
+				"options": [
+					{"label": "Let me ask something else.", "next": "root"},
+				],
+			},
+			"are_you_dev": {
+				"text": "They look around nervously.\n\n\"I mean... technically, everyone in this world is made of code. The tavern keeper, the blacksmith, even Father Aldric is just a series of nested dialogue trees and conditional checks.\"\n\nThey lower their voice.\n\n\"But yes. I'm the one who wrote the conditional checks. Please don't tell the other NPCs. They've been through enough.\"",
+				"options": [
+					{"label": "Do the NPCs know they're NPCs?", "next": "npcs_know"},
+					{"label": "Let me ask something else.", "next": "root"},
+				],
+			},
+			"npcs_know": {
+				"text": "\"Bren the bartender suspects. He keeps asking questions no tavern keeper should care about — the nature of free will, whether his dialogue options were pre-determined, why he can only give the same eight conversational topics.\"\n\nThey shudder.\n\n\"The blacksmith is fine. Never questions anything. Best NPC I ever wrote.\"\n\nA sad look crosses their face.\n\n\"Sometimes I add new dialogue for them in the middle of the night. They wake up and suddenly know things they didn't know yesterday. I like to think it feels like a dream to them.\"",
+				"options": [
+					{"label": "Let me ask something else.", "next": "root"},
+				],
+			},
+			"notebook": {
+				"text": "They slam a hand on the notebook protectively.\n\n\"That's my — that's nothing. Design notes. Ideas for Phase 4.\"\n\nYou catch a glimpse of the pages. You think you see the words 'WEATHER SYSTEM', 'FISHING TOURNAMENT', 'PLAYER HOUSING?', and 'WHY DOES THE SAVE FILE DO THAT' in large, concerned letters.\n\n\"If Phase 4 happens,\" they say quietly, \"you'll know.\"",
+				"options": [
+					{"label": "Let me ask something else.", "next": "root"},
+				],
+			},
+			"fourth_wall": {
+				"text": "A very long silence.\n\n\"Does the wall look broken to you?\" they finally say.\n\nAnother silence.\n\n\"Okay, fine. Yes. This is a game. You are a player. I am the developer. The world around you is a Python program running on someone's laptop, and if they close the window, reality as you know it ceases to exist until the next git pull.\"\n\nThey look at the fourth wall directly.\n\nActually, they look at YOU directly.\n\n\"Hi. Thanks for playing. It means a lot.\"",
+				"effects": {"track_event": "easter_eggs_found"},
+				"options": [
+					{"label": "...thanks?", "next": "thanks_response"},
+					{"label": "Let me ask something else.", "next": "root"},
+				],
+			},
+			"thanks_response": {
+				"text": "\"You're welcome. And — hey — try 'doabigcheese' sometime. Just... because.\"",
+				"options": [
+					{"label": "What does that do?", "next": "cheese_hint"},
+					{"label": "Let me ask something else.", "next": "root"},
+				],
+			},
+			"cheese_hint": {
+				"text": "They smile for the first time.\n\n\"Type 'doabigcheese' anywhere, any time. It's... a long story. The short version is that it was 2 AM and someone thought it would be very funny.\"\n\nThey do not elaborate.",
+				"options": [
+					{"label": "I will definitely do that.", "next": "root"},
+				],
+			},
+			"gift_ask": {
+				"text": "They rummage under the desk.\n\n\"Let me see... I've got a developer's note, and...\"\n\nThey hand you a blade that hums with impossible energy.\n\n\"The Developer's Blade. Stats are... let's call them 'enthusiastically balanced'. Also a note explaining everything. Don't show the other NPCs.\"",
+				"effects": {"give_items": {"devs_blade": 1, "developers_note": 1}, "track_event": "easter_eggs_found"},
+				"options": [
+					{"label": "This is incredible. Thank you.", "next": "gift_thanks"},
+				],
+			},
+			"gift_thanks": {
+				"text": "\"You earned it. Now go — before the save file corrupts again.\"\n\nThey turn back to their desk.\n\n\"And if you talk to Bren, tell him I said... tell him the options are all his. In a way.\"",
+				"options": [
+					{"label": "Goodbye.", "next": "farewell"},
+				],
+			},
+			"farewell": {
+				"text": "\"Safe travels. And — one last thing — you're doing great.\"\n\nThey wave. Reality feels very slightly more real than it did a moment ago.",
+				"options": [],
+			},
+		},
+	},
 }
 
 
@@ -2087,6 +2200,15 @@ class NPCManager:
 			pending = getattr(self.engine, 'pending_dialogue', None)
 			if pending and pending.get('npc_id'):
 				self.engine.reputation_manager.modify_affinity(pending['npc_id'], 3, "learned a recipe")
+
+		# Track achievement events
+		event_key = effects.get("track_event")
+		if event_key:
+			try:
+				from achievement_system import track_event as ach_track
+				ach_track(self.engine.player, event_key)
+			except Exception:
+				pass
 
 		return "\n".join(parts)
 

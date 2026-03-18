@@ -15,6 +15,14 @@ from pygame_gui.elements import (
     UIButton, UILabel, UIWindow, UIImage,
 )
 
+try:
+    from home_system import is_home_room, get_unlocked_tiles
+    from home_items import get_home_item
+    from home_assets import blit_home_item_sprite
+    HOME_MAP_AVAILABLE = True
+except Exception:
+    HOME_MAP_AVAILABLE = False
+
 
 class LiveMapWindow:
     """Graphical map window using pygame drawing + UIWindow overlay."""
@@ -498,6 +506,8 @@ class LiveMapWindow:
 
         if self._player_in_dungeon():
             self._render_dungeon_map()
+        elif self._player_in_home():
+            self._render_home_map()
         else:
             self._render_overworld_map()
         # Surface is consumed by render_direct() each frame — no set_image() needed
@@ -1699,6 +1709,138 @@ class LiveMapWindow:
             self._region_label.set_text(f"Region: {region}")
 
     # ── helpers ─────────────────────────────────────────────────────
+    def _player_in_home(self) -> bool:
+        if not self.current_location:
+            return False
+        if HOME_MAP_AVAILABLE:
+            try:
+                return is_home_room(self.current_location)
+            except Exception:
+                return self.current_location == "player_home"
+        return self.current_location == "player_home"
+
+    def _render_home_map(self):
+        surf = self._map_surface
+        sw, sh = surf.get_size()
+
+        bg = (92, 63, 39)
+        floor = (120, 84, 56)
+        wall = (58, 39, 24)
+        section = (104, 74, 49)
+        marker = (255, 220, 120)
+        text_col = (245, 235, 210)
+
+        surf.fill(bg)
+
+        if self._header_label:
+            self._header_label.set_text("- HOME MAP -")
+
+        player = getattr(self.game_engine, "player", None)
+        home_data = {}
+        if player and isinstance(getattr(player, "state", {}), dict):
+            home_data = player.state.get("home_data", {}) or {}
+
+        if HOME_MAP_AVAILABLE and home_data:
+            tiles = get_unlocked_tiles(home_data)
+        else:
+            tiles = [(x, y) for x in range(8) for y in range(6)]
+
+        if not tiles:
+            tiles = [(x, y) for x in range(8) for y in range(6)]
+
+        xs = [t[0] for t in tiles]
+        ys = [t[1] for t in tiles]
+        min_x, max_x = min(xs), max(xs)
+        min_y, max_y = min(ys), max(ys)
+
+        grid_w = max_x - min_x + 1
+        grid_h = max_y - min_y + 1
+        tile_size = max(18, min(44, min((sw - 130) // max(1, grid_w), (sh - 150) // max(1, grid_h))))
+        origin_x = (sw - grid_w * tile_size) // 2
+        origin_y = (sh - grid_h * tile_size) // 2
+
+        expansions = set(home_data.get("unlocked_expansions", [])) if isinstance(home_data, dict) else set()
+
+        for tx, ty in tiles:
+            sx = origin_x + (tx - min_x) * tile_size
+            sy = origin_y + (ty - min_y) * tile_size
+            color = section if (tx >= 8 or ty >= 6) else floor
+            pygame.draw.rect(surf, color, (sx, sy, tile_size - 1, tile_size - 1))
+
+        outer_x = origin_x - 4
+        outer_y = origin_y - 4
+        outer_w = grid_w * tile_size + 8
+        outer_h = grid_h * tile_size + 8
+        pygame.draw.rect(surf, wall, (outer_x, outer_y, outer_w, outer_h), 4)
+
+        placed_items = []
+        if isinstance(home_data, dict):
+            placed_items = home_data.get("placed_items", []) or []
+
+        label_font = self._get_font(10)
+
+        for placed in placed_items:
+            item_id = placed.get("item_id", "")
+            x = int(placed.get("x", 0))
+            y = int(placed.get("y", 0))
+            if (x, y) not in set(tiles):
+                continue
+            sx = origin_x + (x - min_x) * tile_size
+            sy = origin_y + (y - min_y) * tile_size
+            item_def = get_home_item(item_id) or {} if HOME_MAP_AVAILABLE else {}
+            item_color = (225, 201, 150)
+            if HOME_MAP_AVAILABLE:
+                hex_col = item_def.get("map_color", "#d4b07a").lstrip("#")
+                if len(hex_col) == 6:
+                    item_color = tuple(int(hex_col[i:i+2], 16) for i in (0, 2, 4))
+
+            inner = pygame.Rect(sx + 2, sy + 2, tile_size - 4, tile_size - 4)
+            drew = False
+            if HOME_MAP_AVAILABLE:
+                drew = blit_home_item_sprite(surf, item_def, placed, inner)
+            if not drew:
+                pygame.draw.rect(surf, item_color, (sx + 3, sy + 3, tile_size - 6, tile_size - 6), border_radius=4)
+                icon = item_def.get("map_icon", item_id[:1].upper() if item_id else "*")
+                icon_surf = self._get_font(max(10, tile_size // 2)).render(str(icon), True, (30, 20, 10))
+                surf.blit(icon_surf, (sx + (tile_size - icon_surf.get_width()) // 2, sy + (tile_size - icon_surf.get_height()) // 2))
+            short_label = item_id.replace("_", " ")[:10]
+            lbl = label_font.render(short_label, True, text_col)
+            surf.blit(lbl, (sx + 2, sy + tile_size - 10))
+
+        # Player marker sits at the center tile for the home map.
+        px = origin_x + (grid_w * tile_size) // 2
+        py = origin_y + (grid_h * tile_size) // 2
+        pygame.draw.circle(surf, marker, (px, py), max(5, tile_size // 4))
+        pygame.draw.circle(surf, (255, 255, 255), (px, py), max(2, tile_size // 8))
+
+        bonuses = {}
+        if player and isinstance(player.state, dict):
+            bonuses = player.state.get("active_home_bonuses", {}) or {}
+
+        legend_x = 12
+        legend_y = sh - 92
+        pygame.draw.rect(surf, (66, 47, 30), (legend_x, legend_y, 280, 76), border_radius=6)
+        pygame.draw.rect(surf, (140, 110, 76), (legend_x, legend_y, 280, 76), 1, border_radius=6)
+        legend_title = self._get_font(12).render("Active altar bonuses", True, text_col)
+        surf.blit(legend_title, (legend_x + 8, legend_y + 6))
+        if bonuses:
+            yline = legend_y + 24
+            for key, value in bonuses.items():
+                line = self._get_font(10).render(f"{key}: {value}", True, text_col)
+                surf.blit(line, (legend_x + 8, yline))
+                yline += 14
+        else:
+            none_line = self._get_font(10).render("None", True, text_col)
+            surf.blit(none_line, (legend_x + 8, legend_y + 28))
+
+        fog = "Reveal ON" if self.reveal_all else "Fog of War"
+        if self._stats_label:
+            self._stats_label.set_text(
+                f"Home tiles: {len(tiles)} | Placed: {len(placed_items)} | Expansions: {len(expansions)} | {fog}"
+            )
+
+        self._draw_map_border(surf, sw, sh)
+
     def _player_in_dungeon(self) -> bool:
         if not self.current_location:
             return False

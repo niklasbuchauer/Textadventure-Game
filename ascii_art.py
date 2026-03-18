@@ -123,6 +123,27 @@ def get_diff_params(recipe_tier: int = 2) -> dict:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+#  CHEESE ART — Easter egg ("doabigcheese" command)
+# ──────────────────────────────────────────────────────────────────────────────
+CHEESE_ART = r"""
+         _______________
+        /               \
+       /   DO A BIG      \
+      /     CHEESE        \
+     /___________________/|
+    |  ,---.  ,---.  ,---|/
+    | /  O  \/  O  \/  O |
+    ||  (_)  |  (_)  |(_)|
+    | \     / \     / \  |
+    |  '---'   '---'  '--|
+    |  AGED HAVENBROOK   |
+    |   FINEST CHEDDAR   |
+    |____________________|
+          |||||||
+          ||||||||
+"""
+
+# ──────────────────────────────────────────────────────────────────────────────
 #  ITEM ICONS  (2–5 chars, monospace-friendly)
 # ──────────────────────────────────────────────────────────────────────────────
 ITEM_ICONS = {
@@ -263,6 +284,34 @@ ITEM_ICONS = {
     # — Currency —
     "gold":                 "$",
     "bronze_coin":          "c",
+
+    # — Mythic / Hidden Content —
+    "solaris_blade":        "*|==",
+    "forgotten_blade":      "?|--",
+    "dragonfang_dagger":    "D/>",
+    "pirate_captain_sword": "~|--",
+    "devs_blade":           "</--",
+    "dragonscale_armor":    "[D]",
+    "archive_robe":         "[~S]",
+    "void_cloak":           "[~~]",
+    "crown_of_stars":       "*^*",
+    "void_titan_crown":     "V^V",
+    "ethereal_orb":         "(*)",
+    "clockwork_pendant":    "oTo",
+    "starweave_ring":       "*o*",
+    "clockwork_boots":      "}T{",
+    "voidborn_gauntlets":   "[V]",
+    "alchemist_key":        "-K-",
+    "shadow_shard":         "~S~",
+    "blood_sigil":          "!S!",
+    "void_shard":           "oVo",
+    "ancient_codex":        "[A]",
+    "stellar_dust":         "*..",
+    "pirate_charter":       "[P]",
+    "void_titan_soul":      "oTo",
+    "shrine_blessing":      "(+)",
+    "developers_note":      "[D]",
+    "void_crystal":         "*V*",
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -682,6 +731,171 @@ ITEM_SPRITES = {
         "|  ~ ~  |",
         " \\~~~~~/ ",
         "  \\---/  ",
+    ],
+
+    # ── MYTHIC WEAPONS ────────────────────────────────────────────────────────
+    "solaris_blade": [
+        "    *    ",
+        "   *|*   ",
+        "  * | *  ",
+        " *--+--* ",
+        "    |    ",
+        "    |    ",
+        "   ---   ",
+        "    .    ",
+        " MYTHIC  ",
+    ],
+    "forgotten_blade": [
+        "   ???   ",
+        "  ?|???  ",
+        " ??|??   ",
+        "  ?+--   ",
+        "    |    ",
+        "   ---   ",
+        "    .    ",
+        " MYTHIC  ",
+    ],
+    "dragonfang_dagger": [
+        "   D     ",
+        "  D /    ",
+        " D /     ",
+        "D /--    ",
+        " \\       ",
+        "  .      ",
+        " MYTHIC  ",
+    ],
+    "pirate_captain_sword": [
+        "     ~   ",
+        "    ~|   ",
+        "   ~|\\   ",
+        "  ~|--   ",
+        "    |    ",
+        "   ---   ",
+        "    .    ",
+        " MYTHIC  ",
+    ],
+    "devs_blade": [
+        "   </>   ",
+        "  </>|   ",
+        " </>--|\\  ",
+        "  </>+-- ",
+        "     |   ",
+        "    ---  ",
+        "     .   ",
+        " D E V S ",
+    ],
+
+    # ── MYTHIC ARMOUR ─────────────────────────────────────────────────────────
+    "dragonscale_armor": [
+        "  /DDD\\  ",
+        " |DDDDD| ",
+        " |D>D<D| ",
+        " |DDDDD| ",
+        " |D>D<D| ",
+        "  \\DDD/  ",
+        " MYTHIC  ",
+    ],
+    "archive_robe": [
+        "  /~~~\\  ",
+        " |~S~~~| ",
+        " |~~~~~| ",
+        " |~S~~~| ",
+        " |~~~~~| ",
+        "  \\~~~/  ",
+        " MYTHIC  ",
+    ],
+    "void_cloak": [
+        "   .~~~~~~~~~~~~.   ",
+        "  /  * .  . * .  \\ ",
+        " |  .   void   .  | ",
+        " |*.  ________  .*| ",
+        "  \\ /  * .  *  \\ /  ",
+        "   |  .  .  .   |   ",
+        "   /  ~~~~~~~~  \\   ",
+        "  / .  * .  * .  \\ ",
+        " /_______________\\  ",
+        "[   M Y T H I C   ] ",
+    ],
+
+    # ── MYTHIC HELMS ──────────────────────────────────────────────────────────
+    "crown_of_stars": [
+        " *   *   ",
+        "* * * *  ",
+        " *---*   ",
+        " |***|   ",
+        " |   |   ",
+        "  ---    ",
+        " MYTHIC  ",
+    ],
+    "void_titan_crown": [
+        " V   V   ",
+        "V V V V  ",
+        " V---V   ",
+        " |VVV|   ",
+        " |   |   ",
+        "  ---    ",
+        " MYTHIC  ",
+    ],
+
+    # ── MYTHIC ACCESSORIES ────────────────────────────────────────────────────
+    "ethereal_orb": [
+        "  /~~~\\  ",
+        " / *** \\ ",
+        "| * * * |",
+        " \\ *** / ",
+        "  \\~~~/  ",
+        "   (*)   ",
+        " MYTHIC  ",
+    ],
+    "clockwork_pendant": [
+        "  /===\\  ",
+        " | o-o | ",
+        " |  T  | ",
+        " | --- | ",
+        "  \\===/  ",
+        "   | |   ",
+        " MYTHIC  ",
+    ],
+    "starweave_ring": [
+        "   ***   ",
+        "  *   *  ",
+        " *  *  * ",
+        "  *   *  ",
+        "   ***   ",
+        " MYTHIC  ",
+    ],
+
+    # ── MYTHIC TOOLS / KEY ITEMS ──────────────────────────────────────────────
+    "alchemist_key": [
+        "   O     ",
+        "  /|\\    ",
+        "   |     ",
+        "   |--   ",
+        "   |  -  ",
+        "         ",
+    ],
+    "shadow_shard": [
+        "   ~     ",
+        "  ~S~    ",
+        " ~ S ~   ",
+        "  ~S~    ",
+        "   ~     ",
+    ],
+    "void_shard": [
+        "  .---.  ",
+        " / oVo \\ ",
+        "| VOID  |",
+        " \\ oVo / ",
+        "  '---'  ",
+        "  RARE!  ",
+    ],
+    "ancient_codex": [
+        "  /===\\  ",
+        " |=====| ",
+        " | A C | ",
+        " |=====| ",
+        " |~   ~| ",
+        "  \\===/  ",
     ],
 }
 

@@ -15,6 +15,26 @@
 - `commands` = Same as help
 - `?` = Same as help
 
+## Home Commands
+
+- `buy home deed` = Purchase your first home deed
+- `home` = Travel to your home
+- `home edit` = Open the interactive home editor UI
+- `home use` = List usable placed home objects + `use <item_id>` commands
+- `hearthstone` = Teleport home with Hearthstone
+- `leave` / `exit home` = Leave your home
+- `place <item> [at x y]` = Place a home item
+- `remove <item>` = Remove placed home item
+- `home inventory` = List placed home items
+- `home upgrades` = Show expansion unlock status
+- `rename home <name>` = Rename your home
+
+## Debug Home Commands
+
+- `debug home free` = Instantly grant home ownership
+- `debug home items` = Add one copy of every home item
+- `debug home reset` = Full home wipe (ownership/layout/upgrades/bonuses)
+
 ## Inspect Command
 
 ### General Usage

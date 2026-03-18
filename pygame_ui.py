@@ -286,11 +286,11 @@ class GameApp:
         pygame.display.set_caption("Estoria's Chronicles")
 
         info = pygame.display.Info()
-        self.width  = max(MIN_WIDTH,  min(info.current_w - 80, 1600))
-        self.height = max(MIN_HEIGHT, min(info.current_h - 80, 900))
-
+        self.width  = info.current_w
+        self.height = info.current_h
+        self.fullscreen = True
         self.surface = pygame.display.set_mode(
-            (self.width, self.height), pygame.RESIZABLE)
+            (self.width, self.height), pygame.FULLSCREEN)
 
         theme = THEME_FILE if os.path.exists(THEME_FILE) else None
         self.manager = pygame_gui.UIManager(
@@ -320,8 +320,29 @@ class GameApp:
                     self.running = False
                     continue
 
-                # Window resize
-                if event.type == pygame.VIDEORESIZE:
+                # F11 toggles fullscreen
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_F11:
+                    self.fullscreen = not self.fullscreen
+                    info = pygame.display.Info()
+                    if self.fullscreen:
+                        self.width = info.current_w
+                        self.height = info.current_h
+                        self.surface = pygame.display.set_mode(
+                            (self.width, self.height), pygame.FULLSCREEN)
+                    else:
+                        # Use a reasonable windowed size
+                        self.width = max(MIN_WIDTH, min(info.current_w - 80, 1600))
+                        self.height = max(MIN_HEIGHT, min(info.current_h - 80, 900))
+                        self.surface = pygame.display.set_mode(
+                            (self.width, self.height), pygame.RESIZABLE)
+                    self.manager.set_window_resolution((self.width, self.height))
+                    if self.scene == "title" and self.title_screen:
+                        self.title_screen.on_resize(self.width, self.height)
+                    elif self.scene == "game" and self.gui:
+                        self.gui.on_resize(self.width, self.height)
+
+                # Window resize (only in windowed mode)
+                if event.type == pygame.VIDEORESIZE and not self.fullscreen:
                     self.width  = max(MIN_WIDTH,  event.w)
                     self.height = max(MIN_HEIGHT, event.h)
                     self.surface = pygame.display.set_mode(
@@ -454,6 +475,7 @@ class PygameAdventureGUI:
         self.bestiary_win   = None
         self.rooms_win      = None
         self.commands_win   = None
+        self.home_editor_win = None
         self._popup_windows  = {}     # name -> UIWindow
         self._sub_windows    = []     # windows with handle_event() (rooms/bestiary/items)
 
@@ -594,6 +616,12 @@ class PygameAdventureGUI:
         self.commands_btn = UIButton(
             relative_rect=pygame.Rect(bx, btn_y, 106, btn_h),
             text="► Commands", manager=m,
+            container=self.toolbar_panel, object_id=oid)
+        bx += 110
+
+        self.home_editor_btn = UIButton(
+            relative_rect=pygame.Rect(bx, btn_y, 106, btn_h),
+            text="H Home Edit", manager=m,
             container=self.toolbar_panel, object_id=oid)
         bx += 110
 
@@ -862,7 +890,7 @@ class PygameAdventureGUI:
         # ── Book overlays (inventory/stats/debug/skills/journal/settings/commands/bestiary/rooms) ─
         for _bov in (self.journal_win, self.inventory_win,
                      self.stats_win, self.debug_win, self.skills_book_win,
-                     self.settings_win, self.commands_win,
+                     self.settings_win, self.commands_win, self.home_editor_win,
                      self.bestiary_win, self.rooms_win):
             if _bov and hasattr(_bov, 'is_open') and _bov.is_open() \
                     and hasattr(_bov, 'handle_event'):
@@ -894,6 +922,8 @@ class PygameAdventureGUI:
                 self.toggle_journal_window()
             elif ui == self.commands_btn:
                 self.toggle_commands_window()
+            elif ui == self.home_editor_btn:
+                self.toggle_home_editor_window()
             elif ui == self.settings_btn:
                 self._open_settings()
             else:
@@ -1008,7 +1038,7 @@ class PygameAdventureGUI:
         # Book overlays tick
         _bov_refs = ['journal_win','inventory_win','stats_win',
                      'debug_win','skills_book_win','settings_win',
-                     'commands_win','bestiary_win','rooms_win']
+                     'commands_win','home_editor_win','bestiary_win','rooms_win']
         for _rn in _bov_refs:
             _w = getattr(self, _rn, None)
             if _w and hasattr(_w,'is_open'):
@@ -1056,7 +1086,7 @@ class PygameAdventureGUI:
         # Book overlays drawn last (always on top)
         for _bov in (self.journal_win, self.inventory_win,
                      self.stats_win, self.debug_win, self.skills_book_win,
-                     self.settings_win, self.commands_win,
+                     self.settings_win, self.commands_win, self.home_editor_win,
                      self.bestiary_win, self.rooms_win):
             if _bov and hasattr(_bov,'is_open') and _bov.is_open() and hasattr(_bov,'draw'):
                 _bov.draw(surface)
@@ -1516,6 +1546,16 @@ class PygameAdventureGUI:
             self.commands_win = CommandsOverlay(self)
         except Exception as e:
             self.append(f"[Commands] Could not open: {e}")
+
+    def toggle_home_editor_window(self):
+        try:
+            if self.home_editor_win and self.home_editor_win.is_open():
+                self.home_editor_win.close()
+                return
+            from home_editor_overlay import HomeEditorOverlay
+            self.home_editor_win = HomeEditorOverlay(self)
+        except Exception as e:
+            self.append(f"[Home Editor] Could not open: {e}", "warning")
 
     # ------------------------------------------------------------------
     #  ENGINE INIT

@@ -51,6 +51,11 @@
           "target": "bank_of_estoria",
           "type": "named",
           "display": "Bank of Estoria"
+        },
+        "clocktower": {
+          "target": "village_clocktower",
+          "type": "named",
+          "display": "Old Clocktower"
         }
       }
     },
@@ -130,8 +135,11 @@
     "village_east_end": {
       "id": "village_east_end",
       "name": "Village East End",
-      "description": "The eastern edge of Havenbrook. Modest wooden houses line the street, with small gardens behind each. The village chapel stands nearby, its bell tower visible above the rooftops.",
+      "description": "The eastern edge of Havenbrook. Modest wooden houses line the street, with small gardens behind each. The village chapel stands nearby, its bell tower visible above the rooftops. One house at the end of the row has an unusually plain, featureless wall — no windows, no decoration, nothing.",
       "location_type": "settlement",
+      "has_secret": true,
+      "secret_room_id": "developers_corner",
+      "secret_discovered": false,
       "coordinates": [
         2,
         0
@@ -156,8 +164,11 @@
     "chapel": {
       "id": "chapel",
       "name": "Chapel of the Light",
-      "description": "A peaceful stone chapel with stained glass windows depicting scenes of hope and salvation. Candles flicker on the altar, and the soft scent of incense fills the air. Father Aldric tends to the faithful here.",
+      "description": "A peaceful stone chapel with stained glass windows depicting scenes of hope and salvation. Candles flicker on the altar, and the soft scent of incense fills the air. Father Aldric tends to the faithful here. Ancient bookshelves line one wall, filled with theological texts and dusty tomes.",
       "location_type": "building",
+      "has_secret": true,
+      "secret_room_id": "underground_archive",
+      "secret_discovered": false,
       "coordinates": [
         2,
         -1
@@ -178,6 +189,194 @@
         }
       }
     },
+
+    "village_clocktower": {
+      "id": "village_clocktower",
+      "name": "Old Clocktower",
+      "description": "A tall stone clocktower that has stood in Havenbrook for over a thousand years. The enormous clockface dominates the exterior, its hands still moving with mechanical precision. Brass gears and cogs are visible through a grate at the base. The door appears to be sealed — but the gears might offer a way in.",
+      "location_type": "building",
+      "has_secret": true,
+      "secret_room_id": "clocktower_interior",
+      "secret_discovered": false,
+      "coordinates": [0, 1],
+      "items": {
+        "old_coin": {"quantity": 1, "value": 5}
+      },
+      "exits": {
+        "outside": {
+          "target": "village_square",
+          "type": "direction"
+        }
+      }
+    },
+
+    "village_void_rift": {
+      "id": "village_void_rift",
+      "name": "Void Rift Overlook",
+      "description": "A secluded spot at the edge of Havenbrook where reality flickers. A shimmering tear in the air pulses with violet light — a rift to somewhere else. Local scholars debate whether it is a natural phenomenon or something far more intentional. The rift seems to respond to observation.",
+      "location_type": "wilderness",
+      "has_secret": true,
+      "secret_room_id": "void_sanctuary",
+      "secret_discovered": false,
+      "coordinates": [3, 3],
+      "items": {
+        "void_shard_fragment": {"quantity": 1, "value": 50}
+      },
+      "exits": {
+        "south": {
+          "target": "village_square",
+          "type": "direction"
+        }
+      }
+    },
+
+    "underground_archive": {
+      "id": "underground_archive",
+      "name": "[HIDDEN] The Underground Archive",
+      "description": "A vast underground library hidden beneath the chapel, accessible only through a secret passage behind the bookshelves. Ancient stone walls hold thousands of preserved tomes and scrolls, lit by magical lanterns that have burned without fuel for centuries. A sense of profound stillness fills the air — this place has waited a very long time.",
+      "location_type": "building",
+      "is_secret": true,
+      "coordinates": [2, -2],
+      "items": {
+        "ancient_codex": {"quantity": 1, "value": 1500},
+        "archive_robe": {"quantity": 1, "value": 2000},
+        "solaris_blade": {"quantity": 1, "value": 3000},
+        "dusty_tome": {"quantity": 3, "value": 40},
+        "shadow_shard": {"quantity": 1, "value": 500}
+      },
+      "exits": {
+        "back": {
+          "target": "chapel",
+          "type": "direction"
+        }
+      }
+    },
+
+    "pirate_vault": {
+      "id": "pirate_vault",
+      "name": "[HIDDEN] The Pirate Vault",
+      "description": "A hidden vault carved into the sea cave wall, sealed for two centuries. The walls are hung with old pirate flags, navigational charts to unknown islands, and trophies from a hundred voyages. A massive iron chest dominates the centre. Everything smells of salt, rum, and old secrets.",
+      "location_type": "building",
+      "is_secret": true,
+      "coordinates": [-4, -15],
+      "items": {
+        "pirate_captain_sword": {"quantity": 1, "value": 2500},
+        "pirate_charter": {"quantity": 1, "value": 800},
+        "gold_ingot": {"quantity": 5, "value": 150},
+        "old_coin": {"quantity": 20, "value": 10},
+        "blood_sigil": {"quantity": 1, "value": 600}
+      },
+      "exits": {
+        "back": {
+          "target": "sea_cave",
+          "type": "direction"
+        }
+      }
+    },
+
+    "forgotten_shrine_puzzle": {
+      "id": "forgotten_shrine_puzzle",
+      "name": "[HIDDEN] The Forgotten Shrine",
+      "description": "A sacred inner chamber revealed when the altar's three riddles are answered correctly. The chamber glows with soft golden light from crystals embedded in the walls. At the centre, a floating orb pulses with ancient magical energy. Inscriptions on the walls describe the one who placed these treasures here — a hero whose name was deliberately erased from all records.",
+      "location_type": "wilderness",
+      "is_secret": true,
+      "coordinates": [-6, 5],
+      "items": {
+        "ethereal_orb": {"quantity": 1, "value": 3500},
+        "forgotten_blade": {"quantity": 1, "value": 2800},
+        "shrine_blessing": {"quantity": 3, "value": 200}
+      },
+      "exits": {
+        "back": {
+          "target": "woodland_shrine",
+          "type": "direction"
+        }
+      }
+    },
+
+    "hidden_alchemy_lab": {
+      "id": "hidden_alchemy_lab",
+      "name": "[HIDDEN] The Hidden Alchemy Lab",
+      "description": "A secret laboratory behind the locked cabinet in the castle library. Gleaming equipment lines every surface — alchemical apparatus, ingredient racks, and journals filled with advanced formulae. The dragonscale armour rests on a stand in the corner, left here by an alchemist who apparently had more pressing concerns than retrieving their best work.",
+      "location_type": "building",
+      "is_secret": true,
+      "crafting_station": "alchemy",
+      "coordinates": [11, 11],
+      "items": {
+        "dragonscale_armor": {"quantity": 1, "value": 4000},
+        "alchemist_key": {"quantity": 0, "value": 0},
+        "stellar_dust": {"quantity": 2, "value": 300},
+        "dragonfang_dagger": {"quantity": 1, "value": 2200},
+        "void_crystal": {"quantity": 1, "value": 600}
+      },
+      "exits": {
+        "back": {
+          "target": "castle_library",
+          "type": "direction"
+        }
+      }
+    },
+
+    "void_sanctuary": {
+      "id": "void_sanctuary",
+      "name": "[HIDDEN] The Void Sanctuary",
+      "description": "A pocket dimension contained within the rift. The floor is polished obsidian that reflects an inverted starscape. The walls do not exist — looking sideways, you see only an infinite dark expanse with distant lights that might be stars or might be something else entirely. Powerful items left here by beings that no longer required physical possessions.",
+      "location_type": "wilderness",
+      "is_secret": true,
+      "coordinates": [3, 4],
+      "items": {
+        "void_cloak": {"quantity": 1, "value": 3200},
+        "void_titan_crown": {"quantity": 0, "value": 0},
+        "starweave_ring": {"quantity": 1, "value": 2800},
+        "voidborn_gauntlets": {"quantity": 1, "value": 2500}
+      },
+      "exits": {
+        "back": {
+          "target": "village_void_rift",
+          "type": "direction"
+        }
+      }
+    },
+
+    "clocktower_interior": {
+      "id": "clocktower_interior",
+      "name": "[HIDDEN] Clocktower Interior",
+      "description": "The impossible interior of the clocktower, accessible through the gear mechanism. Enormous brass gears fill the space, turning with stately precision. The whole structure vibrates subtly at the resonant frequency of time itself. Halfway up, on a platform you should not be able to reach, someone has left treasures that have been waiting here for a millennium.",
+      "location_type": "building",
+      "is_secret": true,
+      "coordinates": [0, 2],
+      "items": {
+        "crown_of_stars": {"quantity": 1, "value": 3800},
+        "clockwork_pendant": {"quantity": 1, "value": 2600},
+        "clockwork_boots": {"quantity": 1, "value": 2400}
+      },
+      "exits": {
+        "back": {
+          "target": "village_clocktower",
+          "type": "direction"
+        }
+      }
+    },
+
+    "developers_corner": {
+      "id": "developers_corner",
+      "name": "[HIDDEN] The Developer's Corner",
+      "description": "A small room that has no business existing. The walls are covered in diagrams, flowcharts, and design documents for what is obviously the world you have been walking through. A plain desk holds a laptop, several empty cups, and a notebook labelled 'PHASE 4 IDEAS (DO NOT READ)'. A figure sits at the desk with the expression of someone who did not expect company.",
+      "location_type": "building",
+      "is_secret": true,
+      "coordinates": [3, 0],
+      "npcs": ["developer"],
+      "items": {
+        "developers_note": {"quantity": 0, "value": 0}
+      },
+      "exits": {
+        "back": {
+          "target": "village_east_end",
+          "type": "direction"
+        }
+      }
+    },
+
     "village_west_end": {
       "id": "village_west_end",
       "name": "Village West End",
@@ -813,8 +1012,11 @@
     "woodland_shrine": {
       "id": "woodland_shrine",
       "name": "Woodland Shrine",
-      "description": "Stone monoliths draped in ivy mark an ancient place of worship. Offerings of wilted flowers and small coins are scattered at the base of a moss-covered altar. The air hums with faint energy.",
+      "description": "Stone monoliths draped in ivy mark an ancient place of worship. Offerings of wilted flowers and small coins are scattered at the base of a moss-covered altar. The air hums with faint energy. The altar bears three faded inscriptions — questions, perhaps, left by the shrine's original builders.",
       "location_type": "wilderness",
+      "has_secret": true,
+      "secret_room_id": "forgotten_shrine_puzzle",
+      "secret_discovered": false,
       "coordinates": [
         -6,
         4
@@ -3963,8 +4165,11 @@
     "sea_cave": {
       "id": "sea_cave",
       "name": "Sea Cave",
-      "description": "A cave accessible only at low tide. The walls are covered in barnacles and sea life. Strange echoes come from deep within.",
+      "description": "A cave accessible only at low tide. The walls are covered in barnacles and sea life. Strange echoes come from deep within. One section of the cave wall looks different — older stonework, deliberately shaped. There are old rope markings carved into the rock.",
       "location_type": "building",
+      "has_secret": true,
+      "secret_room_id": "pirate_vault",
+      "secret_discovered": false,
       "coordinates": [
         -4,
         -14
@@ -5666,8 +5871,11 @@
     "castle_library": {
       "id": "castle_library",
       "name": "Castle Library",
-      "description": "The royal library, filled with books and scrolls. Knowledge from across the realm is preserved here. Scholars study in quiet alcoves.",
+      "description": "The royal library, filled with books and scrolls. Knowledge from across the realm is preserved here. Scholars study in quiet alcoves. In the far corner stands an ornate locked cabinet — clearly not part of the standard collection. Alchemical symbols are etched around its frame.",
       "location_type": "building",
+      "has_secret": true,
+      "secret_room_id": "hidden_alchemy_lab",
+      "secret_discovered": false,
       "coordinates": [
         11,
         10

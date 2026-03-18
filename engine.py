@@ -88,6 +88,30 @@ except Exception as e:
 	print(f"[INIT] ⚠ Item effects system DISABLED: {e}")
 
 # =====================================================================
+# HOME SYSTEM INITIALIZATION
+# =====================================================================
+try:
+	from home_system import (
+		HOME_ROOM_ID,
+		HOME_FALLBACK_ROOM,
+		ensure_player_home_state,
+		is_home_room,
+		place_item as place_home_item,
+		remove_item as remove_home_item,
+		list_placed_items as list_home_placed_items,
+		list_upgrades as list_home_upgrades,
+		rename_home as rename_player_home,
+		build_home_description,
+		activate_altar as activate_home_altar,
+		get_unlocked_tiles,
+	)
+	from home_items import get_home_item
+	HOME_AVAILABLE = True
+except Exception as e:
+	HOME_AVAILABLE = False
+	print(f"[INIT] ⚠ Home system DISABLED: {e}")
+
+# =====================================================================
 # CRAFTING SYSTEM INITIALIZATION
 # =====================================================================
 try:
@@ -623,6 +647,10 @@ class CommandHandler:
 			return self._use_crafting_altar()
 		if verb == "forge":
 			if FORGING_AVAILABLE and self.engine.forging_system:
+				if self._in_home() and self.engine._home_has_use_action("forge"):
+					if args:
+						return self.engine._run_with_temp_home_station("forge", lambda: self.engine.forging_system.start_forge(" ".join(args)))
+					return self.engine._run_with_temp_home_station("forge", self.engine.forging_system.show_forge_menu)
 				if args:
 					return self.engine.forging_system.start_forge(" ".join(args))
 				return self.engine.forging_system.show_forge_menu()
@@ -636,9 +664,43 @@ class CommandHandler:
 				return self._use_crafting_altar()
 			if not args:
 				return "Use what? (e.g. 'use healing_potion')"
-			return self._use_item(" ".join(args))
+			return self._use_home_or_inventory_item(" ".join(args))
+		if verb == "home":
+			if args:
+				sub = args[0].lower()
+				if sub in ("edit", "editor"):
+					if not self.engine.player.state.get("home_owned"):
+						return "You do not own a home yet. Buy a home deed first."
+					gui = getattr(self.engine, "gui", None)
+					if gui and hasattr(gui, "toggle_home_editor_window"):
+						gui.toggle_home_editor_window()
+						return "Opening Home Editor..."
+					return "Home editor is only available in the pygame interface."
+				if sub == "use":
+					return self._home_use_list()
+				if sub == "inventory":
+					return self._home_inventory()
+				if sub == "upgrades":
+					return self._home_upgrades()
+			return self._go_home(via_hearthstone=False)
+		if verb == "hearthstone":
+			return self._go_home(via_hearthstone=True)
+		if verb == "place":
+			if not args:
+				return "Place what?"
+			return self._place_home_item(args)
+		if verb == "remove":
+			if not args:
+				return "Remove what?"
+			return self._remove_home_item(" ".join(args))
+		if verb == "rename" and args and args[0].lower() == "home":
+			return self._rename_home(" ".join(args[1:]))
 		if verb == "leave":
+			if self._in_home():
+				return self._exit_home()
 			return self._go("leave")
+		if verb == "exit" and args and args[0].lower() == "home":
+			return self._exit_home()
 		if verb in ("quit", "exit"):
 			# set flag so GUI can act on it
 			self.engine.should_quit = True
@@ -659,6 +721,8 @@ class CommandHandler:
 			if not args:
 				return "Sell what?"
 			return self._sell(" ".join(args))
+		if verb == "buy" and len(args) >= 2 and args[0].lower() == "home" and args[1].lower() == "deed":
+			return self._buy_home_deed()
 		
 		# Shop commands
 		if verb == "shop":
@@ -793,6 +857,10 @@ class CommandHandler:
 		if verb in ("brew", "alchemy"):
 			if not ALCHEMY_AVAILABLE or not self.engine.alchemy_system:
 				return "The alchemy system is not available."
+			if self._in_home() and self.engine._home_has_use_action("alchemy"):
+				if args:
+					return self.engine._run_with_temp_home_station("campfire", lambda: self.engine.alchemy_system.start_brew(" ".join(args)))
+				return self.engine._run_with_temp_home_station("campfire", self.engine.alchemy_system.show_brew_menu)
 			if args:
 				return self.engine.alchemy_system.start_brew(" ".join(args))
 			return self.engine.alchemy_system.show_brew_menu()
@@ -801,6 +869,10 @@ class CommandHandler:
 		if verb == "smelt":
 			if not SMELTING_AVAILABLE or not self.engine.smelting_system:
 				return "The smelting system is not available."
+			if self._in_home() and self.engine._home_has_use_action("smelt"):
+				if args:
+					return self.engine._run_with_temp_home_station("forge", lambda: self.engine.smelting_system.start_smelt(args))
+				return self.engine._run_with_temp_home_station("forge", self.engine.smelting_system.show_smelt_menu)
 			if args:
 				return self.engine.smelting_system.start_smelt(args)
 			return self.engine.smelting_system.show_smelt_menu()
@@ -809,6 +881,10 @@ class CommandHandler:
 		if verb == "ritual":
 			if not RITUAL_AVAILABLE or not self.engine.ritual_system:
 				return "The ritual system is not available."
+			if self._in_home() and self.engine._home_has_use_action("ritual"):
+				if args:
+					return self.engine._run_with_temp_home_station("altar_crystal", lambda: self.engine.ritual_system.start_ritual(" ".join(args)))
+				return self.engine._run_with_temp_home_station("altar_crystal", self.engine.ritual_system.show_ritual_menu)
 			if args:
 				return self.engine.ritual_system.start_ritual(" ".join(args))
 			return self.engine.ritual_system.show_ritual_menu()
@@ -817,6 +893,8 @@ class CommandHandler:
 		if verb == "enchant":
 			if not ENCHANTING_AVAILABLE or not self.engine.enchanting_system:
 				return "The enchanting system is not available."
+			if self._in_home() and self.engine._home_has_use_action("enchant"):
+				return self.engine._run_with_temp_home_station("forge", self.engine.enchanting_system.show_enchanting_menu)
 			return self.engine.enchanting_system.show_enchanting_menu()
 
 		# Fight command — engage visible overworld enemy
@@ -921,6 +999,20 @@ class CommandHandler:
 		# Bestiary window
 		if verb in ("bestiary", "monsters", "enemies"):
 			return "__OPEN_BESTIARY__"
+
+		# ── Easter egg: doabigcheese ────────────────────────────────────────────
+		if verb == "doabigcheese":
+			return self._do_big_cheese()
+
+		# ── Invoke ritual (secret boss) ─────────────────────────────────────────
+		if verb == "invoke" and args and " ".join(a.lower() for a in args).startswith("ritual"):
+			return self._invoke_ritual()
+		if cmd.lower() in ("invoke ritual", "perform ritual", "ritual"):
+			return self._invoke_ritual()
+
+		# ── Shrine puzzle answer handler ────────────────────────────────────────
+		if self.engine.player.state.get("shrine_puzzle_active"):
+			return self._check_shrine_answer(cmd.strip().lower())
 
 		return "I don't understand that."
 
@@ -1170,6 +1262,25 @@ class CommandHandler:
 				gold = int(combat.gold_reward) if combat.gold_reward else 0
 			if gold > 0:
 				track_event(player, "total_gold", gold)
+
+			# ── Void Titan slain tracking ───────────────────────────────────────
+			enemy_id = getattr(combat, 'enemy_id', None) or getattr(combat, 'id', None)
+			if enemy_id == "void_titan" or getattr(combat, 'ritual_boss', False):
+				track_event(player, "void_titan_killed")
+
+			# ── 1-in-10,000 rare drop: void_shard ─────────────────────────────
+			import random as _random
+			if _random.randint(1, 10000) == 1:
+				player.inventory["void_shard"] = player.inventory.get("void_shard", 0) + 1
+				track_event(player, "easter_eggs_found")
+				return (
+					self._check_and_show_achievements()
+					+ "\n\n"
+					"✨ *** LEGENDARY RARE DROP *** ✨\n"
+					"A shimmering Void Shard materialises from thin air!\n"
+					"(1 in 10,000 chance — you are extraordinary.)\n"
+				)
+
 			return self._check_and_show_achievements()
 		except Exception:
 			return ""
@@ -1953,6 +2064,9 @@ class CommandHandler:
 		if self.engine.player.state.get("sitting"):
 			return "You need to stand up first."
 		
+		if direction == "leave" and self._in_home():
+			return self._exit_home()
+		
 		# Check for blocking traps in the current room
 		block_msg = self._check_blocking_traps()
 		if block_msg and direction != "leave":
@@ -2719,6 +2833,8 @@ class CommandHandler:
 		"""
 		# Try crafting system first
 		if CRAFTING_AVAILABLE and self.engine.crafting_system:
+			if self._in_home() and self.engine._home_has_use_action("craft"):
+				return self.engine._run_with_temp_home_station("forge", self.engine.crafting_system.use_station)
 			return self.engine.crafting_system.use_station()
 		
 		# Fallback if crafting system unavailable
@@ -3530,6 +3646,8 @@ Do you wish to enter? (yes/no)
 		return "\n".join(parts)
 
 	def _look(self):
+		if self._in_home() and HOME_AVAILABLE:
+			return self.engine.get_home_description_text()
 		room = self.engine.get_room_data(self.engine.player.current_room)
 		if not room:
 			return "[Current room not found]"
@@ -3540,6 +3658,183 @@ Do you wish to enter? (yes/no)
 			if vis:
 				result += vis
 		return result
+
+	def _in_home(self):
+		if not HOME_AVAILABLE or not self.engine.player:
+			return False
+		return is_home_room(self.engine.player.current_room)
+
+	def _go_home(self, via_hearthstone=False):
+		if not HOME_AVAILABLE:
+			return "Home system is not available."
+		if not self.engine.player.state.get("home_owned"):
+			return "You do not own a home yet. Visit Elara the Deed-Keeper to buy one."
+		if via_hearthstone and self.engine.player.inventory.get("hearthstone", 0) <= 0:
+			return "You do not have a Hearthstone."
+		return self.engine.enter_home(via_hearthstone=via_hearthstone)
+
+	def _exit_home(self):
+		if not HOME_AVAILABLE:
+			return "Home system is not available."
+		if not self._in_home():
+			return "You are not in your home."
+		return self.engine.leave_home()
+
+	def _place_home_item(self, args):
+		if not HOME_AVAILABLE:
+			return "Home system is not available."
+		if not self._in_home():
+			return "You can only place items while inside your home."
+
+		coords = None
+		if len(args) >= 4 and args[-3].lower() == "at":
+			try:
+				x = int(args[-2])
+				y = int(args[-1])
+				coords = (x, y)
+				item_text = " ".join(args[:-3])
+			except ValueError:
+				return "Use: place <item> at <x> <y>"
+		else:
+			item_text = " ".join(args)
+
+		item_id = item_text.strip().lower().replace(" ", "_")
+		if self.engine.player.inventory.get(item_id, 0) <= 0:
+			return f"You do not have {item_id.replace('_', ' ')} in your inventory."
+
+		if coords is None:
+			ok, msg = self.engine.place_item_in_home(item_id)
+		else:
+			ok, msg = self.engine.place_item_in_home(item_id, coords[0], coords[1])
+		if not ok:
+			return msg
+
+		self._remove_from_inventory(item_id, 1)
+		self.engine._inventory_changed = True
+		return msg
+
+	def _remove_home_item(self, item_name):
+		if not HOME_AVAILABLE:
+			return "Home system is not available."
+		if not self._in_home():
+			return "You can only remove home items while inside your home."
+
+		ok, item_id, msg = self.engine.remove_item_from_home(item_name)
+		if not ok:
+			return msg
+		self._add_to_inventory(item_id, 1)
+		self.engine._inventory_changed = True
+		return msg
+
+	def _use_home_or_inventory_item(self, item_name):
+		query = item_name.strip().lower().replace(" ", "_")
+		if query == "hearthstone":
+			return self._go_home(via_hearthstone=True)
+		if self._in_home() and HOME_AVAILABLE:
+			used, message = self.engine.use_home_object(item_name)
+			if used:
+				return message
+		return self._use_item(item_name)
+
+	def _rename_home(self, home_name):
+		if not HOME_AVAILABLE:
+			return "Home system is not available."
+		ok, msg = rename_player_home(self.engine.player, home_name)
+		if ok:
+			self.engine.refresh_home_room_description()
+		return msg
+
+	def _home_inventory(self):
+		if not HOME_AVAILABLE:
+			return "Home system is not available."
+		home_data = self.engine.player.state.get("home_data", {})
+		return list_home_placed_items(home_data)
+
+	def _home_use_list(self):
+		if not HOME_AVAILABLE:
+			return "Home system is not available."
+		if not self.engine.player.state.get("home_owned"):
+			return "You do not own a home yet. Buy a home deed first."
+		if not self._in_home():
+			return "You can only use 'home use' while inside your home."
+
+		home_data = self.engine.player.state.get("home_data", {})
+		placed_items = home_data.get("placed_items", [])
+		if not placed_items:
+			return "No objects are placed in your home yet."
+
+		action_labels = {
+			"rest": "rest",
+			"craft": "crafting station",
+			"alchemy": "alchemy station",
+			"forge": "forge station",
+			"enchant": "enchanting station",
+			"smelt": "smelting station",
+			"ritual": "ritual station",
+			"chest": "storage chest",
+			"bookshelf": "bookshelf",
+		}
+
+		usable = {}
+		for placed in placed_items:
+			item_id = str(placed.get("item_id", "")).strip().lower()
+			if not item_id:
+				continue
+			item_def = get_home_item(item_id) or {}
+			category = item_def.get("category", "")
+			action = str(item_def.get("use_action", "")).strip().lower()
+			is_usable = (category == "altar") or (action and action != "none")
+			if not is_usable:
+				continue
+
+			entry = usable.get(item_id)
+			if entry is None:
+				name = item_def.get("name", item_id.replace("_", " ").title())
+				if category == "altar":
+					kind = "altar blessing"
+				else:
+					kind = action_labels.get(action, action or "interaction")
+				usable[item_id] = {
+					"name": name,
+					"kind": kind,
+					"count": 1,
+				}
+			else:
+				entry["count"] += 1
+
+		if not usable:
+			return "No usable home objects are currently placed."
+
+		lines = ["Usable objects in your home:"]
+		for item_id, data in sorted(usable.items(), key=lambda kv: kv[1]["name"].lower()):
+			count_suffix = f" x{data['count']}" if data["count"] > 1 else ""
+			cmd = f"use {item_id}"
+			lines.append(f"- {data['name']}{count_suffix} ({data['kind']}) -> {cmd}")
+		return "\n".join(lines)
+
+	def _home_upgrades(self):
+		if not HOME_AVAILABLE:
+			return "Home system is not available."
+		home_data = self.engine.player.state.get("home_data", {})
+		return list_home_upgrades(home_data)
+
+	def _buy_home_deed(self):
+		if not HOME_AVAILABLE:
+			return "Home system is not available."
+		if self.engine.player.state.get("home_owned"):
+			return "You already own a home deed."
+		if self.engine.player.current_room not in ("village_square", "notary_office"):
+			return "Elara only sells deeds in the village notary office."
+		gold = int(self.engine.player.stats.get("gold", 0))
+		price = 800
+		if gold < price:
+			return f"You need {price} gold to buy the deed."
+		self.engine.player.stats["gold"] = gold - price
+		self.engine.player.state["home_owned"] = True
+		self._add_to_inventory("home_deed", 1)
+		self._add_to_inventory("hearthstone", 1)
+		self.engine.refresh_home_room_description()
+		return "Elara records your deed and grants you a Hearthstone. You can now use 'home'."
 
 	# helper inventory modifiers
 	def _add_to_inventory(self, item_name, count=1):
@@ -3797,23 +4092,26 @@ Do you wish to enter? (yes/no)
 		"""Examine/inspect an object or location. Handles secret room discovery and provides detailed feedback."""
 		target = target.lower()
 		room = self.engine.get_room_data(self.engine.player.current_room)
-		
-		# Check for secret room discovery in boss chamber
+		room_id = self.engine.player.current_room
+
+		# ── Helper to read secret fields from either dict or Room ──────────────
+		def _get(obj, key, default=None):
+			if isinstance(obj, dict):
+				return obj.get(key, default)
+			return getattr(obj, key, default)
+
+		def _set(obj, key, value):
+			if isinstance(obj, dict):
+				obj[key] = value
+			else:
+				setattr(obj, key, value)
+
+		# ── Check for secret room discovery in boss chamber ─────────────────────
 		if room and target in ("wall", "walls", "room", "stone", "carvings", "ornate wall", "ornate walls", "the wall", "stone wall"):
-			# Check for is_boss_room attribute (works with both dicts and Room objects)
-			is_boss = False
-			has_secret = False
-			secret_discovered = False
-			
-			if isinstance(room, dict):
-				is_boss = room.get("is_boss_room")
-				has_secret = room.get("has_secret")
-				secret_discovered = room.get("secret_discovered")
-			elif hasattr(room, "is_boss_room"):
-				is_boss = getattr(room, "is_boss_room", False)
-				has_secret = getattr(room, "has_secret", False)
-				secret_discovered = getattr(room, "secret_discovered", False)
-			
+			is_boss = _get(room, "is_boss_room", False)
+			has_secret = _get(room, "has_secret", False)
+			secret_discovered = _get(room, "secret_discovered", False)
+
 			if is_boss and has_secret and not secret_discovered:
 				return self._discover_secret_room(room)
 			elif is_boss and secret_discovered:
@@ -3821,10 +4119,116 @@ Do you wish to enter? (yes/no)
 			elif is_boss:
 				return "You carefully examine the walls of the boss chamber.\nThe ancient stone shows signs of many battles, but nothing else stands out."
 			else:
-				# Not a boss room, but still examining walls
 				return "You carefully examine the walls.\nThe stone is cold and weathered. Nothing unusual stands out."
-		
-		# Chest inspection
+
+		# ── HIDDEN ROOM EXAMINE TRIGGERS ────────────────────────────────────────
+
+		# Underground Archive — chapel bookshelves
+		if room_id == "chapel" and target in ("bookshelf", "bookshelves", "shelf", "shelves", "books", "the bookshelf"):
+			has_secret = _get(room, "has_secret", False)
+			secret_discovered = _get(room, "secret_discovered", False)
+			if has_secret and not secret_discovered:
+				return self._discover_hidden_room(room, "underground_archive",
+					"You run your fingers along the spines of the ancient tomes...\n\n"
+					"One book doesn't move when you try to pull it — it's a lever!\n\n"
+					"*CLICK* — A section of the bookshelf swings inward, revealing a hidden staircase going down!\n\n"
+					"You can now 'go secret' to descend to the Underground Archive.")
+			elif secret_discovered:
+				return "The hidden passage behind the bookshelf is still open. 'go secret' to enter."
+			return "You examine the ancient bookshelves. Theological texts, hymnals, histories of the realm. One shelf looks... slightly different from the others."
+
+		# Pirate Vault — sea cave wall
+		if room_id == "sea_cave" and target in ("cave wall", "wall", "walls", "stone", "the wall", "rope", "carvings", "rope carvings", "markings"):
+			has_secret = _get(room, "has_secret", False)
+			secret_discovered = _get(room, "secret_discovered", False)
+			if has_secret and not secret_discovered:
+				# Perception check: always succeed for now (can be gated by perception stat later)
+				return self._discover_hidden_room(room, "pirate_vault",
+					"You trace the rope-shaped carvings on the cave wall...\n\n"
+					"These aren't natural markings. They're knot patterns — sailor's code!\n\n"
+					"You follow the pattern and press the sequence of stones in order...\n\n"
+					"*GRIND* — A section of the cave wall pivots, sea water pouring off its base!\n\n"
+					"A hidden vault has been revealed! 'go secret' to enter the Pirate Vault.")
+			elif secret_discovered:
+				return "The hidden vault entrance is still open. 'go secret' to enter."
+			return "You examine the cave wall closely. The barnacles and carvings seem older than the rest of the cave. The rope-shaped patterns almost look intentional..."
+
+		# Forgotten Shrine — altar puzzle
+		if room_id == "woodland_shrine" and target in ("altar", "inscriptions", "inscription", "the altar", "shrine", "carvings", "monolith", "stone"):
+			has_secret = _get(room, "has_secret", False)
+			secret_discovered = _get(room, "secret_discovered", False)
+			if secret_discovered:
+				return "The Forgotten Shrine stands open. 'go secret' to enter."
+			if has_secret:
+				return self._shrine_puzzle(room)
+			return "You examine the altar's inscriptions. They are worn but legible, recording a question for those who seek what lies within."
+
+		# Hidden Alchemy Lab — cabinet in castle library
+		if room_id == "castle_library" and target in ("cabinet", "locked cabinet", "ornate cabinet", "the cabinet", "alchemical cabinet"):
+			has_secret = _get(room, "has_secret", False)
+			secret_discovered = _get(room, "secret_discovered", False)
+			if secret_discovered:
+				return "The hidden alchemy lab is accessible. 'go secret' to enter."
+			if has_secret:
+				if "alchemist_key" in self.engine.player.inventory and self.engine.player.inventory.get("alchemist_key", 0) > 0:
+					return self._discover_hidden_room(room, "hidden_alchemy_lab",
+						"You insert the alchemist's key into the cabinet's ornate lock...\n\n"
+						"The lock clicks. But rather than a cabinet door opening, the entire cabinet\n"
+						"swings outward on a hidden pivot, revealing a passage beyond!\n\n"
+						"The smell of reagents and old experiments drifts through.\n\n"
+						"The Hidden Alchemy Lab awaits. 'go secret' to enter.")
+				return "The cabinet is locked with a complex alchemical mechanism. A special key etched with alchemical symbols would be needed to open it.\n\nYou'll need to find the alchemist's key first."
+			return "A locked ornate cabinet stands in the corner. Alchemical symbols are etched around its frame. It doesn't match the rest of the library's collection."
+
+		# Void Sanctuary — rift
+		if room_id == "village_void_rift" and target in ("rift", "tear", "the rift", "void", "portal", "shimmer", "shimmering tear"):
+			has_secret = _get(room, "has_secret", False)
+			secret_discovered = _get(room, "secret_discovered", False)
+			if secret_discovered:
+				return "The Void Sanctuary rift is open. 'go secret' to enter."
+			if has_secret:
+				return self._discover_hidden_room(room, "void_sanctuary",
+					"You reach toward the shimmering rift...\n\n"
+					"As your fingers touch the surface, the tear widens. The violet light intensifies.\n"
+					"A pocket dimension breathes outward — cold and impossibly still.\n\n"
+					"*PHWOOM* — The rift expands just enough to step through!\n\n"
+					"The Void Sanctuary is accessible. 'go secret' to enter.")
+			return "You examine the rift carefully. The air around it is crystalline cold. The tear seems to pulse in response to your attention — almost inviting."
+
+		# Clocktower Interior — gears or clockface
+		if room_id == "village_clocktower" and target in ("gears", "gear", "clockface", "clock", "clock face", "mechanism", "the gears", "cogs", "the clock"):
+			has_secret = _get(room, "has_secret", False)
+			secret_discovered = _get(room, "secret_discovered", False)
+			if secret_discovered:
+				return "The clocktower passage is open. 'go secret' to enter."
+			if has_secret:
+				return self._discover_hidden_room(room, "clocktower_interior",
+					"You study the enormous brass gear mechanism...\n\n"
+					"Each gear is engraved with a symbol. In a specific turning pattern, they align.\n"
+					"You begin turning them in sequence — larger to smaller, outer to inner...\n\n"
+					"*CLICK CLICK CLICK* — A deep harmonic resonance fills the tower!\n\n"
+					"A hidden panel in the tower's base slides open.\n\n"
+					"The Clocktower Interior is accessible. 'go secret' to enter.")
+			return "You examine the brass gear mechanism. The engineering is extraordinary — centuries old and still running perfectly. Each gear is engraved with a different symbol. There's a deliberate pattern here."
+
+		# Developer's Corner — plain wall at village_east_end
+		if room_id == "village_east_end" and target in ("plain wall", "wall", "the wall", "featureless wall", "blank wall", "house wall"):
+			has_secret = _get(room, "has_secret", False)
+			secret_discovered = _get(room, "secret_discovered", False)
+			if secret_discovered:
+				return "The hidden door in the plain wall is still accessible. 'go secret' to enter."
+			if has_secret:
+				return self._discover_hidden_room(room, "developers_corner",
+					"You examine the suspiciously plain wall...\n\n"
+					"It IS suspiciously plain. Every other house has window frames, garden stones,\n"
+					"climbing vines. This wall has absolutely nothing.\n\n"
+					"You knock. It sounds hollow.\n\n"
+					"You push.\n\n"
+					"It opens.\n\n"
+					"The Developer's Corner is accessible. 'go secret' to enter.")
+			return "You examine the plain wall. It's featureless in a way that seems almost deliberate. The stonework is identical on both sides — no windows, no decorations, nothing. A very strange house."
+
+		# ── Chest inspection ────────────────────────────────────────────────────
 		if target in ("chest", "treasure chest", "box", "the chest"):
 			if isinstance(room, dict):
 				chests = room.get("chests", [])
@@ -3836,8 +4240,8 @@ Do you wish to enter? (yes/no)
 					else:
 						return "The chest is empty - already looted."
 				return "There's no chest here to inspect."
-		
-		# Trap inspection
+
+		# ── Trap inspection ─────────────────────────────────────────────────────
 		if "trap" in target:
 			if isinstance(room, dict):
 				traps = room.get("traps", [])
@@ -3849,8 +4253,8 @@ Do you wish to enter? (yes/no)
 				else:
 					return "You don't see any traps here.\nTry 'search' to look for hidden traps."
 			return "You don't see any traps here."
-		
-		# Ground/floor inspection
+
+		# ── Ground/floor inspection ─────────────────────────────────────────────
 		if target in ("ground", "floor", "the floor", "the ground"):
 			if isinstance(room, dict):
 				items = room.get("items", {})
@@ -3863,20 +4267,228 @@ Do you wish to enter? (yes/no)
 					return "You examine the ground.\nYou see some items scattered about.\nType 'look' to see what's available."
 				else:
 					return "You examine the ground.\nNothing interesting on the floor."
-		
-		# Regular inventory/item examination
+
+		# ── Regular inventory/item examination ──────────────────────────────────
 		target_id = target.replace(" ", "_")
 		if target_id in self.engine.player.inventory or target in self.engine.player.inventory:
 			item_id = target_id if target_id in self.engine.player.inventory else target
 			return self._examine_item(item_id)
 		if not room:
 			return "You don't see that here."
-		if target in room.items:
-			return f"You examine the {target} in the room.\nIt looks useful. Type 'take {target}' to pick it up."
-		# Also try snake_case version for room items
-		if target_id in room.items:
-			return f"You examine the {target} in the room.\nIt looks useful. Type 'take {target_id}' to pick it up."
-		return f"You don't see any '{target}' here to examine.\n\nTry examining:\n  - wall (look for secrets)\n  - chest (examine containers)\n  - ground (search the floor)\n  - <item_name> (inspect items)"
+		if hasattr(room, "items"):
+			if target in room.items or target_id in room.items:
+				return f"You examine the {target} in the room.\nIt looks interesting. Type 'take {target}' to pick it up."
+		elif isinstance(room, dict):
+			room_items = room.get("items", {})
+			if target in room_items or target_id in room_items:
+				return f"You examine the {target} in the room.\nIt looks interesting. Type 'take {target}' to pick it up."
+
+		return f"You don't see any '{target}' here to examine.\n\nTry examining:\n  - wall (look for secrets)\n  - chest (examine containers)\n  - ground (search the floor)\n  - <item_name> (inspect items in inventory)"
+
+	def _discover_hidden_room(self, room, secret_room_id, message):
+		"""Generic handler to mark any room as having its secret discovered, add exit, award XP."""
+		if isinstance(room, dict):
+			room["secret_discovered"] = True
+			room["exits"]["secret"] = {"target": secret_room_id, "type": "secret"}
+		else:
+			room.secret_discovered = True
+			room.exits["secret"] = {"target": secret_room_id, "type": "secret"}
+
+		self.engine.player.state["secret_discovered"] = True
+
+		xp_msg = ""
+		if PROGRESSION_AVAILABLE:
+			try:
+				xp_msg = award_xp(self.engine.player, XP_AWARDS.get("discover_secret_room", 75), "discovered a hidden room!")
+			except Exception:
+				pass
+
+		if ACHIEVEMENT_AVAILABLE:
+			try:
+				track_event(self.engine.player, "secrets_found")
+				xp_msg += self._check_and_show_achievements()
+			except Exception:
+				pass
+
+		return ("\n" + "=" * 70 + "\n" + message + "\n" + "=" * 70 + "\n" + xp_msg)
+
+	def _shrine_puzzle(self, room):
+		"""Handle the Forgotten Shrine altar puzzle — three lore riddles."""
+		state = self.engine.player.state
+		progress = state.get("shrine_puzzle_progress", 0)
+
+		riddles = [
+			{
+				"question": "The altar's first inscription reads:\n\n  'I have cities but no houses,\n   mountains but no trees,\n   water but no fish.\n   What am I?'\n\nType your answer:",
+				"answers": ["map", "a map"],
+			},
+			{
+				"question": "The second inscription glows:\n\n  'The more you take, the more you leave behind.\n   What am I?'\n\nType your answer:",
+				"answers": ["footsteps", "footprints", "steps"],
+			},
+			{
+				"question": "The third inscription pulses with light:\n\n  'I speak without a mouth,\n   hear without ears,\n   have no body, but come alive with wind.\n   What am I?'\n\nType your answer:",
+				"answers": ["echo", "an echo"],
+			},
+		]
+
+		if progress < len(riddles):
+			state["shrine_puzzle_progress"] = progress
+			state["shrine_puzzle_active"] = True
+			return (
+				f"\n{'='*60}\n"
+				f"  THE FORGOTTEN SHRINE — Riddle {progress + 1} of {len(riddles)}\n"
+				f"{'='*60}\n\n"
+				+ riddles[progress]["question"]
+				+ "\n\n(Type your answer as a command — e.g. just type 'map')"
+			)
+		return "You examine the altar. The three riddles are answered. 'go secret' to enter."
+
+	def _check_shrine_answer(self, answer):
+		"""Validate a shrine puzzle answer and advance state."""
+		state = self.engine.player.state
+		progress = state.get("shrine_puzzle_progress", 0)
+
+		riddles_answers = [
+			["map", "a map"],
+			["footsteps", "footprints", "steps"],
+			["echo", "an echo"],
+		]
+
+		if progress >= len(riddles_answers):
+			state.pop("shrine_puzzle_active", None)
+			return "The shrine is already unlocked. 'go secret' to enter."
+
+		correct = answer.strip().lower() in riddles_answers[progress]
+		if not correct:
+			return (
+				f"The shrine remains silent. '{answer}' is not correct.\n"
+				"Type 'examine altar' to read the riddle again."
+			)
+
+		progress += 1
+		state["shrine_puzzle_progress"] = progress
+
+		if progress < len(riddles_answers):
+			# Present next riddle
+			next_riddles = [
+				"The second inscription glows:\n\n  'The more you take, the more you leave behind.\n   What am I?'\n\nType your answer:",
+				"The third inscription pulses with light:\n\n  'I speak without a mouth,\n   hear without ears,\n   have no body, but come alive with wind.\n   What am I?'\n\nType your answer:",
+			]
+			return (
+				f"Correct! The altar glows in recognition.\n\n"
+				f"{'='*60}\n"
+				f"  THE FORGOTTEN SHRINE — Riddle {progress + 1} of {len(riddles_answers)}\n"
+				f"{'='*60}\n\n"
+				+ next_riddles[progress - 1]
+			)
+
+		# All riddles answered!
+		state.pop("shrine_puzzle_active", None)
+		room = self.engine.get_room_data(self.engine.player.current_room)
+		msg = self._discover_hidden_room(room, "forgotten_shrine_puzzle",
+			"The altar's three inscriptions light up in sequence!\n\n"
+			"The monolith slides aside with a deep rumble, revealing a hidden chamber.\n\n"
+			"The Forgotten Shrine awaits. 'go secret' to enter.")
+		return "All three riddles answered!\n\n" + msg
+
+	def _do_big_cheese(self):
+		"""Easter egg: display the big cheese ASCII art."""
+		try:
+			from ascii_art import CHEESE_ART
+		except ImportError:
+			CHEESE_ART = r"""
+     /\__/\
+    /  o o \
+   ( ==^Y^== )
+    )  ===  (
+   (         )
+    \       /
+     `~~~~~'
+    [CHEESE]
+"""
+		if ACHIEVEMENT_AVAILABLE:
+			try:
+				track_event(self.engine.player, "easter_eggs_found")
+				self._check_and_show_achievements()
+			except Exception:
+				pass
+
+		return (
+			"\n" + "=" * 60 + "\n"
+			"  You have done a big cheese.\n"
+			+ "=" * 60 + "\n"
+			+ CHEESE_ART
+			+ "\n" + "=" * 60 + "\n"
+			"  The cheese has been done.\n"
+			+ "=" * 60
+		)
+
+	def _invoke_ritual(self):
+		"""Check for the 3 ritual components and trigger the secret boss fight."""
+		inv = self.engine.player.inventory
+		required = {"shadow_shard": 1, "blood_sigil": 1, "void_crystal": 1}
+		missing = [item for item, qty in required.items() if inv.get(item, 0) < qty]
+		if missing:
+			nice = [m.replace("_", " ").title() for m in missing]
+			return (
+				"The ritual requires three components:\n"
+				"  - Shadow Shard\n"
+				"  - Blood Sigil\n"
+				"  - Void Crystal\n\n"
+				"You are missing: " + ", ".join(nice) + "\n\n"
+				"Search the hidden rooms to gather all three."
+			)
+		# Consume components
+		for item in required:
+			inv[item] = inv.get(item, 1) - 1
+			if inv[item] <= 0:
+				del inv[item]
+
+		if ACHIEVEMENT_AVAILABLE:
+			try:
+				track_event(self.engine.player, "easter_eggs_found")
+			except Exception:
+				pass
+
+		return self._trigger_secret_boss()
+
+	def _trigger_secret_boss(self):
+		"""Initiate the Void Titan boss fight."""
+		intro = (
+			"\n" + "=" * 70 + "\n"
+			"  *** T H E   V O I D   T I T A N   A W A K E N S ***\n"
+			+ "=" * 70 + "\n\n"
+			"The three ritual components pulse with dark energy.\n"
+			"The air tears open — a rift widens in front of you.\n\n"
+			"From the void steps a being of pure darkness.\n\n"
+			"  V O I D   T I T A N  (Level ???)\n"
+			"  HP: 9999  |  ATK: 250  |  DEF: 100\n"
+			"  'You dare summon me... interesting.'\n\n"
+			+ "=" * 70 + "\n"
+			"Type 'fight void_titan' to engage in battle.\n"
+		)
+		# Inject void_titan as the current room's enemy so combat system picks it up
+		room = self.engine.get_room_data(self.engine.player.current_room)
+		if isinstance(room, dict):
+			room.setdefault("enemies", [])
+			# Remove any existing void_titan entry then add a fresh one
+			room["enemies"] = [e for e in room["enemies"] if e.get("id") != "void_titan"]
+			room["enemies"].append({
+				"id": "void_titan",
+				"name": "Void Titan",
+				"hp": 9999,
+				"max_hp": 9999,
+				"attack": 250,
+				"defense": 100,
+				"level": 50,
+				"xp_reward": 10000,
+				"gold_reward": 5000,
+				"loot": ["void_titan_soul", "void_titan_crown"],
+				"is_boss": True,
+				"ritual_boss": True,
+			})
+		return intro
 
 	def _examine_item(self, item_id):
 		"""Show detailed info about an inventory item, pulling from all databases."""
@@ -4278,64 +4890,209 @@ Do you wish to enter? (yes/no)
 				+ xp_msg)
 
 	def _enter_secret_room(self, secret_room_id):
-		"""Enter and display the secret chamber with ASCII art easter egg."""
+		"""Enter and display the secret chamber — unique art + flavour per room."""
 		self.engine.player.current_room = secret_room_id
-		
+
 		room = self.engine.get_room_data(secret_room_id)
 		if not room:
 			return "The secret passage leads nowhere..."
-		
+
 		self._update_map_on_move(secret_room_id)
-		
-		# Display spectacular entrance with ASCII art
-		ascii_art = r"""
-               ___.-------.___
-           _.-'     /   \     '-._
-         .'   /   /  |  \  \   '.
-        /   /   / /| |\ \   \   \
-       /   /   /_/ | | \_\   \   \
-      |   |  .' \  | |  / '.  |   |
-      |   | /    `.|.|.'    \ |   |
-      |   |/  .-.  |||  .-.  \|   |
-      |    \ |   | ||| |   | /    |
-      |     \\  '-' ||| '-'  //     |
-      |.     `\    |||    /'     .|
-      |  '-.   `.  |||  .'   .-'  |
-      |     '-. ;--'-'--; .-'     |
-      |        '| VAULT |'        |
-      |         | ~~~~~ |         |
-      \         |  ___  |         /
-       \        | |   | |        /
-        `.      | |___| |      .'
-          `-.   |_______|   .-'
-             `-.  |   |  .-'
-                `-'   '-'
-"""
-		
-		room_name = ""
-		room_desc = ""
+
 		if isinstance(room, dict):
 			room_name = room.get("name", "Secret Chamber")
 			room_desc = room.get("description", "A hidden chamber.")
 		else:
-			room_name = room.name
-			room_desc = room.description
-		
-		return ("\n\n"
-				"="*80 + "\n"
-				"🌟 YOU'VE DISCOVERED THE SECRET CHAMBER! 🌟\n"
-				"="*80 + "\n"
-				"\n"
-				+ ascii_art +
-				"\n"
-				"Ancient runes glow on the walls, spelling out a legendary name...\n"
+			room_name = getattr(room, "name", "Secret Chamber")
+			room_desc = getattr(room, "description", "A hidden chamber.")
+
+		# ── Per-room flavour art & text ─────────────────────────────────────────
+		if secret_room_id == "underground_archive":
+			art = r"""
+    ___________________________________________
+   |  UNDERGROUND  A R C H I V E              |
+   |___________________________________________|
+   |  [shelf]  [shelf]  [shelf]  [shelf]       |
+   |   ||||     ||||     ||||     ||||         |
+   |   ||||     ||||     ||||     ||||         |
+   |   ''''     ''''     ''''     ''''         |
+   |         ___________                       |
+   |        |  __ __ __  |                     |
+   |        | |  ||  || | < reading desk       |
+   |        |_|__|__|__|_|                     |
+   |___________________________________________|
+"""
+			flavour = (
+				"Dust motes drift in the light of glowing runes.\n"
+				"Row upon row of ancient tomes line the stone shelves.\n"
+				"Scholars from lost eras left their wisdom here."
+			)
+
+		elif secret_room_id == "pirate_vault":
+			art = r"""
+           _________________________
+          /  P I R A T E  V A U L T  \
+         /___________________________\
+        |  [chest] [chest]  [chest]   |
+        |   _____   _____    _____    |
+        |  |$$$$$| |@@@@@|  |#####|  |
+        |  |_____| |_____|  |_____|  |
+        |                            |
+        |  ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~   |
+        |   (water channels)         |
+        |____________________________|
+"""
+			flavour = (
+				"Salt and old wood fill the air.\n"
+				"Sea-weathered chests are stacked against the walls,\n"
+				"and gold coin glints from every corner."
+			)
+
+		elif secret_room_id == "forgotten_shrine_puzzle":
+			art = r"""
+              .  *  .  *  .  *  .
+            *   FORGOTTEN SHRINE   *
+             .  *  .  *  .  *  .
+                     [*]
+                   /     \
+                  |  ~~~  |
+                  | altar |
+                  |  ~~~  |
+                   \_____/
+               *           *
+                  (peace)
+"""
+			flavour = (
+				"The air is impossibly still.\n"
+				"The altar glows softly — you answered its ancient riddles correctly.\n"
+				"A forgotten deity smiles on those who solved its mysteries."
+			)
+
+		elif secret_room_id == "hidden_alchemy_lab":
+			art = r"""
+    ____________________________________________
+   |   H I D D E N   A L C H E M Y   L A B    |
+   |____________________________________________|
+   |  (=)  (=)  (=)      [furnace]             |
+   |   |    |    |        |||||||              |
+   | [beakers & vials]   [  fire ]             |
+   |                                           |
+   |  ~glowing reagents~  ~bubbling flasks~    |
+   |   *   *   *   *   *   *   *   *   *   *  |
+   |____________________________________________|
+"""
+			flavour = (
+				"Heat and the smell of exotic reagents hit you immediately.\n"
+				"Dozens of experiments bubble away unattended.\n"
+				"An alchemist worked here — and might still."
+			)
+
+		elif secret_room_id == "void_sanctuary":
+			art = r"""
+         . · * · . · * · . · * · . · * · .
+                  V O I D
+            S A N C T U A R Y
+         · * · . · * · . · * · . · * · . ·
+
+                   ( ( ( ) ) )
+                  (  NOTHING  )
+                   ( ( ( ) ) )
+
+         . · * · . · * · . · * · . · * · .
+"""
+			flavour = (
+				"The pocket dimension muffles all sound.\n"
+				"Void energy crystallises on every surface.\n"
+				"Time moves differently here — slowly, peacefully."
+			)
+
+		elif secret_room_id == "clocktower_interior":
+			art = r"""
+            __________________________
+           |  C L O C K T O W E R    |
+           |  I N T E R I O R        |
+           |__________________________|
+           |     /\        /\         |
+           |    /  \__/\__/  \        |
+           |   | @@  gear  @@ |       |
+           |   |  \__/  \__/  |       |
+           |   |   TICK TOCK  |       |
+           |   |______________|       |
+           |     |          |         |
+           |   [pendulum swings]      |
+           |__________________________|
+"""
+			flavour = (
+				"The interior of the tower roars with the sound of ticking.\n"
+				"Enormous brass gears interlock above your head.\n"
+				"Clockwork treasure gleams between the mechanisms."
+			)
+
+		elif secret_room_id == "developers_corner":
+			art = r"""
+      _____________________________________________
+     |  D E V E L O P E R ' S   C O R N E R       |
+     |_____________________________________________|
+     |                                             |
+     |   [monitor]   [keyboard]   [coffee cup]     |
+     |    ______      ________     ___             |
+     |   |______|    |________|   |___|            |
+     |   | TODO |    // code //   ~steam~          |
+     |   |______|    |________|                    |
+     |                                             |
+     |   * You found me. I wasn't hiding. *        |
+     |   * (I was definitely hiding)      *        |
+     |_____________________________________________|
+"""
+			flavour = (
+				"A small, impossibly cosy room.\n"
+				"Someone left notes everywhere — design docs, to-do lists, coffee rings.\n"
+				"A strange figure glances up from their work and smiles."
+			)
+			# Track the easter egg
+			if ACHIEVEMENT_AVAILABLE:
+				try:
+					track_event(self.engine.player, "easter_eggs_found")
+				except Exception:
+					pass
+
+		else:
+			# Fallback for dungeon boss secret rooms
+			art = r"""
+               ___.-------.___
+           _.-'     /   \     '-._
+         .'   /   /  |  \  \   '.
+        /   /   / /| |\ \   \   \
+       /   /_/ | | \_\   \   \
+      |   |  .' \  | |  / '.  |   |
+      |   | /    `.|.|.'    \ |   |
+      |   |/  .-.  |||  .-.  \|   |
+      |    \ |   | ||| |   | /    |
+      |     \\ '-' ||| '-'  //    |
+      |.     `\   |||   /'     .|
+      |  '-.   `. ||| .'   .-'  |
+      |     '-. ;--'-'--; .-'   |
+      |        '| VAULT |'      |
+      |         |_______|        |
+      \                          /
+       `-._______________________.-'
+"""
+			flavour = (
+				"Ancient runes glow on the walls.\n"
 				"This secret has been hidden for centuries.\n"
-				"You are among the few who have found it.\n"
-				"\n"
-				+ f"{room_name}\n"
-				+ f"{room_desc}\n"
-				"\n"
-				"[Type 'go back' to return to the treasure vault]")
+				"You are among the few who have found it."
+			)
+
+		return (
+			"\n\n" + "=" * 72 + "\n"
+			"  ** SECRET ROOM DISCOVERED: " + room_name.upper() + " **\n"
+			+ "=" * 72 + "\n"
+			+ art + "\n"
+			+ flavour + "\n\n"
+			+ room_desc + "\n\n"
+			"Type 'look' to see the full room contents.\n"
+			"Type 'go back' to return."
+		)
 
 	def _sell(self, item_name):
 		"""Sell an item for its standard worth value."""
@@ -4745,6 +5502,28 @@ Do you wish to enter? (yes/no)
 ║    use <item>           - Use an item (potion, torch, etc.)    ║
 ║                                                                ║
 """
+		if HOME_AVAILABLE and self.engine.player and self.engine.player.state.get("home_owned"):
+			result += """║  [HOME]                                                        ║
+║ ---------------------------------------------------------------║
+║    home                 - Teleport to your pocket dimension    ║
+║    home edit            - Open the interactive home editor     ║
+║    home use             - List usable placed home objects      ║
+║    hearthstone          - Travel home with your Hearthstone    ║
+║    leave / exit home    - Return from home to village          ║
+║    place <item>         - Place an item from inventory         ║
+║    place <item> at x y  - Place an item at coordinates         ║
+║    remove <item>        - Pick up a placed home item           ║
+║    home inventory       - Show placed objects                  ║
+║    home upgrades        - Show unlocked expansions             ║
+║    rename home <name>   - Rename your home                     ║
+║                                                                ║
+"""
+		elif HOME_AVAILABLE:
+			result += """║  [HOME]                                                        ║
+║ ---------------------------------------------------------------║
+║    buy home deed        - Purchase a home deed for 800 gold    ║
+║                                                                ║
+"""
 
 		# Ship travel commands (show when dock has boat exits)
 		_room_for_help = self.engine.get_room_data(self.engine.player.current_room)
@@ -5058,6 +5837,9 @@ class GameEngine:
 		# Island shop registry (lazy-created per shop room)
 		self.island_shops = {}
 		
+		# Home runtime cache
+		self._home_room_cached = False
+		
 		# Initialize shop system
 		if SHOP_AVAILABLE:
 			try:
@@ -5161,6 +5943,7 @@ class GameEngine:
 			self.enchanting_system = None
 		
 		self.load_world()
+		self._ensure_home_room_registered()
 		# Quit handler is managed by pygame_ui.py
 
 	def cleanup_dungeon(self):
@@ -5380,8 +6163,201 @@ class GameEngine:
 		self.cmd = CommandHandler(self)
 		# ensure item_worth exists even if not in file
 		self.item_worth = getattr(self, "item_worth", {}) or {}
+		self._ensure_home_room_registered()
 
-	CURRENT_SAVE_VERSION = 4
+	def _ensure_player_home_state(self):
+		if not HOME_AVAILABLE or not self.player:
+			return
+		ensure_player_home_state(self.player)
+
+	def _build_home_room_payload(self):
+		home_name = "Pocket Dimension"
+		desc = "A private room between worlds."
+		if HOME_AVAILABLE and self.player:
+			self._ensure_player_home_state()
+			home_name = self.player.state.get("home_name", home_name)
+			desc = build_home_description(self.player)
+		return {
+			"name": home_name,
+			"description": desc,
+			"exits": {"leave": HOME_FALLBACK_ROOM},
+			"items": [],
+			"actions": {},
+			"coordinates": [1000, 1000],
+			"location_type": "home",
+		}
+
+	def _ensure_home_room_registered(self):
+		if not HOME_AVAILABLE:
+			return
+		room_payload = self._build_home_room_payload()
+		self.rooms[HOME_ROOM_ID] = Room(room_payload)
+		self._home_room_cached = True
+
+	def refresh_home_room_description(self):
+		if not HOME_AVAILABLE:
+			return
+		self._ensure_home_room_registered()
+		if HOME_ROOM_ID in self.rooms:
+			payload = self._build_home_room_payload()
+			self.rooms[HOME_ROOM_ID].name = payload.get("name", "Pocket Dimension")
+			self.rooms[HOME_ROOM_ID].description = payload.get("description", "")
+			self.rooms[HOME_ROOM_ID].exits = payload.get("exits", {"leave": HOME_FALLBACK_ROOM})
+
+	def get_home_description_text(self):
+		if not HOME_AVAILABLE or not self.player:
+			return "Home system is not available."
+		self._ensure_player_home_state()
+		self.refresh_home_room_description()
+		return build_home_description(self.player) + "\nExits: leave"
+
+	def enter_home(self, via_hearthstone=False):
+		if not HOME_AVAILABLE or not self.player:
+			return "Home system is not available."
+		self._ensure_player_home_state()
+		self._ensure_home_room_registered()
+		self.player.state["home_return_room"] = HOME_FALLBACK_ROOM
+		self.player.current_room = HOME_ROOM_ID
+		self._update_map_on_move(HOME_ROOM_ID)
+		prefix = ""
+		if via_hearthstone:
+			prefix = "The Hearthstone hums and pulls you through folded space.\n\n"
+		return prefix + self.get_home_description_text()
+
+	def leave_home(self):
+		if not HOME_AVAILABLE or not self.player:
+			return "Home system is not available."
+		self._ensure_player_home_state()
+		target = self.player.state.get("home_return_room", HOME_FALLBACK_ROOM)
+		if target not in self.rooms:
+			target = HOME_FALLBACK_ROOM
+		self.player.current_room = target
+		self._update_map_on_move(target)
+		dest = self.get_room_data(target)
+		if not dest:
+			return "You leave your home, but your destination feels unstable."
+		return "You leave your pocket dimension.\n\n" + dest.describe()
+
+	def place_item_in_home(self, item_id, x=None, y=None):
+		if not HOME_AVAILABLE or not self.player:
+			return False, "Home system is not available."
+		self._ensure_player_home_state()
+		home_data = self.player.state.get("home_data", {})
+		ok, msg = place_home_item(home_data, item_id, x=x, y=y)
+		if ok:
+			self.refresh_home_room_description()
+		return ok, msg
+
+	def remove_item_from_home(self, item_name):
+		if not HOME_AVAILABLE or not self.player:
+			return False, None, "Home system is not available."
+		self._ensure_player_home_state()
+		home_data = self.player.state.get("home_data", {})
+		ok, item_id, msg = remove_home_item(home_data, item_name)
+		if ok:
+			self.refresh_home_room_description()
+		return ok, item_id, msg
+
+	def _home_has_use_action(self, action):
+		if not HOME_AVAILABLE or not self.player:
+			return False
+		home_data = self.player.state.get("home_data", {})
+		for placed in home_data.get("placed_items", []):
+			item_id = str(placed.get("item_id", "")).strip().lower()
+			if not item_id:
+				continue
+			item_def = get_home_item(item_id) or {}
+			if str(item_def.get("use_action", "")).strip().lower() == str(action).lower():
+				return True
+		return False
+
+	def _run_with_temp_home_station(self, station_type, callback):
+		"""Temporarily set current room crafting_station while running callback."""
+		room = self.get_room_data(self.player.current_room) if self.player else None
+		if room is None:
+			return callback()
+		if isinstance(room, dict):
+			had_key = "crafting_station" in room
+			old_val = room.get("crafting_station")
+			room["crafting_station"] = station_type
+			try:
+				return callback()
+			finally:
+				if had_key:
+					room["crafting_station"] = old_val
+				else:
+					room.pop("crafting_station", None)
+		had_attr = hasattr(room, "crafting_station")
+		old_val = getattr(room, "crafting_station", None)
+		setattr(room, "crafting_station", station_type)
+		try:
+			return callback()
+		finally:
+			if had_attr:
+				setattr(room, "crafting_station", old_val)
+			else:
+				try:
+					delattr(room, "crafting_station")
+				except Exception:
+					pass
+
+	def use_home_object(self, item_name):
+		if not HOME_AVAILABLE or not self.player:
+			return False, "Home system is not available."
+		self._ensure_player_home_state()
+		home_data = self.player.state.get("home_data", {})
+		query = item_name.strip().lower().replace(" ", "_")
+		for placed in home_data.get("placed_items", []):
+			item_id = placed.get("item_id")
+			if item_id != query and query not in item_id:
+				continue
+			item_def = get_home_item(item_id) or {}
+			cat = item_def.get("category")
+			if cat == "altar":
+				ok, msg = activate_home_altar(self.player, item_id)
+				return True, msg
+			action = item_def.get("use_action")
+			if action == "rest":
+				stats = self.player.stats
+				stats["health"] = stats.get("health_max", stats.get("health", 100))
+				if "max_mana" in stats:
+					stats["mana"] = stats.get("max_mana", stats.get("mana", 0))
+				return True, "You rest in your bed and recover fully."
+			if action == "craft" and CRAFTING_AVAILABLE and self.crafting_system:
+				return True, self._run_with_temp_home_station("forge", self.crafting_system.use_station)
+			if action == "alchemy" and ALCHEMY_AVAILABLE and self.alchemy_system:
+				return True, self._run_with_temp_home_station("campfire", self.alchemy_system.show_brew_menu)
+			if action == "forge" and FORGING_AVAILABLE and self.forging_system:
+				return True, self._run_with_temp_home_station("forge", self.forging_system.show_forge_menu)
+			if action == "enchant" and ENCHANTING_AVAILABLE and self.enchanting_system:
+				return True, self._run_with_temp_home_station("forge", self.enchanting_system.show_enchanting_menu)
+			if action == "smelt" and SMELTING_AVAILABLE and self.smelting_system:
+				return True, self._run_with_temp_home_station("forge", self.smelting_system.show_smelt_menu)
+			if action == "ritual" and RITUAL_AVAILABLE and self.ritual_system:
+				return True, self._run_with_temp_home_station("altar_crystal", self.ritual_system.show_ritual_menu)
+			if action == "chest":
+				return True, "Home chest storage UI is not wired yet."
+			if action == "bookshelf":
+				return True, "You browse your bookshelf of notes and recipes."
+			return True, f"You interact with {item_def.get('name', item_id.replace('_', ' '))}."
+		return False, "That object is not placed in your home."
+
+	def _update_map_on_move(self, new_room_id):
+		if not self.player:
+			return
+		self.player.visited_rooms.add(new_room_id)
+		if QUEST_AVAILABLE and getattr(self, "quest_manager", None):
+			try:
+				self.quest_manager.on_room_entered(new_room_id)
+			except Exception:
+				pass
+		if self.map_window and self.map_window.is_open():
+			try:
+				self.map_window.update_location(new_room_id, self.player.visited_rooms)
+			except Exception:
+				pass
+
+	CURRENT_SAVE_VERSION = 5
 
 	def _migrate_save(self, state, from_version):
 		"""Migrate old save formats to current version.
@@ -5507,6 +6483,30 @@ class GameEngine:
 			player["state"] = p_state
 			state["player"] = player
 			state["save_version"] = 4
+
+		# ── v4 → v5 migration (Home Dimension) ──
+		if from_version < 5:
+			player = state.get("player", {})
+			p_state = player.get("state", {})
+			p_state.setdefault("home_owned", False)
+			p_state.setdefault("home_name", "Pocket Dimension")
+			p_state.setdefault("home_return_room", HOME_FALLBACK_ROOM)
+			if not isinstance(p_state.get("home_data"), dict):
+				p_state["home_data"] = {
+					"grid_width": 8,
+					"grid_height": 6,
+					"placed_items": [],
+					"unlocked_expansions": [],
+					"chest_contents": {},
+					"vault_contents": {},
+					"active_altars": {},
+				}
+			p_state.setdefault("active_home_bonuses", {})
+			player["state"] = p_state
+			state["player"] = player
+			state.setdefault("home", p_state.get("home_data", {}))
+			state["save_version"] = 5
+			notes.append("v4→v5 added home dimension state")
 
 		return state, notes
 
@@ -5667,6 +6667,10 @@ class GameEngine:
 		if not self.start_room:
 			return "No start room defined."
 		self.player = Player(self.start_room)
+		if HOME_AVAILABLE:
+			self._ensure_player_home_state()
+			self._ensure_home_room_registered()
+			self.refresh_home_room_description()
 		# initialize player stats with defaults from world
 		self.player.stats = dict(self.default_stats)
 		# Initialize progression state
@@ -5715,8 +6719,9 @@ class GameEngine:
 			return "No game in progress to save."
 
 		# Build a save structure containing only runtime-modified state (player + room items)
+		self._ensure_player_home_state()
 		state = {
-			"save_version": 4,  # Save format version for migration
+			"save_version": 5,  # Save format version for migration
 			"player": self.player.to_dict(),  # inventory serialized as dict by Player.to_dict()
 			"rooms": {}
 		}
@@ -5731,6 +6736,11 @@ class GameEngine:
 			state["rooms"][name] = {"items": item_counts}
 		# persist item worth mapping so save contains current worth table (helps editors/changes)
 		state["item_worth"] = {str(k): int(v) for k, v in (self.item_worth or {}).items()}
+
+		# persist home block as a dedicated top-level key
+		if HOME_AVAILABLE and self.player:
+			home_data = self.player.state.get("home_data", {})
+			state["home"] = home_data if isinstance(home_data, dict) else {}
 
 		# persist quest progress
 		if QUEST_AVAILABLE and self.quest_manager:
@@ -5834,6 +6844,16 @@ class GameEngine:
 			self.player = Player.from_dict(player_data)
 		except Exception as e:
 			return f"Failed to restore player from save: {e}"
+
+		# restore dedicated home block and ensure runtime defaults
+		if HOME_AVAILABLE and self.player:
+			self._ensure_player_home_state()
+			home_block = state.get("home")
+			if isinstance(home_block, dict):
+				self.player.state["home_data"] = home_block
+			self._ensure_player_home_state()
+			self._ensure_home_room_registered()
+			self.refresh_home_room_description()
 		# if saved, restore item_worth mapping (optional)
 		if isinstance(state.get("item_worth"), dict):
 			wmap = {}

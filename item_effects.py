@@ -463,6 +463,90 @@ ITEM_EFFECTS = {
 		"description": "A scroll that guarantees escape from combat.",
 		"use_text": "You read the scroll of escape. Reality bends and you vanish!",
 	},
+
+	# ═══════════════════════════════════════════════════════════════════
+	# MYTHIC & HIDDEN CONTENT ITEMS
+	# ═══════════════════════════════════════════════════════════════════
+
+	"alchemist_key": {
+		"type": "tool",
+		"effect": "key",
+		"value": 0,
+		"description": "A small brass key engraved with alchemical symbols. It smells faintly of the philosopher's stone.",
+		"use_text": "You hold up the alchemist's key. It pulses warmly in your grip. Perhaps it unlocks something in the alchemist's quarters?",
+	},
+	"shadow_shard": {
+		"type": "tool",
+		"effect": "ritual_component",
+		"value": 0,
+		"description": "A fragment of crystallised shadow. Cold to the touch — it drinks in all nearby light.",
+		"use_text": "The shadow shard vibrates ominously. You sense it is part of a greater ritual. You need two more components.",
+	},
+	"blood_sigil": {
+		"type": "tool",
+		"effect": "ritual_component",
+		"value": 0,
+		"description": "A red-black sigil carved on a piece of ancient bone. The carvings describe a ritual of summoning.",
+		"use_text": "The blood sigil burns hot in your hand. It is hungry. Combined with a shadow shard and void crystal, it could summon something dreadful.",
+	},
+	"void_crystal": {
+		"type": "tool",
+		"effect": "ritual_component",
+		"value": 0,
+		"description": "A crystal of pure void energy. It hums at a frequency that makes nearby candles gutter.",
+		"use_text": "The void crystal resonates with dark energy. Alone it is merely dangerous. With a shadow shard and blood sigil... try 'invoke ritual'.",
+	},
+	"void_shard": {
+		"type": "consumable",
+		"effect": "heal",
+		"value": 999,
+		"description": "A shard of compressed void energy. Found only by those with extraordinary luck. Completely restores vitality when consumed.",
+		"use_text": "You absorb the void shard. Raw cosmic energy floods through your body, mending every wound instantly.",
+	},
+	"ancient_codex": {
+		"type": "consumable",
+		"effect": "grant_xp",
+		"value": 500,
+		"description": "An ancient codex from the Underground Archive. Every page contains wisdom lost to history. Reading it massively expands the mind.",
+		"use_text": "You read through the Ancient Codex, absorbing centuries of forgotten knowledge. Your understanding of the world deepens profoundly.",
+	},
+	"stellar_dust": {
+		"type": "consumable",
+		"effect": "buff_attack",
+		"value": 15,
+		"duration": 10,
+		"description": "Dust from a fallen star, refined into powder. Temporarily grants extraordinary strength when inhaled.",
+		"use_text": "You inhale the stellar dust. It tingles in your lungs and your muscles surge with star-forged power!",
+	},
+	"pirate_charter": {
+		"type": "tool",
+		"effect": "lore",
+		"value": 0,
+		"description": "The original charter of the Dreadwind Pirates. Signed in blood. Worth a fortune to collectors — or a death sentence if the wrong eyes see it.",
+		"use_text": "You unfurl the pirate charter. The names of legendary pirates are listed within, along with coordinates of fourteen treasure locations that appear on no known map.",
+	},
+	"void_titan_soul": {
+		"type": "consumable",
+		"effect": "heal",
+		"value": 300,
+		"description": "The crystallised soul of a Void Titan. An unsettling trophy. It pulses with almost irresistible vitality.",
+		"use_text": "You crack the void titan soul open. Its energy floods you with terrible power, healing all wounds instantly.",
+	},
+	"shrine_blessing": {
+		"type": "consumable",
+		"effect": "buff_defense",
+		"value": 20,
+		"duration": 20,
+		"description": "A vial of pure light blessed at the Forgotten Shrine. Grants powerful protection when consumed.",
+		"use_text": "You drink the shrine blessing. A warm golden light surrounds you like armour.",
+	},
+	"developers_note": {
+		"type": "tool",
+		"effect": "lore",
+		"value": 0,
+		"description": "A handwritten note from the developers. It reads: 'If you found this, you are exactly the kind of player we built this game for. Thank you.'",
+		"use_text": "You read the developer's note carefully. It is signed by everyone who worked on this world. You feel oddly moved.",
+	},
 }
 
 # Water-adjacent rooms for fishing

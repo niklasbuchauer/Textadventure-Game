@@ -1,14 +1,24 @@
 {
-  "save_version": 4,
+  "save_version": 5,
   "player": {
-    "current_room": "dusty_crossroads",
+    "current_room": "village_square",
     "inventory": {
       "prayer_candle": 1,
       "iron_dagger": 6,
       "healing_potion": 1,
       "potent_healing_potion": 3,
       "refined_copper": 1,
-      "copper_ingot": 1
+      "copper_ingot": 1,
+      "solaris_blade": 1,
+      "void_cloak": 2,
+      "alchemist_key": 1,
+      "garden_planter": 1,
+      "iron_sconce": 1,
+      "study_annex": 1,
+      "wolf_pelt_rug": 1,
+      "garden_room": 1,
+      "battle_map": 1,
+      "altar_of_knowledge": 4
     },
     "state": {
       "unlocked_skills": [
@@ -76,7 +86,14 @@
         "w_ber_thick_hide",
         "w_ber_pain_resist",
         "w_ber_undying_rage",
-        "w_ber_rage_armor"
+        "w_ber_rage_armor",
+        "w_wm_stance",
+        "w_wm_parry",
+        "w_wm_riposte",
+        "w_wm_perfect_parry",
+        "w_wm_power_grip",
+        "w_wm_crush",
+        "w_glad_might"
       ],
       "cooldowns": {
         "w_arc_power_shot": 3,
@@ -101,25 +118,30 @@
         "level_10",
         "level_20",
         "level_30",
-        "first_blood"
+        "first_blood",
+        "skilled",
+        "mastery",
+        "branch_initiate",
+        "branch_master"
       ],
       "achievement_tracking": {
         "kills": 1,
-        "total_gold": 3
+        "total_gold": 3,
+        "easter_eggs_found": 1
       },
       "_synergy_bonuses": {
-        "attack": 59,
-        "defense": 39,
-        "health_max_bonus": 155,
-        "crit_chance_bonus": 0.33999999999999997
+        "attack": 64,
+        "defense": 42,
+        "health_max_bonus": 175,
+        "crit_chance_bonus": 0.38999999999999996
       },
       "_synergy_descriptions": [
         "Berserker Master (13 nodes)",
         "Tank Master (13 nodes)",
         "Archer Expert (10 nodes)",
         "Commander Initiate (4 nodes)",
-        "Weaponmaster Expert (9 nodes)",
-        "Gladiator Master (15 nodes)"
+        "Weaponmaster Master (15 nodes)",
+        "Gladiator Master (16 nodes)"
       ],
       "death_gold_lost_total": 559,
       "debug_infinite_mana": false,
@@ -137,53 +159,468 @@
           "amount": 3,
           "turns_left": 5
         }
-      ]
+      ],
+      "home_owned": true,
+      "home_name": "Pocket Dimension",
+      "home_return_room": "village_square",
+      "home_data": {
+        "grid_width": 8,
+        "grid_height": 6,
+        "placed_items": [
+          {
+            "item_id": "altar_of_souls",
+            "x": 0,
+            "y": 0,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "altar_of_warding",
+            "x": 1,
+            "y": 1,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "altar_of_strength",
+            "x": 2,
+            "y": 0,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "arcane_orrery",
+            "x": 7,
+            "y": 0,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "enchanted_mirror",
+            "x": 7,
+            "y": 4,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "home_alchemy_table",
+            "x": 0,
+            "y": 5,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "home_enchanting_table",
+            "x": 1,
+            "y": 5,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "home_forge",
+            "x": 2,
+            "y": 5,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "home_smelting_furnace",
+            "x": 3,
+            "y": 5,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "home_workbench",
+            "x": 4,
+            "y": 5,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "grand_altar",
+            "x": 7,
+            "y": 2,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "caldron",
+            "x": 5,
+            "y": 5,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "mounted_skull",
+            "x": 7,
+            "y": 5,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "old_painting_seascape",
+            "x": 7,
+            "y": 3,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "old_painting_forest",
+            "x": 7,
+            "y": 1,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "altar_of_knowledge",
+            "x": 3,
+            "y": 0,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "personal_chest",
+            "x": 0,
+            "y": 2,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "personal_chest",
+            "x": 0,
+            "y": 3,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "personal_chest",
+            "x": 1,
+            "y": 2,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "personal_chest",
+            "x": 1,
+            "y": 3,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "healer_shrine",
+            "x": 6,
+            "y": 5,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "training_chamber",
+            "x": 5,
+            "y": 3,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "bookshelf",
+            "x": 6,
+            "y": 0,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "crystal_chandelier",
+            "x": 5,
+            "y": 0,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "trophy_mount",
+            "x": 4,
+            "y": 0,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "vault_room",
+            "x": 3,
+            "y": 3,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          },
+          {
+            "item_id": "altar_of_knowledge",
+            "x": 1,
+            "y": 0,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": false
+          }
+        ],
+        "unlocked_expansions": [],
+        "chest_contents": {},
+        "vault_contents": {},
+        "active_altars": {},
+        "stored_items": [
+          {
+            "item_id": "cozy_bed",
+            "x": 7,
+            "y": 0,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": true
+          },
+          {
+            "item_id": "cozy_bed",
+            "x": 7,
+            "y": 2,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": true
+          },
+          {
+            "item_id": "cozy_bed",
+            "x": 7,
+            "y": 3,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": true
+          },
+          {
+            "item_id": "cozy_bed",
+            "x": 7,
+            "y": 4,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": true
+          },
+          {
+            "item_id": "cozy_bed",
+            "x": 7,
+            "y": 1,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": true
+          },
+          {
+            "item_id": "cozy_bed",
+            "x": 6,
+            "y": 5,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": true
+          },
+          {
+            "item_id": "altar_of_shadows",
+            "x": 0,
+            "y": 1,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": true
+          },
+          {
+            "item_id": "altar_of_fortune",
+            "x": 0,
+            "y": 0,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": true
+          },
+          {
+            "item_id": "altar_of_knowledge",
+            "x": 4,
+            "y": 0,
+            "active": true,
+            "rotation": 0,
+            "tint": null,
+            "skin": "default",
+            "texture": "default",
+            "stored": true
+          }
+        ]
+      },
+      "active_home_bonuses": {
+        "xp_multiplier": 0.25
+      }
     },
     "stats": {
-      "gold": 2195,
-      "health": 325,
-      "health_max": 325,
+      "gold": 2245,
+      "health": 345,
+      "health_max": 345,
       "level": 13,
-      "xp": 2773,
+      "xp": 4573,
       "xp_to_next": 2927,
       "skill_points": 0,
       "class": "warrior",
-      "strength": 36,
-      "defense": 74,
-      "dexterity": 22,
+      "strength": 42,
+      "defense": 87,
+      "dexterity": 24,
       "perception": 26,
       "charisma": 5,
       "constitution": 32,
       "mana": 92,
       "max_mana": 100,
       "mana_regen_bonus": 0.01,
-      "attack": 61,
-      "crit_chance_bonus": 0.5299999999999999
+      "attack": 70,
+      "crit_chance_bonus": 0.6099999999999999
     },
     "visited_rooms": [
-      "reef_shallows",
-      "farmland_east",
-      "village_south_road",
-      "village_east_end",
-      "chapel",
-      "grand_harbor_square",
       "desert_dunes_west",
-      "grand_harbor_road",
-      "village_west_end",
-      "dusty_crossroads",
-      "grand_harbor_gate",
-      "farmland_west",
-      "coastal_road_north",
       "stormbreak_docks",
-      "harbor_east_dock",
+      "village_south_road",
+      "grand_harbor_road",
+      "grand_harbor_square",
+      "dusty_crossroads",
+      "sandy_beach",
       "harbor_south_pier",
+      "chapel",
+      "coastal_road_north",
+      "grand_harbor_gate",
+      "village_east_end",
+      "reef_shallows",
+      "crossroads",
+      "harbor_east_dock",
+      "player_home",
+      "coastal_cliffs",
+      "village_west_end",
+      "village_square",
+      "farmland_east",
       "farmland_center",
       "smugglers_cove",
-      "coastal_cliffs",
-      "sandy_beach",
       "desert_border",
-      "crossroads",
-      "village_square"
+      "farmland_west"
     ],
     "unlocked_islands": [
       "stormbreak_island"
@@ -211,6 +648,70 @@
     },
     "chapel": {
       "items": {}
+    },
+    "village_clocktower": {
+      "items": {
+        "old_coin": 1
+      }
+    },
+    "village_void_rift": {
+      "items": {
+        "void_shard_fragment": 1
+      }
+    },
+    "underground_archive": {
+      "items": {
+        "ancient_codex": 1,
+        "archive_robe": 1,
+        "solaris_blade": 1,
+        "dusty_tome": 1,
+        "shadow_shard": 1
+      }
+    },
+    "pirate_vault": {
+      "items": {
+        "pirate_captain_sword": 1,
+        "pirate_charter": 1,
+        "gold_ingot": 1,
+        "old_coin": 1,
+        "blood_sigil": 1
+      }
+    },
+    "forgotten_shrine_puzzle": {
+      "items": {
+        "ethereal_orb": 1,
+        "forgotten_blade": 1,
+        "shrine_blessing": 1
+      }
+    },
+    "hidden_alchemy_lab": {
+      "items": {
+        "dragonscale_armor": 1,
+        "alchemist_key": 1,
+        "stellar_dust": 1,
+        "dragonfang_dagger": 1,
+        "void_crystal": 1
+      }
+    },
+    "void_sanctuary": {
+      "items": {
+        "void_cloak": 1,
+        "void_titan_crown": 1,
+        "starweave_ring": 1,
+        "voidborn_gauntlets": 1
+      }
+    },
+    "clocktower_interior": {
+      "items": {
+        "crown_of_stars": 1,
+        "clockwork_pendant": 1,
+        "clockwork_boots": 1
+      }
+    },
+    "developers_corner": {
+      "items": {
+        "developers_note": 1
+      }
     },
     "village_west_end": {
       "items": {}
@@ -6979,6 +7480,9 @@
     },
     "bank_of_estoria": {
       "items": {}
+    },
+    "player_home": {
+      "items": {}
     }
   },
   "item_worth": {
@@ -7038,6 +7542,414 @@
     "leather_scrap": 6,
     "iron_ore": 15,
     "copper_ore": 10
+  },
+  "home": {
+    "grid_width": 8,
+    "grid_height": 6,
+    "placed_items": [
+      {
+        "item_id": "altar_of_souls",
+        "x": 0,
+        "y": 0,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "altar_of_warding",
+        "x": 1,
+        "y": 1,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "altar_of_strength",
+        "x": 2,
+        "y": 0,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "arcane_orrery",
+        "x": 7,
+        "y": 0,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "enchanted_mirror",
+        "x": 7,
+        "y": 4,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "home_alchemy_table",
+        "x": 0,
+        "y": 5,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "home_enchanting_table",
+        "x": 1,
+        "y": 5,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "home_forge",
+        "x": 2,
+        "y": 5,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "home_smelting_furnace",
+        "x": 3,
+        "y": 5,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "home_workbench",
+        "x": 4,
+        "y": 5,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "grand_altar",
+        "x": 7,
+        "y": 2,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "caldron",
+        "x": 5,
+        "y": 5,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "mounted_skull",
+        "x": 7,
+        "y": 5,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "old_painting_seascape",
+        "x": 7,
+        "y": 3,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "old_painting_forest",
+        "x": 7,
+        "y": 1,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "altar_of_knowledge",
+        "x": 3,
+        "y": 0,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "personal_chest",
+        "x": 0,
+        "y": 2,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "personal_chest",
+        "x": 0,
+        "y": 3,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "personal_chest",
+        "x": 1,
+        "y": 2,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "personal_chest",
+        "x": 1,
+        "y": 3,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "healer_shrine",
+        "x": 6,
+        "y": 5,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "training_chamber",
+        "x": 5,
+        "y": 3,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "bookshelf",
+        "x": 6,
+        "y": 0,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "crystal_chandelier",
+        "x": 5,
+        "y": 0,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "trophy_mount",
+        "x": 4,
+        "y": 0,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "vault_room",
+        "x": 3,
+        "y": 3,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      },
+      {
+        "item_id": "altar_of_knowledge",
+        "x": 1,
+        "y": 0,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": false
+      }
+    ],
+    "unlocked_expansions": [],
+    "chest_contents": {},
+    "vault_contents": {},
+    "active_altars": {},
+    "stored_items": [
+      {
+        "item_id": "cozy_bed",
+        "x": 7,
+        "y": 0,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": true
+      },
+      {
+        "item_id": "cozy_bed",
+        "x": 7,
+        "y": 2,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": true
+      },
+      {
+        "item_id": "cozy_bed",
+        "x": 7,
+        "y": 3,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": true
+      },
+      {
+        "item_id": "cozy_bed",
+        "x": 7,
+        "y": 4,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": true
+      },
+      {
+        "item_id": "cozy_bed",
+        "x": 7,
+        "y": 1,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": true
+      },
+      {
+        "item_id": "cozy_bed",
+        "x": 6,
+        "y": 5,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": true
+      },
+      {
+        "item_id": "altar_of_shadows",
+        "x": 0,
+        "y": 1,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": true
+      },
+      {
+        "item_id": "altar_of_fortune",
+        "x": 0,
+        "y": 0,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": true
+      },
+      {
+        "item_id": "altar_of_knowledge",
+        "x": 4,
+        "y": 0,
+        "active": true,
+        "rotation": 0,
+        "tint": null,
+        "skin": "default",
+        "texture": "default",
+        "stored": true
+      }
+    ]
   },
   "quests": {},
   "npc_reputation": {
@@ -7131,31 +8043,31 @@
       }
     },
     "rooms_rolled": [
-      "reef_shallows",
-      "farmland_east",
       "desert_dunes_west",
       "village_road",
-      "scorpion_flats",
+      "farmland",
       "forest_path",
-      "dusty_crossroads",
-      "farmland_west",
+      "mesa_base",
       "mesa_top",
+      "desert_cliffs",
+      "meteor_crater",
+      "dusty_crossroads",
+      "scorpion_flats",
+      "sandy_beach",
+      "canyon_entrance",
+      "deep_forest",
       "coastal_road_north",
       "graveyard",
+      "reef_shallows",
+      "crossroads",
+      "coastal_cliffs",
+      "farmland_east",
       "graveyard_gates",
       "dungeon_forest_entrance",
       "farmland_center",
       "smugglers_cove",
-      "coastal_cliffs",
-      "canyon_entrance",
-      "deep_forest",
-      "farmland",
-      "meteor_crater",
-      "sandy_beach",
       "desert_border",
-      "crossroads",
-      "mesa_base",
-      "desert_cliffs"
+      "farmland_west"
     ]
   },
   "fishing": {
@@ -7186,8 +8098,8 @@
   },
   "dungeon_scheduler": {
     "debug_force_open": [
-      "iron_halls",
       "crystal_caverns",
+      "iron_halls",
       "sunken_catacombs"
     ]
   }

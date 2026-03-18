@@ -238,6 +238,40 @@ ACHIEVEMENTS = {
         "check": "elite_bosses_killed >= 1",
         "reward": {"xp": 1000, "attack": 3, "defense": 3, "health_max_bonus": 15},
     },
+
+    # Hidden content achievements
+    "secrets_seeker": {
+        "name": "Secrets Seeker",
+        "description": "Discover 3 hidden rooms.",
+        "icon": "🔍",
+        "category": "exploration",
+        "check": "secrets_found >= 3",
+        "reward": {"xp": 750},
+    },
+    "secrets_master": {
+        "name": "Master of Secrets",
+        "description": "Discover all 7 hidden rooms.",
+        "icon": "🗝️",
+        "category": "exploration",
+        "check": "secrets_found >= 7",
+        "reward": {"xp": 2000, "attack": 3, "defense": 3, "health_max_bonus": 20},
+    },
+    "void_titan_slayer": {
+        "name": "Void Titan Slayer",
+        "description": "Defeat the legendary Void Titan in the secret ritual battle.",
+        "icon": "⚡",
+        "category": "combat",
+        "check": "void_titan_killed >= 1",
+        "reward": {"xp": 5000, "attack": 5, "defense": 5, "health_max_bonus": 25},
+    },
+    "easter_egg_hunter": {
+        "name": "Easter Egg Hunter",
+        "description": "Find 5 hidden easter eggs scattered throughout the world.",
+        "icon": "🥚",
+        "category": "exploration",
+        "check": "easter_eggs_found >= 5",
+        "reward": {"xp": 1000, "dexterity": 5},
+    },
 }
 
 
@@ -266,6 +300,9 @@ def get_achievement_stats(player):
         "quests_completed": ach_tracking.get("quests_completed", 0),
         "elite_dungeons_entered": ach_tracking.get("elite_dungeons_entered", 0),
         "elite_bosses_killed": ach_tracking.get("elite_bosses_killed", 0),
+        "secrets_found": ach_tracking.get("secrets_found", 0),
+        "easter_eggs_found": ach_tracking.get("easter_eggs_found", 0),
+        "void_titan_killed": ach_tracking.get("void_titan_killed", 0),
     }
 
 
