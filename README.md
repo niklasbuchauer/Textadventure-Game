@@ -70,11 +70,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 NIkIBytees Made with ❤️ for fun and learning Python game development.
 
 Star this repo ⭐ if you enjoyed the game or found it helpful!
-### Quick Tips for Making It Even Better:
-- **Add a screenshot or GIF** — Record a short terminal session (tools like asciinema or just a screenshot) and upload it to your repo. Replace the placeholder image link.
-- **Badges** (optional at the top):
-  ```markdown
-  ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white)
-  ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
-	•	If your game has a cool title (e.g. “The Lost Cavern” or “Shadow Realms”), replace “Text Adventure Game” with it.
-	•	Mention the exact filename to run if it’s not main.py.
