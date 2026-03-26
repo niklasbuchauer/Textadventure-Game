@@ -40,18 +40,17 @@ You are standing in a dark forest. Paths lead north, south, and east.
 > go north
 
 You enter an old abandoned cabin...
-🛠️Textadventure-Game/
-├── main.py                 # Main entry point - start the game here
+Textadventure-Game/
+├── main.py
 ├── game/
-│   ├── engine.py           # Core game logic and command parser
-│   ├── rooms.py            # All locations and connections
-│   ├── items.py            # Item definitions and behavior
-│   └── story.py            # Narrative text and events
-├── data/                   # Save files and game data (if any)
+│   ├── engine.py
+│   ├── rooms.py
+│   ├── items.py
+│   └── story.py
+├── data/
 │   └── savegame.json
 ├── README.md
 └── LICENSE
-(Adjust this section to match your actual folder structure)
 🕹️ Future Plans / Roadmap
 	•	Add more locations and story branches
 	•	Implement combat or NPC interactions
