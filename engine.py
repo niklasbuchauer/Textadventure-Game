@@ -127,7 +127,7 @@ except Exception as e:
 try:
 	from progression_system import (
 		award_xp, check_level_up, apply_class, get_class_selection_text,
-		get_stat_modifier, XP_AWARDS, CLASS_DEFINITIONS
+		get_stat_modifier, XP_AWARDS, CLASS_DEFINITIONS, MAX_LEVEL
 	)
 	from skill_tree import (
 		SkillTreeWindow, get_tree_for_class, get_unlocked_skills,
@@ -142,6 +142,13 @@ except Exception as e:
 	PROGRESSION_AVAILABLE = False
 	print(f"[INIT] Warning: Progression system DISABLED: {e}")
 
+try:
+	from prestige_system import can_ascend, apply_prestige, get_prestige_status_text
+	PRESTIGE_AVAILABLE = True
+except Exception as e:
+	PRESTIGE_AVAILABLE = False
+	print(f"[INIT] ⚠ Prestige system DISABLED: {e}")
+
 # =====================================================================
 # EQUIPMENT SYSTEM INITIALIZATION
 # =====================================================================
@@ -149,12 +156,40 @@ try:
 	from equipment_system import (
 		EQUIPMENT_DATABASE, EQUIPMENT_SLOTS,
 		equip_item, unequip_item, get_equipment_display,
-		get_total_equipment_bonuses, get_attack_power, get_defense_power
+		get_total_equipment_bonuses, get_attack_power, get_defense_power,
+		apply_transmog, get_cosmetics_display
 	)
 	EQUIPMENT_AVAILABLE = True
 except Exception as e:
 	EQUIPMENT_AVAILABLE = False
 	print(f"[INIT] ⚠ Equipment system DISABLED: {e}")
+
+try:
+	from artifact_system import (
+		ARTIFACT_DATABASE,
+		equip_artifact,
+		unequip_artifact,
+		get_artifact_display,
+		get_equipped_artifact,
+	)
+	ARTIFACT_AVAILABLE = True
+except Exception as e:
+	ARTIFACT_AVAILABLE = False
+	print(f"[INIT] ⚠ Artifact system DISABLED: {e}")
+
+try:
+	from faction_system import FACTIONS, join_faction, leave_faction, get_faction_status_text, add_faction_xp
+	FACTION_AVAILABLE = True
+except Exception as e:
+	FACTION_AVAILABLE = False
+	print(f"[INIT] ⚠ Faction system DISABLED: {e}")
+
+try:
+	from pet_system import PETS, adopt_pet, activate_pet, feed_active_pet, get_pet_status_text, get_pet_inspect_text, gain_pet_xp
+	PET_AVAILABLE = True
+except Exception as e:
+	PET_AVAILABLE = False
+	print(f"[INIT] ⚠ Pet system DISABLED: {e}")
 
 # =====================================================================
 # COMBAT SYSTEM INITIALIZATION
@@ -316,6 +351,7 @@ CONFIG_DEFAULTS = {
         "scroll_mode":         "auto",
         "confirm_dangerous":   True,
         "difficulty_modifier": 1.0,
+			"game_feel_intensity": "normal",
     },
     "accessibility": {
         "high_contrast": False,
@@ -342,6 +378,7 @@ class Room:
 	def __init__(self, data):
 		self.name = data.get("name")
 		self.description = data.get("description", "")
+		self.dynamic_events = list(data.get("dynamic_events", []))
 		self.exits = data.get("exits", {})  # dict: direction -> room_name
 		self.items = list(data.get("items", []))  # items present in the room (list allows duplicates)
 		# actions: dict mapping exact command string -> effect dict
@@ -353,9 +390,88 @@ class Room:
 		self.crafting_station = data.get("crafting_station", None)
 		self.shop = data.get("shop", False)
 
-	def describe(self):
+	def describe(self, feel_intensity="normal"):
 		"""Return room description with aggregated item counts (e.g. '3 bronze coins')."""
+		feel = str(feel_intensity or "normal").strip().lower()
+		if feel not in ("low", "normal", "high"):
+			feel = "normal"
+
 		desc = f"{self.name}\n{self.description}\n"
+
+		# Add one ambient flavor line to reduce repeated static descriptions.
+		ambient = None
+		ambient_chance = {"low": 0.35, "normal": 0.80, "high": 1.00}.get(feel, 0.80)
+		if self.dynamic_events:
+			try:
+				import random as _random
+				if _random.random() <= ambient_chance:
+					ambient = _random.choice(self.dynamic_events)
+			except Exception:
+				ambient = None
+		else:
+			name_lower = (self.name or "").lower()
+			desc_lower = (self.description or "").lower()
+			pool = []
+			if self.location_type == "wilderness":
+				pool.extend([
+					"A sudden gust stirs leaves and dust around you.",
+					"You catch distant movement, but it vanishes before you can focus.",
+					"The air shifts with a faint, uneasy stillness.",
+				])
+			if any(k in name_lower or k in desc_lower for k in ("forest", "grove", "wood")):
+				pool.extend([
+					"Birdsong cuts out for a heartbeat, then slowly returns.",
+					"Twigs crack somewhere deeper in the trees.",
+				])
+			if any(k in name_lower or k in desc_lower for k in ("swamp", "bog", "marsh")):
+				pool.extend([
+					"Bubbles rise from dark water with a wet pop.",
+					"A foul mist drifts low across the ground.",
+				])
+			if any(k in name_lower or k in desc_lower for k in ("mountain", "cliff", "peak", "highland")):
+				pool.extend([
+					"Loose stones skitter down a nearby slope.",
+					"Cold wind whistles through narrow rock cuts.",
+				])
+			if any(k in name_lower or k in desc_lower for k in ("grave", "crypt", "tomb")):
+				pool.extend([
+					"The temperature drops, and the silence feels heavy.",
+					"For a moment, you feel watched from the shadows.",
+				])
+			if pool:
+				try:
+					import random as _random
+					if _random.random() <= ambient_chance:
+						ambient = _random.choice(pool)
+				except Exception:
+					ambient = None
+		if ambient:
+			label = "Ambient" if feel != "high" else "Atmosphere"
+			desc += f"{label}: {ambient}\n"
+
+		if feel == "high":
+			name_lower = (self.name or "").lower()
+			desc_lower = (self.description or "").lower()
+			high_pool = [
+				"You feel a rising tension, as if the world is drawing breath.",
+				"Every sound seems sharper, charged with coming conflict.",
+			]
+			if any(k in name_lower or k in desc_lower for k in ("dungeon", "crypt", "ruin", "cavern", "depth")):
+				high_pool.extend([
+					"Shadows lean across the stone like living things.",
+					"Somewhere ahead, something old stirs in the dark.",
+				])
+			if self.location_type == "settlement":
+				high_pool.extend([
+					"Conversations hush as you pass, then resume in whispers.",
+					"Lantern light flickers across faces watching from doorways.",
+				])
+			try:
+				import random as _random
+				desc += f"Pulse: {_random.choice(high_pool)}\n"
+			except Exception:
+				pass
+
 		# Show NPCs if any
 		if self.npcs and NPC_AVAILABLE:
 			try:
@@ -511,6 +627,10 @@ class CommandHandler:
 		# Check if we're waiting for quest accept/decline
 		if QUEST_AVAILABLE and getattr(self.engine, 'pending_quest_action', None) is not None:
 			return self._handle_quest_accept(cmd)
+
+		# Check if we're waiting for ascension confirmation
+		if getattr(self.engine, 'pending_prestige_confirm', False):
+			return self._handle_prestige_confirm(cmd)
 		
 		# Check if we're waiting for yes/no response to shop negotiation
 		if SHOP_AVAILABLE and self.engine.shop_ui and self.engine.shop_ui.pending_negotiation:
@@ -707,6 +827,14 @@ class CommandHandler:
 			return "Goodbye."
 		if verb in ("help", "?"):
 			return self._show_commands()
+		if verb == "feel" and args and args[0].lower() == "preview":
+			if len(args) > 1:
+				return self._preview_game_feel(args[1])
+			return self._preview_game_feel()
+		if verb == "preview" and args and args[0].lower() == "feel":
+			if len(args) > 1:
+				return self._preview_game_feel(args[1])
+			return self._preview_game_feel()
 		if verb in ("recipes", "crafting"):
 			return self._show_recipes()
 		if verb in ("examine", "inspect", "x"):
@@ -935,6 +1063,16 @@ class CommandHandler:
 			return self._show_synergies()
 		if verb in ("achievements", "achieve", "ach"):
 			return self._show_achievements()
+		if verb in ("prestige", "ascend", "ascension"):
+			if args and args[0].lower() in ("status", "info"):
+				return self._show_prestige_status()
+			return self._start_prestige()
+		if verb in ("faction", "factions", "guild", "guilds"):
+			return self._handle_faction_command(args)
+		if verb in ("pet", "pets", "companion", "companions"):
+			return self._handle_pet_command(args)
+		if verb in ("party", "team", "squad"):
+			return "__OPEN_PARTY_FACTION__"
 
 		# Equipment commands
 		if verb == "equip":
@@ -947,6 +1085,14 @@ class CommandHandler:
 			return self._unequip_item(" ".join(args))
 		if verb == "equipment":
 			return self._show_equipment()
+		if verb in ("transmog", "skin"):
+			if len(args) < 2:
+				return "Usage: transmog <slot_or_item> <cosmetic_id|clear>"
+			return self._apply_transmog(" ".join(args[:-1]), args[-1])
+		if verb in ("cosmetics", "cosmetic"):
+			return self._show_cosmetics()
+		if verb in ("artifact", "artifacts", "relic", "relics"):
+			return self._handle_artifact_command(args)
 
 		# Combat commands
 		if verb == "attack":
@@ -1050,7 +1196,7 @@ class CommandHandler:
 		# Show the starting room
 		room = self.engine.get_room_data(self.engine.player.current_room)
 		if room:
-			result += room.describe()
+			result += self._describe_room(room)
 
 		return result
 
@@ -1100,6 +1246,8 @@ class CommandHandler:
 		result += "=" * 50 + "\n"
 		result += f"  Class:    {class_name}\n"
 		result += f"  Level:    {stats.get('level', 1)}\n"
+		if PRESTIGE_AVAILABLE:
+			result += f"  Prestige: {self.engine.player.state.get('prestige_level', 0)}\n"
 
 		# XP bar
 		xp = stats.get("xp", 0)
@@ -1170,6 +1318,13 @@ class CommandHandler:
 					result += f"  Attack Power:  {get_attack_power(self.engine.player)}\n"
 					result += f"  Defense Power: {get_defense_power(self.engine.player)}\n"
 
+		if ARTIFACT_AVAILABLE:
+			artifact_id = get_equipped_artifact(self.engine.player)
+			if artifact_id:
+				data = ARTIFACT_DATABASE.get(artifact_id, {})
+				result += "\n  --- Artifact ---\n"
+				result += f"  Equipped: {data.get('name', artifact_id.replace('_', ' ').title())}\n"
+
 		result += "=" * 50 + "\n"
 		return result
 
@@ -1226,7 +1381,188 @@ class CommandHandler:
 			return "Equipment system not available."
 		return get_equipment_display(self.engine.player)
 
+	def _show_prestige_status(self):
+		"""Show ascension status and permanent bonuses."""
+		if not PRESTIGE_AVAILABLE:
+			return "Prestige system not available."
+		return get_prestige_status_text(self.engine.player)
+
+	def _start_prestige(self):
+		"""Start ascension flow with confirmation guard."""
+		if not PRESTIGE_AVAILABLE:
+			return "Prestige system not available."
+		if not can_ascend(self.engine.player):
+			return get_prestige_status_text(self.engine.player)
+		self.engine.pending_prestige_confirm = True
+		return (
+			"Ascend now? This resets level, skill unlocks, cooldowns, and equipped gear to inventory.\n"
+			"Your class remains, and you gain permanent prestige bonuses.\n"
+			"Type 'yes' to confirm or 'no' to cancel."
+		)
+
+	def _handle_prestige_confirm(self, cmd):
+		"""Handle yes/no response for ascension confirmation."""
+		answer = (cmd or "").strip().lower()
+		if answer in ("yes", "y", "confirm", "ascend"):
+			self.engine.pending_prestige_confirm = False
+			success, msg = apply_prestige(self.engine.player)
+			if success:
+				self.engine._inventory_changed = True
+			return msg
+		if answer in ("no", "n", "cancel"):
+			self.engine.pending_prestige_confirm = False
+			return "Ascension cancelled."
+		return "Confirm ascension? (yes/no)"
+
+	def _apply_transmog(self, slot_or_item, cosmetic_id):
+		"""Apply appearance-only cosmetic overrides to equipped gear."""
+		if not EQUIPMENT_AVAILABLE:
+			return "Equipment system not available."
+		if COMBAT_AVAILABLE and getattr(self.engine, 'pending_combat', None):
+			return "You can't change transmog during combat!"
+		success, message = apply_transmog(self.engine.player, slot_or_item, cosmetic_id)
+		if success:
+			self.engine._inventory_changed = True
+		return message
+
+	def _show_cosmetics(self):
+		"""Show unlocked cosmetics and active appearance overrides."""
+		if not EQUIPMENT_AVAILABLE:
+			return "Equipment system not available."
+		return get_cosmetics_display(self.engine.player)
+
+	def _handle_artifact_command(self, args):
+		"""Handle artifact equip/unequip/status commands."""
+		if not ARTIFACT_AVAILABLE:
+			return "Artifact system not available."
+		if not args:
+			return get_artifact_display(self.engine.player)
+		sub = args[0].lower()
+		if sub in ("equip", "use"):
+			if len(args) < 2:
+				return "Usage: artifact equip <artifact_id>"
+			success, msg = equip_artifact(self.engine.player, " ".join(args[1:]))
+			if success:
+				self.engine._inventory_changed = True
+			return msg
+		if sub in ("unequip", "remove", "clear"):
+			success, msg = unequip_artifact(self.engine.player)
+			if success:
+				self.engine._inventory_changed = True
+			return msg
+		if sub in ("status", "show", "list"):
+			return get_artifact_display(self.engine.player)
+		return "Usage: artifact [status|equip <artifact_id>|unequip]"
+
+	def _handle_faction_command(self, args):
+		"""Handle faction status and join commands."""
+		if not FACTION_AVAILABLE:
+			return "Faction system not available."
+		if not args:
+			return get_faction_status_text(self.engine.player)
+		sub = args[0].lower()
+		if sub in ("window", "ui"):
+			return "__OPEN_PARTY_FACTION__"
+		if sub in ("status", "show", "list"):
+			return get_faction_status_text(self.engine.player)
+		if sub in ("ranks", "roadmap", "progress"):
+			return "__OPEN_PARTY_FACTION__"
+		if sub == "join":
+			if len(args) < 2:
+				return "Usage: faction join <faction_id>"
+			success, msg = join_faction(self.engine.player, args[1])
+			return msg if success else msg
+		if sub in ("leave", "quit"):
+			success, msg = leave_faction(self.engine.player)
+			return msg if success else msg
+		return "Usage: faction [status|ranks [faction_id]|join <faction_id>|leave|window]"
+
+	def _handle_pet_command(self, args):
+		"""Handle companion adoption, activation, and feed actions."""
+		if not PET_AVAILABLE:
+			return "Pet system not available."
+		if not args:
+			return get_pet_status_text(self.engine.player)
+		sub = args[0].lower()
+		if sub in ("window", "ui"):
+			return "__OPEN_PARTY_FACTION__"
+		if sub in ("status", "show", "list"):
+			return get_pet_status_text(self.engine.player)
+		if sub == "adopt":
+			if len(args) < 2:
+				return "Usage: pet adopt <pet_id>"
+			success, msg = adopt_pet(self.engine.player, args[1])
+			if success:
+				self.engine._inventory_changed = True
+			return msg
+		if sub in ("activate", "set"):
+			if len(args) < 2:
+				return "Usage: pet activate <pet_id>"
+			success, msg = activate_pet(self.engine.player, args[1])
+			if success:
+				self.engine._inventory_changed = True
+			return msg
+		if sub in ("inspect", "info", "details"):
+			if len(args) < 2:
+				return "Usage: pet inspect <pet_id>"
+			return get_pet_inspect_text(self.engine.player, args[1])
+		if sub == "feed":
+			success, msg = feed_active_pet(self.engine.player)
+			if success:
+				self.engine._inventory_changed = True
+			return msg
+		if sub == "use":
+			# If no ability provided, show ability preview for active pet
+			if len(args) < 2:
+				try:
+					from pet_system import get_pet_ability_preview_lines, _ensure_pet_state
+				except Exception:
+					return "Pet system not available."
+				_ensure_pet_state(self.engine.player)
+				active = self.engine.player.state.get("active_pet")
+				if not active:
+					return "No active pet. Adopt and activate one first."
+				lines = get_pet_ability_preview_lines(active, int(self.engine.player.state.get("pets", {}).get(active, {}).get("level", 1)))
+				return "Abilities:\n" + "\n".join(lines)
+			try:
+				from pet_system import use_pet_ability
+			except Exception:
+				return "Pet ability system not available."
+			success, msg = use_pet_ability(self.engine.player, " ".join(args[1:]))
+			if success:
+				# Some pet abilities may change stats/inventory
+				self.engine._inventory_changed = True
+			return msg
+		return "Usage: pet [status|inspect <id>|adopt <id>|activate <id>|feed|window]"
+
 	# ========== COMBAT COMMANDS ==========
+
+	def _get_game_feel_intensity(self):
+		"""Resolve gameplay intensity setting from GUI config with safe fallback."""
+		if hasattr(self.engine, "get_game_feel_intensity"):
+			return self.engine.get_game_feel_intensity()
+
+		level = "normal"
+		gui = getattr(self.engine, "gui", None)
+		cfg = getattr(gui, "config", None)
+		if isinstance(cfg, dict):
+			gameplay = cfg.get("gameplay", {})
+			if isinstance(gameplay, dict):
+				level = gameplay.get("game_feel_intensity", "normal")
+
+		level = str(level or "normal").strip().lower()
+		if level not in ("low", "normal", "high"):
+			return "normal"
+		return level
+
+	def _describe_room(self, room):
+		"""Render room description using configured game feel intensity."""
+		if not room:
+			return "[Room not found]"
+		try:
+			return room.describe(feel_intensity=self._get_game_feel_intensity())
+		except TypeError:
+			return room.describe()
 
 	def _track_combat_victory(self, combat):
 		"""Track achievement events for a combat victory."""
@@ -1234,6 +1570,7 @@ class CommandHandler:
 			return ""
 		player = self.engine.player
 		try:
+			extra_msgs = []
 			# Track kill
 			track_event(player, "kills")
 			# Track boss / mini-boss kills
@@ -1263,6 +1600,24 @@ class CommandHandler:
 			if gold > 0:
 				track_event(player, "total_gold", gold)
 
+			# Faction progression from combat participation.
+			if FACTION_AVAILABLE:
+				extra = add_faction_xp(player, 8 if getattr(combat, 'is_boss', False) else 3, reason="combat victory")
+				if extra:
+					extra_msgs.append(extra)
+
+			# Pet progression from combat participation.
+			if PET_AVAILABLE:
+				extra = gain_pet_xp(player, 12 if getattr(combat, 'is_boss', False) else 5, source="combat")
+				if extra:
+					extra_msgs.append(extra)
+
+			# Artifact drop hooks for boss / mini-boss clears.
+			if ARTIFACT_AVAILABLE:
+				dropped = self._roll_artifact_drop(combat)
+				if dropped:
+					extra_msgs.append(dropped)
+
 			# ── Void Titan slain tracking ───────────────────────────────────────
 			enemy_id = getattr(combat, 'enemy_id', None) or getattr(combat, 'id', None)
 			if enemy_id == "void_titan" or getattr(combat, 'ritual_boss', False):
@@ -1281,9 +1636,39 @@ class CommandHandler:
 					"(1 in 10,000 chance — you are extraordinary.)\n"
 				)
 
-			return self._check_and_show_achievements()
+			return self._check_and_show_achievements() + ("".join(extra_msgs) if extra_msgs else "")
 		except Exception:
 			return ""
+
+	def _roll_artifact_drop(self, combat):
+		"""Roll artifact drops after elite encounters."""
+		if not ARTIFACT_AVAILABLE:
+			return ""
+
+		if not (getattr(combat, 'is_boss', False) or getattr(combat, 'is_mini_boss', False) or getattr(combat, 'ritual_boss', False)):
+			return ""
+
+		# Prioritize fixed thematic drop for ritual boss.
+		if getattr(combat, 'ritual_boss', False):
+			artifact_id = "void_heart"
+			self.engine.player.inventory[artifact_id] = self.engine.player.inventory.get(artifact_id, 0) + 1
+			self.engine._inventory_changed = True
+			return "\n  ✨ Artifact found: Void Heart (ritual boss reward)!"
+
+		import random as _random
+		chance = 0.30 if getattr(combat, 'is_boss', False) else 0.12
+		if _random.random() > chance:
+			return ""
+
+		candidates = list(ARTIFACT_DATABASE.keys())
+		if not candidates:
+			return ""
+
+		artifact_id = _random.choice(candidates)
+		self.engine.player.inventory[artifact_id] = self.engine.player.inventory.get(artifact_id, 0) + 1
+		self.engine._inventory_changed = True
+		aname = ARTIFACT_DATABASE.get(artifact_id, {}).get("name", artifact_id.replace("_", " ").title())
+		return f"\n  ✨ Artifact found: {aname}!"
 
 	def _combat_attack(self):
 		"""Handle attack command during combat."""
@@ -1379,6 +1764,8 @@ class CommandHandler:
 		if not COMBAT_AVAILABLE:
 			return ""
 
+		feel_intensity = self._get_game_feel_intensity()
+
 		# Extract floor_num from current room if not provided
 		if floor_num is None:
 			import re
@@ -1386,21 +1773,31 @@ class CommandHandler:
 			floor_num = int(floor_match.group(1)) if floor_match else 1
 
 		if boss_dungeon:
-			combat = create_boss_instance(boss_dungeon, floor_num)
+			combat = create_boss_instance(boss_dungeon, floor_num, feel_intensity=feel_intensity)
 			if not combat:
 				return ""
 			self.engine.pending_combat = combat
-			intro = combat.intro_text if combat.intro_text else (
-				f"\n⚔️ A powerful {combat.enemy_name} blocks your path!\n"
-			)
+			if combat.intro_text:
+				intro = combat.intro_text
+			elif feel_intensity == "high":
+				intro = f"\n⚔️⚔️ A catastrophic presence rises before you: {combat.enemy_name}!\n"
+			elif feel_intensity == "low":
+				intro = f"\n⚔️ {combat.enemy_name} blocks your way.\n"
+			else:
+				intro = f"\n⚔️ A powerful {combat.enemy_name} blocks your path!\n"
 			return intro + get_combat_status(self.engine.player, combat)
 
 		if enemy_id:
-			combat = create_enemy_instance(enemy_id, floor_num=floor_num)
+			combat = create_enemy_instance(enemy_id, floor_num=floor_num, feel_intensity=feel_intensity)
 			if not combat:
 				return ""
 			self.engine.pending_combat = combat
-			result = f"\n⚔️ A {combat.enemy_name} appears!\n"
+			if feel_intensity == "high":
+				result = f"\n⚔️ A hostile {combat.enemy_name} lunges from the shadows!\n"
+			elif feel_intensity == "low":
+				result = f"\n⚔️ {combat.enemy_name} appears.\n"
+			else:
+				result = f"\n⚔️ A {combat.enemy_name} appears!\n"
 			result += f"  {combat.enemy_description}\n"
 			return result + get_combat_status(self.engine.player, combat)
 
@@ -1526,10 +1923,21 @@ class CommandHandler:
 			return "Combat system not available."
 
 		# Create CombatState from the pre-scaled data
-		combat = CombatState(enemy_data, is_boss=False, level=self.engine.player.stats.get("level", 1))
+		combat = CombatState(
+			enemy_data,
+			is_boss=False,
+			level=self.engine.player.stats.get("level", 1),
+			feel_intensity=self._get_game_feel_intensity(),
+		)
 		self.engine.pending_combat = combat
 
-		result = f"\n⚔️ A {combat.enemy_name} attacks!\n"
+		feel_intensity = getattr(combat, "feel_intensity", "normal")
+		if feel_intensity == "high":
+			result = f"\n⚔️ {combat.enemy_name} charges with brutal intent!\n"
+		elif feel_intensity == "low":
+			result = f"\n⚔️ {combat.enemy_name} attacks.\n"
+		else:
+			result = f"\n⚔️ A {combat.enemy_name} attacks!\n"
 		result += f"  {combat.enemy_description}\n"
 		return result + get_combat_status(self.engine.player, combat)
 
@@ -1602,7 +2010,7 @@ class CommandHandler:
 		# Show respawn room
 		dest = self.engine.get_room_data(respawn_room)
 		if dest:
-			result += dest.describe()
+			result += self._describe_room(dest)
 
 		return result
 
@@ -1679,19 +2087,48 @@ class CommandHandler:
 			return "You don't have any active abilities yet.\nUnlock active skills in your skill tree ('skills')."
 
 		cooldowns = self.engine.player.state.get("cooldowns", {})
+		in_combat = getattr(self.engine, 'pending_combat', None) is not None
+
+		cdr = float(self.engine.player.stats.get("cooldown_reduction", 0))
+		cdr_bonus = float(self.engine.player.stats.get("cooldown_reduction_bonus", 0))
+		if 0 < cdr < 1:
+			cdr *= 100.0
+		if 0 < cdr_bonus < 1:
+			cdr_bonus *= 100.0
+		total_cdr = max(0.0, min(60.0, cdr + cdr_bonus))
 
 		result = "\n" + "=" * 50 + "\n"
 		result += "  ACTIVE ABILITIES\n"
 		result += "=" * 50 + "\n\n"
+		if total_cdr > 0:
+			result += f"  Cooldown Reduction: {total_cdr:.0f}%\n\n"
 
 		for ab in abilities:
 			cd_remaining = cooldowns.get(ab["skill_id"], 0)
-			status = "READY" if cd_remaining == 0 else f"Cooldown: {cd_remaining} moves"
+			status = "READY" if cd_remaining == 0 else f"COOLDOWN: {cd_remaining} moves"
 			name = ab.get("name", "Unknown")
 			cmd_name = name.lower().replace(" ", "_")
+			effect = ab.get("effect", "")
+			is_combat = ab.get("combat", False)
+			usable_outside = effect in ("combat_heal", "buff_attack", "temp_defense", "heal")
+			base_cd = int(ab.get("cooldown", 0))
+			adj_cd = max(1, int(base_cd * (1.0 - total_cdr / 100.0) + 0.9999)) if base_cd > 0 else 0
 
-			result += f"  {name} [{status}]\n"
-			result += f"    Cooldown: {ab.get('cooldown', 0)} moves\n"
+			if is_combat and in_combat:
+				context = "Combat"
+			elif is_combat and not usable_outside:
+				context = "Combat only"
+			else:
+				context = "Anytime"
+
+			result += f"  {name} [{status}] [{context}]\n"
+			result += f"    Cooldown: {base_cd} moves"
+			if adj_cd and adj_cd != base_cd:
+				result += f" (adjusted: {adj_cd})"
+			result += "\n"
+			mana_cost = ab.get("mana_cost", ab.get("mana", None))
+			if mana_cost is not None:
+				result += f"    Mana Cost: {mana_cost}\n"
 			result += f"    Use: ability {cmd_name}\n\n"
 
 		result += "=" * 50 + "\n"
@@ -1764,9 +2201,21 @@ class CommandHandler:
 		newly_unlocked = check_achievements(self.engine.player)
 		if not newly_unlocked:
 			return ""
+		feel = self._get_game_feel_intensity()
 		result = ""
 		for ach_id, ach_data in newly_unlocked:
-			result += format_achievement_unlock(ach_id, ach_data)
+			if feel == "low":
+				name = ach_data.get("name", ach_id)
+				reward = ach_data.get("reward", "")
+				result += f"\n🏆 Achievement unlocked: {name}"
+				if reward:
+					result += f" ({reward})"
+				result += "\n"
+			elif feel == "high":
+				result += format_achievement_unlock(ach_id, ach_data)
+				result += "  The moment lingers - your legend is growing.\n"
+			else:
+				result += format_achievement_unlock(ach_id, ach_data)
 		return result
 
 	def _use_ability(self, ability_name):
@@ -1996,7 +2445,7 @@ class CommandHandler:
 				self.engine.player.current_room = new_room
 			room = self.engine.get_room_data(new_room)
 			if room:
-				parts.append(room.describe())
+				parts.append(self._describe_room(room))
 			else:
 				parts.append("[Room not found]")
 		# notify engine that inventory changed so UI can refresh
@@ -2216,7 +2665,7 @@ class CommandHandler:
 			transition_text = exit_info.get("transition_text")
 			if transition_text:
 				result = f"{transition_text}\n\n"
-				result += dest_room.describe()
+				result += self._describe_room(dest_room)
 				if trap_msg:
 					result += "\n" + trap_msg
 				if poison_msg:
@@ -2237,7 +2686,7 @@ class CommandHandler:
 				return result
 		
 		self._update_map_on_move(target_room_id)
-		result = dest_room.describe()
+		result = self._describe_room(dest_room)
 		if trap_msg:
 			result += "\n" + trap_msg
 		if poison_msg:
@@ -2295,7 +2744,7 @@ class CommandHandler:
 		result += "You have left the dungeon!\n"
 		result += "=" * 50 + "\n\n"
 		if dest:
-			result += dest.describe()
+			result += self._describe_room(dest)
 		return result
 
 	def _handle_boat_travel(self, exit_info):
@@ -2490,7 +2939,7 @@ class CommandHandler:
 				pass
 		
 		self._update_map_on_move(target)
-		result += dest_room.describe()
+		result += self._describe_room(dest_room)
 		if xp_msg:
 			result += xp_msg
 		
@@ -3204,7 +3653,7 @@ class CommandHandler:
 			dest_room = self.engine.get_room_data(target_room_id)
 			if dest_room:
 				self._update_map_on_move(target_room_id)
-				return dest_room.describe()
+				return self._describe_room(dest_room)
 			else:
 				return "[Room not found]"
 		return "There's nothing to enter here.\nTry: 'look' to see available exits."
@@ -3394,7 +3843,7 @@ Do you wish to enter? (yes/no)
 			# Get the room description (should always work now since rooms are pre-registered)
 			room = self.engine.get_room_data(entrance_room_id)
 			if room:
-				result += "\n" + room.describe()
+				result += "\n" + self._describe_room(room)
 			else:
 				# Last-resort fallback: build description from raw dungeon data
 				direct_room = floor_1_data.get("rooms", {}).get(entrance_room_id)
@@ -3537,7 +3986,7 @@ Do you wish to enter? (yes/no)
 			
 			room = self.engine.get_room_data(entrance_room_id)
 			if room:
-				result += "\n" + room.describe()
+				result += "\n" + self._describe_room(room)
 			
 			# Check for traps in entrance room
 			trap_msg = self._check_room_traps(entrance_room_id)
@@ -3603,6 +4052,7 @@ Do you wish to enter? (yes/no)
 	
 	def _describe_exits(self, room, location_type="wilderness"):
 		"""Format exit description based on location type."""
+		feel = self._get_game_feel_intensity()
 		exits = room.exits or {}
 		if not exits:
 			return "There are no exits here."
@@ -3627,18 +4077,39 @@ Do you wish to enter? (yes/no)
 					named.append(display)
 		
 		parts = []
+		if feel == "low":
+			labels = {
+				"travel": "Paths",
+				"compass": "Compass",
+				"exits": "Exits",
+				"also": "Also",
+			}
+		elif feel == "high":
+			labels = {
+				"travel": "You can set out toward",
+				"compass": "Cardinal routes open",
+				"exits": "Visible exits",
+				"also": "Beyond that, you can travel to",
+			}
+		else:
+			labels = {
+				"travel": "You can travel to",
+				"compass": "Compass directions",
+				"exits": "Exits",
+				"also": "You can also travel to",
+			}
 		
 		if location_type == "settlement" or location_type == "building":
 			if named:
-				parts.append(f"You can travel to: {', '.join(named)}")
+				parts.append(f"{labels['travel']}: {', '.join(named)}")
 			if directional:
-				parts.append(f"Compass directions: {', '.join(directional)}")
+				parts.append(f"{labels['compass']}: {', '.join(directional)}")
 		else:
 			# Wilderness style
 			if directional:
-				parts.append(f"Exits: {', '.join(directional)}")
+				parts.append(f"{labels['exits']}: {', '.join(directional)}")
 			if named:
-				parts.append(f"You can also travel to: {', '.join(named)}")
+				parts.append(f"{labels['also']}: {', '.join(named)}")
 		
 		if not parts:
 			return "There are no exits here."
@@ -3651,7 +4122,7 @@ Do you wish to enter? (yes/no)
 		room = self.engine.get_room_data(self.engine.player.current_room)
 		if not room:
 			return "[Current room not found]"
-		result = room.describe()
+		result = self._describe_room(room)
 		# Show visible overworld enemies
 		if OVERWORLD_AVAILABLE and self.engine.encounter_manager:
 			vis = self.engine.encounter_manager.get_visible_enemy_text(self.engine.player.current_room)
@@ -3971,6 +4442,7 @@ Do you wish to enter? (yes/no)
 		inv = self.engine.player.inventory
 		if not inv:
 			return "You are carrying nothing."
+		feel = self._get_game_feel_intensity()
 
 		# Categorize items
 		equipment_items = {}
@@ -4056,9 +4528,26 @@ Do you wish to enter? (yes/no)
 				result += f"    {name} x{qty}\n"
 
 		# Gold
-		gold = self.engine.player.state.get("gold", 0)
+		gold = self.engine.player.stats.get("gold", 0)
+
+		if feel == "low":
+			total_items = sum(int(v) for v in inv.values())
+			compact = "\nINVENTORY (COMPACT)\n"
+			compact += f"  Items: {total_items} total, {len(inv)} unique\n"
+			compact += f"  Gold: {gold}\n"
+			compact += "  Top carried:\n"
+			top = sorted(inv.items(), key=lambda kv: (-int(kv[1]), kv[0]))[:12]
+			for iid, qty in top:
+				compact += f"    - {_nice(iid)} x{qty}\n"
+			if len(inv) > 12:
+				compact += f"    ... and {len(inv)-12} more\n"
+			return compact
+
 		result += f"\n  💰 Gold: {gold}\n"
-		result += "\n  Tip: 'inspect <item>' for details\n"
+		if feel == "high":
+			result += "\n  Tip: 'inspect <item>' for details. Curated gear wins fights before they start.\n"
+		else:
+			result += "\n  Tip: 'inspect <item>' for details\n"
 		result += "═" * 55 + "\n"
 		return result
 
@@ -4086,7 +4575,11 @@ Do you wish to enter? (yes/no)
 		return False
 
 	def _help(self):
-		return "Commands: go [dir], look, collect [item], drop [item], inventory, save, load, quit\nRooms may also define custom actions (try commands specific to the room)."
+		return (
+			"Commands: go [dir], look, collect [item], drop [item], inventory, save, load, quit, "
+			"skills, equipment, cosmetics, transmog <target> <skin>, artifact, prestige, faction, pet, party\n"
+			"Rooms may also define custom actions (try commands specific to the room)."
+		)
 
 	def _examine(self, target):
 		"""Examine/inspect an object or location. Handles secret room discovery and provides detailed feedback."""
@@ -5273,7 +5766,7 @@ Do you wish to enter? (yes/no)
 		if not ok:
 			return msg
 		
-		self.engine.shop_ui.show_shop_info()
+		self.engine.shop_ui.show_shop_info(self._get_game_feel_intensity())
 		return ""
 
 	# ── Bank of Estoria helpers ────────────────────────────────────────────────
@@ -5461,11 +5954,33 @@ Do you wish to enter? (yes/no)
 		cr = self.engine.player.current_room
 		in_dungeon = (cr.startswith("dungeon_") and "_floor" in cr) or cr in self.engine.fixed_dungeon_room_ids
 		in_shop = False
+		feel = self._get_game_feel_intensity()
 		
 		if isinstance(current_room, dict):
 			in_shop = current_room.get("shop", False)
 		elif hasattr(current_room, "shop"):
 			in_shop = current_room.shop
+
+		if feel == "low":
+			lines = [
+				"\nCOMMANDS (COMPACT)",
+				"- Movement: go <dir>, n/s/e/w, enter, leave",
+				"- Explore: look, inspect <target>, search, fight",
+				"- Inventory: inventory, take <item>, drop <item>, use <item>",
+				"- System: help, journal, recipes, save, quit",
+			]
+			if PROGRESSION_AVAILABLE:
+				lines.append("- Progression: stats, skills, abilities, ability <name>, prestige, artifact, faction, pet, party")
+			if EQUIPMENT_AVAILABLE:
+				lines.append("- Equipment: equip <item>, unequip <slot/item>, equipment")
+			if NPC_AVAILABLE and hasattr(current_room, 'npcs') and current_room.npcs:
+				lines.append("- NPC: talk to <name>, gift <npc> <item>, reputation")
+			if in_dungeon:
+				lines.append("- Dungeon: open chest, disarm, go secret, craft/forge, use altar")
+			if SHOP_AVAILABLE and in_shop:
+				lines.append("- Shop: shop browse, shop buy <item>, shop sell <item> <price>")
+			lines.append("Type 'look' for local context.")
+			return "\n".join(lines) + "\n"
 		
 		result = """
 ╔════════════════════════════════════════════════════════════════╗
@@ -5492,6 +6007,7 @@ Do you wish to enter? (yes/no)
 ║    close map            - Close map window                     ║
 ║    rooms / areas        - Browse all game areas                ║
 ║    bestiary / monsters  - Browse all enemies                   ║
+║    party                - Open party/faction management window ║
 ║                                                                ║
 ║  [INVENTORY]                                                   ║
 ║ ---------------------------------------------------------------║
@@ -5606,6 +6122,22 @@ Do you wish to enter? (yes/no)
 ║    skills / skilltree   - Open graphical skill tree            ║
 ║    abilities / ab       - List your active abilities           ║
 ║    ability <name>       - Use an active ability                ║
+║    prestige / ascend    - Ascend at max level for meta bonuses ║
+║    prestige status      - View ascension progress              ║
+║    artifact             - Show equipped artifact and owned list ║
+║    artifact status      - Show artifact details                ║
+║    artifact equip <id>  - Equip artifact from inventory         ║
+║    artifact unequip     - Remove equipped artifact             ║
+║    faction              - Show faction status                   ║
+║    faction join <id>    - Join a faction                        ║
+║    faction leave        - Leave current faction                 ║
+║    faction window       - Open party/faction management window ║
+║    pet                  - Show pet companions                   ║
+║    pet inspect <id>     - Show pet stats and ability roadmap    ║
+║    pet adopt <id>       - Adopt a companion (costs gold)       ║
+║    pet activate <id>    - Set active companion                 ║
+║    pet feed             - Feed active companion (gold + cooldown) ║
+║    pet window           - Open party/faction management window ║
 ║                                                                ║
 """
 		
@@ -5616,6 +6148,8 @@ Do you wish to enter? (yes/no)
 ║    equip <item>         - Equip a weapon/armor/accessory       ║
 ║    unequip <slot/item>  - Remove equipment (e.g. weapon)       ║
 ║    equipment            - View current equipment               ║
+║    transmog <target> <skin> - Apply cosmetic skin override      ║
+║    cosmetics            - View unlocked cosmetic skins          ║
 ║    enchant              - Enchant equipment at an altar        ║
 ║                                                                ║
 """
@@ -5641,6 +6175,9 @@ Do you wish to enter? (yes/no)
 ║                                                                ║
 ╚════════════════════════════════════════════════════════════════╝
 """
+
+		if feel == "high":
+			result += "\n[HIGH INTENSITY] Pro tip: chain momentum in combat and push quest turn-ins between fights for constant power spikes.\n"
 		
 		# Show contextual hints
 		hints = self._get_contextual_hints()
@@ -5653,10 +6190,62 @@ Do you wish to enter? (yes/no)
 		
 		return result
 
+	def _preview_game_feel(self, level=None):
+		"""Preview output style for low/normal/high without persisting config changes."""
+		levels = ["low", "normal", "high"]
+		if level:
+			lvl = str(level).strip().lower()
+			if lvl not in levels:
+				return "Usage: feel preview [low|normal|high]"
+			levels = [lvl]
+
+		if not self.engine.player or not hasattr(self.engine.player, "state"):
+			return "No game in progress."
+
+		room = self.engine.get_room_data(self.engine.player.current_room)
+		if not room:
+			return "Current room not found."
+
+		def _trim(text, max_lines=10):
+			lines = (text or "").splitlines()
+			if len(lines) <= max_lines:
+				return "\n".join(lines)
+			return "\n".join(lines[:max_lines]) + "\n..."
+
+		prev_override = self.engine.player.state.get("game_feel_preview_override")
+		result = "\n" + "=" * 68 + "\n"
+		result += "  GAME FEEL PREVIEW\n"
+		result += "=" * 68 + "\n"
+		result += "This preview does not change your saved setting.\n"
+
+		for lv in levels:
+			self.engine.player.state["game_feel_preview_override"] = lv
+			result += "\n" + "-" * 68 + "\n"
+			result += f"[{lv.upper()}]\n"
+			result += "-" * 68 + "\n"
+			result += "Room sample:\n"
+			result += _trim(room.describe(feel_intensity=lv), 8) + "\n"
+
+			result += "\nCommands sample:\n"
+			result += _trim(self._show_commands(), 9) + "\n"
+
+			if QUEST_AVAILABLE and self.engine.quest_manager:
+				result += "\nJournal sample:\n"
+				result += _trim(self.engine.quest_manager.get_journal_text(), 10) + "\n"
+
+		if prev_override in ("low", "normal", "high"):
+			self.engine.player.state["game_feel_preview_override"] = prev_override
+		else:
+			self.engine.player.state.pop("game_feel_preview_override", None)
+
+		result += "\nUse settings -> Gameplay -> Game Feel Intensity to apply permanently.\n"
+		return result
+
 	def _show_recipes(self):
 		"""Display all learned crafting recipes."""
 		if not CRAFTING_AVAILABLE or not self.engine.crafting_system:
 			return "The crafting system is not available."
+		feel = self._get_game_feel_intensity()
 		
 		# Get known recipes
 		known_recipe_ids = self.engine.crafting_system.get_known_recipes()
@@ -5669,6 +6258,17 @@ Do you wish to enter? (yes/no)
 			from crafting_system import RECIPE_DATABASE, STATION_NAMES
 		except ImportError:
 			return "Could not load recipe database."
+
+		if feel == "low":
+			result = "\nRECIPES (COMPACT)\n"
+			result += f"Known: {len(known_recipe_ids)}\n"
+			for rid in known_recipe_ids:
+				recipe = RECIPE_DATABASE.get(rid)
+				if not recipe:
+					continue
+				station = recipe.get("station", "any")
+				result += f"- {recipe.get('name', rid)} [{station}]\n"
+			return result
 		
 		result = "\n" + "=" * 65 + "\n"
 		result += "  📚 KNOWN CRAFTING RECIPES\n"
@@ -5701,7 +6301,10 @@ Do you wish to enter? (yes/no)
 			result += f"    {recipe['description']}\n\n"
 		
 		result += "=" * 65 + "\n"
-		result += "Use 'craft' command at a crafting station to make items.\n"
+		if feel == "high":
+			result += "Use 'craft' at a station and chase advanced chains to unlock the strongest branches.\n"
+		else:
+			result += "Use 'craft' command at a crafting station to make items.\n"
 		result += "=" * 65 + "\n"
 		
 		return result
@@ -5814,6 +6417,8 @@ class GameEngine:
 		
 		# Track pending class selection (progression system)
 		self.pending_class_selection = False
+		# Track pending prestige/ascension confirmation
+		self.pending_prestige_confirm = False
 		# Track pending quest action (accept/decline)
 		self.pending_quest_action = None
 		# Track pending boat travel (island unlock confirmation)
@@ -5945,6 +6550,28 @@ class GameEngine:
 		self.load_world()
 		self._ensure_home_room_registered()
 		# Quit handler is managed by pygame_ui.py
+
+	def get_game_feel_intensity(self):
+		"""Resolve current gameplay intensity from config and mirror it into player state."""
+		if self.player and hasattr(self.player, "state"):
+			override = self.player.state.get("game_feel_preview_override")
+			if override in ("low", "normal", "high"):
+				return override
+
+		level = "normal"
+		cfg = getattr(getattr(self, "gui", None), "config", None)
+		if isinstance(cfg, dict):
+			gameplay = cfg.get("gameplay", {})
+			if isinstance(gameplay, dict):
+				level = gameplay.get("game_feel_intensity", "normal")
+
+		level = str(level or "normal").strip().lower()
+		if level not in ("low", "normal", "high"):
+			level = "normal"
+
+		if self.player and hasattr(self.player, "state"):
+			self.player.state["game_feel_intensity"] = level
+		return level
 
 	def cleanup_dungeon(self):
 		"""
@@ -6236,7 +6863,7 @@ class GameEngine:
 		dest = self.get_room_data(target)
 		if not dest:
 			return "You leave your home, but your destination feels unstable."
-		return "You leave your pocket dimension.\n\n" + dest.describe()
+		return "You leave your pocket dimension.\n\n" + dest.describe(feel_intensity=self.get_game_feel_intensity())
 
 	def place_item_in_home(self, item_id, x=None, y=None):
 		if not HOME_AVAILABLE or not self.player:
@@ -6708,7 +7335,7 @@ class GameEngine:
 			out.append("")
 			out.append(get_class_selection_text())
 		else:
-			out.append(self.rooms[self.player.current_room].describe())
+			out.append(self.rooms[self.player.current_room].describe(feel_intensity=self.get_game_feel_intensity()))
 		return "\n".join(out)
 
 	def save_game(self, path=SAVE_FILE):
@@ -6970,6 +7597,32 @@ class GameEngine:
 				self.player.state["cooldowns"] = {}
 			if "active_effects" not in self.player.state:
 				self.player.state["active_effects"] = {}
+			if "prestige_level" not in self.player.state:
+				self.player.state["prestige_level"] = 0
+			if "ascension_tokens" not in self.player.state:
+				self.player.state["ascension_tokens"] = 0
+			if "prestige_bonuses" not in self.player.state:
+				self.player.state["prestige_bonuses"] = {}
+			if "prestige_runs" not in self.player.state:
+				self.player.state["prestige_runs"] = 0
+			if "prestige_history" not in self.player.state:
+				self.player.state["prestige_history"] = []
+			if "prestige_xp_multiplier" not in self.player.stats:
+				self.player.stats["prestige_xp_multiplier"] = 1.0
+			if "artifact_slot" not in self.player.state:
+				self.player.state["artifact_slot"] = None
+			if "faction_membership" not in self.player.state:
+				self.player.state["faction_membership"] = None
+			if "faction_xp" not in self.player.state:
+				self.player.state["faction_xp"] = {}
+			if "faction_rank" not in self.player.state:
+				self.player.state["faction_rank"] = {}
+			if "pets" not in self.player.state:
+				self.player.state["pets"] = {}
+			if "active_pet" not in self.player.state:
+				self.player.state["active_pet"] = None
+			if "active_pet_bonus_applied" not in self.player.state:
+				self.player.state["active_pet_bonus_applied"] = {}
 			# If class not chosen yet, prompt selection
 			if self.player.stats.get("class", "none") == "none":
 				self.pending_class_selection = True
@@ -6988,6 +7641,14 @@ class GameEngine:
 				for slot in EQUIPMENT_SLOTS:
 					if slot not in self.player.state["equipment"]:
 						self.player.state["equipment"][slot] = None
+			if "equipment_appearance" not in self.player.state or not isinstance(self.player.state.get("equipment_appearance"), dict):
+				self.player.state["equipment_appearance"] = {slot: None for slot in EQUIPMENT_SLOTS}
+			else:
+				for slot in EQUIPMENT_SLOTS:
+					if slot not in self.player.state["equipment_appearance"]:
+						self.player.state["equipment_appearance"][slot] = None
+			if "unlocked_cosmetics" not in self.player.state or not isinstance(self.player.state.get("unlocked_cosmetics"), list):
+				self.player.state["unlocked_cosmetics"] = ["veteran_polish"]
 		# Migrate old saves: add cleared rooms tracking if missing
 		if self.player and "cleared_rooms" not in self.player.state:
 			self.player.state["cleared_rooms"] = []
@@ -7057,12 +7718,12 @@ class GameEngine:
 		# If player's current room exists in world, show its description; otherwise choose a fallback
 		cur = getattr(self.player, "current_room", None)
 		if cur and cur in self.rooms:
-			out.append(self.rooms[cur].describe())
+			out.append(self.rooms[cur].describe(feel_intensity=self.get_game_feel_intensity()))
 		else:
 			# fallback to engine start room
 			if self.start_room and self.start_room in self.rooms:
 				self.player.current_room = self.start_room
-				out.append(self.rooms[self.start_room].describe())
+				out.append(self.rooms[self.start_room].describe(feel_intensity=self.get_game_feel_intensity()))
 			else:
 				out.append("Loaded game, but current room not found in world.")
 		# Show class selection if needed for migrated save

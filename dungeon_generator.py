@@ -243,6 +243,39 @@ ITEM_DATABASE = {
     "enchanted_cloak_fragment": {"value": 135, "tier": "high"},
 }
 
+# Dungeon-specific loot identity (fallback to generic if unknown)
+DUNGEON_THEME_BY_ID = {
+    "crystal_caverns": "crystal",
+    "frozen_spire": "crystal",
+    "iron_halls": "iron",
+    "verdant_labyrinth": "iron",
+    "shadow_depths": "shadow",
+    "sunken_catacombs": "catacombs",
+}
+
+DUNGEON_THEMED_LOOT = {
+    "crystal": {
+        "low": ["torch", "empty_bottle", "old_boot", "rat_pelt", "cracked_skull"],
+        "medium": ["enchanted_candle", "worn_map", "silver_ring", "coin_pouch", "lockpick_set"],
+        "high": ["rare_gemstone", "magic_amulet", "spell_scroll", "enchanted_ring", "platinum_bar"],
+    },
+    "iron": {
+        "low": ["rusty_dagger", "broken_chain", "bent_fork", "torch", "torn_cloth"],
+        "medium": ["iron_sword", "craftsman_hammer", "steel_dagger", "iron_key", "rope_coil"],
+        "high": ["steel_longsword", "masterwork_shield", "gold_chalice", "ancient_tome", "royal_signet"],
+    },
+    "shadow": {
+        "low": ["torn_cloth", "cracked_skull", "empty_bottle", "broken_chain", "moldy_bread"],
+        "medium": ["enchanted_candle", "ancient_coin", "lockpick_set", "worn_map", "silver_ring"],
+        "high": ["ancient_tome", "enchanted_cloak_fragment", "magic_amulet", "spell_scroll", "rare_gemstone"],
+    },
+    "catacombs": {
+        "low": ["cracked_skull", "broken_chain", "old_boot", "moldy_bread", "torch"],
+        "medium": ["ancient_coin", "iron_key", "healing_salve", "coin_pouch", "worn_map"],
+        "high": ["ancient_tome", "gold_chalice", "royal_signet", "healing_potion", "platinum_bar"],
+    },
+}
+
 
 # ====================================================================
 #  Dungeon Generator
@@ -289,7 +322,7 @@ class DungeonGenerator:
 
     # ── public entry-point ──────────────────────────────────────────
 
-    def generate_complete_dungeon(self, seed=None, entrance_room_id=None):
+    def generate_complete_dungeon(self, seed=None, entrance_room_id=None, dungeon_id=None):
         """
         Generate an entire multi-floor dungeon.
 
@@ -297,6 +330,7 @@ class DungeonGenerator:
             seed: Random seed.  Falls back to the constructor seed if None.
             entrance_room_id: The overworld room ID to exit to (e.g. 'dungeon_forest_entrance').
                               Falls back to 'dungeon_forest_entrance' if None.
+            dungeon_id: Optional fixed dungeon/template ID used for themed loot.
 
         Returns:
             dict: Complete dungeon data.
@@ -314,7 +348,10 @@ class DungeonGenerator:
             "generated_at": datetime.datetime.now().isoformat(),
             "num_floors": num_floors,
             "floors": {},
+            "dungeon_id": dungeon_id,
         }
+
+        dungeon_theme = DUNGEON_THEME_BY_ID.get(dungeon_id)
 
         # Determine room counts per floor (MUCH larger)
         rooms_per_floor = {}
@@ -335,7 +372,7 @@ class DungeonGenerator:
             print(f"[DungeonGenerator] Floor {floor_num}: {num_rooms} rooms (final={is_final})")
 
             floor_data = self._generate_floor(
-                floor_num, num_rooms, seed, is_final, num_floors
+                floor_num, num_rooms, seed, is_final, num_floors, dungeon_theme=dungeon_theme
             )
             dungeon_data["floors"][floor_num] = floor_data
 
@@ -350,7 +387,7 @@ class DungeonGenerator:
 
     # ── floor generation ────────────────────────────────────────────
 
-    def _generate_floor(self, floor_number, num_rooms, seed, is_final, total_floors):
+    def _generate_floor(self, floor_number, num_rooms, seed, is_final, total_floors, dungeon_theme=None):
         """Generate a single floor with rooms, layout, and traps."""
 
         quality_weights = {
@@ -379,7 +416,7 @@ class DungeonGenerator:
                 weights=[quality_weights["low"], quality_weights["medium"], quality_weights["high"]],
             )[0]
             room_type = self._select_room_type(quality)
-            room = self._create_room(room_id, room_type, quality, floor_number)
+            room = self._create_room(room_id, room_type, quality, floor_number, dungeon_theme=dungeon_theme)
             floor_data["rooms"][room_id] = room
 
         room_ids = list(floor_data["rooms"].keys())
@@ -875,7 +912,7 @@ class DungeonGenerator:
             return random.choice(self.medium_quality_rooms)
         return random.choice(self.low_quality_rooms)
 
-    def _create_room(self, room_id, room_type, quality, floor_number):
+    def _create_room(self, room_id, room_type, quality, floor_number, dungeon_theme=None):
         template = ROOM_TEMPLATES.get(room_type, ROOM_TEMPLATES["library"])
 
         room = {
@@ -894,18 +931,37 @@ class DungeonGenerator:
             "location_type": "building",
         }
 
-        room = self._populate_room_loot(room, quality, floor_number, template)
-        room = self._maybe_spawn_chest(room, template["chest_spawn_chance"], floor_number)
+        room = self._populate_room_loot(room, quality, floor_number, template, dungeon_theme=dungeon_theme)
+        room = self._maybe_spawn_chest(room, template["chest_spawn_chance"], floor_number, dungeon_theme=dungeon_theme)
         return room
 
     # ── loot generation ─────────────────────────────────────────────
 
-    def _populate_room_loot(self, room, quality, floor_number, template):
-        loot_pools = {
-            "low": [k for k, v in ITEM_DATABASE.items() if v["tier"] == "low"],
-            "medium": [k for k, v in ITEM_DATABASE.items() if v["tier"] == "medium"],
-            "high": [k for k, v in ITEM_DATABASE.items() if v["tier"] == "high"],
-        }
+    def _build_loot_pools(self, dungeon_theme=None, narrow=False):
+        themed = DUNGEON_THEMED_LOOT.get(dungeon_theme)
+        if themed:
+            pools = {
+                "low": list(themed.get("low", [])),
+                "medium": list(themed.get("medium", [])),
+                "high": list(themed.get("high", [])),
+            }
+        else:
+            pools = {
+                "low": [k for k, v in ITEM_DATABASE.items() if v["tier"] == "low"],
+                "medium": [k for k, v in ITEM_DATABASE.items() if v["tier"] == "medium"],
+                "high": [k for k, v in ITEM_DATABASE.items() if v["tier"] == "high"],
+            }
+
+        # Ensure all pools can fall back safely.
+        for tier in ("low", "medium", "high"):
+            if not pools[tier]:
+                pools[tier] = [k for k, v in ITEM_DATABASE.items() if v["tier"] == tier]
+            if narrow:
+                pools[tier] = pools[tier][:5]
+        return pools
+
+    def _populate_room_loot(self, room, quality, floor_number, template, dungeon_theme=None):
+        loot_pools = self._build_loot_pools(dungeon_theme=dungeon_theme)
 
         depth_bonus = floor_number - 1
         item_range = template.get("item_spawn_count", (1, 3))
@@ -925,7 +981,7 @@ class DungeonGenerator:
 
         return room
 
-    def _maybe_spawn_chest(self, room, base_chance, floor_number):
+    def _maybe_spawn_chest(self, room, base_chance, floor_number, dungeon_theme=None):
         adjusted = base_chance * (1 + (floor_number - 1) * 0.3)
         if random.random() >= adjusted:
             return room
@@ -940,22 +996,18 @@ class DungeonGenerator:
         room["chests"].append({
             "type": ct,
             "opened": False,
-            "contents": self._generate_chest_contents(ct, floor_number),
+            "contents": self._generate_chest_contents(ct, floor_number, dungeon_theme=dungeon_theme),
         })
         return room
 
-    def _generate_chest_contents(self, chest_type, floor_number):
+    def _generate_chest_contents(self, chest_type, floor_number, dungeon_theme=None):
         cd = CHEST_TEMPLATES.get(chest_type, CHEST_TEMPLATES["wooden_chest"])
         num_items = random.randint(cd["item_count"][0], cd["item_count"][1])
         gold = random.randint(cd["gold_bonus"][0], cd["gold_bonus"][1])
         gold = int(gold * (1 + (floor_number - 1) * 0.4))
 
         rarity_to_pool = {"common": "low", "uncommon": "medium", "rare": "high", "epic": "high"}
-        loot_pools = {
-            "low": [k for k, v in ITEM_DATABASE.items() if v["tier"] == "low"][:5],
-            "medium": [k for k, v in ITEM_DATABASE.items() if v["tier"] == "medium"][:5],
-            "high": [k for k, v in ITEM_DATABASE.items() if v["tier"] == "high"][:5],
-        }
+        loot_pools = self._build_loot_pools(dungeon_theme=dungeon_theme, narrow=True)
 
         contents = {"items": {}, "gold": gold}
         weights = cd["rarity_weights"]

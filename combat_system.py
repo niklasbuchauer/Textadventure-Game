@@ -17,6 +17,14 @@ Features:
 
 import random
 
+try:
+    from artifact_system import get_artifact_combat_effects, ARTIFACT_DATABASE
+except Exception:
+    def get_artifact_combat_effects(_player):
+        return {}, None
+
+    ARTIFACT_DATABASE = {}
+
 # =====================================================================
 # LEVEL SYSTEM
 # =====================================================================
@@ -156,6 +164,62 @@ STATUS_EFFECTS = {
         "message_expire": "thaws out.",
     },
 }
+
+DAMAGE_TAG_LABELS = {
+    "physical": "Physical",
+    "poison": "Poison",
+    "burn": "Fire",
+    "bleed": "Bleed",
+    "frost": "Frost",
+    "arcane": "Arcane",
+}
+
+GAME_FEEL_PROFILES = {
+    "low": {
+        "momentum_per_hit": 4,
+        "momentum_cap": 30,
+        "momentum_max_streak": 8,
+        "enemy_damage_mult": 0.92,
+        "enemy_bar_len": 16,
+        "player_bar_len": 12,
+        "show_weakness_hints": False,
+        "detailed_hotbar": False,
+    },
+    "normal": {
+        "momentum_per_hit": 5,
+        "momentum_cap": 50,
+        "momentum_max_streak": 10,
+        "enemy_damage_mult": 1.0,
+        "enemy_bar_len": 20,
+        "player_bar_len": 15,
+        "show_weakness_hints": True,
+        "detailed_hotbar": True,
+    },
+    "high": {
+        "momentum_per_hit": 6,
+        "momentum_cap": 70,
+        "momentum_max_streak": 12,
+        "enemy_damage_mult": 1.08,
+        "enemy_bar_len": 24,
+        "player_bar_len": 18,
+        "show_weakness_hints": True,
+        "detailed_hotbar": True,
+    },
+}
+
+
+def _normalize_feel_intensity(value):
+    """Normalize game feel intensity to one of: low, normal, high."""
+    normalized = str(value or "normal").strip().lower()
+    if normalized in GAME_FEEL_PROFILES:
+        return normalized
+    return "normal"
+
+
+def _get_feel_profile(combat):
+    """Get combat feel profile for current encounter."""
+    intensity = _normalize_feel_intensity(getattr(combat, "feel_intensity", "normal"))
+    return GAME_FEEL_PROFILES[intensity]
 
 
 # =====================================================================
@@ -828,7 +892,7 @@ ENEMY_SPAWN_CHANCE = {
 class CombatState:
     """Tracks the state of an active combat encounter."""
 
-    def __init__(self, enemy_data, is_boss=False, is_mini_boss=False, level=1):
+    def __init__(self, enemy_data, is_boss=False, is_mini_boss=False, level=1, feel_intensity="normal"):
         self.enemy_id = enemy_data.get("id", "unknown")
         self.enemy_name = enemy_data["name"]
         self.enemy_description = enemy_data["description"]
@@ -848,6 +912,7 @@ class CombatState:
         self.player_defending = False
         self.enemy_buff_defense = 0
         self.player_fled = False
+        self.feel_intensity = _normalize_feel_intensity(feel_intensity)
 
         # Status effects: list of {"type": "poison", "dmg": 4, "duration": 3}
         self.player_statuses = []
@@ -856,9 +921,34 @@ class CombatState:
         # Adrenaline buff from blocking big hits
         self.player_adrenaline = 0  # bonus damage next attack
 
+        # Momentum from consecutive basic attacks
+        self.attack_streak = 0
+
+        # Tactical affinity system for enemy weaknesses/resistances
+        self.enemy_vulnerability, self.enemy_resistance = self._roll_enemy_affinities()
+        self.last_damage_note = ""
+
         # Boss phase system (phase 1 = full health, 2 = below 50%, 3 = below 25%)
         self.boss_phase = 1
         self.phase_transitions_done = set()  # tracks which phases have triggered
+
+    def _roll_enemy_affinities(self):
+        """Pick one vulnerability and one resistance to create tactical variety."""
+        tags = ["physical", "poison", "burn", "bleed", "frost", "arcane"]
+        eid = (self.enemy_id or "").lower()
+
+        if "frost" in eid or "ice" in eid:
+            return "burn", "frost"
+        if "fire" in eid or "magma" in eid or "flame" in eid:
+            return "frost", "burn"
+        if "spider" in eid or "snake" in eid or "viper" in eid:
+            return "physical", "poison"
+        if "skeleton" in eid or "spirit" in eid or "wraith" in eid:
+            return "arcane", "bleed"
+
+        vulnerability = random.choice(tags)
+        resistance = random.choice([t for t in tags if t != vulnerability])
+        return vulnerability, resistance
 
     def to_dict(self):
         return {
@@ -881,7 +971,11 @@ class CombatState:
             "enemy_buff_defense": self.enemy_buff_defense,
             "player_statuses": self.player_statuses,
             "enemy_statuses": self.enemy_statuses,
+            "feel_intensity": getattr(self, "feel_intensity", "normal"),
             "player_adrenaline": self.player_adrenaline,
+            "attack_streak": getattr(self, "attack_streak", 0),
+            "enemy_vulnerability": getattr(self, "enemy_vulnerability", "physical"),
+            "enemy_resistance": getattr(self, "enemy_resistance", "bleed"),
             "boss_phase": getattr(self, 'boss_phase', 1),
             "phase_transitions_done": list(getattr(self, 'phase_transitions_done', set())),
         }
@@ -908,9 +1002,14 @@ class CombatState:
         cs.player_defending = data.get("player_defending", False)
         cs.enemy_buff_defense = data.get("enemy_buff_defense", 0)
         cs.player_fled = False
+        cs.feel_intensity = _normalize_feel_intensity(data.get("feel_intensity", "normal"))
         cs.player_statuses = data.get("player_statuses", [])
         cs.enemy_statuses = data.get("enemy_statuses", [])
         cs.player_adrenaline = data.get("player_adrenaline", 0)
+        cs.attack_streak = data.get("attack_streak", 0)
+        cs.enemy_vulnerability = data.get("enemy_vulnerability", "physical")
+        cs.enemy_resistance = data.get("enemy_resistance", "bleed")
+        cs.last_damage_note = ""
         cs.boss_phase = data.get("boss_phase", 1)
         cs.phase_transitions_done = set(data.get("phase_transitions_done", []))
         return cs
@@ -930,14 +1029,33 @@ def calculate_crit(player):
     perc = player.stats.get("perception", 0)
     bonus = player.stats.get("crit_chance_bonus", 0)
 
-    crit_chance = min(0.50, 0.05 + dex * 0.02 + perc * 0.01 + bonus)
+    artifact_fx, _artifact_id = get_artifact_combat_effects(player)
+    crit_bonus = float(artifact_fx.get("crit_chance_bonus", 0.0))
+    crit_mult_bonus = float(artifact_fx.get("crit_damage_bonus", 0.0))
+
+    crit_chance = min(0.60, 0.05 + dex * 0.02 + perc * 0.01 + bonus + crit_bonus)
 
     if random.random() < crit_chance:
-        return True, 1.8
+        return True, 1.8 + crit_mult_bonus
     return False, 1.0
 
 
-def calculate_player_damage(player, combat, multiplier=1.0):
+def _get_affinity_damage_bonus(combat, damage_tag):
+    """Return (multiplier, note) for vulnerability/resistance interactions."""
+    if not damage_tag:
+        return 1.0, ""
+
+    vulnerability = getattr(combat, "enemy_vulnerability", None)
+    resistance = getattr(combat, "enemy_resistance", None)
+
+    if damage_tag == vulnerability:
+        return 1.35, "✨ Weakness exploited!"
+    if damage_tag == resistance:
+        return 0.75, "🛡️ Enemy resisted the hit!"
+    return 1.0, ""
+
+
+def calculate_player_damage(player, combat, multiplier=1.0, damage_tag="physical"):
     """
     Calculate damage the player deals to the enemy.
     Strength determines base damage with some randomness.
@@ -951,6 +1069,22 @@ def calculate_player_damage(player, combat, multiplier=1.0):
     # Apply multiplier (from abilities, crits, etc.)
     raw_damage = int(raw_damage * multiplier)
 
+    # Affinity interaction (weakness / resistance)
+    affinity_mult, note = _get_affinity_damage_bonus(combat, damage_tag)
+    raw_damage = int(raw_damage * affinity_mult)
+    note_parts = [note] if note else []
+
+    # Artifact outgoing modifiers
+    artifact_fx, artifact_id = get_artifact_combat_effects(player)
+    outgoing_mult = float(artifact_fx.get("outgoing_mult", 1.0))
+    tag_mult = float(artifact_fx.get("tag_multipliers", {}).get(damage_tag, 1.0))
+    artifact_mult = max(0.1, outgoing_mult * tag_mult)
+    raw_damage = int(raw_damage * artifact_mult)
+
+    if artifact_id and artifact_mult > 1.001:
+        aname = ARTIFACT_DATABASE.get(artifact_id, {}).get("name", artifact_id.replace("_", " ").title())
+        note_parts.append(f"{aname} amplifies your strike.")
+
     # Apply adrenaline bonus
     if combat.player_adrenaline > 0:
         raw_damage += combat.player_adrenaline
@@ -960,6 +1094,20 @@ def calculate_player_damage(player, combat, multiplier=1.0):
     effective_defense = combat.defense + combat.enemy_buff_defense
     reduction = effective_defense * 0.04
     damage = max(1, int(raw_damage * max(0.20, 1 - reduction)))
+
+    # Artifact lifesteal from dealt damage.
+    lifesteal_pct = float(artifact_fx.get("lifesteal_pct", 0.0))
+    if lifesteal_pct > 0 and damage > 0:
+        heal = int(max(0, damage * lifesteal_pct))
+        if heal > 0:
+            hp = player.stats.get("health", 0)
+            hp_max = player.stats.get("health_max", 100)
+            actual = min(heal, max(0, hp_max - hp))
+            if actual > 0:
+                player.stats["health"] = hp + actual
+                note_parts.append(f"You siphon {actual} HP.")
+
+    combat.last_damage_note = " ".join(p for p in note_parts if p)
 
     return damage
 
@@ -990,6 +1138,15 @@ def calculate_enemy_damage(player, combat):
     # Defending halves damage
     if combat.player_defending:
         damage = max(1, damage // 2)
+
+    # Artifact incoming modifiers
+    artifact_fx, _artifact_id = get_artifact_combat_effects(player)
+    incoming_mult = float(artifact_fx.get("incoming_mult", 1.0))
+    damage = max(1, int(damage * max(0.25, incoming_mult)))
+
+    # Intensity scales perceived combat pressure.
+    feel_profile = _get_feel_profile(combat)
+    damage = max(1, int(damage * feel_profile.get("enemy_damage_mult", 1.0)))
 
     return damage
 
@@ -1336,23 +1493,48 @@ def process_player_attack(player, combat):
         player.stats["health"] = player.stats.get("health", 100) - player_dot_dmg
 
     if player_stunned:
+        combat.attack_streak = 0
         result += "\n  You are stunned and cannot attack this turn!"
         # Enemy still attacks
         enemy_result = _enemy_turn(player, combat)
         result += enemy_result
         return result + "\n"
 
+    feel_profile = _get_feel_profile(combat)
+
+    # Consecutive basic attacks build momentum, scaled by feel intensity.
+    per_hit = int(feel_profile.get("momentum_per_hit", 5))
+    streak_cap = int(feel_profile.get("momentum_max_streak", 10))
+    bonus_cap = int(feel_profile.get("momentum_cap", 50))
+    combat.attack_streak = min(streak_cap, getattr(combat, "attack_streak", 0) + 1)
+    streak_bonus_pct = min(bonus_cap, combat.attack_streak * per_hit)
+    streak_mult = 1.0 + (streak_bonus_pct / 100.0)
+
     # Check for critical hit
     is_crit, crit_mult = calculate_crit(player)
 
     # Player attacks
-    player_dmg = calculate_player_damage(player, combat, multiplier=crit_mult)
+    player_dmg = calculate_player_damage(
+        player,
+        combat,
+        multiplier=crit_mult * streak_mult,
+        damage_tag="physical",
+    )
     combat.hp -= player_dmg
 
     if is_crit:
         result += f"\n  ⚔️ CRITICAL HIT! You strike the {combat.enemy_name} for {player_dmg} damage!"
     else:
         result += f"\n  ⚔️ You strike the {combat.enemy_name} for {player_dmg} damage!"
+
+    if combat.attack_streak >= 3:
+        result += f"\n  🔥 {combat.attack_streak}-HIT STREAK! (+{streak_bonus_pct}% momentum damage)"
+
+    if getattr(combat, "feel_intensity", "normal") == "high" and combat.attack_streak >= 5:
+        result += "\n  ⚡ Battle rhythm surges! Keep the pressure on!"
+
+    if combat.last_damage_note:
+        result += f"\n  {combat.last_damage_note}"
 
     if combat.hp <= 0:
         combat.hp = 0
@@ -1375,6 +1557,7 @@ def process_player_defend(player, combat):
     """
     combat.turn += 1
     combat.player_defending = True
+    combat.attack_streak = 0
 
     result = ""
 
@@ -1448,6 +1631,7 @@ def process_player_flee(player, combat):
     """
     combat.turn += 1
     combat.player_defending = False
+    combat.attack_streak = 0
 
     if combat.is_boss:
         enemy_dmg = calculate_enemy_damage(player, combat)
@@ -1483,6 +1667,7 @@ def process_ability_in_combat(player, combat, ability_data):
     """
     combat.turn += 1
     combat.player_defending = False
+    combat.attack_streak = 0
 
     result = ""
 
@@ -1503,22 +1688,34 @@ def process_ability_in_combat(player, combat, ability_data):
 
     effect = ability_data.get("effect", "")
     value = ability_data.get("value", 1.0)
+    damage_tag = "arcane"
+
+    if effect in ("combat_damage", "combat_crit_attack", "combat_execute"):
+        damage_tag = "physical"
+    elif effect == "combat_poison":
+        damage_tag = "poison"
+    elif effect == "combat_damage_burn":
+        damage_tag = "burn"
+    elif effect == "combat_bleed_attack":
+        damage_tag = "bleed"
+    elif effect == "combat_freeze_attack":
+        damage_tag = "frost"
 
     if effect == "combat_damage":
         # Pure damage with multiplier
-        dmg = calculate_player_damage(player, combat, multiplier=value)
+        dmg = calculate_player_damage(player, combat, multiplier=value, damage_tag=damage_tag)
         combat.hp -= dmg
         result += f"\n  ⚔️ You deal {dmg} damage!"
 
     elif effect == "combat_crit_attack":
         # Guaranteed crit with multiplier
-        dmg = calculate_player_damage(player, combat, multiplier=value)
+        dmg = calculate_player_damage(player, combat, multiplier=value, damage_tag=damage_tag)
         combat.hp -= dmg
         result += f"\n  ⚔️ GUARANTEED CRITICAL! You deal {dmg} damage!"
 
     elif effect == "combat_stun":
         # Damage + stun
-        dmg = calculate_player_damage(player, combat, multiplier=value)
+        dmg = calculate_player_damage(player, combat, multiplier=value, damage_tag="physical")
         combat.hp -= dmg
         stun_dur = ability_data.get("duration", 1)
         _apply_status(combat.enemy_statuses, "stun", 0, stun_dur)
@@ -1527,7 +1724,7 @@ def process_ability_in_combat(player, combat, ability_data):
 
     elif effect == "combat_poison":
         # Normal damage + poison DOT
-        dmg = calculate_player_damage(player, combat, multiplier=1.0)
+        dmg = calculate_player_damage(player, combat, multiplier=1.0, damage_tag=damage_tag)
         combat.hp -= dmg
         poison_dmg = ability_data.get("value", 4)
         poison_dur = ability_data.get("duration", 3)
@@ -1537,7 +1734,7 @@ def process_ability_in_combat(player, combat, ability_data):
 
     elif effect == "combat_freeze_attack":
         # Damage + freeze debuff
-        dmg = calculate_player_damage(player, combat, multiplier=value)
+        dmg = calculate_player_damage(player, combat, multiplier=value, damage_tag=damage_tag)
         combat.hp -= dmg
         freeze_dur = ability_data.get("duration", 2)
         _apply_status(combat.enemy_statuses, "freeze", 0, freeze_dur)
@@ -1546,7 +1743,7 @@ def process_ability_in_combat(player, combat, ability_data):
 
     elif effect == "combat_damage_burn":
         # Damage + burn DOT
-        dmg = calculate_player_damage(player, combat, multiplier=value)
+        dmg = calculate_player_damage(player, combat, multiplier=value, damage_tag=damage_tag)
         combat.hp -= dmg
         burn_dmg = ability_data.get("burn", 3)
         burn_dur = ability_data.get("duration", 2)
@@ -1556,7 +1753,7 @@ def process_ability_in_combat(player, combat, ability_data):
 
     elif effect == "combat_damage_stun":
         # Damage + stun
-        dmg = calculate_player_damage(player, combat, multiplier=value)
+        dmg = calculate_player_damage(player, combat, multiplier=value, damage_tag="physical")
         combat.hp -= dmg
         stun_dur = ability_data.get("duration", 1)
         _apply_status(combat.enemy_statuses, "stun", 0, stun_dur)
@@ -1580,13 +1777,13 @@ def process_ability_in_combat(player, combat, ability_data):
             combat.hp = 0
             result += f"\n  💀 EXECUTE! The {combat.enemy_name} is slain instantly!"
         else:
-            dmg = calculate_player_damage(player, combat, multiplier=3.0)
+            dmg = calculate_player_damage(player, combat, multiplier=3.0, damage_tag=damage_tag)
             combat.hp -= dmg
             result += f"\n  ⚔️ You deal {dmg} massive damage!"
 
     elif effect == "combat_bleed_attack":
         # Damage + bleed DOT
-        dmg = calculate_player_damage(player, combat, multiplier=value)
+        dmg = calculate_player_damage(player, combat, multiplier=value, damage_tag=damage_tag)
         combat.hp -= dmg
         bleed_dmg = ability_data.get("bleed", 5)
         bleed_dur = ability_data.get("duration", 3)
@@ -1641,7 +1838,7 @@ def process_ability_in_combat(player, combat, ability_data):
 
     elif effect == "traveling_fireball":
         # Damage + burn locally, then fireball travels through connected rooms
-        dmg = calculate_player_damage(player, combat, multiplier=value)
+        dmg = calculate_player_damage(player, combat, multiplier=value, damage_tag="burn")
         combat.hp -= dmg
         burn_dmg = ability_data.get("burn", 4)
         burn_dur = ability_data.get("duration", 3)
@@ -1660,7 +1857,7 @@ def process_ability_in_combat(player, combat, ability_data):
 
     elif effect == "chain_bounce":
         # Damage to current enemy + pre-damages adjacent rooms
-        dmg = calculate_player_damage(player, combat, multiplier=value)
+        dmg = calculate_player_damage(player, combat, multiplier=value, damage_tag="arcane")
         combat.hp -= dmg
         result += f"\n  ⚡ You deal {dmg} damage!"
         bounce_dmg  = ability_data.get("bounce_damage", 15)
@@ -1676,7 +1873,7 @@ def process_ability_in_combat(player, combat, ability_data):
 
     elif effect == "seismic_wave":
         # Damage + optional stun/freeze locally + shockwave pre-damages 1 adjacent room
-        dmg = calculate_player_damage(player, combat, multiplier=value)
+        dmg = calculate_player_damage(player, combat, multiplier=value, damage_tag="physical")
         combat.hp -= dmg
         wave_effect = ability_data.get("wave_effect", "none")
         wave_dur    = ability_data.get("wave_dur", 1)
@@ -1700,7 +1897,7 @@ def process_ability_in_combat(player, combat, ability_data):
 
     elif effect == "shadow_drift":
         # Normal damage + poison current + optionally pre-poisons / pre-stuns adjacent room
-        dmg = calculate_player_damage(player, combat, multiplier=value)
+        dmg = calculate_player_damage(player, combat, multiplier=value, damage_tag="poison")
         combat.hp -= dmg
         poison_dmg = ability_data.get("poison_dmg", 5)
         poison_dur = ability_data.get("poison_dur", 3)
@@ -1739,6 +1936,9 @@ def process_ability_in_combat(player, combat, ability_data):
             result += f"\n  💨 SMOKE CASCADE! You vanish and smoke blinds the surrounding rooms!"
             return result + "\n"
 
+    if combat.last_damage_note and ("You deal" in result or "You strike" in result):
+        result += f"\n  {combat.last_damage_note}"
+
     # Check if enemy died from ability
     if combat.hp <= 0:
         combat.hp = 0
@@ -1753,9 +1953,11 @@ def process_ability_in_combat(player, combat, ability_data):
 
 def get_combat_status(player, combat):
     """Get the current combat status display with enhanced visuals."""
+    feel_profile = _get_feel_profile(combat)
+
     # Enemy HP bar
     pct = max(0, combat.hp / combat.max_hp) if combat.max_hp > 0 else 0
-    bar_len = 20
+    bar_len = int(feel_profile.get("enemy_bar_len", 20))
     filled = int(pct * bar_len)
     bar = "█" * filled + "░" * (bar_len - filled)
 
@@ -1763,8 +1965,9 @@ def get_combat_status(player, combat):
     php = player.stats.get("health", 0)
     php_max = player.stats.get("health_max", 100)
     ppct = max(0, php / php_max) if php_max > 0 else 0
-    pfilled = int(ppct * 15)
-    pbar = "█" * pfilled + "░" * (15 - pfilled)
+    player_bar_len = int(feel_profile.get("player_bar_len", 15))
+    pfilled = int(ppct * player_bar_len)
+    pbar = "█" * pfilled + "░" * (player_bar_len - pfilled)
 
     # HP urgency indicators
     if pct <= 0.25:
@@ -1867,6 +2070,22 @@ def get_combat_status(player, combat):
         adr_bar = "🔥" * min(adr, 5)
         result += f"  {adr_bar} Adrenaline: +{adr} bonus damage\n"
 
+    # Show momentum streak
+    streak = getattr(combat, "attack_streak", 0)
+    if streak > 0:
+        per_hit = int(feel_profile.get("momentum_per_hit", 5))
+        bonus_cap = int(feel_profile.get("momentum_cap", 50))
+        streak_bonus_pct = min(bonus_cap, streak * per_hit)
+        streak_bar = "⚔️" * min(streak, 6)
+        result += f"  {streak_bar} Momentum: {streak} hit(s) (+{streak_bonus_pct}% damage)\n"
+
+    if feel_profile.get("show_weakness_hints", True):
+        vuln = DAMAGE_TAG_LABELS.get(getattr(combat, "enemy_vulnerability", "physical"), "Physical")
+        resist = DAMAGE_TAG_LABELS.get(getattr(combat, "enemy_resistance", "bleed"), "Bleed")
+        result += f"  🎯 Weak to: {vuln}  |  🧱 Resists: {resist}\n"
+
+    result += f"  Feel: {getattr(combat, 'feel_intensity', 'normal').upper()}\n"
+
     result += "═" * 50 + "\n"
     result += "  Commands: attack | defend | flee"
     if hasattr(player, 'state') and player.state.get("unlocked_skills"):
@@ -1879,7 +2098,7 @@ def get_combat_status(player, combat):
             ready = []
             for i, ab in enumerate(abilities):
                 cd = cooldowns.get(ab["skill_id"], 0)
-                if cd > 0:
+                if cd > 0 and feel_profile.get("detailed_hotbar", True):
                     ready.append(f"[{i+1}] {ab['name']} ({cd}T cd)")
                 else:
                     ready.append(f"[{i+1}] {ab['name']} ✦")
@@ -1894,13 +2113,14 @@ def get_combat_status(player, combat):
 
 def generate_victory_result(player, combat):
     """Generate the victory message, award XP and loot."""
+    feel = _normalize_feel_intensity(getattr(combat, "feel_intensity", "normal"))
     result = "\n" + "=" * 55 + "\n"
     if combat.is_boss:
-        result += f"  BOSS DEFEATED: {combat.enemy_name}!\n"
+        result += f"  👑 LEGENDARY VICTORY! BOSS DEFEATED: {combat.enemy_name}!\n"
     elif combat.is_mini_boss:
-        result += f"  MINI-BOSS DEFEATED: {combat.enemy_name}!\n"
+        result += f"  ⚔️ MINI-BOSS DEFEATED: {combat.enemy_name}!\n"
     else:
-        result += f"  VICTORY! {combat.enemy_name} defeated!\n"
+        result += f"  ✨ VICTORY! {combat.enemy_name} defeated!\n"
     result += "=" * 55 + "\n"
 
     # Gold reward
@@ -1933,6 +2153,15 @@ def generate_victory_result(player, combat):
         result += "  Loot:\n"
         for d in dropped:
             result += f"     - {d}\n"
+
+    if feel == "high":
+        streak = getattr(combat, "attack_streak", 0)
+        if streak >= 4:
+            result += f"  🔥 Finisher Momentum: {streak}-hit chain\n"
+        if getattr(combat, "player_adrenaline", 0) > 0:
+            result += "  ⚡ You finish the fight still pulsing with adrenaline.\n"
+    elif feel == "low":
+        result += "  Steady victory.\n"
 
     result += "=" * 55 + "\n"
 
@@ -1993,7 +2222,7 @@ def should_spawn_enemy(floor_num, room_data):
     return random.random() < chance
 
 
-def create_enemy_instance(enemy_id, level=None, floor_num=1):
+def create_enemy_instance(enemy_id, level=None, floor_num=1, feel_intensity="normal"):
     """Create a fresh enemy instance from the database with level scaling.
     
     Args:
@@ -2016,10 +2245,10 @@ def create_enemy_instance(enemy_id, level=None, floor_num=1):
     # Filter abilities by level
     data["abilities"] = get_level_abilities(data["abilities"], level)
     
-    return CombatState(data, is_boss=False, level=level)
+    return CombatState(data, is_boss=False, level=level, feel_intensity=feel_intensity)
 
 
-def create_boss_instance(dungeon_id, floor_num=3):
+def create_boss_instance(dungeon_id, floor_num=3, feel_intensity="normal"):
     """Create a boss instance for the given dungeon with level scaling."""
     boss_data = get_boss_for_dungeon(dungeon_id)
     if not boss_data:
@@ -2032,10 +2261,10 @@ def create_boss_instance(dungeon_id, floor_num=3):
     scaled_data = scale_enemy_stats(boss_data, level, "boss")
     scaled_data["abilities"] = get_level_abilities(scaled_data["abilities"], level)
     
-    return CombatState(scaled_data, is_boss=True, level=level)
+    return CombatState(scaled_data, is_boss=True, level=level, feel_intensity=feel_intensity)
 
 
-def create_mini_boss_instance(dungeon_id, floor_num=2):
+def create_mini_boss_instance(dungeon_id, floor_num=2, feel_intensity="normal"):
     """Create a mini-boss instance for the given dungeon with level scaling."""
     mb_data = get_mini_boss_for_dungeon(dungeon_id)
     if not mb_data:
@@ -2048,4 +2277,4 @@ def create_mini_boss_instance(dungeon_id, floor_num=2):
     scaled_data = scale_enemy_stats(mb_data, level, "mini_boss")
     scaled_data["abilities"] = get_level_abilities(scaled_data["abilities"], level)
     
-    return CombatState(scaled_data, is_boss=False, is_mini_boss=True, level=level)
+    return CombatState(scaled_data, is_boss=False, is_mini_boss=True, level=level, feel_intensity=feel_intensity)

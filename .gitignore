@@ -1,2 +1,9 @@
 savegame.json
 
+# Python cache artifacts
+__pycache__/
+*.pyc
+
+# Web API session save files
+web_saves/
+

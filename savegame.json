@@ -1,7 +1,7 @@
 {
   "save_version": 5,
   "player": {
-    "current_room": "village_square",
+    "current_room": "village_west_end",
     "inventory": {
       "prayer_candle": 1,
       "iron_dagger": 6,
@@ -96,9 +96,9 @@
         "w_glad_might"
       ],
       "cooldowns": {
-        "w_arc_power_shot": 3,
-        "w_arc_multishot": 5,
-        "w_wm_power_strike": 3
+        "w_arc_power_shot": 2,
+        "w_arc_multishot": 4,
+        "w_wm_power_strike": 2
       },
       "active_effects": {},
       "equipment": {
@@ -573,10 +573,61 @@
       },
       "active_home_bonuses": {
         "xp_multiplier": 0.25
-      }
+      },
+      "achievement_rewards_granted": [],
+      "game_feel_intensity": "normal",
+      "equipment_appearance": {
+        "weapon": null,
+        "armor": null,
+        "shield": null,
+        "helm": null,
+        "boots": null,
+        "gloves": null,
+        "accessory": null
+      },
+      "unlocked_cosmetics": [
+        "veteran_polish"
+      ],
+      "prestige_level": 0,
+      "ascension_tokens": 0,
+      "prestige_bonuses": {},
+      "prestige_runs": 0,
+      "prestige_history": [],
+      "artifact_slot": null,
+      "faction_membership": "iron_brotherhood",
+      "faction_xp": {
+        "iron_brotherhood": 0
+      },
+      "faction_rank": {
+        "iron_brotherhood": 0
+      },
+      "pets": {
+        "spirit_wolf": {
+          "level": 8,
+          "xp": 46
+        },
+        "ember_fox": {
+          "level": 4,
+          "xp": 30
+        },
+        "stone_turtle": {
+          "level": 1,
+          "xp": 0
+        },
+        "arcane_wisp": {
+          "level": 1,
+          "xp": 0
+        }
+      },
+      "active_pet": "spirit_wolf",
+      "active_pet_bonus_applied": {
+        "perception": 1
+      },
+      "pet_last_feed_at": 1774048283.129722,
+      "pet_temporary_buffs": {}
     },
     "stats": {
-      "gold": 2245,
+      "gold": 2170,
       "health": 345,
       "health_max": 345,
       "level": 13,
@@ -587,40 +638,41 @@
       "strength": 42,
       "defense": 87,
       "dexterity": 24,
-      "perception": 26,
+      "perception": 27,
       "charisma": 5,
       "constitution": 32,
       "mana": 92,
       "max_mana": 100,
       "mana_regen_bonus": 0.01,
       "attack": 70,
-      "crit_chance_bonus": 0.6099999999999999
+      "crit_chance_bonus": 0.6099999999999999,
+      "prestige_xp_multiplier": 1.0
     },
     "visited_rooms": [
-      "desert_dunes_west",
-      "stormbreak_docks",
-      "village_south_road",
-      "grand_harbor_road",
-      "grand_harbor_square",
-      "dusty_crossroads",
-      "sandy_beach",
-      "harbor_south_pier",
       "chapel",
-      "coastal_road_north",
-      "grand_harbor_gate",
-      "village_east_end",
+      "desert_dunes_west",
       "reef_shallows",
+      "village_square",
+      "village_east_end",
+      "grand_harbor_road",
+      "village_south_road",
+      "farmland_east",
+      "harbor_south_pier",
+      "sandy_beach",
+      "farmland_west",
+      "dusty_crossroads",
+      "smugglers_cove",
       "crossroads",
       "harbor_east_dock",
-      "player_home",
-      "coastal_cliffs",
-      "village_west_end",
-      "village_square",
-      "farmland_east",
+      "stormbreak_docks",
       "farmland_center",
-      "smugglers_cove",
       "desert_border",
-      "farmland_west"
+      "coastal_road_north",
+      "village_west_end",
+      "grand_harbor_square",
+      "grand_harbor_gate",
+      "coastal_cliffs",
+      "player_home"
     ],
     "unlocked_islands": [
       "stormbreak_island"
@@ -8043,31 +8095,31 @@
       }
     },
     "rooms_rolled": [
-      "desert_dunes_west",
-      "village_road",
       "farmland",
-      "forest_path",
-      "mesa_base",
-      "mesa_top",
-      "desert_cliffs",
-      "meteor_crater",
-      "dusty_crossroads",
       "scorpion_flats",
-      "sandy_beach",
-      "canyon_entrance",
-      "deep_forest",
-      "coastal_road_north",
-      "graveyard",
+      "desert_dunes_west",
       "reef_shallows",
-      "crossroads",
-      "coastal_cliffs",
-      "farmland_east",
-      "graveyard_gates",
       "dungeon_forest_entrance",
-      "farmland_center",
+      "graveyard_gates",
+      "canyon_entrance",
+      "farmland_east",
+      "desert_cliffs",
+      "sandy_beach",
+      "farmland_west",
+      "mesa_base",
+      "forest_path",
       "smugglers_cove",
+      "dusty_crossroads",
+      "crossroads",
+      "farmland_center",
+      "mesa_top",
       "desert_border",
-      "farmland_west"
+      "meteor_crater",
+      "deep_forest",
+      "village_road",
+      "coastal_road_north",
+      "coastal_cliffs",
+      "graveyard"
     ]
   },
   "fishing": {
@@ -8098,8 +8150,8 @@
   },
   "dungeon_scheduler": {
     "debug_force_open": [
-      "crystal_caverns",
       "iron_halls",
+      "crystal_caverns",
       "sunken_catacombs"
     ]
   }

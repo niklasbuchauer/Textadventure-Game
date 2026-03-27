@@ -7,3 +7,7 @@ tzdata
 # Pygame UI framework
 pygame-ce
 pygame_gui
+
+# Web API backend (initial browser-playable implementation)
+fastapi
+uvicorn[standard]

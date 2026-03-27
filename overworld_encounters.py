@@ -963,7 +963,7 @@ OVERWORLD_LEVEL_SCALE = 0.08  # +8% stats per player level
 # and must be engaged before looting/progressing freely.
 
 # Probability that a wilderness room has a visible enemy on first visit
-VISIBLE_ENEMY_CHANCE = 0.15
+VISIBLE_ENEMY_CHANCE = 0.25
 
 
 class OverworldEncounterManager:
@@ -977,6 +977,38 @@ class OverworldEncounterManager:
 		self.visible_enemies = {}
 		# Rooms that have already been rolled for visible enemies
 		self.rooms_rolled = set()
+
+	def _get_game_feel_intensity(self):
+		"""Resolve current gameplay intensity for encounter messaging cadence."""
+		if hasattr(self.engine, "get_game_feel_intensity"):
+			return self.engine.get_game_feel_intensity()
+		level = "normal"
+		try:
+			cfg = getattr(getattr(self.engine, "gui", None), "config", None)
+			if isinstance(cfg, dict):
+				gameplay = cfg.get("gameplay", {})
+				if isinstance(gameplay, dict):
+					level = gameplay.get("game_feel_intensity", "normal")
+		except Exception:
+			level = "normal"
+		level = str(level or "normal").strip().lower()
+		if level not in ("low", "normal", "high"):
+			return "normal"
+		return level
+
+	def _format_visible_enemy_text(self, enemy_name):
+		"""Format room warning text for visible enemies based on feel intensity."""
+		feel = self._get_game_feel_intensity()
+		if feel == "low":
+			return f"\n  ⚠️ {enemy_name} nearby. (Type 'fight')"
+		if feel == "high":
+			flair = random.choice([
+				"The air tightens as it stalks your position.",
+				"Its movement syncs with your heartbeat.",
+				"You sense violence coiled, ready to spring.",
+			])
+			return f"\n  ⚠️ A {enemy_name} prowls here! (Type 'fight' to engage)\n  {flair}"
+		return f"\n  ⚠️ A {enemy_name} lurks here! (Type 'fight' to engage)"
 
 	# ─── Region Detection ───
 
@@ -1046,11 +1078,22 @@ class OverworldEncounterManager:
 
 	def get_enemies_for_region(self, region):
 		"""Get list of enemy IDs suitable for a region."""
-		result = []
+		primary = []
+		secondary = []
 		for eid, edata in OVERWORLD_ENEMIES.items():
-			if region in edata.get("regions", []):
-				result.append(eid)
-		return result
+			regions = list(edata.get("regions", []))
+			if not regions or region not in regions:
+				continue
+			# First listed region is treated as the biome identity region.
+			if regions[0] == region:
+				primary.append(eid)
+			else:
+				secondary.append(eid)
+
+		# Prefer primary-region enemies heavily for stronger biome identity.
+		if primary:
+			return primary + secondary[: max(1, len(primary) // 3)]
+		return secondary
 
 	def scale_enemy(self, enemy_id, player_level=1):
 		"""Create a scaled enemy data dict for combat."""
@@ -1130,11 +1173,19 @@ class OverworldEncounterManager:
 
 		self.rooms_rolled.add(room_id)
 
-		# Roll chance
-		if random.random() >= VISIBLE_ENEMY_CHANCE:
+		region = self.get_region(room_id)
+		feel = self._get_game_feel_intensity()
+
+		# Roll chance (scaled by regional danger, capped for sanity)
+		danger = REGION_DANGER.get(region, 1.0)
+		visible_chance = min(0.45, VISIBLE_ENEMY_CHANCE * (0.75 + 0.25 * danger))
+		if feel == "low":
+			visible_chance *= 0.85
+		elif feel == "high":
+			visible_chance = min(0.55, visible_chance * 1.20)
+		if random.random() >= visible_chance:
 			return ""
 
-		region = self.get_region(room_id)
 		eligible = self.get_enemies_for_region(region)
 		if not eligible:
 			return ""
@@ -1154,14 +1205,14 @@ class OverworldEncounterManager:
 			"enemy_data": enemy_data,
 		}
 
-		return f"\n  ⚠️ A {enemy_data['name']} lurks here! (Type 'fight' to engage)"
+		return self._format_visible_enemy_text(enemy_data["name"])
 
 	def get_visible_enemy_text(self, room_id):
 		"""Get text about any visible enemy in a room."""
 		if room_id not in self.visible_enemies:
 			return ""
 		enemy = self.visible_enemies[room_id]
-		return f"\n  ⚠️ A {enemy['enemy_data']['name']} lurks here! (Type 'fight' to engage)"
+		return self._format_visible_enemy_text(enemy["enemy_data"]["name"])
 
 	def engage_visible_enemy(self, room_id):
 		"""Start combat with a visible enemy. Returns enemy_data or None."""

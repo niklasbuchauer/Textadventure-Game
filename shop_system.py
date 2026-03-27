@@ -458,11 +458,31 @@ class ShopUI:
         
         self.display(output)
     
-    def show_shop_info(self):
+    def show_shop_info(self, feel_intensity="normal"):
         """
         Display merchant's guide to negotiation.
         Called when player types 'shop info'.
         """
+        feel = str(feel_intensity or "normal").strip().lower()
+        if feel not in ("low", "normal", "high"):
+            feel = "normal"
+
+        if feel == "low":
+            self.display("""
+┌──────────────────────────────────────────────────────┐
+│ SHOP INFO (COMPACT)                                  │
+├──────────────────────────────────────────────────────┤
+│ 30% or less      -> refused                          │
+│ 30-50%           -> counteroffer                     │
+│ 50-85%           -> good acceptance                  │
+│ 85-100%          -> best expected result             │
+│ >100%            -> merchant laughs, low counter     │
+├──────────────────────────────────────────────────────┤
+│ Tip: aim near 85-100% for strongest returns.         │
+└──────────────────────────────────────────────────────┘
+""")
+            return
+
         self.display("""
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃      📖 MERCHANT'S GUIDE TO FAIR NEGOTIATION 📖        ┃
@@ -501,6 +521,9 @@ class ShopUI:
 ┃                                                         ┃
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 """)
+
+        if feel == "high":
+            self.display("\n🔥 HIGH INTENSITY TIP: open with a confident offer, read the counter, then press for premium margins.")
     
     def buy_item(self, player, item_id):
         """

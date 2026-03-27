@@ -39,7 +39,11 @@ class DungeonInstance:
         self.generator = DungeonGenerator(seed)
         
         # Generate the dungeon (seed is passed to generate_complete_dungeon)
-        self.dungeon_data = self.generator.generate_complete_dungeon(seed, entrance_room_id=self.entrance_room_id)
+        self.dungeon_data = self.generator.generate_complete_dungeon(
+            seed,
+            entrance_room_id=self.entrance_room_id,
+            dungeon_id=self.dungeon_id,
+        )
     
     def add_player(self, player):
         """

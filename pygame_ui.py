@@ -22,6 +22,7 @@ import math
 import random
 import re
 import copy
+import importlib
 import html as html_module
 import time
 
@@ -474,6 +475,7 @@ class PygameAdventureGUI:
         self.settings_win    = None
         self.bestiary_win   = None
         self.rooms_win      = None
+        self.party_faction_win = None
         self.commands_win   = None
         self.home_editor_win = None
         self._popup_windows  = {}     # name -> UIWindow
@@ -887,11 +889,11 @@ class PygameAdventureGUI:
                 _ov.handle_event(event)
                 return
 
-        # ── Book overlays (inventory/stats/debug/skills/journal/settings/commands/bestiary/rooms) ─
+        # ── Book overlays (inventory/stats/debug/skills/journal/settings/commands/bestiary/rooms/party) ─
         for _bov in (self.journal_win, self.inventory_win,
                      self.stats_win, self.debug_win, self.skills_book_win,
                      self.settings_win, self.commands_win, self.home_editor_win,
-                     self.bestiary_win, self.rooms_win):
+                     self.bestiary_win, self.rooms_win, self.party_faction_win):
             if _bov and hasattr(_bov, 'is_open') and _bov.is_open() \
                     and hasattr(_bov, 'handle_event'):
                 if _bov.handle_event(event):
@@ -1038,7 +1040,8 @@ class PygameAdventureGUI:
         # Book overlays tick
         _bov_refs = ['journal_win','inventory_win','stats_win',
                      'debug_win','skills_book_win','settings_win',
-                     'commands_win','home_editor_win','bestiary_win','rooms_win']
+                     'commands_win','home_editor_win','bestiary_win','rooms_win',
+                     'party_faction_win']
         for _rn in _bov_refs:
             _w = getattr(self, _rn, None)
             if _w and hasattr(_w,'is_open'):
@@ -1087,7 +1090,7 @@ class PygameAdventureGUI:
         for _bov in (self.journal_win, self.inventory_win,
                      self.stats_win, self.debug_win, self.skills_book_win,
                      self.settings_win, self.commands_win, self.home_editor_win,
-                     self.bestiary_win, self.rooms_win):
+                     self.bestiary_win, self.rooms_win, self.party_faction_win):
             if _bov and hasattr(_bov,'is_open') and _bov.is_open() and hasattr(_bov,'draw'):
                 _bov.draw(surface)
 
@@ -1179,6 +1182,9 @@ class PygameAdventureGUI:
             return
         if resp == "__OPEN_BESTIARY__":
             self._open_bestiary_window()
+            return
+        if resp == "__OPEN_PARTY_FACTION__":
+            self._open_party_faction_window()
             return
 
         if resp:
@@ -1536,6 +1542,16 @@ class PygameAdventureGUI:
             self.bestiary_win = BestiaryOverlay(self)
         except Exception as e:
             self.append(f"[Bestiary] Could not open: {e}")
+
+    def _open_party_faction_window(self):
+        try:
+            if self.party_faction_win and self.party_faction_win.is_open():
+                self.party_faction_win.close()
+                return
+            module = importlib.import_module("party_faction_window")
+            self.party_faction_win = module.PartyFactionOverlay(self)
+        except Exception as e:
+            self.append(f"[Party/Faction] Could not open: {e}")
 
     def toggle_commands_window(self):
         try:

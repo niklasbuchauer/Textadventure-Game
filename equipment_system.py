@@ -18,6 +18,23 @@ Items are moved from inventory into the equipment dict in
 player.state["equipment"]. Unequipping returns them to inventory.
 """
 
+try:
+    from cosmetics_db import (
+        COSMETICS_DATABASE,
+        DEFAULT_UNLOCKED_COSMETICS,
+        get_cosmetic,
+        normalize_cosmetic_id,
+    )
+except Exception:
+    COSMETICS_DATABASE = {}
+    DEFAULT_UNLOCKED_COSMETICS = []
+
+    def get_cosmetic(_cosmetic_id):
+        return None
+
+    def normalize_cosmetic_id(value):
+        return str(value or "").strip().lower().replace(" ", "_")
+
 # ═════════════════════════════════════════════════════════════════════
 # RARITY SYSTEM
 # ═════════════════════════════════════════════════════════════════════
@@ -2507,6 +2524,131 @@ def get_equipped_item(player, slot):
     return equip.get(slot)
 
 
+def _ensure_cosmetic_state(player):
+    """Ensure cosmetic fields exist and are save-compatible."""
+    if "unlocked_cosmetics" not in player.state or not isinstance(player.state.get("unlocked_cosmetics"), list):
+        player.state["unlocked_cosmetics"] = list(DEFAULT_UNLOCKED_COSMETICS)
+    else:
+        # Backfill defaults for old saves.
+        unlocked = set(player.state.get("unlocked_cosmetics", []))
+        unlocked.update(DEFAULT_UNLOCKED_COSMETICS)
+        player.state["unlocked_cosmetics"] = sorted(unlocked)
+
+    if "equipment_appearance" not in player.state or not isinstance(player.state.get("equipment_appearance"), dict):
+        player.state["equipment_appearance"] = {slot: None for slot in EQUIPMENT_SLOTS}
+    else:
+        for slot in EQUIPMENT_SLOTS:
+            if slot not in player.state["equipment_appearance"]:
+                player.state["equipment_appearance"][slot] = None
+
+
+def get_unlocked_cosmetics(player):
+    _ensure_cosmetic_state(player)
+    return set(player.state.get("unlocked_cosmetics", []))
+
+
+def unlock_cosmetic(player, cosmetic_id):
+    """Unlock a cosmetic skin once; returns (was_new, message)."""
+    _ensure_cosmetic_state(player)
+    cid = normalize_cosmetic_id(cosmetic_id)
+    data = get_cosmetic(cid)
+    if not data:
+        return False, f"Unknown cosmetic: {cosmetic_id}"
+
+    unlocked = set(player.state.get("unlocked_cosmetics", []))
+    if cid in unlocked:
+        return False, ""
+
+    unlocked.add(cid)
+    player.state["unlocked_cosmetics"] = sorted(unlocked)
+    return True, f"Unlocked cosmetic: {data.get('name', cid.replace('_', ' ').title())}."
+
+
+def apply_transmog(player, slot_or_name, cosmetic_id):
+    """Apply or clear appearance override on an equipped item slot."""
+    equip = get_equipment(player)
+    _ensure_cosmetic_state(player)
+
+    slot_key = str(slot_or_name or "").strip().lower().replace(" ", "_")
+    slot = None
+    if slot_key in EQUIPMENT_SLOTS:
+        slot = slot_key
+    else:
+        for s, item_id in equip.items():
+            if not item_id:
+                continue
+            if item_id == slot_key or item_id.replace("_", " ") == slot_key.replace("_", " "):
+                slot = s
+                break
+            eq_data = EQUIPMENT_DATABASE.get(item_id, {})
+            if eq_data.get("name", "").lower().replace(" ", "_") == slot_key:
+                slot = s
+                break
+
+    if not slot:
+        return False, f"No equipped slot or item matches '{slot_or_name}'."
+
+    if not equip.get(slot):
+        return False, f"Nothing is equipped in the {slot} slot."
+
+    cid = normalize_cosmetic_id(cosmetic_id)
+    if cid in ("none", "clear", "default"):
+        player.state["equipment_appearance"][slot] = None
+        return True, f"Cleared appearance override for {slot}."
+
+    data = get_cosmetic(cid)
+    if not data:
+        return False, f"Unknown cosmetic '{cosmetic_id}'."
+
+    unlocked = get_unlocked_cosmetics(player)
+    if cid not in unlocked:
+        return False, f"You have not unlocked '{data.get('name', cid)}'."
+
+    allowed = data.get("allowed_slots", [])
+    if slot not in allowed:
+        return False, f"{data.get('name', cid)} cannot be applied to {slot}."
+
+    player.state["equipment_appearance"][slot] = cid
+    return True, f"Applied {data.get('name', cid)} to {slot}."
+
+
+def get_cosmetics_display(player):
+    """Show unlocked cosmetics and current transmog assignments."""
+    _ensure_cosmetic_state(player)
+    unlocked = sorted(get_unlocked_cosmetics(player))
+    appearance = player.state.get("equipment_appearance", {})
+
+    result = "\n" + "=" * 55 + "\n"
+    result += "  COSMETICS\n"
+    result += "=" * 55 + "\n"
+
+    if unlocked:
+        result += "  Unlocked:\n"
+        for cid in unlocked:
+            data = COSMETICS_DATABASE.get(cid, {})
+            name = data.get("name", cid.replace("_", " ").title())
+            source = data.get("source", "unknown")
+            result += f"    - {name} ({source})\n"
+    else:
+        result += "  No cosmetics unlocked yet.\n"
+
+    result += "\n  Active Appearance Overrides:\n"
+    any_override = False
+    for slot in EQUIPMENT_SLOTS:
+        cid = appearance.get(slot)
+        if not cid:
+            continue
+        any_override = True
+        name = COSMETICS_DATABASE.get(cid, {}).get("name", cid.replace("_", " ").title())
+        result += f"    - {slot}: {name}\n"
+
+    if not any_override:
+        result += "    (none)\n"
+
+    result += "=" * 55 + "\n"
+    return result
+
+
 def equip_item(player, item_name):
     """
     Equip an item from the player's inventory.
@@ -2646,6 +2788,8 @@ def get_equipment_display(player):
         str: formatted equipment overview
     """
     equip = get_equipment(player)
+    _ensure_cosmetic_state(player)
+    appearance = player.state.get("equipment_appearance", {})
 
     result = "\n" + "=" * 50 + "\n"
     result += "  EQUIPMENT\n"
@@ -2663,6 +2807,10 @@ def get_equipment_display(player):
                 stat_parts.append(f"+{val} {nice}")
             stat_str = ", ".join(stat_parts) if stat_parts else ""
             result += f"  {info['icon']} {info['name']:10s} {item_name}"
+            skin_id = appearance.get(slot)
+            if skin_id:
+                skin_name = COSMETICS_DATABASE.get(skin_id, {}).get("name", skin_id.replace("_", " ").title())
+                result += f" [Skin: {skin_name}]"
             if stat_str:
                 result += f"  ({stat_str})"
             result += "\n"

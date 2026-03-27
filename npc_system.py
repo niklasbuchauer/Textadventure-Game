@@ -17,10 +17,11 @@ except ImportError:
 
 # Quest integration
 try:
-	from quest_system import QuestManager
+	from quest_system import QuestManager, QUEST_DATABASE
 	QUEST_AVAILABLE = True
 except ImportError:
 	QUEST_AVAILABLE = False
+	QUEST_DATABASE = {}
 
 # Reputation integration
 try:
@@ -1830,6 +1831,88 @@ class NPCManager:
 	def __init__(self, engine):
 		self.engine = engine
 
+	def _get_game_feel_intensity(self):
+		"""Resolve current gameplay intensity for dialogue presentation."""
+		if hasattr(self.engine, "get_game_feel_intensity"):
+			return self.engine.get_game_feel_intensity()
+		level = "normal"
+		try:
+			cfg = getattr(getattr(self.engine, "gui", None), "config", None)
+			if isinstance(cfg, dict):
+				gameplay = cfg.get("gameplay", {})
+				if isinstance(gameplay, dict):
+					level = gameplay.get("game_feel_intensity", "normal")
+		except Exception:
+			level = "normal"
+		level = str(level or "normal").strip().lower()
+		if level not in ("low", "normal", "high"):
+			return "normal"
+		return level
+
+	def _get_npc_memory(self):
+		"""Return mutable NPC memory store on player state."""
+		if not hasattr(self.engine, 'player') or not self.engine.player:
+			return {}
+		state = self.engine.player.state
+		if "npc_memory" not in state or not isinstance(state.get("npc_memory"), dict):
+			state["npc_memory"] = {}
+		return state["npc_memory"]
+
+	def _build_memory_greeting(self, npc_id, npc):
+		"""Build greeting text that reflects prior interactions and quest history."""
+		memory = self._get_npc_memory()
+		entry = memory.get(npc_id, {})
+		talk_count = int(entry.get("talk_count", 0))
+		feel = self._get_game_feel_intensity()
+
+		greeting = npc.get("greeting", "")
+		if talk_count <= 0:
+			if feel == "high":
+				return greeting + "\n\n[A familiar spark passes between you as the conversation begins.]"
+			return greeting
+
+		if feel == "low":
+			prefix = f"\n[Met before: {npc['name']} ({talk_count}x)]\n\n"
+		else:
+			prefix = f"\n[You have spoken with {npc['name']} {talk_count} time{'s' if talk_count != 1 else ''}.]\n\n"
+
+		# Mention quest progress with this NPC when relevant.
+		if QUEST_AVAILABLE and hasattr(self.engine, 'quest_manager') and self.engine.quest_manager:
+			active_for_npc = 0
+			completed_for_npc = 0
+			for qid, qs in self.engine.quest_manager.quests.items():
+				qdef = QUEST_DATABASE.get(qid)
+				if not qdef:
+					continue
+				if qdef.get("giver") == npc_id or qdef.get("turn_in") == npc_id:
+					if qs.status in ("active", "complete"):
+						active_for_npc += 1
+					elif qs.status == "turned_in":
+						completed_for_npc += 1
+			if active_for_npc > 0:
+				if feel == "low":
+					prefix += f"[Active quests with this NPC: {active_for_npc}]\n\n"
+				else:
+					prefix += f"[You still have {active_for_npc} active quest{'s' if active_for_npc > 1 else ''} linked to this NPC.]\n\n"
+			elif completed_for_npc > 0:
+				if feel == "low":
+					prefix += f"[Completed quests for this NPC: {completed_for_npc}]\n\n"
+				else:
+					prefix += f"[You have completed {completed_for_npc} quest{'s' if completed_for_npc > 1 else ''} for this NPC.]\n\n"
+
+		if feel == "high" and talk_count >= 3:
+			prefix += "[They recognize your approach immediately, as if expecting you.]\n\n"
+
+		return prefix + greeting
+
+	def _record_npc_talk(self, npc_id):
+		"""Increment persistent talk counters for a given NPC."""
+		memory = self._get_npc_memory()
+		entry = memory.get(npc_id, {})
+		entry["talk_count"] = int(entry.get("talk_count", 0)) + 1
+		entry["last_room"] = getattr(self.engine.player, "current_room", "")
+		memory[npc_id] = entry
+
 	def get_npcs_in_room(self, room_id=None):
 		"""
 		Get list of NPC IDs present in the given room.
@@ -1912,6 +1995,7 @@ class NPCManager:
 			return f"You don't see anyone by that name. People here: {available}"
 
 		npc = NPC_DATABASE[matched_npc_id]
+		self._record_npc_talk(matched_npc_id)
 
 		# Notify quest system about NPC interaction
 		if QUEST_AVAILABLE and hasattr(self.engine, 'quest_manager') and self.engine.quest_manager:
@@ -1933,7 +2017,7 @@ class NPCManager:
 			result += f"  {icon} {mood.title()}"
 		result += "\n"
 		result += "═" * 55 + "\n\n"
-		result += npc["greeting"] + "\n"
+		result += self._build_memory_greeting(matched_npc_id, npc) + "\n"
 		if rep_visit_msg:
 			result += rep_visit_msg + "\n"
 
@@ -2123,8 +2207,12 @@ class NPCManager:
 		"""Format dialogue options for display, including quest and reputation options."""
 		if not options and not quest_options and not rep_options:
 			return ""
+		feel = self._get_game_feel_intensity()
 
-		result = "\n  ─── Your response ───\n"
+		if feel == "low":
+			result = "\n  Choices:\n"
+		else:
+			result = "\n  ─── Your response ───\n"
 		idx = 1
 		for opt in options:
 			result += f"  {idx}. {opt['label']}\n"
@@ -2137,9 +2225,15 @@ class NPCManager:
 		# Append reputation-gated options (if any)
 		if rep_options:
 			for ropt in rep_options:
-				result += f"  {idx}. 💛 {ropt['label']}\n"
+				prefix = "💛 " if feel != "low" else ""
+				result += f"  {idx}. {prefix}{ropt['label']}\n"
 				idx += 1
-		result += "  (or 'bye' to end conversation)\n"
+		if feel == "low":
+			result += "  Type number or 'bye'.\n"
+		elif feel == "high":
+			result += "  (or 'bye' to end conversation and step back)\n"
+		else:
+			result += "  (or 'bye' to end conversation)\n"
 		return result
 
 	def _apply_effects(self, effects, npc):

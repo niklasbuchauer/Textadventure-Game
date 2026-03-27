@@ -259,8 +259,79 @@ QUEST_DATABASE = {
 		],
 		"rewards": {"xp": 50, "gold": 30, "items": {"healing_potion": 2}, "skill_points": 1},
 		"prerequisite": None,
-		"chain_next": None,
+		"chain_next": "tavern_archaeologists_gambit",
 		"level_req": 1,
+	},
+	"tavern_archaeologists_gambit": {
+		"id": "tavern_archaeologists_gambit",
+		"name": "Archaeologist's Gambit",
+		"giver": "bartender",
+		"turn_in": "hermit",
+		"description": (
+			"Bren heard of a scholar searching old ruins. Prepare for the trip by bringing fish and iron, "
+			"then scout the crypt and report your findings to Old Finn."
+		),
+		"objectives": [
+			{
+				"type": "collect",
+				"item": "fresh_fish",
+				"count": 2,
+				"description": "Secure 2 fresh fish for the road",
+			},
+			{
+				"type": "collect",
+				"item": "iron_ingot",
+				"count": 2,
+				"description": "Bring 2 iron ingots for field gear",
+			},
+			{
+				"type": "visit",
+				"room": "open_crypt",
+				"description": "Scout the open crypt entrance",
+			},
+			{
+				"type": "talk",
+				"npc": "hermit",
+				"description": "Report to Old Finn",
+			},
+		],
+		"rewards": {"xp": 180, "gold": 90, "items": {"quality_torch": 1, "healing_potion": 2}, "skill_points": 2},
+		"prerequisite": "tavern_delivery",
+		"chain_next": "tavern_shadow_recovery",
+		"level_req": 3,
+	},
+	"tavern_shadow_recovery": {
+		"id": "tavern_shadow_recovery",
+		"name": "Shadow Recovery Run",
+		"giver": "hermit",
+		"turn_in": "blacksmith",
+		"description": (
+			"Old Finn needs proof from the depths. Defeat a mini-boss, recover ancient coins, "
+			"and deliver the haul to Tormund for analysis."
+		),
+		"objectives": [
+			{
+				"type": "kill",
+				"target": "any_mini_boss",
+				"count": 1,
+				"description": "Defeat 1 mini-boss",
+			},
+			{
+				"type": "collect",
+				"item": "ancient_coin",
+				"count": 2,
+				"description": "Recover 2 ancient coins",
+			},
+			{
+				"type": "talk",
+				"npc": "blacksmith",
+				"description": "Deliver findings to Tormund",
+			},
+		],
+		"rewards": {"xp": 320, "gold": 140, "items": {"masterwork_shield": 1}, "skill_points": 3},
+		"prerequisite": "tavern_archaeologists_gambit",
+		"chain_next": None,
+		"level_req": 5,
 	},
 
 	# ── Chain 7: Merchant's Request (Silvia) ──────────────────────────
@@ -366,6 +437,24 @@ class QuestManager:
 		self.engine = engine
 		# quest_id -> QuestState
 		self.quests = {}
+
+	def _get_game_feel_intensity(self):
+		"""Resolve gameplay intensity for journal/quest text verbosity."""
+		if hasattr(self.engine, "get_game_feel_intensity"):
+			return self.engine.get_game_feel_intensity()
+		level = "normal"
+		try:
+			cfg = getattr(getattr(self.engine, "gui", None), "config", None)
+			if isinstance(cfg, dict):
+				gameplay = cfg.get("gameplay", {})
+				if isinstance(gameplay, dict):
+					level = gameplay.get("game_feel_intensity", "normal")
+		except Exception:
+			level = "normal"
+		level = str(level or "normal").strip().lower()
+		if level not in ("low", "normal", "high"):
+			return "normal"
+		return level
 
 	# ── Serialization ────────────────────────────────────────────────
 
@@ -483,13 +572,22 @@ class QuestManager:
 			return "Quest not found."
 		if qs.status != QuestState.STATUS_COMPLETE:
 			return f"\"{qdef['name']}\" is not ready to turn in yet."
+		feel = self._get_game_feel_intensity()
 
 		qs.status = QuestState.STATUS_TURNED_IN
 		rewards = qdef.get("rewards", {})
 
-		result = "\n" + "═" * 55 + "\n"
-		result += f"  🏆 QUEST COMPLETE: {qdef['name']}\n"
-		result += "═" * 55 + "\n\n"
+		if feel == "low":
+			result = f"\n🏆 QUEST COMPLETE: {qdef['name']}\n\n"
+		elif feel == "high":
+			result = "\n" + "═" * 55 + "\n"
+			result += f"  🏆 QUEST COMPLETE: {qdef['name']}\n"
+			result += "  Your actions reshape the road ahead.\n"
+			result += "═" * 55 + "\n\n"
+		else:
+			result = "\n" + "═" * 55 + "\n"
+			result += f"  🏆 QUEST COMPLETE: {qdef['name']}\n"
+			result += "═" * 55 + "\n\n"
 
 		# Award XP
 		xp_reward = rewards.get("xp", 0)
@@ -645,16 +743,27 @@ class QuestManager:
 
 	def get_quest_notifications(self):
 		"""Check for any quests that just became complete and return notification text."""
+		feel = self._get_game_feel_intensity()
 		notifications = []
 		for qid, qs in self.quests.items():
 			if qs.status == QuestState.STATUS_COMPLETE:
 				qdef = QUEST_DATABASE.get(qid)
 				if qdef:
 					turn_in_name = self._npc_display_name(qdef.get("turn_in", qdef.get("giver", "???")))
-					notifications.append(
-						f"  ✨ Quest \"{qdef['name']}\" objectives complete! "
-						f"Return to {turn_in_name} to claim your reward."
-					)
+					if feel == "low":
+						notifications.append(
+							f"  ✨ Quest complete: {qdef['name']} (turn in at {turn_in_name})"
+						)
+					elif feel == "high":
+						notifications.append(
+							f"  ✨ Quest \"{qdef['name']}\" objectives complete! "
+							f"Return to {turn_in_name} to claim your reward and push the story forward."
+						)
+					else:
+						notifications.append(
+							f"  ✨ Quest \"{qdef['name']}\" objectives complete! "
+							f"Return to {turn_in_name} to claim your reward."
+						)
 		return "\n".join(notifications)
 
 	# ── Journal display ──────────────────────────────────────────────
@@ -663,6 +772,31 @@ class QuestManager:
 		"""Generate the full journal display text."""
 		active = self.get_active_quests()
 		completed = self.get_completed_quests()
+		feel = self._get_game_feel_intensity()
+
+		if feel == "low":
+			if not active and not completed:
+				return "\nQUEST JOURNAL\n- No quests yet. Talk to NPCs to find work.\n"
+
+			lines = ["\nQUEST JOURNAL", f"- Active: {len(active)}", f"- Completed: {len(completed)}"]
+			if active:
+				lines.append("\nACTIVE")
+				for qdef, qs in active:
+					status = "READY" if qs.status == QuestState.STATUS_COMPLETE else "IN PROGRESS"
+					lines.append(f"- {qdef['name']} [{status}]")
+					for i, obj in enumerate(qdef["objectives"]):
+						progress = qs.progress.get(i, 0)
+						count = obj.get("count", 1)
+						if obj["type"] in ("kill", "collect"):
+							lines.append(f"  - {obj['description']} ({progress}/{count})")
+						else:
+							state = "done" if progress >= count else "pending"
+							lines.append(f"  - {obj['description']} [{state}]")
+			if completed:
+				lines.append("\nCOMPLETED")
+				for qdef in completed[-8:]:
+					lines.append(f"- {qdef['name']}")
+			return "\n".join(lines) + "\n"
 
 		result = "\n" + "╔" + "═" * 58 + "╗\n"
 		result += "║" + "QUEST JOURNAL".center(58) + "║\n"
@@ -672,6 +806,12 @@ class QuestManager:
 			result += "║" + "  No quests yet. Talk to NPCs to find work!".ljust(58) + "║\n"
 			result += "╚" + "═" * 58 + "╝\n"
 			return result
+
+		if feel == "high":
+			ready_count = sum(1 for _, qs in active if qs.status == QuestState.STATUS_COMPLETE)
+			result += "║" + f"  Active: {len(active)}  |  Completed: {len(completed)}  |  Ready: {ready_count}".ljust(58) + "║\n"
+			result += "║" + "  Your journal pages crackle with urgency and unfinished vows.".ljust(58) + "║\n"
+			result += "╠" + "═" * 58 + "╣\n"
 
 		# Active quests
 		if active:
@@ -777,7 +917,7 @@ class QuestManager:
 			if obj["type"] == "collect":
 				item = obj["item"]
 				needed = obj.get("count", 1)
-				have = player.inventory.get(item, 0)
+				have = self._get_collect_amount(player, item)
 				qs.progress[i] = min(have, needed)
 			elif obj["type"] == "visit":
 				room = obj["room"]
@@ -786,6 +926,23 @@ class QuestManager:
 			# kill/talk objectives only update on events
 
 		self._check_quest_completion(quest_id)
+
+	def _get_collect_amount(self, player, item_id):
+		"""Resolve collect objective quantity, including grouped objective aliases."""
+		inv = player.inventory if player else {}
+		if not isinstance(inv, dict):
+			return 0
+
+		# Fish bundle used by tavern and exploration quest lines.
+		if item_id == "fresh_fish":
+			fish_items = (
+				"small_fish", "river_trout", "mudfish", "large_fish", "striped_perch",
+				"swamp_catfish", "cave_eel", "golden_fish", "ancient_pike",
+				"ghost_fish", "leviathan_fry", "prismatic_koi",
+			)
+			return sum(int(inv.get(fid, 0)) for fid in fish_items)
+
+		return int(inv.get(item_id, 0))
 
 	def _check_quest_completion(self, quest_id):
 		"""Check if all objectives are met and update status to COMPLETE."""
@@ -804,14 +961,26 @@ class QuestManager:
 
 		if all_done:
 			qs.status = QuestState.STATUS_COMPLETE
+			feel = self._get_game_feel_intensity()
 			# Notify the player
 			if self.engine.gui:
 				qdef_name = qdef['name']
 				turn_in = self._npc_display_name(qdef.get("turn_in", qdef.get("giver")))
-				notification = (
-					f"\n  ✨ Quest \"{qdef_name}\" objectives complete!\n"
-					f"  Return to {turn_in} to claim your reward.\n"
-				)
+				if feel == "low":
+					notification = (
+						f"\n  ✨ Quest complete: {qdef_name}\n"
+						f"  Turn in at {turn_in}.\n"
+					)
+				elif feel == "high":
+					notification = (
+						f"\n  ✨ Quest \"{qdef_name}\" objectives complete!\n"
+						f"  Return to {turn_in} - your reward and the next chapter await.\n"
+					)
+				else:
+					notification = (
+						f"\n  ✨ Quest \"{qdef_name}\" objectives complete!\n"
+						f"  Return to {turn_in} to claim your reward.\n"
+					)
 				try:
 					self.engine.gui.append(notification)
 				except Exception:
@@ -822,8 +991,34 @@ class QuestManager:
 		qdef = QUEST_DATABASE.get(quest_id)
 		if not qdef:
 			return "Quest not found."
+		feel = self._get_game_feel_intensity()
 
 		giver_name = self._npc_display_name(qdef.get("giver"))
+
+		if feel == "low":
+			result = f"\nQUEST OFFER: {qdef['name']}\n"
+			result += f"From: {giver_name}\n"
+			result += f"{qdef['description']}\n"
+			result += "Objectives:\n"
+			for obj in qdef["objectives"]:
+				count = obj.get("count", 1)
+				if obj["type"] in ("kill", "collect"):
+					result += f"- {obj['description']} (0/{count})\n"
+				else:
+					result += f"- {obj['description']}\n"
+			rewards = qdef.get("rewards", {})
+			reward_parts = []
+			if rewards.get("xp"):
+				reward_parts.append(f"{rewards['xp']} XP")
+			if rewards.get("gold"):
+				reward_parts.append(f"{rewards['gold']}g")
+			if rewards.get("skill_points"):
+				reward_parts.append(f"{rewards['skill_points']} SP")
+			if reward_parts:
+				result += "Rewards: " + ", ".join(reward_parts) + "\n"
+			result += "Accept? (yes/no)\n"
+			self.engine.pending_quest_action = ("accept", quest_id)
+			return result
 
 		result = "\n" + "═" * 55 + "\n"
 		result += f"  📜 {giver_name} offers you a quest:\n"
@@ -852,6 +1047,9 @@ class QuestManager:
 			nice = item.replace("_", " ").title()
 			result += f"    📦 {count}x {nice}\n"
 
+		if feel == "high":
+			result += "\n  The request carries weight. You can almost feel the story shifting.\n"
+
 		result += "\n  Accept this quest? (yes/no)\n"
 
 		# Set pending state
@@ -865,6 +1063,7 @@ class QuestManager:
 		qs = self.quests.get(quest_id)
 		if not qdef or not qs:
 			return "Quest not found."
+		feel = self._get_game_feel_intensity()
 
 		# Re-check collect objectives
 		self._check_all_objectives(quest_id)
@@ -889,7 +1088,12 @@ class QuestManager:
 			turn_in = self._npc_display_name(qdef.get("turn_in", qdef.get("giver")))
 			result += f"\n  ✨ All objectives complete! Talk to {turn_in} to turn in.\n"
 		else:
-			result += "\n  Keep going — you're making progress!\n"
+			if feel == "high":
+				result += "\n  Keep going - every step is pulling this thread tighter.\n"
+			elif feel == "low":
+				result += "\n  Keep going.\n"
+			else:
+				result += "\n  Keep going — you're making progress!\n"
 
 		return result
 

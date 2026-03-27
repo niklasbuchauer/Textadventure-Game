@@ -5,6 +5,11 @@ Track player accomplishments across combat, exploration, skills, and dungeons.
 Achievements are checked after significant events and award titles/bonuses.
 """
 
+try:
+    from equipment_system import unlock_cosmetic
+except Exception:
+    unlock_cosmetic = None
+
 
 # =====================================================================
 # ACHIEVEMENT DEFINITIONS
@@ -50,7 +55,7 @@ ACHIEVEMENTS = {
         "icon": "🏆",
         "category": "combat",
         "check": "bosses_killed >= 3",
-        "reward": {"xp": 500, "attack": 2, "defense": 1},
+        "reward": {"xp": 500, "attack": 2, "defense": 1, "cosmetics": ["slayer_crimson"]},
     },
     "mini_boss_crusher": {
         "name": "Mini-Boss Crusher",
@@ -108,7 +113,7 @@ ACHIEVEMENTS = {
         "icon": "🏯",
         "category": "exploration",
         "check": "dungeons_completed >= 5",
-        "reward": {"xp": 750, "defense": 2},
+        "reward": {"xp": 750, "defense": 2, "cosmetics": ["delver_mantle"]},
     },
     "treasure_hunter": {
         "name": "Treasure Hunter",
@@ -150,7 +155,7 @@ ACHIEVEMENTS = {
         "icon": "🌟",
         "category": "skills",
         "check": "skills_unlocked >= 25",
-        "reward": {"xp": 500, "attack": 1, "defense": 1},
+        "reward": {"xp": 500, "attack": 1, "defense": 1, "cosmetics": ["astral_thread"]},
     },
     "branch_initiate": {
         "name": "Branch Initiate",
@@ -262,7 +267,7 @@ ACHIEVEMENTS = {
         "icon": "⚡",
         "category": "combat",
         "check": "void_titan_killed >= 1",
-        "reward": {"xp": 5000, "attack": 5, "defense": 5, "health_max_bonus": 25},
+        "reward": {"xp": 5000, "attack": 5, "defense": 5, "health_max_bonus": 25, "cosmetics": ["void_crown"]},
     },
     "easter_egg_hunter": {
         "name": "Easter Egg Hunter",
@@ -347,6 +352,8 @@ def check_achievements(player):
         player.state["achievements"] = []
     if "achievement_tracking" not in player.state:
         player.state["achievement_tracking"] = {}
+    if "achievement_rewards_granted" not in player.state:
+        player.state["achievement_rewards_granted"] = []
 
     unlocked = set(player.state["achievements"])
     stats = get_achievement_stats(player)
@@ -358,20 +365,7 @@ def check_achievements(player):
         if _evaluate_check(ach_data["check"], stats):
             newly_unlocked.append((ach_id, ach_data))
             player.state["achievements"].append(ach_id)
-
-            # Apply stat rewards
-            reward = ach_data.get("reward", {})
-            for stat, val in reward.items():
-                if stat == "xp":
-                    player.stats["xp"] = player.stats.get("xp", 0) + val
-                elif stat == "health_max_bonus":
-                    player.stats["health_max"] = player.stats.get("health_max", 100) + val
-                    player.stats["health"] = min(
-                        player.stats.get("health", 100) + val,
-                        player.stats.get("health_max", 100)
-                    )
-                else:
-                    player.stats[stat] = player.stats.get(stat, 0) + val
+            apply_achievement_reward(player, ach_id, ach_data)
 
     return newly_unlocked
 
@@ -385,6 +379,39 @@ def track_event(player, event, amount=1):
 
     tracking = player.state["achievement_tracking"]
     tracking[event] = tracking.get(event, 0) + amount
+
+
+def apply_achievement_reward(player, ach_id, ach_data):
+    """Apply reward exactly once per achievement unlock."""
+    if not hasattr(player, 'state'):
+        player.state = {}
+    granted = set(player.state.get("achievement_rewards_granted", []))
+    if ach_id in granted:
+        return False
+
+    reward = ach_data.get("reward", {})
+    for stat, val in reward.items():
+        if stat == "xp":
+            player.stats["xp"] = player.stats.get("xp", 0) + val
+        elif stat == "health_max_bonus":
+            player.stats["health_max"] = player.stats.get("health_max", 100) + val
+            player.stats["health"] = min(
+                player.stats.get("health", 100) + val,
+                player.stats.get("health_max", 100)
+            )
+        elif stat == "cosmetics":
+            if unlock_cosmetic and isinstance(val, list):
+                for cosmetic_id in val:
+                    try:
+                        unlock_cosmetic(player, cosmetic_id)
+                    except Exception:
+                        pass
+        else:
+            player.stats[stat] = player.stats.get(stat, 0) + val
+
+    granted.add(ach_id)
+    player.state["achievement_rewards_granted"] = list(granted)
+    return True
 
 
 def get_achievements_display(player):
@@ -455,6 +482,10 @@ def format_achievement_unlock(ach_id, ach_data):
                 reward_parts.append(f"+{val} Attack")
             elif stat == "defense":
                 reward_parts.append(f"+{val} Defense")
+            elif stat == "cosmetics":
+                if isinstance(val, list):
+                    count = len(val)
+                    reward_parts.append(f"+{count} cosmetic unlock{'s' if count != 1 else ''}")
             else:
                 reward_parts.append(f"+{val} {stat}")
         result += f"  Rewards: {', '.join(reward_parts)}\n"

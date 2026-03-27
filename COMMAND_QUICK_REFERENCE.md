@@ -15,6 +15,43 @@
 - `commands` = Same as help
 - `?` = Same as help
 
+## Progression And Meta Commands
+
+- `skills` = Open skill tree
+- `abilities` = List active class abilities
+- `ability <name>` = Use a class ability
+- `equipment` = Show equipped gear
+- `artifact` = Show artifact inventory and equipped relic
+- `artifact equip <id>` = Equip artifact by id or name
+- `artifact unequip` = Unequip active artifact
+- `cosmetics` = Show unlocked cosmetics and active skins
+- `transmog <slot_or_item> <skin|clear>` = Apply or clear appearance override
+- `prestige status` = Show ascension status
+- `prestige` / `ascend` = Start ascension flow at max level
+
+## Faction Commands
+
+- `faction` = Show faction status
+- `faction ranks [id]` = Show rank roadmap
+- `faction join <id>` = Join a faction
+- `faction leave` = Leave current faction
+- `faction window` = Open party/faction management window
+
+## Pet Commands
+
+- `pet` = Show companion status
+- `pet inspect <id>` = Inspect a pet
+- `pet adopt <id>` = Adopt a companion
+- `pet activate <id>` = Set active companion
+- `pet feed` = Feed active companion (cost + cooldown)
+- `pet ability <ability_name_or_id>` = Use active pet ability
+- `pet abilities` = Show active pet ability roadmap
+- `pet window` = Open party/faction management window
+
+## Party Window
+
+- `party` = Open party/faction management window
+
 ## Home Commands
 
 - `buy home deed` = Purchase your first home deed

@@ -210,6 +210,19 @@ class SettingsWindow:
             relative_rect=pygame.Rect(220, y, 50, 24),
             text=f"{diff:.1f}x", manager=self.manager, container=panel,
         )
+        y += 40
+
+        self._make_label(panel, "Game Feel Intensity",
+                         pygame.Rect(10, y, 220, 24))
+        y += 28
+        cur_feel = self._working["gameplay"].get("game_feel_intensity", "normal")
+        feel_levels = ["low", "normal", "high"]
+        self._game_feel_dd = UIDropDownMenu(
+            options_list=feel_levels,
+            starting_option=cur_feel if cur_feel in feel_levels else "normal",
+            relative_rect=pygame.Rect(10, y, 200, 30),
+            manager=self.manager, container=panel,
+        )
 
     # ── ACCESSIBILITY TAB ────────────────────────────────────────────────
 
@@ -411,6 +424,10 @@ class SettingsWindow:
             w["gameplay"]["scroll_mode"] = self._scroll_mode_dd.selected_option[0]
         except Exception:
             pass
+        try:
+            w["gameplay"]["game_feel_intensity"] = self._game_feel_dd.selected_option[0]
+        except Exception:
+            w["gameplay"]["game_feel_intensity"] = w["gameplay"].get("game_feel_intensity", "normal")
         w["gameplay"]["difficulty_modifier"] = round(
             self._difficulty_slider.get_current_value(), 2)
 

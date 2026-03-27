@@ -13,6 +13,7 @@ layout supporting pan/zoom.
 """
 
 import math
+import random
 
 from skill_tree_data import (
     WARRIOR_TREE, ROGUE_TREE, MAGE_TREE,
@@ -305,7 +306,20 @@ def use_ability(player, ability_name):
     effect = found.get("effect", "")
     if "cooldowns" not in player.state:
         player.state["cooldowns"] = {}
-    player.state["cooldowns"][cd_key] = found.get("cooldown", 10)
+
+    base_cd = int(found.get("cooldown", 10))
+    cdr = float(player.stats.get("cooldown_reduction", 0))
+    cdr_bonus = float(player.stats.get("cooldown_reduction_bonus", 0))
+
+    # Accept either fraction (0.15) or percent (15) for bonus-style stats.
+    if 0 < cdr_bonus < 1:
+        cdr_bonus *= 100.0
+    if 0 < cdr < 1:
+        cdr *= 100.0
+
+    total_cdr = max(0.0, min(60.0, cdr + cdr_bonus))
+    adjusted_cd = max(1, int(math.ceil(base_cd * (1.0 - total_cdr / 100.0))))
+    player.state["cooldowns"][cd_key] = adjusted_cd
 
     combat_effects = (
         "combat_damage", "combat_crit_attack", "combat_stun",
