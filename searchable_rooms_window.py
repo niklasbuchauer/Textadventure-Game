@@ -62,6 +62,19 @@ REGIONS = [
 ]
 REGION_ORDER = [r[0] for r in REGIONS]
 
+# Filter chips: (label, tag)
+FILTER_CHIPS = [
+    ("All",            "all"),
+    ("Buildings",      "building"),
+    ("Wilderness",     "wilderness"),
+    ("Dungeons",       "dungeon"),
+    ("Fixed dungeons", "fixed_dungeon"),
+    ("Shops",          "shop"),
+    ("Homes",          "home"),
+    ("NPCs",           "npcs"),
+    ("Water",          "water"),
+]
+
 
 # ── Easing helpers ────────────────────────────────────────────────────────────
 def _ease_out_cubic(t):
@@ -106,6 +119,48 @@ def _region_for(room_id: str):
     return REGIONS[-1][0]
 
 
+def _tags_for(room_id, loc_type, exits, npcs, region):
+    """Derive coarse tags for filtering the room list."""
+    rid = (room_id or "").lower()
+    loc = (loc_type or "").lower()
+    tags = set()
+
+    # Dungeon classification
+    is_dungeon_id = rid.startswith("dungeon_") or "_floor" in rid or "_room" in rid and "dungeon" in rid
+    if "dungeon" in loc or region == "DUNGEONS" or is_dungeon_id:
+        tags.add("dungeon")
+        # Fixed dungeons use hand-crafted ids (cc_/ih_/sc_ etc.) or non-dungeon_ ids under DUNGEONS
+        if not rid.startswith("dungeon_"):
+            tags.add("fixed_dungeon")
+
+    # Building / settlement
+    if any(k in loc for k in ("building", "town", "village", "city", "hall", "castle", "fort", "inn", "tavern", "market", "shop")):
+        tags.add("building")
+    if "home" in loc or "house" in loc or "home" in rid:
+        tags.add("home"); tags.add("building")
+    if "shop" in loc or "market" in loc or "store" in loc or "merchant" in rid:
+        tags.add("shop"); tags.add("building")
+
+    # Wilderness / outdoors
+    if not tags.intersection({"building", "dungeon"}):
+        if any(k in loc for k in ("wilderness", "forest", "swamp", "cave", "ruins", "outskirts", "road", "path", "beach", "coast", "shore", "reef", "isle", "island", "fields", "mountain", "ridge", "woods", "glade", "clearing", "valley", "cliff", "river", "lake")):
+            tags.add("wilderness")
+    elif "forest" in loc or "swamp" in loc:
+        tags.add("wilderness")
+
+    # Water travel hints
+    if any(isinstance(v, dict) and v.get("type") == "boat_travel" for v in exits.values()):
+        tags.add("water")
+    if any(k in rid for k in ("harbor", "dock", "reef", "shore", "bay", "isle", "island")):
+        tags.add("water")
+
+    # NPC presence
+    if npcs:
+        tags.add("npcs")
+
+    return tags
+
+
 def _build_room_registry(engine):
     registry = {}
     try:
@@ -132,6 +187,7 @@ def _build_room_registry(engine):
             coordinates = rdata.get("coordinates", None)
 
         region = _region_for(rid)
+        tags = _tags_for(rid, loc_type, exits, npcs, region)
         registry[rid] = {
             "name":        name,
             "id":          rid,
@@ -142,6 +198,7 @@ def _build_room_registry(engine):
             "items":       items,
             "coordinates": coordinates,
             "region":      region,
+            "tags":        tags,
         }
     return registry
 
@@ -175,11 +232,14 @@ class RoomsOverlay:
         self._search_active: bool = False
         self._scroll:        int  = 0
         self._rows_visible:  int  = 0
+        self._active_filters: set = set()
 
         self._book_rect   = pygame.Rect(0, 0, 0, 0)
         self._close_rect  = pygame.Rect(0, 0, 0, 0)
         self._search_rect = pygame.Rect(0, 0, 0, 0)
         self._row_rects: list = []
+        self._chip_rects: list = []
+        self._chip_rects_screen: list = []
         self._sf    = 1.0
         self._dst_x = 0
         self._dst_y = 0
@@ -223,6 +283,13 @@ class RoomsOverlay:
         else:
             matches = self._registry
 
+        # Apply tag filters (inclusive OR). When no filters are active, show all.
+        if self._active_filters:
+            matches = {
+                rid: d for rid, d in matches.items()
+                if d.get("tags") and d["tags"].intersection(self._active_filters)
+            }
+
         groups: dict = {}
         for rid, d in matches.items():
             groups.setdefault(d["region"], []).append((rid, d))
@@ -246,6 +313,17 @@ class RoomsOverlay:
         self._scroll = 0
         if self._sel_idx >= len(flat):
             self._sel_idx = -1
+
+    def _toggle_filter(self, tag):
+        """Toggle a filter chip and re-apply filters."""
+        if tag == "all":
+            self._active_filters.clear()
+        else:
+            if tag in self._active_filters:
+                self._active_filters.remove(tag)
+            else:
+                self._active_filters.add(tag)
+        self._apply_filter(self._search_text)
 
     # ── Update ─────────────────────────────────────────────────────────────────
 
@@ -291,6 +369,10 @@ class RoomsOverlay:
             pos = event.pos
             if self._close_rect.collidepoint(pos):
                 self.close(); return True
+            for rect, tag in self._chip_rects_screen:
+                if rect.collidepoint(pos):
+                    self._toggle_filter(tag)
+                    return True
             if self._search_rect.collidepoint(pos):
                 self._search_active = True; return True
             else:
@@ -371,6 +453,7 @@ class RoomsOverlay:
         self._close_rect  = _tr(self._close_rect)
         self._search_rect = _tr(self._search_rect)
         self._row_rects   = [(_tr(r), fi) for r, fi in self._row_rects]
+        self._chip_rects_screen = [(_tr(r), tag) for r, tag in self._chip_rects]
 
     # ── Core book draw ─────────────────────────────────────────────────────────
 
@@ -459,7 +542,28 @@ class RoomsOverlay:
         pygame.draw.line(surf, div, (frame.x + 4, sb_y + 26),
                          (frame.x + frame.width - 4, sb_y + 26), 1)
 
-        list_top = sb_y + 30
+        # Filter chips
+        chip_y = sb_y + 30
+        chip_x = frame.x + 4
+        self._chip_rects = []  # book-local; translated later
+        for label, tag in FILTER_CHIPS:
+            active = (tag == "all" and not self._active_filters) or (tag in self._active_filters)
+            lab_s = self._f(9, bold=active).render(label, True,
+                         _blend(C_INK if active else C_INK_MID, C_PARCHMENT, cf))
+            bw = lab_s.get_width() + 12
+            bh = 18
+            if chip_x + bw > frame.right - 6:
+                chip_x = frame.x + 4
+                chip_y += bh + 4
+            rect = pygame.Rect(chip_x, chip_y, bw, bh)
+            bg_col = _blend((180, 150, 100) if active else C_SEARCH_BG, C_PARCHMENT, cf)
+            pygame.draw.rect(surf, bg_col, rect, border_radius=4)
+            pygame.draw.rect(surf, _blend(C_SEARCH_BORDER, C_PARCHMENT, cf), rect, width=1, border_radius=4)
+            surf.blit(lab_s, (rect.x + 6, rect.y + 3))
+            self._chip_rects.append((rect, tag))
+            chip_x += bw + 6
+
+        list_top = chip_y + 22
         row_h    = 20
         avail_h  = frame.bottom - list_top - 18
         self._rows_visible = max(1, avail_h // row_h)

@@ -170,8 +170,23 @@ class DungeonInstance:
         floors = self.dungeon_data.get("floors", {})
         floor_data = floors.get(floor, {})
         rooms = floor_data.get("rooms", {})
-        
-        return rooms.get(room_name)
+
+        room = rooms.get(room_name)
+        if room:
+            return room
+
+        # Backward-compat: allow legacy IDs like "floor1_room1" (without dungeon_<seed>_ prefix)
+        if not room_name.startswith("dungeon_"):
+            compat_name = f"dungeon_{self.seed}_{room_name}"
+            room = rooms.get(compat_name)
+            if room:
+                return room
+            # As a final fallback, match by suffix to tolerate varied prefixes
+            for rid, rdata in rooms.items():
+                if rid.endswith(room_name):
+                    return rdata
+
+        return None
     
     def get_floor_rooms(self, floor):
         """

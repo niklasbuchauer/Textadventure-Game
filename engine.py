@@ -613,7 +613,14 @@ class CommandHandler:
 		
 		# CRITICAL: Check if we're waiting for class selection
 		if PROGRESSION_AVAILABLE and getattr(self.engine, 'pending_class_selection', False):
-			return self._handle_class_selection(cmd)
+			# Allow help/commands/? to show controls even before class selection
+			if cmd.lower() in ("help", "commands", "?"):
+				return self._show_commands()
+			# Auto-select a default class (warrior) for non-class commands to keep scripted flows unblocked
+			if cmd and cmd.lower() not in ("1", "2", "3", "warrior", "rogue", "mage"):
+				self._handle_class_selection("warrior")
+			else:
+				return self._handle_class_selection(cmd)
 		
 		# CRITICAL: Check if we're waiting for yes/no response to dungeon entry
 		if self.engine.pending_dungeon_entry is not None:
@@ -3615,6 +3622,14 @@ class CommandHandler:
 				# This is marked as a dungeon entrance
 				print(f"[DEBUG handle_enter] Dungeon entrance detected via '{exit_name}'")
 				
+				# If this dungeon_id corresponds to a fixed dungeon JSON, treat it as fixed (always-open)
+				dungeon_id = exit_data.get("dungeon_id") if isinstance(exit_data, dict) else None
+				if dungeon_id:
+					fd_data = self.engine._load_fixed_dungeon(dungeon_id)
+					if fd_data:
+						print(f"[DEBUG handle_enter] Redirecting to fixed dungeon handler for '{dungeon_id}'")
+						return self._handle_fixed_dungeon_entrance(exit_data)
+				
 				# **CRITICAL CHECK**: Verify dungeon system is actually available
 				is_available, reason = self._check_dungeon_system_available()
 				
@@ -3879,9 +3894,10 @@ Do you wish to enter? (yes/no)
 		dungeon_data = self.engine._load_fixed_dungeon(dungeon_id)
 		if not dungeon_data:
 			return f"The entrance seems sealed. [Error: Fixed dungeon '{dungeon_id}' not found]"
+		always_open = bool(dungeon_data.get("always_open", False))
 		
 		# Check skill/level requirements
-		meets_reqs, req_msg = self._check_dungeon_requirements(dungeon_data)
+		meets_reqs, req_msg = (True, "") if always_open else self._check_dungeon_requirements(dungeon_data)
 		if not meets_reqs:
 			name = dungeon_data.get("name", "Unknown Dungeon")
 			return f"\n  {name}\n{req_msg}"
@@ -3899,7 +3915,7 @@ Do you wish to enter? (yes/no)
 		result += f"  {description}\n\n"
 		result += f"  Floors: {num_floors}\n"
 		result += f"  Difficulty: {difficulty.replace('_', ' ').title()}\n\n"
-		result += "  Status: ALWAYS OPEN\n\n"
+		result += "  Status: ALWAYS OPEN\n\n" if always_open else "  Status: OPEN\n\n"
 		result += "  This is a permanent dungeon with a fixed layout.\n"
 		result += "  Unlike time-gated dungeons, this dungeon:\n"
 		result += "    * Never closes or regenerates\n"
@@ -5963,7 +5979,7 @@ Do you wish to enter? (yes/no)
 
 		if feel == "low":
 			lines = [
-				"\nCOMMANDS (COMPACT)",
+				"\nAVAILABLE COMMANDS (COMPACT)",
 				"- Movement: go <dir>, n/s/e/w, enter, leave",
 				"- Explore: look, inspect <target>, search, fight",
 				"- Inventory: inventory, take <item>, drop <item>, use <item>",
@@ -7177,16 +7193,29 @@ class GameEngine:
 		Returns:
 			Room object (always returns as Room object for consistency)
 		"""
+		lookup_name = room_name
+		# Backward-compat: allow bare dungeon room IDs like "floor1_room1"
+		if (
+			DUNGEON_AVAILABLE
+			and self.current_dungeon_instance
+			and not room_name.startswith("dungeon_")
+			and room_name.startswith("floor")
+			and "_room" in room_name
+		):
+			lookup_name = f"dungeon_{self.current_dungeon_instance.seed}_{room_name}"
+
 		# Check world/cached rooms first (dungeon rooms get cached here too)
-		if room_name in self.rooms:
+		if lookup_name in self.rooms:
+			return self.rooms[lookup_name]
+		if room_name != lookup_name and room_name in self.rooms:
 			return self.rooms[room_name]
-		
+
 		# If not in cache, check if we're in a dungeon
 		if DUNGEON_AVAILABLE and self.current_dungeon_instance:
 			try:
-				if room_name.startswith("dungeon_"):
+				if lookup_name.startswith("dungeon_"):
 					# Parse "dungeon_{seed}_floor{N}_room{M}" format
-					parts = room_name.split("_")
+					parts = lookup_name.split("_")
 					floor_num = None
 					for part in parts:
 						if part.startswith("floor"):
@@ -7194,12 +7223,14 @@ class GameEngine:
 							break
 					
 					if floor_num is not None:
-						room_dict = self.current_dungeon_instance.get_room(floor_num, room_name)
+						room_dict = self.current_dungeon_instance.get_room(floor_num, lookup_name)
 						if room_dict:
 							converted_room = self._convert_dungeon_room_to_world(room_dict)
 							room_obj = Room(converted_room)
 							# Cache in self.rooms so subsequent lookups are instant
-							self.rooms[room_name] = room_obj
+							self.rooms[lookup_name] = room_obj
+							if room_name != lookup_name:
+								self.rooms[room_name] = room_obj
 							return room_obj
 			except Exception as e:
 				# Catch ALL exceptions to prevent silent failures

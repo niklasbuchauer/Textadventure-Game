@@ -1017,9 +1017,27 @@ class CraftingSystem:
 		"""
 		station = self.get_current_station_type()
 		if not station:
-			return "There is no crafting station here.\nYou can craft at the Blacksmith's Forge or at dungeon altars."
+			return "There is no crafting altar or station here.\nYou can craft at the Blacksmith's Forge or at dungeon altars."
 
 		station_name = STATION_NAMES.get(station, "Crafting Station")
+
+		# Track discovered dungeon altars
+		if station.startswith("altar_"):
+			found = set(self.engine.player.state.get("found_altars", []))
+			found.add(station_name)
+			self.engine.player.state["found_altars"] = list(found)
+
+		# Crystal Caverns altar is placeholder content for now
+		if station == "altar_crystal":
+			result = "\n" + "═" * 50 + "\n"
+			result += f"  ⚒️  {station_name}\n"
+			result += "═" * 50 + "\n\n"
+			result += "  The Forge of Light hums softly, but its power\n"
+			result += "  is not yet fully understood.\n\n"
+			result += "  Crafting here is coming soon.\n"
+			result += "  Check back after the forge is awakened.\n"
+			result += "═" * 50 + "\n"
+			return result
 
 		# Auto-discover altar recipes when first visiting
 		self._auto_discover_recipes(station)

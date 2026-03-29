@@ -155,6 +155,13 @@ class LiveMapWindow:
         self._text_surf_cache: dict = {}    # keyed by (text, color_tuple, size)
         self._hex_pts_cache: dict = {}      # radius -> list of (dx,dy) offsets for dungeon hexagon
 
+        # Clickable room hit map + selection
+        self._hit_positions: dict = {}
+        self._hit_rooms: dict = {}
+        self._hit_visible: set = set()
+        self._hit_radius: float = self.ROOM_RADIUS
+        self._selected_room_id: str | None = None
+
         # Island-cluster cache: avoids O(n^2) proximity recomputation each frame.
         # Keyed on (spacing, frozenset(room_ids)); invalidated when zoom or rooms change.
         self._island_cache_kv = None        # ((spacing, frozenset), [frozenset, ...])
@@ -162,6 +169,13 @@ class LiveMapWindow:
         self._last_layout_spacing = 0.0
         # Pre-computed wave jitter offsets — built once, reused every frame (~27x speedup)
         self._wave_jitter_table = None      # list of (gx_idx, gy_idx, jx_off, jy_off)
+        # Map centre cache for routing curves
+        self._layout_cx = 0.0
+        self._layout_cy = 0.0
+        self._layout_mid_x = 0.0
+        self._layout_mid_y = 0.0
+        self._layout_spacing = 0.0
+        self._main_island_obstacle = None
 
         # Pre-compute RGB colour tuples once so _c() / _hex_to_rgb() are O(1)
         self._rgb_colors = {k: self._hex_to_rgb(v) for k, v in self.COLORS.items()}
@@ -370,9 +384,15 @@ class LiveMapWindow:
 
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             if self._drag_start:
+                start = self._drag_start
                 self._drag_start = None
-                self._needs_redraw = True
-                self.redraw_map()
+                dist = math.hypot(pygame.mouse.get_pos()[0] - start[0],
+                                  pygame.mouse.get_pos()[1] - start[1])
+                if self._is_mouse_over_map() and dist <= 6:
+                    self._handle_map_click(pygame.mouse.get_pos())
+                else:
+                    self._needs_redraw = True
+                    self.redraw_map()
             return
 
     def _is_mouse_over_map(self):
@@ -420,6 +440,38 @@ class LiveMapWindow:
         if l:
             self.window.set_relative_position((new_x, sr.y))
         self._needs_redraw = True
+
+    def _handle_map_click(self, abs_pos):
+        """Select the nearest visible room under the cursor and toggle its label."""
+        if not self._map_image or not self._map_image.alive():
+            return
+        if not self._hit_positions:
+            return
+
+        rect = self._map_image.get_abs_rect()
+        lx = abs_pos[0] - rect.x
+        ly = abs_pos[1] - rect.y
+
+        hit_radius = max(10, self._hit_radius + 6)
+        best = None  # (rid, dist)
+        for rid, (px, py) in self._hit_positions.items():
+            if rid not in self._hit_rooms:
+                continue
+            is_visible = self.reveal_all or rid in self._hit_visible or rid == self.current_location
+            if not is_visible:
+                continue
+            dist = math.hypot(lx - px, ly - py)
+            if dist <= hit_radius and (best is None or dist < best[1]):
+                best = (rid, dist)
+
+        new_sel = best[0] if best else None
+        if new_sel == self._selected_room_id:
+            self._selected_room_id = None
+        else:
+            self._selected_room_id = new_sel
+
+        self._needs_redraw = True
+        self.redraw_map()
 
     # ── zoom / pan controls ─────────────────────────────────────────
     def _zoom_in(self):
@@ -477,6 +529,22 @@ class LiveMapWindow:
     def _update_zoom_label(self):
         if self._zoom_label:
             self._zoom_label.set_text(f"{int(self._zoom * 100)}%")
+
+    # ── hit map helpers for click-to-label ────────────────────────
+    def _clear_hitmap(self):
+        self._hit_positions = {}
+        self._hit_rooms = {}
+        self._hit_visible = set()
+        self._hit_radius = self.ROOM_RADIUS
+
+    def _remember_hitmap(self, positions, rooms, visible_set, radius):
+        self._hit_positions = dict(positions) if positions else {}
+        self._hit_rooms = rooms or {}
+        vis = set(visible_set or [])
+        if self.current_location:
+            vis.add(self.current_location)
+        self._hit_visible = vis
+        self._hit_radius = radius
 
     # ── rendering entry-point ───────────────────────────────────────
     def redraw_map(self):
@@ -554,6 +622,53 @@ class LiveMapWindow:
             positions[rid] = (px, py)
 
         return positions, spacing
+
+    def _boat_control_point(self, x1, y1, x2, y2):
+        """Choose a control point that bends the sea route around the main landmass."""
+        cx = getattr(self, "_layout_cx", 0.0)
+        cy = getattr(self, "_layout_cy", 0.0)
+        mx = (x1 + x2) / 2.0
+        my = (y1 + y2) / 2.0
+
+        dx = x2 - x1
+        dy = y2 - y1
+        dist = max(1.0, math.hypot(dx, dy))
+        px = -dy / dist
+        py = dx / dist
+
+        # Push away from the land centroid (layout centre) so the curve skirts islands
+        to_center = (cx - mx, cy - my)
+        if px * to_center[0] + py * to_center[1] > 0:
+            px, py = -px, -py
+
+        offset = min(220.0, max(80.0, dist * 0.45))
+        ctrl = [mx + px * offset, my + py * offset]
+
+        # If a main-island obstacle exists, push the control point further outward to clear it
+        obs = self._main_island_obstacle
+        if obs:
+            ocx, ocy, orad = obs
+            vx = ctrl[0] - ocx
+            vy = ctrl[1] - ocy
+            d = math.hypot(vx, vy)
+            min_clear = orad * 1.08
+            if d < min_clear:
+                scale = (min_clear + 40.0) / max(d, 1.0)
+                ctrl[0] = ocx + vx * scale
+                ctrl[1] = ocy + vy * scale
+
+        return tuple(ctrl)
+
+    def _pos_for_room(self, rid, positions, rooms):
+        """Return screen position for rid, deriving from coordinates if missing."""
+        if rid in positions:
+            return positions[rid]
+        rdata = rooms.get(rid) if isinstance(rooms, dict) else None
+        if not rdata or "coordinates" not in rdata:
+            return None
+        cx, cy = rdata.get("coordinates", [0, 0])
+        return self._world_to_screen(cx, cy)
+
 
     def _world_to_screen(self, wx, wy):
         """Convert a world-space (grid) coordinate to screen pixels."""
@@ -841,7 +956,21 @@ class LiveMapWindow:
         world_pos = world_pos if len(world_pos) == len(positions) else None
         components = self._find_island_components(positions, world_pos)
         if not components:
+            self._main_island_obstacle = None
             return
+        # Cache main island obstacle for boat routing (largest component extent)
+        main = components[0]
+        xs_m = [p[0] for p in main.values()]
+        ys_m = [p[1] for p in main.values()]
+        if xs_m and ys_m:
+            cx_m = (min(xs_m) + max(xs_m)) / 2.0
+            cy_m = (min(ys_m) + max(ys_m)) / 2.0
+            rx_m = (max(xs_m) - min(xs_m)) / 2.0
+            ry_m = (max(ys_m) - min(ys_m)) / 2.0
+            rad_m = max(rx_m, ry_m) * 1.15 + 40.0
+            self._main_island_obstacle = (cx_m, cy_m, rad_m)
+        else:
+            self._main_island_obstacle = None
         total = sum(len(c) for c in components)
         largest = len(components[0])
         min_size = max(5, int(largest * 0.06))
@@ -875,6 +1004,53 @@ class LiveMapWindow:
             ey = int(y1 + dy * t1)
             pygame.draw.line(surf, color, (sx, sy), (ex, ey), width)
 
+    @staticmethod
+    def _draw_dashed_curve(surf, color, p0, p1, p2, dash=4, gap=4, width=1, samples=28):
+        """Draw a dashed quadratic Bezier curve p0->p2 with control p1."""
+
+        def bez(t):
+            u = 1 - t
+            x = u * u * p0[0] + 2 * u * t * p1[0] + t * t * p2[0]
+            y = u * u * p0[1] + 2 * u * t * p1[1] + t * t * p2[1]
+            return x, y
+
+        pts = [bez(i / samples) for i in range(samples + 1)]
+        drawing = True
+        remaining = dash
+        for i in range(len(pts) - 1):
+            ax, ay = pts[i]
+            bx, by = pts[i + 1]
+            dx = bx - ax
+            dy = by - ay
+            seg_len = math.hypot(dx, dy)
+            if seg_len == 0:
+                continue
+            seg_pos = 0.0
+            while seg_pos < seg_len:
+                step = min(remaining, seg_len - seg_pos)
+                t0 = seg_pos / seg_len
+                t1 = (seg_pos + step) / seg_len
+                sx = ax + dx * t0
+                sy = ay + dy * t0
+                ex = ax + dx * t1
+                ey = ay + dy * t1
+                if drawing:
+                    pygame.draw.line(surf, color,
+                                     (int(sx), int(sy)), (int(ex), int(ey)), width)
+                seg_pos += step
+                remaining -= step
+                if remaining <= 0:
+                    drawing = not drawing
+                    remaining = dash if drawing else gap
+
+    @staticmethod
+    def _quad_point(p0, p1, p2, t: float):
+        """Return a point on a quadratic Bezier at param t."""
+        u = 1 - t
+        x = u * u * p0[0] + 2 * u * t * p1[0] + t * t * p2[0]
+        y = u * u * p0[1] + 2 * u * t * p1[1] + t * t * p2[1]
+        return x, y
+
     def _draw_connections(self, surf, positions, rooms, visited, sw, sh):
         drawn = set()
         boat_routes = []
@@ -884,8 +1060,12 @@ class LiveMapWindow:
 
         for rid, rdata in rooms.items():
             if rid not in positions:
-                continue
-            x1, y1 = positions[rid]
+                pos1 = self._pos_for_room(rid, positions, rooms)
+                if not pos1:
+                    continue
+            else:
+                pos1 = positions[rid]
+            x1, y1 = pos1
             exits = rdata.get("exits", {})
             if not hasattr(exits, 'items'):
                 continue
@@ -893,13 +1073,17 @@ class LiveMapWindow:
             for _dir, target in exits.items():
                 target_id = target.get("target", "") if isinstance(target, dict) else target
                 if target_id not in positions:
-                    continue
+                    pos2 = self._pos_for_room(target_id, positions, rooms)
+                    if not pos2:
+                        continue
+                else:
+                    pos2 = positions[target_id]
                 pair = tuple(sorted([rid, target_id]))
                 if pair in drawn:
                     continue
                 drawn.add(pair)
 
-                x2, y2 = positions[target_id]
+                x2, y2 = pos2
                 # Viewport culling
                 if (max(x1, x2) < -margin or min(x1, x2) > sw + margin or
                         max(y1, y2) < -margin or min(y1, y2) > sh + margin):
@@ -954,19 +1138,22 @@ class LiveMapWindow:
         boat_col = self._rgb_colors["boat_line"]
         boat_hi  = self._rgb_colors["boat_line_hi"]
         for x1, y1, x2, y2 in boat_routes:
-            self._draw_dashed_line(surf, boat_col,
-                                   (int(x1), int(y1)), (int(x2), int(y2)),
-                                   dash=12, gap=6, width=3)
-            self._draw_dashed_line(surf, boat_hi,
-                                   (int(x1), int(y1)), (int(x2), int(y2)),
-                                   dash=12, gap=6, width=1)
-            # Small "~" wave tick at midpoint
-            mx_ = int((x1 + x2) / 2)
-            my_ = int((y1 + y2) / 2)
-            for wx in (-6, 0, 6):
-                pygame.draw.arc(surf, boat_hi,
-                                (mx_ + wx - 3, my_ - 3, 6, 6),
-                                0, math.pi, 1)
+            ctrl = self._boat_control_point(x1, y1, x2, y2)
+            self._draw_dashed_curve(surf, boat_col,
+                                    (int(x1), int(y1)), ctrl, (int(x2), int(y2)),
+                                    dash=12, gap=6, width=3, samples=36)
+            self._draw_dashed_curve(surf, boat_hi,
+                                    (int(x1), int(y1)), ctrl, (int(x2), int(y2)),
+                                    dash=12, gap=6, width=1, samples=36)
+            # Small "~" wave ticks along the curve (quarter, mid, three-quarter)
+            for t_wave in (0.25, 0.5, 0.75):
+                wx, wy = self._quad_point((x1, y1), ctrl, (x2, y2), t_wave)
+                wx = int(wx)
+                wy = int(wy)
+                for dxw in (-5, 0, 5):
+                    pygame.draw.arc(surf, boat_hi,
+                                    (wx + dxw - 3, wy - 3, 6, 6),
+                                    0, math.pi, 1)
 
     def _get_room_style(self, tag, room_id=""):
         styles = {
@@ -1250,7 +1437,10 @@ class LiveMapWindow:
         r = max(6, min(r, 32))
         margin = r + 40
 
-        show_labels = self._zoom >= 0.65
+        # Remember latest hit map so clicks can pick the right room marker
+        self._remember_hitmap(positions, rooms, visited, r)
+
+        show_labels = False  # keep map clean; labels are shown on click
         max_chars   = max(8, int(18 * self._zoom)) if show_labels else 0
         font_size   = max(7, int(9 * self._zoom)) if show_labels else 9
         label_offset = r + int(10 * self._zoom) if show_labels else 0
@@ -1304,6 +1494,59 @@ class LiveMapWindow:
                 pygame.draw.rect(surf, self._c("text_label_bg"), box)
                 pygame.draw.rect(surf, self._c("ink_mid"), box, 1)
                 surf.blit(lbl, (lx, ly))
+
+            # Overlay a large, always-legible label for the selected room
+            self._draw_selected_label(surf, positions, rooms)
+
+    def _draw_selected_label(self, surf, positions, rooms):
+        sel = self._selected_room_id
+        if not sel or sel not in positions or sel not in rooms:
+            return
+
+        px, py = positions[sel]
+        rdata = rooms.get(sel, {})
+        name = (rdata.get("name", "???") if isinstance(rdata, dict)
+                else (getattr(rdata, "name", None) or "???"))
+
+        txt = self._render_text(name, self._c("text"), 17)
+        pad = 6
+        w = txt.get_width() + pad * 2
+        h = txt.get_height() + pad * 2
+
+        sw, sh = surf.get_size()
+        offset = max(22, self._hit_radius + 8)
+        # Prefer placing to the right; fall back to the left if near the edge.
+        bx = int(px + offset)
+        place_left = False
+        if bx + w + 12 > sw:
+            bx = int(px - offset - w)
+            place_left = True
+        bx = max(8, min(bx, sw - w - 8))
+
+        by = int(py - h // 2)
+        by = max(8, min(by, sh - h - 8))
+
+        rect = pygame.Rect(bx, by, w, h)
+        bg = self._c("text_label_bg")
+        bord = self._c("border_inner")
+        ink = self._c("ink_mid")
+
+        # Draw connector first so the label sits on top of it
+        anchor_x = rect.right if place_left else rect.left
+        anchor_y = rect.y + rect.height // 2
+        pygame.draw.line(surf, ink, (int(px), int(py)), (anchor_x, anchor_y), 2)
+
+        pygame.draw.rect(surf, bg, rect, border_radius=4)
+        pygame.draw.rect(surf, bord, rect, 2, border_radius=4)
+        surf.blit(txt, (rect.x + pad, rect.y + pad))
+
+        # Pointer from label edge toward the room marker
+        if place_left:
+            tri = [(rect.right, anchor_y), (rect.right + 12, anchor_y - 7), (rect.right + 12, anchor_y + 7)]
+        else:
+            tri = [(rect.left, anchor_y), (rect.left - 12, anchor_y - 7), (rect.left - 12, anchor_y + 7)]
+        pygame.draw.polygon(surf, bg, tri)
+        pygame.draw.polygon(surf, bord, tri, 1)
 
     def _draw_legend(self, surf, sh):
         """Draw a parchment scroll legend box in the bottom-right corner."""
@@ -1584,6 +1827,8 @@ class LiveMapWindow:
 
         visited = set(self.visited_rooms) if not self.reveal_all else set(rooms.keys())
 
+        self._clear_hitmap()
+
         if self._header_label:
             self._header_label.set_text(
                 f"\u2694  DUNGEON  \u2014  FLOOR {floor_num} / {total_floors}  \u2694"
@@ -1655,6 +1900,8 @@ class LiveMapWindow:
         rooms = self._build_overworld_rooms()
         visited = set(self.visited_rooms) if not self.reveal_all else set(rooms.keys())
 
+        self._clear_hitmap()
+
         if self._header_label:
             self._header_label.set_text("\u2014  OVERWORLD MAP  \u2014")
 
@@ -1678,6 +1925,9 @@ class LiveMapWindow:
         # is fast enough (~1.6 ms) thanks to the wave-jitter table (built once)
         # and the island-cluster cache (O(n) on cache hit, O(n²) on zoom change).
         positions, spacing = self._compute_layout(coord_map, sw, sh)
+
+        # Reset island obstacle; _draw_land_mass will cache it for boat routing
+        self._main_island_obstacle = None
 
         surf.fill(self._rgb_colors["ocean"])
         grid_col = self._rgb_colors["ocean_lines"]
@@ -1722,6 +1972,8 @@ class LiveMapWindow:
     def _render_home_map(self):
         surf = self._map_surface
         sw, sh = surf.get_size()
+
+        self._clear_hitmap()
 
         bg = (92, 63, 39)
         floor = (120, 84, 56)
