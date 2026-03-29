@@ -649,31 +649,31 @@
       "prestige_xp_multiplier": 1.0
     },
     "visited_rooms": [
-      "village_east_end",
-      "smugglers_cove",
-      "player_home",
-      "crossroads",
-      "chapel",
-      "sandy_beach",
-      "grand_harbor_gate",
       "desert_dunes_west",
+      "harbor_east_dock",
       "harbor_south_pier",
+      "crossroads",
+      "grand_harbor_square",
+      "village_west_end",
+      "grand_harbor_gate",
+      "village_east_end",
+      "stormbreak_docks",
+      "farmland_east",
+      "coastal_road_north",
+      "farmland_center",
+      "farmland_west",
+      "village_south_road",
+      "chapel",
       "reef_shallows",
+      "desert_border",
+      "sandy_beach",
+      "player_home",
+      "coastal_cliffs",
       "sunken_ruins",
       "dusty_crossroads",
-      "coastal_cliffs",
+      "smugglers_cove",
       "village_square",
-      "grand_harbor_square",
-      "stormbreak_docks",
-      "coastal_road_north",
-      "farmland_east",
-      "village_south_road",
-      "harbor_east_dock",
-      "village_west_end",
-      "grand_harbor_road",
-      "farmland_west",
-      "desert_border",
-      "farmland_center"
+      "grand_harbor_road"
     ],
     "unlocked_islands": [
       "stormbreak_island"
@@ -8096,31 +8096,31 @@
       }
     },
     "rooms_rolled": [
-      "smugglers_cove",
-      "canyon_entrance",
-      "crossroads",
-      "sandy_beach",
-      "desert_cliffs",
       "desert_dunes_west",
+      "desert_cliffs",
       "village_road",
-      "reef_shallows",
+      "crossroads",
       "forest_path",
-      "scorpion_flats",
       "deep_forest",
-      "dungeon_forest_entrance",
-      "dusty_crossroads",
-      "coastal_cliffs",
-      "graveyard_gates",
-      "meteor_crater",
       "mesa_top",
-      "coastal_road_north",
-      "graveyard",
       "mesa_base",
-      "farmland",
+      "dungeon_forest_entrance",
       "farmland_east",
+      "coastal_road_north",
+      "canyon_entrance",
+      "graveyard_gates",
+      "farmland_center",
       "farmland_west",
+      "meteor_crater",
+      "reef_shallows",
+      "scorpion_flats",
       "desert_border",
-      "farmland_center"
+      "sandy_beach",
+      "farmland",
+      "coastal_cliffs",
+      "dusty_crossroads",
+      "smugglers_cove",
+      "graveyard"
     ]
   },
   "fishing": {
@@ -8151,9 +8151,9 @@
   },
   "dungeon_scheduler": {
     "debug_force_open": [
+      "sunken_catacombs",
       "iron_halls",
-      "crystal_caverns",
-      "sunken_catacombs"
+      "crystal_caverns"
     ]
   }
 }

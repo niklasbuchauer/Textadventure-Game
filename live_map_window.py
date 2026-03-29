@@ -177,6 +177,9 @@ class LiveMapWindow:
         self._layout_spacing = 0.0
         self._main_island_obstacle = None
 
+        self._home_ids: set[str] = set()
+        self._cached_unlocked_islands: set[str] = set()
+
         # Pre-compute RGB colour tuples once so _c() / _hex_to_rgb() are O(1)
         self._rgb_colors = {k: self._hex_to_rgb(v) for k, v in self.COLORS.items()}
         self._rgb_region = {k: (self._hex_to_rgb(v[0]), self._hex_to_rgb(v[1]))
@@ -666,6 +669,8 @@ class LiveMapWindow:
         rdata = rooms.get(rid) if isinstance(rooms, dict) else None
         if not rdata or "coordinates" not in rdata:
             return None
+        if self._is_home_room_id(rid, rdata):
+            return None
         cx, cy = rdata.get("coordinates", [0, 0])
         return self._world_to_screen(cx, cy)
 
@@ -717,6 +722,41 @@ class LiveMapWindow:
             if len(self._text_surf_cache) > 2000:
                 self._text_surf_cache.clear()
         return s
+
+    def _is_home_room_id(self, rid, room_obj=None) -> bool:
+        if not rid:
+            return False
+        if rid in self._home_ids:
+            return True
+        try:
+            if HOME_MAP_AVAILABLE and is_home_room(rid):
+                self._home_ids.add(rid)
+                return True
+        except Exception:
+            pass
+        if isinstance(room_obj, dict) and room_obj.get("location_type") == "home":
+            self._home_ids.add(rid)
+            return True
+        if rid == "player_home":
+            self._home_ids.add(rid)
+            return True
+        return False
+
+    def _is_island_unlocked(self, island_id: str) -> bool:
+        if not island_id:
+            return False
+        if island_id in self._cached_unlocked_islands:
+            return True
+        ge = self.game_engine
+        try:
+            player = getattr(ge, "player", None) if ge else None
+            unlocked = getattr(player, "unlocked_islands", None)
+            if unlocked and island_id in unlocked:
+                self._cached_unlocked_islands.add(island_id)
+                return True
+        except Exception:
+            pass
+        return False
 
     def _find_island_components(self, positions, world_positions=None):
         """Split positions into island clusters by SPATIAL proximity.
@@ -1090,6 +1130,9 @@ class LiveMapWindow:
                     continue
 
                 if isinstance(target, dict) and target.get("type") == "boat_travel":
+                    island_id = target.get("island_id") or ""
+                    if island_id and not self.reveal_all and not self._is_island_unlocked(island_id):
+                        continue
                     boat_routes.append((x1, y1, x2, y2))
                     continue
 
@@ -1878,6 +1921,8 @@ class LiveMapWindow:
             if rid.startswith("dungeon_") and "_floor" in rid:
                 continue
             if rid in fixed_ids:
+                continue
+            if self._is_home_room_id(rid, room_obj):
                 continue
             rooms[rid] = {
                 "name": getattr(room_obj, "name", None)
