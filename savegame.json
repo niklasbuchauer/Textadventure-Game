@@ -6,9 +6,9 @@
       "prayer_candle": 1,
       "iron_dagger": 6,
       "healing_potion": 1,
-      "potent_healing_potion": 3,
-      "refined_copper": 1,
-      "copper_ingot": 1,
+      "potent_healing_potion": 4,
+      "refined_copper": 4,
+      "copper_ingot": 4,
       "solaris_blade": 1,
       "void_cloak": 2,
       "alchemist_key": 1,
@@ -18,7 +18,9 @@
       "wolf_pelt_rug": 1,
       "garden_room": 1,
       "battle_map": 1,
-      "altar_of_knowledge": 4
+      "altar_of_knowledge": 4,
+      "potent_mana_potion": 5,
+      "slag": 5
     },
     "state": {
       "unlocked_skills": [
@@ -153,6 +155,21 @@
           "stat": "perception",
           "amount": 3,
           "turns_left": 10
+        },
+        {
+          "stat": "perception",
+          "amount": 3,
+          "turns_left": 5
+        },
+        {
+          "stat": "perception",
+          "amount": 3,
+          "turns_left": 10
+        },
+        {
+          "stat": "perception",
+          "amount": 3,
+          "turns_left": 5
         },
         {
           "stat": "perception",
@@ -631,14 +648,14 @@
       "health": 345,
       "health_max": 345,
       "level": 13,
-      "xp": 4573,
-      "xp_to_next": 2927,
+      "xp": 5193,
+      "xp_to_next": 507,
       "skill_points": 0,
       "class": "warrior",
       "strength": 42,
       "defense": 87,
       "dexterity": 24,
-      "perception": 27,
+      "perception": 36,
       "charisma": 5,
       "constitution": 32,
       "mana": 92,
@@ -649,31 +666,31 @@
       "prestige_xp_multiplier": 1.0
     },
     "visited_rooms": [
-      "desert_dunes_west",
-      "harbor_east_dock",
-      "harbor_south_pier",
-      "crossroads",
-      "grand_harbor_square",
-      "village_west_end",
-      "grand_harbor_gate",
-      "village_east_end",
-      "stormbreak_docks",
-      "farmland_east",
-      "coastal_road_north",
-      "farmland_center",
-      "farmland_west",
-      "village_south_road",
-      "chapel",
-      "reef_shallows",
       "desert_border",
+      "grand_harbor_square",
+      "village_south_road",
+      "crossroads",
+      "reef_shallows",
+      "village_west_end",
+      "dusty_crossroads",
+      "grand_harbor_gate",
       "sandy_beach",
-      "player_home",
+      "farmland_west",
+      "harbor_east_dock",
+      "coastal_road_north",
       "coastal_cliffs",
       "sunken_ruins",
-      "dusty_crossroads",
+      "grand_harbor_road",
       "smugglers_cove",
+      "stormbreak_docks",
       "village_square",
-      "grand_harbor_road"
+      "chapel",
+      "harbor_south_pier",
+      "desert_dunes_west",
+      "farmland_east",
+      "player_home",
+      "farmland_center",
+      "village_east_end"
     ],
     "unlocked_islands": [
       "stormbreak_island"
@@ -8096,31 +8113,31 @@
       }
     },
     "rooms_rolled": [
-      "desert_dunes_west",
+      "desert_border",
+      "crossroads",
+      "reef_shallows",
+      "dusty_crossroads",
+      "forest_path",
+      "sandy_beach",
+      "farmland_west",
+      "mesa_top",
+      "graveyard",
+      "deep_forest",
+      "graveyard_gates",
+      "coastal_road_north",
+      "coastal_cliffs",
+      "mesa_base",
       "desert_cliffs",
       "village_road",
-      "crossroads",
-      "forest_path",
-      "deep_forest",
-      "mesa_top",
-      "mesa_base",
-      "dungeon_forest_entrance",
-      "farmland_east",
-      "coastal_road_north",
-      "canyon_entrance",
-      "graveyard_gates",
-      "farmland_center",
-      "farmland_west",
-      "meteor_crater",
-      "reef_shallows",
-      "scorpion_flats",
-      "desert_border",
-      "sandy_beach",
-      "farmland",
-      "coastal_cliffs",
-      "dusty_crossroads",
       "smugglers_cove",
-      "graveyard"
+      "canyon_entrance",
+      "dungeon_forest_entrance",
+      "desert_dunes_west",
+      "scorpion_flats",
+      "farmland_east",
+      "farmland",
+      "farmland_center",
+      "meteor_crater"
     ]
   },
   "fishing": {
@@ -8152,8 +8169,8 @@
   "dungeon_scheduler": {
     "debug_force_open": [
       "sunken_catacombs",
-      "iron_halls",
-      "crystal_caverns"
+      "crystal_caverns",
+      "iron_halls"
     ]
   }
 }

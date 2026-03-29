@@ -25,6 +25,7 @@ Commands added to engine.py:
 
 import random
 import time
+import math
 
 try:
     from ascii_art import (
@@ -497,6 +498,7 @@ class ForgingOverlay:
 
         perfect = self._perfect_rounds
         total   = self._total_rounds
+        accuracy = int((perfect / max(total, 1)) * 100)
 
         if perfect >= total:
             quality = "flawless"
@@ -507,9 +509,9 @@ class ForgingOverlay:
 
         result_text = self.system._apply_forge(self.recipe, quality=quality)
 
-        # Display result
+        # Display result with accuracy
         tier = QUALITY_TIERS[quality]
-        self._result_text  = f"{tier['label']} — {self._perfect_rounds}/{self._total_rounds} perfect rounds"
+        self._result_text  = f"{tier['label']} — {self._perfect_rounds}/{self._total_rounds} perfect rounds ({accuracy}% accuracy)"
         self._result_color = tier["color"]
         self._show_result  = True
         self._result_timer = 0.0
@@ -525,6 +527,10 @@ class ForgingOverlay:
         self._result_color = (200, 60, 60)
         self._show_result  = True
         self._result_timer = 0.0
+        gui = getattr(self.system.engine, "gui", None)
+        if gui:
+            recipe_name = self.recipe.get("name", "item")
+            gui.append(f"  ❌ Forge failed: {recipe_name}. No item was forged.")
     # ── Update ────────────────────────────────────────────────────────────────
 
     def update(self, dt):
@@ -632,20 +638,30 @@ class ForgingOverlay:
                 ty = seq_y
 
                 if idx < self._current_seq_progress:
-                    # Already pressed — dim green
+                    # Already pressed — dim green with checkmark glow
                     tile_col   = (40, 120, 40)
-                    border_col = (80, 200, 80)
+                    border_col = (100, 220, 100)
                     text_col   = (150, 255, 150)
+                    glow_col   = (80, 200, 80, 60)
                 elif idx == self._current_seq_progress:
-                    # Current key — bright
-                    tile_col   = (40, 40, 100)
-                    border_col = (150, 150, 255)
-                    text_col   = (255, 255, 100)
+                    # Current key — bright pulsing
+                    pulse = abs(math.sin(pygame.time.get_ticks() * 0.008))
+                    tile_col   = (40 + int(30 * pulse), 40 + int(40 * pulse), 120 + int(40 * pulse))
+                    border_col = (180 + int(75 * pulse), 180 + int(75 * pulse), 255)
+                    text_col   = (255, 255, 100 + int(155 * pulse))
+                    glow_col   = None
                 else:
                     # Future keys — dark
                     tile_col   = (30, 30, 50)
                     border_col = (80, 80, 100)
-                    text_col   = (120, 120, 120)
+                    text_col   = (120, 120, 140)
+                    glow_col   = None
+
+                # Draw glow effect for completed keys
+                if glow_col:
+                    glow_surf = pygame.Surface((tile_w + 6, tile_w + 6), pygame.SRCALPHA)
+                    pygame.draw.rect(glow_surf, glow_col, (0, 0, tile_w + 6, tile_w + 6), border_radius=5)
+                    surface.blit(glow_surf, (tx - 3, ty - 3))
 
                 pygame.draw.rect(surface, tile_col,
                                  (tx, ty, tile_w, tile_w), border_radius=5)
@@ -659,8 +675,12 @@ class ForgingOverlay:
             # Instruction
             inst_y = seq_y + tile_w + 12
             if self._wrong_flash > 0:
-                inst_text  = "Wrong key! Try again..."
+                inst_text  = "❌ Wrong key! Reset sequence. Try again..."
                 inst_color = (255, 100, 100)
+            elif self._current_seq_progress > 0:
+                progress = min(len(seq), self._current_seq_progress)
+                inst_text  = f"✓ {progress}/{len(seq)} keys correct — Keep going!"
+                inst_color = (150, 220, 150)
             else:
                 inst_text  = "Press keys in order: W / A / S / D"
                 inst_color = (140, 140, 200)

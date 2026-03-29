@@ -975,7 +975,7 @@ class CraftingSystem:
 		if gui is not None:
 			station_type = recipe.get("station", "any")
 			if station_type == "campfire" or ("campfire" in str(recipe.get("name","")).lower()):
-				gui._crafting_overlay = CookingOverlay(recipe["name"], result_item)
+				gui._crafting_overlay = CookingOverlay(recipe["name"], result_item, gui=gui)
 			else:
 				gui._crafting_overlay = CraftingOverlay(recipe["name"], result_item, station_type)
 
@@ -1433,48 +1433,130 @@ class CraftingOverlay:
 
 class CookingOverlay:
     """
-    Campfire cooking overlay — press SPACE when the bar is in the golden zone
-    to produce a 'perfectly cooked' variant (higher stats), or wait for normal.
+    Campfire cooking overlay — hold SPACE to push heat right, release to drift left.
+    Build cook progress while inside moving cooking zones before timer runs out.
     """
-    DURATION   = 12.0   # baseline (was 6.0) — per-instance may scale further
-    COOK_SPEED = 0.13   # baseline (was 0.22) — slower so the window matters more
-    ZONE_START = 0.42
-    ZONE_END   = 0.72
+    DURATION       = 15.0
+    HEAT_RATE      = 0.18
+    ZONE_WIDTH     = 0.22
+    PERFECT_WIDTH  = 0.08
 
-    def __init__(self, recipe_name: str, result_item: str):
+    def __init__(self, recipe_name: str, result_item: str, gui=None):
         self.recipe_name = recipe_name
         self.result_item = result_item
+        self._gui        = gui
         self.done        = False
         self._t          = 0.0
-        self._pos        = 0.0
+        self._heat       = 0.0
         self._fired      = False
         self._fire_result = ""
         self._result_t   = 0.0
         self._frame      = 0
         self._frame_t    = 0.0
         self._font       = None
+        self._space_held = False
+        self._progress   = 0.0  # 0.0..1.0
+        self._required_progress = 1.0
+        self._perfect_gain = 0.24
+        self._near_gain    = 0.04
+        self._outside_loss = 0.78
+
+        # Moving zone state (random target + random motion speed)
+        self._rng = __import__("random")
+        self._zone_center = self._rng.uniform(0.44, 0.60)
+        self._zone_target = self._zone_center
+        self._zone_shift_timer = 0.0
+        self._zone_shift_every = 1.0
+        self._zone_move_speed = 0.5
+        self._zone_shift_min = 0.35
+        self._zone_shift_max = 1.10
+        self._zone_speed_min = 0.55
+        self._zone_speed_max = 1.40
+
+        # Runtime zone bounds (near + perfect)
+        self._zone_start = 0.40
+        self._zone_end = 0.68
+        self._perfect_start = 0.48
+        self._perfect_end = 0.60
+        self._result_logged = False
 
         # Difficulty scaling (cooking has no ingredient tiers, use tier 1)
         try:
             from ascii_art import get_diff_params
             dp = get_diff_params(1)
         except Exception:
-            dp = {"bar_speed_mult":1.0,"zone_mult":1.0,"result_secs":0.0}
-        self._cook_speed = self.COOK_SPEED * dp["bar_speed_mult"]
-        self._duration   = self.DURATION   # fixed 12s baseline, not scaled further
-        self._zone_start = self.ZONE_START
-        zone_w = (self.ZONE_END - self.ZONE_START) * dp["zone_mult"]
-        self._zone_end   = self.ZONE_START + max(0.06, zone_w)
+            dp = {"heat_rate_mult":1.0,"zone_mult":1.0,"result_secs":0.0,"timer_mult":1.0}
+
+        self._heat_rate = self.HEAT_RATE * dp.get("heat_rate_mult", 1.0)
+        self._duration = max(8.0, self.DURATION * dp.get("timer_mult", 1.0))
+        self._zone_width = max(0.14, self.ZONE_WIDTH * dp["zone_mult"])
+        self._perfect_width = max(0.06, self.PERFECT_WIDTH * dp["zone_mult"])
         self._result_secs = 3.0 + max(0.0, dp["result_secs"])
+
+        self._roll_zone_motion()
+        self._zone_shift_timer = self._zone_shift_every
+        self._update_zones()
 
     def handle_event(self, event):
         import pygame
         if self.done or self._fired:
             return
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-            in_zone = self._zone_start <= self._pos <= self._zone_end
-            self._fired = True
-            self._fire_result = "perfect" if in_zone else "normal"
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE:
+                self._space_held = True
+        elif event.type == pygame.KEYUP:
+            if event.key == pygame.K_SPACE:
+                self._space_held = False
+
+    def _resolve_result(self):
+        self._fired = True
+        if self._progress >= self._required_progress:
+            self._fire_result = "perfect"
+        elif self._progress >= 0.55:
+            self._fire_result = "normal"
+        else:
+            self._fire_result = "normal"
+
+        if self._gui is not None and not self._result_logged:
+            progress_pct = int(100 * min(1.0, self._progress / max(self._required_progress, 0.001)))
+            if self._fire_result == "perfect":
+                self._gui.append(
+                    f"  ✨ Cooking minigame success: {self.recipe_name}. Perfect cook at {progress_pct}% progress."
+                )
+            else:
+                self._gui.append(
+                    f"  ❌ Cooking minigame failed: {self.recipe_name}. Only {progress_pct}% progress; no perfect cook bonus."
+                )
+            self._result_logged = True
+
+    def _update_zones(self):
+        half_near = self._zone_width * 0.5
+        min_center = 0.10 + half_near
+        max_center = 0.90 - half_near
+        self._zone_center = max(min_center, min(max_center, self._zone_center))
+
+        self._zone_start = self._zone_center - half_near
+        self._zone_end = self._zone_center + half_near
+
+        half_perf = min(self._perfect_width * 0.5, half_near - 0.015)
+        self._perfect_start = self._zone_center - half_perf
+        self._perfect_end = self._zone_center + half_perf
+
+    def _pick_new_zone_target(self):
+        half_near = self._zone_width * 0.5
+        min_center = 0.10 + half_near
+        max_center = 0.90 - half_near
+        prev = self._zone_target
+        for _ in range(6):
+            candidate = self._rng.uniform(min_center, max_center)
+            if abs(candidate - prev) >= 0.06:
+                self._zone_target = candidate
+                return
+        self._zone_target = self._rng.uniform(min_center, max_center)
+
+    def _roll_zone_motion(self):
+        self._zone_shift_every = self._rng.uniform(self._zone_shift_min, self._zone_shift_max)
+        self._zone_move_speed = self._rng.uniform(self._zone_speed_min, self._zone_speed_max)
 
     def update(self, dt):
         if self.done:
@@ -1484,11 +1566,41 @@ class CookingOverlay:
         if self._frame_t >= 0.22:
             self._frame_t = 0.0
             self._frame  += 1
+
         if not self._fired:
-            self._pos = min(1.0, self._pos + self._cook_speed * dt)
-            if self._pos >= 1.0 or self._t >= self._duration:
-                self._fired = True
-                self._fire_result = "normal"
+            # Move near/perfect zones with random pace and target.
+            self._zone_shift_timer -= dt
+            if self._zone_shift_timer <= 0:
+                self._roll_zone_motion()
+                self._zone_shift_timer = self._zone_shift_every
+                self._pick_new_zone_target()
+
+            delta = self._zone_target - self._zone_center
+            step = min(1.0, self._zone_move_speed * dt)
+            self._zone_center += delta * step
+            self._update_zones()
+
+            # Hold/release control like alchemy: hold raises heat, release lowers it.
+            if self._space_held:
+                self._heat = min(1.0, self._heat + self._heat_rate * 1.95 * dt)
+            else:
+                self._heat = max(0.0, self._heat - self._heat_rate * 1.45 * dt)
+
+            # Perfect zone gives strong progress, near zone gives much less.
+            if self._perfect_start <= self._heat <= self._perfect_end:
+                self._progress = min(self._required_progress, self._progress + self._perfect_gain * dt)
+            elif self._zone_start <= self._heat <= self._zone_end:
+                self._progress = min(self._required_progress, self._progress + self._near_gain * dt)
+            else:
+                self._progress = max(0.0, self._progress - self._outside_loss * dt)
+
+            # Early completion if player fully stabilizes cooking.
+            if self._progress >= self._required_progress:
+                self._resolve_result()
+
+            # Timeout fallback.
+            if self._t >= self._duration and not self._fired:
+                self._resolve_result()
         else:
             self._result_t += dt
             if self._result_t >= self._result_secs:
@@ -1525,27 +1637,44 @@ class CookingOverlay:
                            color=(255, 160, 60))
         # Timing bar
         bar_x = px + 60
-        bar_y = py + 200
+        bar_y = py + 186
         bar_w = pw - 120
         bar_h = 28
         pygame.draw.rect(surface, (40, 20, 10),  (bar_x, bar_y, bar_w, bar_h), border_radius=4)
         zx = bar_x + int(self._zone_start * bar_w)
         zw = int((self._zone_end - self._zone_start) * bar_w)
-        pygame.draw.rect(surface, (180, 120, 0), (zx, bar_y, zw, bar_h), border_radius=4)
-        mid_s = self._zone_start + (self._zone_end - self._zone_start) * 0.25
-        mid_e = self._zone_end   - (self._zone_end - self._zone_start) * 0.25
-        px2 = bar_x + int(mid_s * bar_w)
-        pw2 = int((mid_e - mid_s) * bar_w)
-        pygame.draw.rect(surface, (230, 180, 0), (px2, bar_y, pw2, bar_h), border_radius=4)
-        ind_x = bar_x + int(self._pos * bar_w) - 3
+        pygame.draw.rect(surface, (62, 122, 70), (zx, bar_y, zw, bar_h), border_radius=4)
+
+        # Perfect sub-zone (brighter center)
+        px2 = bar_x + int(self._perfect_start * bar_w)
+        pw2 = int((self._perfect_end - self._perfect_start) * bar_w)
+        pygame.draw.rect(surface, (110, 210, 120), (px2, bar_y + 3, pw2, bar_h - 6), border_radius=4)
+
+        ind_x = bar_x + int(self._heat * bar_w) - 3
         pygame.draw.rect(surface, (255, 255, 200), (ind_x, bar_y - 4, 6, bar_h + 8), border_radius=3)
         pygame.draw.rect(surface, (100, 60, 20), (bar_x, bar_y, bar_w, bar_h), 2, border_radius=4)
+
+        # Progress bar (percentage)
+        prog_x = bar_x
+        prog_y = bar_y + 40
+        prog_w = bar_w
+        prog_h = 14
+        pygame.draw.rect(surface, (28, 40, 24), (prog_x, prog_y, prog_w, prog_h), border_radius=3)
+        fill_w = int(prog_w * min(1.0, self._progress / max(self._required_progress, 0.001)))
+        if fill_w > 0:
+            pygame.draw.rect(surface, (80, 200, 110), (prog_x, prog_y, fill_w, prog_h), border_radius=3)
+        pygame.draw.rect(surface, (80, 110, 70), (prog_x, prog_y, prog_w, prog_h), 1, border_radius=3)
+
+        text_y = py + ph - 74
         render_label(surface, f'Cooking: {self.recipe_name}',
-                     px + pw // 2, py + ph - 90, color=(220, 180, 80))
+                     px + pw // 2, text_y, color=(220, 180, 80))
         if not self._fired:
-            render_label(surface, "[SPACE] — serve now!",
-                         px + pw // 2, py + ph - 60, color=(200, 200, 100))
+            progress_pct = int(100 * min(1.0, self._progress / max(self._required_progress, 0.001)))
+            render_label(surface, f"Cook Progress: {progress_pct}%",
+                         px + pw // 2, text_y + 18, color=(120, 230, 140), small=True)
+            render_label(surface, "Perfect zone moves. Hold [SPACE] -> | release <-",
+                         px + pw // 2, text_y + 34, color=(200, 200, 100), small=True)
         else:
             quality_col = (100, 255, 100) if self._fire_result == "perfect" else (200, 200, 200)
             quality_lbl = "Perfectly cooked!" if self._fire_result == "perfect" else "Cooked."
-            render_label(surface, quality_lbl, px + pw // 2, py + ph - 60, color=quality_col)
+            render_label(surface, quality_lbl, px + pw // 2, text_y + 28, color=quality_col)

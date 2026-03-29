@@ -191,6 +191,13 @@ except Exception as e:
 	PET_AVAILABLE = False
 	print(f"[INIT] ⚠ Pet system DISABLED: {e}")
 
+try:
+	from item_inspect_text import ITEM_INSPECT_TEXT
+	ITEM_INSPECT_AVAILABLE = True
+except Exception as e:
+	ITEM_INSPECT_AVAILABLE = False
+	ITEM_INSPECT_TEXT = {}
+
 # =====================================================================
 # COMBAT SYSTEM INITIALIZATION
 # =====================================================================
@@ -5000,18 +5007,39 @@ Do you wish to enter? (yes/no)
 		return intro
 
 	def _examine_item(self, item_id):
-		"""Show detailed info about an inventory item, pulling from all databases."""
+		"""Show detailed info about an inventory item, pulling from all databases. Enhanced with custom inspect text."""
 		qty = self.engine.player.inventory.get(item_id, 0)
 		nice_name = item_id.replace("_", " ").title()
 
 		result = "\n" + "═" * 55 + "\n"
+
+		# ── Custom inspect text (if available) ──
+		custom_desc = None
+		if ITEM_INSPECT_AVAILABLE and item_id in ITEM_INSPECT_TEXT:
+			custom_desc = ITEM_INSPECT_TEXT[item_id]
+
+		# ── ASCII art (if available) ──
+		art_lines = []
+		try:
+			from ascii_art import ITEM_SPRITES
+			if item_id in ITEM_SPRITES:
+				art_lines = ITEM_SPRITES[item_id]
+		except (ImportError, KeyError):
+			pass
 
 		# ── Equipment ──
 		if EQUIPMENT_AVAILABLE and item_id in EQUIPMENT_DATABASE:
 			eq = EQUIPMENT_DATABASE[item_id]
 			result += f"  ⚔️  {eq.get('name', nice_name)}\n"
 			result += "═" * 55 + "\n"
-			result += f"  {eq.get('description', 'No description.')}\n\n"
+			if art_lines:
+				for line in art_lines:
+					result += f"  {line}\n"
+				result += "\n"
+			if custom_desc:
+				result += f"  {custom_desc}\n\n"
+			else:
+				result += f"  {eq.get('description', 'No description.')}\n\n"
 			result += f"  Type: Equipment ({eq.get('slot', '?').title()})\n"
 			result += f"  Quantity: {qty}\n"
 			if eq.get("stats"):
@@ -5057,8 +5085,15 @@ Do you wish to enter? (yes/no)
 		if item_info:
 			result += f"  🧪 {nice_name}\n"
 			result += "═" * 55 + "\n"
-			desc = item_info.get("description", "No description.")
-			result += f"  {desc}\n\n"
+			if art_lines:
+				for line in art_lines:
+					result += f"  {line}\n"
+				result += "\n"
+			if custom_desc:
+				result += f"  {custom_desc}\n\n"
+			else:
+				desc = item_info.get("description", "No description.")
+				result += f"  {desc}\n\n"
 			result += f"  Type: {item_info.get('type', 'item').title()}\n"
 			result += f"  Effect: {item_info.get('effect', 'none').replace('_', ' ').title()}\n"
 			if item_info.get("value"):
@@ -5076,6 +5111,12 @@ Do you wish to enter? (yes/no)
 					food = COOKED_FOOD_EFFECTS[item_id]
 					result += f"  🍳 {nice_name}\n"
 					result += "═" * 55 + "\n"
+					if art_lines:
+						for line in art_lines:
+							result += f"  {line}\n"
+						result += "\n"
+					if custom_desc:
+						result += f"  {custom_desc}\n\n"
 					result += f"  Type: Cooked Food\n"
 					result += f"  Quantity: {qty}\n\n"
 					effects = []
@@ -5106,7 +5147,14 @@ Do you wish to enter? (yes/no)
 					idata = ITEM_DATABASE[item_id]
 					result += f"  {idata.get('icon', '📦')} {idata.get('name', nice_name)}\n"
 					result += "═" * 55 + "\n"
-					result += f"  {idata.get('desc', 'No description.')}\n\n"
+					if art_lines:
+						for line in art_lines:
+							result += f"  {line}\n"
+						result += "\n"
+					if custom_desc:
+						result += f"  {custom_desc}\n\n"
+					else:
+						result += f"  {idata.get('desc', 'No description.')}\n\n"
 					result += f"  Rarity: {idata.get('rarity', 'common').title()}\n"
 					result += f"  Value: {idata.get('value', '?')} gold\n"
 					result += f"  Quantity: {qty}\n"

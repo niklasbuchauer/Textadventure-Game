@@ -361,14 +361,20 @@ class AlchemyOverlay:
     Left side : animated cauldron with rising bubbles / steam (ASCII frames).
     Right side : vertical heat bar with labelled zones:
                    COLD → WARM → REACTION ZONE (green) → DANGER (red)
-    Player presses SPACE when heat is in the green reaction zone.
+    
+    Mechanics:
+    • Hold SPACE to increase heat
+    • Release SPACE to decrease heat
+    • Follow a moving green REACTION ZONE while controlling heat
+    • Build and maintain stability in-zone to complete the brew
+    • Quality depends on tracking consistency and final heat control
     """
 
     PANEL_W = 540
     PANEL_H = 400
     ANIM_FPS = 4    # Base timer: brewing is a slow watchful game — plenty of time to observe
     # the heat bar, but can't ignore it forever.
-    BASE_TIMER = 40.0
+    BASE_TIMER = 22.0  # Reduced from 40.0 for tighter time pressure
     def __init__(self, system: AlchemySystem, recipe: dict):
         self.system  = system
         self.recipe  = recipe
@@ -389,10 +395,21 @@ class AlchemyOverlay:
 
         # Heat bar state
         self._heat        = 0.0       # 0.0 – 1.0
-        self._react_lo    = random.uniform(0.52, 0.65)
-        # Zone narrows on hard (zone_mult < 1) wider on easy (zone_mult > 1)
-        self._react_hi    = self._react_lo + 0.20 * dp["zone_mult"]
-        self._danger_lo   = 0.85
+        self._zone_width  = max(0.06, 0.10 * dp["zone_mult"])
+        self._zone_center = random.uniform(0.50, 0.62)
+        self._zone_target = self._zone_center
+        self._zone_shift_every = 1.0
+        self._zone_shift_timer = self._zone_shift_every
+        self._zone_move_speed  = 0.55
+        self._zone_shift_min   = 0.45
+        self._zone_shift_max   = 1.60
+        self._zone_speed_min   = 0.35
+        self._zone_speed_max   = 1.00
+        self._react_lo    = 0.0
+        self._react_hi    = 0.0
+        self._danger_lo   = 0.80  # Reduced from 0.85 — danger zone starts sooner
+        self._update_reaction_zone()
+        self._roll_zone_motion()
 
         # Cauldron animation
         self._anim_frame  = 0
@@ -409,6 +426,13 @@ class AlchemyOverlay:
         self._show_result   = False
         self._result_timer  = 0.0
 
+        # Player input tracking
+        self._space_held    = False
+        self._time_in_zone  = 0.0  # Total in-zone time this run
+        self._stability     = 0.0  # Must be maintained to complete
+        self._required_time = 4.6  # Slightly longer; harder with moving target
+        self._stability_rate = 1.20
+
         self._font     = None
 
     # ── Events ───────────────────────────────────────────────────────────────
@@ -418,18 +442,22 @@ class AlchemyOverlay:
         if self.done or self._show_result:
             return
         if event.type == pygame.KEYDOWN:
-            if event.key in (pygame.K_SPACE, pygame.K_RETURN):
-                self._complete_brew()
+            if event.key == pygame.K_SPACE:
+                self._space_held = True
+        elif event.type == pygame.KEYUP:
+            if event.key == pygame.K_SPACE:
+                self._space_held = False
 
     def _complete_brew(self):
         self.running = False
         h = self._heat
+        stability_ratio = min(1.0, self._stability / max(self._required_time, 0.001))
 
         if h >= self._danger_lo:
             quality = "burnt"
-        elif self._react_lo <= h <= self._react_hi:
+        elif stability_ratio >= 0.95:
             quality = "potent"
-        elif h >= self._react_lo - 0.08:
+        elif stability_ratio >= 0.70:
             quality = "normal"
         else:
             quality = "weak"
@@ -445,6 +473,27 @@ class AlchemyOverlay:
         if gui and result:
             gui.append(result)
 
+    def _update_reaction_zone(self):
+        half_w = self._zone_width * 0.5
+        self._react_lo = max(0.28, self._zone_center - half_w)
+        self._react_hi = min(self._danger_lo - 0.03, self._zone_center + half_w)
+
+    def _pick_new_zone_target(self):
+        min_center = 0.34
+        max_center = min(self._danger_lo - (self._zone_width * 0.5) - 0.03, 0.72)
+        prev = self._zone_target
+        for _ in range(6):
+            candidate = random.uniform(min_center, max_center)
+            if abs(candidate - prev) >= 0.06:
+                self._zone_target = candidate
+                return
+        self._zone_target = random.uniform(min_center, max_center)
+
+    def _roll_zone_motion(self):
+        # Random pacing creates alternating calm and panic windows.
+        self._zone_shift_every = random.uniform(self._zone_shift_min, self._zone_shift_max)
+        self._zone_move_speed = random.uniform(self._zone_speed_min, self._zone_speed_max)
+
     # ── Update ────────────────────────────────────────────────────────────────
 
     def update(self, dt):
@@ -452,11 +501,39 @@ class AlchemyOverlay:
             return
 
         if self.running:
-            self._heat = min(1.0, self._heat + self._heat_rate * dt)
-            # Auto-trigger at danger overflow
-            if self._heat >= 1.0 and not self._show_result:
+            # Move the reaction zone over time so player must track it.
+            self._zone_shift_timer -= dt
+            if self._zone_shift_timer <= 0:
+                self._roll_zone_motion()
+                self._zone_shift_timer = self._zone_shift_every
+                self._pick_new_zone_target()
+
+            delta = self._zone_target - self._zone_center
+            step = min(1.0, self._zone_move_speed * dt)
+            self._zone_center += delta * step
+            self._update_reaction_zone()
+
+            # Heat control: rise when space held, fall when released
+            if self._space_held:
+                    self._heat = min(1.0, self._heat + self._heat_rate * 2.2 * dt)  # Much faster rise
+            else:
+                    self._heat = max(0.0, self._heat - self._heat_rate * 1.6 * dt)  # Faster fall
+            
+            # Track time spent in reaction zone
+            if self._react_lo <= self._heat <= self._react_hi:
+                self._time_in_zone += dt
+                self._stability = min(self._required_time, self._stability + dt * self._stability_rate)
+                if self._stability >= self._required_time and not self._show_result:
+                    self._complete_brew()
+            else:
+                # Progress decays at same speed it builds.
+                self._stability = max(0.0, self._stability - dt * self._stability_rate)
+            
+            # Burnout if overheated
+            if self._heat >= 0.92 and not self._show_result:
                 self._complete_brew()
-            # Countdown timer — brew at current heat when time runs out
+            
+            # Timeout if player takes too long
             if not self._show_result:
                 self._time_left -= dt
                 if self._time_left <= 0:
@@ -549,38 +626,65 @@ class AlchemyOverlay:
 
         # Labels
         label_x = bar_x + bar_w + 8
-        render_label(surface, "HOT",  label_x + 18, bar_y + 4,
-                     color=(255, 80, 80), small=True)
-        render_label(surface, "BREW", label_x + 18,
+        render_label(surface, "   🔥 HOT",  label_x + 8, bar_y + 4,
+                     color=(255, 100, 80), small=True)
+        render_label(surface, "  ⚗  BREW", label_x + 8,
                      bar_y + react_y0 + (react_y1 - react_y0) // 2 - 6,
-                     color=(100, 255, 100), small=True)
-        render_label(surface, "COLD", label_x + 18, bar_y + bar_h - 14,
-                     color=(100, 150, 255), small=True)
+                     color=(120, 255, 120), small=True)
+        render_label(surface, "   ❄  COLD", label_x + 8, bar_y + bar_h - 14,
+                     color=(120, 170, 255), small=True)
 
-        # "SPACE to brew" instruction
+        # "SPACE to brew" instruction with control feedback
         inst_y = py + ph - 50
         if self.running:
-            render_label(surface, "[SPACE]  to complete the brew",
-                         px + pw // 2, inst_y, color=(170, 170, 220))
+            if self._stability > 0:
+                # Show progress bar when in zone
+                progress = min(1.0, self._stability / self._required_time)
+                progress_text = f"STABILITY {int(progress * 100)}% — TRACK THE SHIFTING ZONE"
+                render_label(surface, progress_text, px + pw // 2, inst_y, color=(100, 255, 120))
+            else:
+                # Show control instructions
+                inst_alpha = int(100 + 155 * abs(math.sin(pygame.time.get_ticks() * 0.003)))
+                pulse_val = min(255, 170 + (inst_alpha // 2))
+                render_label(surface, "HOLD [ SPACE ] to heat — zone speed changes constantly",
+                             px + pw // 2, inst_y, color=(pulse_val, pulse_val, 220))
 
-        # Temperature stage label
+        # Temperature stage label with better feedback
         if self._heat < self._react_lo - 0.08:
-            stage, scol = "Cold", (100, 150, 255)
+            stage = "❄  COLD — Hold SPACE to heat up"
+            emoji_flash = 0.0
+            scol = (100, 160, 255)
         elif self._heat < self._react_lo:
-            stage, scol = "Almost ready...", (200, 200, 100)
+            stage = "🔥 WARMING UP — Almost ready!"
+            emoji_flash = abs(math.sin(pygame.time.get_ticks() * 0.005))
+            scol = (220, 220, 100)
         elif self._heat <= self._react_hi:
-            stage, scol = "REACTION ZONE! Press SPACE!", (100, 255, 100)
+            stage = f"⚗ ON TARGET! KEEP TRACKING ({int(self._stability)}/{int(self._required_time)}s)"
+            emoji_flash = abs(math.sin(pygame.time.get_ticks() * 0.010))
+            scol = (100 + int(155 * emoji_flash), 255, 100 + int(55 * emoji_flash))
         elif self._heat < self._danger_lo:
-            stage, scol = "Getting too hot!", (255, 180, 50)
+            stage = "🔥 TOO HOT — Release SPACE to cool!"
+            emoji_flash = abs(math.sin(pygame.time.get_ticks() * 0.008))
+            scol = (255, 180 - int(80 * emoji_flash), 50)
         else:
-            stage, scol = "BURNING! SPACE NOW!", (255, 50, 50)
+            stage = "💥 CRITICAL! Release SPACE immediately!"
+            emoji_flash = abs(math.sin(pygame.time.get_ticks() * 0.015))
+            scol = (255, 50, 50)
 
         render_label(surface, stage, px + pw // 2, inst_y - 22, color=scol)
 
         # ── Result overlay ────────────────────────────────────────────────────
         if self._show_result:
-            render_title(surface, self._result_text,
-                         px + pw // 2, py + ph // 2 - 12,
+            # Enhanced result display with recipe name and quality
+            result_lines = [
+                f"✨ BREW COMPLETE ✨",
+                f"{self._result_text}",
+            ]
+            render_title(surface, result_lines[0],
+                         px + pw // 2, py + ph // 2 - 18,
+                         color=self._result_color)
+            render_label(surface, result_lines[1],
+                         px + pw // 2, py + ph // 2,
                          color=self._result_color)
 
     def _ensure_fonts(self):

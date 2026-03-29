@@ -342,11 +342,11 @@ class RitualOverlay:
     GRID_ROWS = 3
     # Base timer for the INPUT phase only (show phase is free, no pressure).
     # Needs to be long enough to enter the full sequence after memorising it.
-    BASE_TIMER = 30.0
+    BASE_TIMER = 40.0  # increased for longer phases
 
     # Show-phase timing (class defaults; per-instance values set in __init__)
-    FLASH_ON  = 0.85   # seconds a symbol shines  (was 0.6)
-    FLASH_OFF = 0.30   # gap between flashes        (was 0.25)
+    FLASH_ON  = 0.60   # seconds a symbol shines  (was 0.85, now faster)
+    FLASH_OFF = 0.15   # gap between flashes      (was 0.30, now faster)
 
     def __init__(self, system: RitualSystem, ritual_id: str, ritual: dict):
         self.system     = system
@@ -358,26 +358,29 @@ class RitualOverlay:
         materials = ritual.get("materials", {})
         recipe_tier = infer_recipe_tier(materials)
         dp = get_diff_params(recipe_tier)
-        # Per-instance flash timing: baseline 0.85 on / 0.30 off, scaled by flash_mult
-        self._flash_on  = 0.85 * dp["flash_mult"]
-        self._flash_off = 0.30  # gap doesn't change with difficulty
+        # Per-instance flash timing: baseline 0.60 on / 0.15 off, scaled by flash_mult
+        self._flash_on  = 0.60 * dp["flash_mult"]
+        self._flash_off = 0.15  # gap doesn't change with difficulty
         self._result_secs = 3.2 + max(0.0, dp["result_secs"])
 
-        # Sequence length scaled: hard += seq_delta, easy reduces
-        base_seq = ritual.get("sequence_len", 3)
-        self._seq_len = max(2, base_seq + int(dp["seq_delta"]))
+        # Multi-phase sequence: start with 1 symbol, increase by 1 per phase
+        # 5 phases for balanced difficulty (up to 5-symbol sequence)
+        self._total_phases = 5
+        self._current_phase = 1  # phases are 1-indexed
+        self._current_phase_len = 1  # phase 1 requires 1 symbol
 
-        # Countdown timer — runs from overlay open through both show and input phases
+        # Countdown timer — runs during input phase only
         self._timer_max  = max(6.0, self.BASE_TIMER * dp["timer_mult"])
         self._time_left  = self._timer_max
+        
         # Assign symbols to the 9 grid positions
         syms = (GRID_SYMBOLS * 3)[:9]
         random.shuffle(syms)
         self._grid_syms = syms   # list of 9 symbol keys
 
-        # Generate the secret sequence (indices 0–8 into the grid)
-        self._secret    = random.sample(range(9), self._seq_len)
-        self._phase     = "show"   # "show" | "input" | "result"
+        # Master sequence: will grow as we progress through phases
+        self._master_sequence = []
+        self._phase_state = "show"  # "show" | "input" | "phase_result" | "final_result"
 
         # Show-phase state
         self._show_idx     = -1    # which step we are currently flashing
@@ -392,21 +395,69 @@ class RitualOverlay:
         self._lit_timer    = 0.0
         self._lit_color    = (0, 255, 0)
 
-        # Result phase
-        self._result_text  = ""
-        self._result_color = (220, 220, 220)
-        self._result_timer = 0.0
+        # Phase result text
+        self._phase_result_text = ""
+        self._phase_result_color = (220, 220, 220)
+        self._phase_result_timer = 0.0
+
+        # Final result
+        self._final_result_text = ""
+        self._final_result_color = (220, 220, 220)
+        self._final_result_timer = 0.0
 
         # Fonts (lazy)
         self._font       = None
         self._small_font = None
         self._title_font = None
+        
+        # Generate first phase's new symbol
+        self._add_phase_symbol()
+
+    # ── Helper: add a new symbol to the sequence for the current phase ─────────
+
+    def _add_phase_symbol(self):
+        """Add one random grid position to the master sequence for this phase."""
+        # Pick a random cell index that doesn't duplicate what's already in the sequence
+        available = [i for i in range(9) if i not in self._master_sequence]
+        if available:
+            new_symbol = random.choice(available)
+        else:
+            # Fallback: all cells used (shouldn't happen with 9 phases max)
+            new_symbol = random.randint(0, 8)
+        self._master_sequence.append(new_symbol)
+
+    def _advance_to_next_phase(self):
+        """Advance to the next phase or finish the ritual."""
+        if self._current_phase >= self._total_phases:
+            # All phases complete
+            self._phase_state = "final_result"
+            self._final_result_text = (
+                "PERFECT RITUAL!" if self._mistakes == 0
+                else "Ritual partial..." if self._mistakes == 1
+                else "Ritual FAILED"
+            )
+            tier_color = (100, 255, 100) if self._mistakes == 0 else (255, 220, 80) if self._mistakes == 1 else (255, 80, 80)
+            self._final_result_color = tier_color
+            text = self.system._apply_blessing(self.ritual, self._mistakes)
+            gui = getattr(self.system.engine, "gui", None)
+            if gui and text:
+                gui.append(text)
+        else:
+            # Move to next phase
+            self._current_phase += 1
+            self._current_phase_len = self._current_phase
+            self._phase_state = "phase_result"
+            self._phase_result_text = f"Phase {self._current_phase - 1} Complete! Phase {self._current_phase}..."
+            self._phase_result_color = (100, 220, 255)
+            self._phase_result_timer = 0.0
+            # Don't clear input feedback here — let it render; cleared during phase_result->show transition
+            self._add_phase_symbol()
 
     # ── Events ───────────────────────────────────────────────────────────────
 
     def handle_event(self, event):
         import pygame
-        if self.done or self._phase != "input":
+        if self.done or self._phase_state != "input":
             return
         if event.type == pygame.KEYDOWN:
             # Number keys 1–9
@@ -415,15 +466,33 @@ class RitualOverlay:
                 self._process_input(slot)
 
     def _process_input(self, slot: int):
-        expected = self._secret[self._input_idx]
+        expected = self._master_sequence[self._input_idx]
         if slot == expected:
             # Correct
             self._lit_cell  = slot
             self._lit_timer = 0.4
             self._lit_color = (60, 220, 60)
             self._input_idx += 1
-            if self._input_idx >= self._seq_len:
-                self._finish()
+            # Check if this phase is complete
+            if self._input_idx >= self._current_phase_len:
+                # Phase complete — move to next or finish
+                if self._current_phase >= self._total_phases:
+                    # All phases done
+                    self._phase_state = "final_result"
+                    self._final_result_text = (
+                        "PERFECT RITUAL!" if self._mistakes == 0
+                        else "Ritual partial..." if self._mistakes == 1
+                        else "Ritual FAILED"
+                    )
+                    tier_color = (100, 255, 100) if self._mistakes == 0 else (255, 220, 80) if self._mistakes == 1 else (255, 80, 80)
+                    self._final_result_color = tier_color
+                    text = self.system._apply_blessing(self.ritual, self._mistakes)
+                    gui = getattr(self.system.engine, "gui", None)
+                    if gui and text:
+                        gui.append(text)
+                else:
+                    # More phases to go
+                    self._advance_to_next_phase()
         else:
             # Wrong
             self._mistakes += 1
@@ -431,24 +500,17 @@ class RitualOverlay:
             self._lit_timer = 0.5
             self._lit_color = (220, 60, 60)
             if self._mistakes >= self._max_mistakes:
-                self._finish()
+                # Failed — end ritual
+                self._phase_state = "final_result"
+                self._final_result_text = "Ritual FAILED"
+                self._final_result_color = (255, 80, 80)
+                text = self.system._apply_blessing(self.ritual, self._mistakes)
+                gui = getattr(self.system.engine, "gui", None)
+                if gui and text:
+                    gui.append(text)
             else:
-                # Reset input progress but keep mistakes count
+                # Reset input for current phase but keep mistakes
                 self._input_idx = 0
-
-    def _finish(self):
-        self._phase = "result"
-        text = self.system._apply_blessing(self.ritual, self._mistakes)
-        gui = getattr(self.system.engine, "gui", None)
-        if gui and text:
-            gui.append(text)
-        tier_color = (100, 255, 100) if self._mistakes == 0 else (255, 220, 80) if self._mistakes == 1 else (255, 80, 80)
-        self._result_text  = (
-            "PERFECT RITUAL!" if self._mistakes == 0
-            else "Ritual partial..." if self._mistakes == 1
-            else "Ritual FAILED"
-        )
-        self._result_color = tier_color
 
     # ── Update ────────────────────────────────────────────────────────────────
 
@@ -456,16 +518,22 @@ class RitualOverlay:
         if self.done:
             return
 
-        if self._phase == "show":
+        if self._phase_state == "show":
             self._show_timer += dt
             if not self._flashing:
                 # Waiting between flashes
                 if self._show_timer >= self._flash_off:
                     self._show_timer = 0.0
                     self._show_idx += 1
-                    if self._show_idx >= self._seq_len:
-                        # All symbols shown — switch to input
-                        self._phase = "input"
+                    if self._show_idx >= self._current_phase_len:
+                        # All symbols shown for this phase — switch to input
+                        self._phase_state = "input"
+                        self._input_idx = 0
+                        self._time_left = self._timer_max
+                        # Clear any residual feedback before input phase
+                        self._lit_cell = None
+                        self._lit_timer = 0.0
+                        self._lit_color = (0, 255, 0)
                         return
                     self._flashing = True
             else:
@@ -474,7 +542,7 @@ class RitualOverlay:
                     self._show_timer = 0.0
                     self._flashing   = False
 
-        elif self._phase == "input":
+        elif self._phase_state == "input":
             if self._lit_timer > 0:
                 self._lit_timer = max(0.0, self._lit_timer - dt)
 
@@ -484,11 +552,31 @@ class RitualOverlay:
                 self._time_left = 0.0
                 # Force fail
                 self._mistakes = self._max_mistakes
-                self._finish()
+                self._phase_state = "final_result"
+                self._final_result_text = "Ritual FAILED"
+                self._final_result_color = (255, 80, 80)
+                text = self.system._apply_blessing(self.ritual, self._mistakes)
+                gui = getattr(self.system.engine, "gui", None)
+                if gui and text:
+                    gui.append(text)
 
-        elif self._phase == "result":
-            self._result_timer += dt
-            if self._result_timer >= self._result_secs:
+        elif self._phase_state == "phase_result":
+            self._phase_result_timer += dt
+            if self._phase_result_timer >= 1.5:
+                # Transition to show next phase
+                self._phase_state = "show"
+                self._show_idx = -1
+                self._show_timer = 0.0
+                self._flashing = False
+                self._input_idx = 0  # Clear input tracking
+                # Clear any lingering input feedback from previous phase
+                self._lit_cell = None
+                self._lit_timer = 0.0
+                self._lit_color = (0, 255, 0)
+
+        elif self._phase_state == "final_result":
+            self._final_result_timer += dt
+            if self._final_result_timer >= self._result_secs:
                 self.done = True
 
     # ── Render ────────────────────────────────────────────────────────────────
@@ -506,20 +594,23 @@ class RitualOverlay:
         draw_panel(surface, (px, py, pw, ph),
                    title=f"RITUAL: {self.ritual['name'].upper()}")
 
-        # Countdown timer bar (shown during input phase only \u2014 that's when it counts down)
-        if self._phase == "input":
+        # Countdown timer bar (shown during input phase only — that's when it counts down)
+        if self._phase_state == "input":
             draw_timer_bar(surface, px, py, pw, self._time_left, self._timer_max)
 
         # ── Phase label ───────────────────────────────────────────────────────
-        if self._phase == "show":
-            phase_text  = f"Memorise the sequence ({self._show_idx + 1}/{self._seq_len})..."
+        if self._phase_state == "show":
+            phase_text  = f"Phase {self._current_phase}/{self._total_phases}: Memorise ({self._show_idx + 1}/{self._current_phase_len})..."
             phase_color = (200, 200, 255)
-        elif self._phase == "input":
-            phase_text  = f"Repeat the sequence — step {self._input_idx + 1}/{self._seq_len}"
+        elif self._phase_state == "input":
+            phase_text  = f"Phase {self._current_phase}/{self._total_phases}: Repeat — step {self._input_idx + 1}/{self._current_phase_len}"
             phase_color = (255, 220, 100)
-        else:
-            phase_text  = self._result_text
-            phase_color = self._result_color
+        elif self._phase_state == "phase_result":
+            phase_text = self._phase_result_text
+            phase_color = self._phase_result_color
+        else:  # final_result
+            phase_text  = self._final_result_text
+            phase_color = self._final_result_color
         render_label(surface, phase_text, px + pw // 2, py + 44,
                      color=phase_color)
 
@@ -545,22 +636,23 @@ class RitualOverlay:
                 sym_col    = (130, 130, 160)
 
                 # Show phase
-                if self._phase == "show":
-                    if self._flashing and self._secret[self._show_idx] == idx:
+                if self._phase_state == "show":
+                    if self._flashing and self._master_sequence[self._show_idx] == idx:
                         is_lit = True
                         cell_col   = (40, 40, 110)
                         border_col = (160, 160, 255)
                         sym_col    = (255, 255, 255)
 
-                # Input phase — already-entered cells
-                elif self._phase == "input":
+                # Input + phase-result view
+                elif self._phase_state in ("input", "phase_result"):
+                    # Check if this cell was just entered (feedback flash)
                     if idx == self._lit_cell and self._lit_timer > 0:
                         is_lit = True
-                        cell_col   = (*self._lit_color[:2], 30) if len(self._lit_color) > 2 else (30, 80, 30)
                         cell_col   = (30, 80, 30) if self._lit_color == (60, 220, 60) else (80, 30, 30)
                         border_col = self._lit_color
                         sym_col    = (255, 255, 255)
-                    elif idx in self._secret[:self._input_idx]:
+                    # Otherwise check if cell is in completed sequence (stay green)
+                    elif idx in self._master_sequence[:self._input_idx]:
                         cell_col   = (20, 50, 20)
                         border_col = (60, 160, 60)
                         sym_col    = (140, 220, 140)
@@ -582,7 +674,7 @@ class RitualOverlay:
                               cy + cell_s // 2 - sym_surf.get_height() // 2))
 
                 # Pulsing animation glow for currently-being-shown symbol
-                if is_lit and self._phase == "show":
+                if is_lit and self._phase_state == "show":
                     pulse = abs(math.sin(pygame.time.get_ticks() * 0.01))
                     glow = pygame.Surface((cell_s + 8, cell_s + 8), pygame.SRCALPHA)
                     pygame.draw.rect(glow,
@@ -599,12 +691,12 @@ class RitualOverlay:
                      color=(220, 80, 80))
 
         # ── Instruction ───────────────────────────────────────────────────────
-        if self._phase == "input":
+        if self._phase_state == "input":
             render_label(surface,
                          "Press  [1]–[9]  matching the number keys on the grid",
                          px + pw // 2, mis_y + 26,
                          color=(150, 150, 200), small=True)
-        elif self._phase == "show":
+        elif self._phase_state == "show":
             render_label(surface,
                          "Watch carefully — then replicate the glowing sequence!",
                          px + pw // 2, mis_y + 26,

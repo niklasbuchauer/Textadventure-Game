@@ -739,21 +739,21 @@ class FishingTimingOverlay:
 		if self.sweet_start <= pos <= self.sweet_end:
 			self._quality = "perfect"
 			self._marker_color = (0, 255, 0)
-			self._quality_text = "PERFECT CATCH!"
+			self._quality_text = "✨ PERFECT CAST! ✨"
 		elif self.good_start <= pos <= self.good_end:
 			self._quality = "good"
 			self._marker_color = (255, 255, 0)
-			self._quality_text = "Good catch!"
+			self._quality_text = "⭐ Great catch!"
 		else:
 			dist = min(abs(pos - self.sweet_start), abs(pos - self.sweet_end))
 			if dist < 0.15:
 				self._quality = "ok"
 				self._marker_color = (255, 136, 0)
-				self._quality_text = "Okay catch"
+				self._quality_text = "~ Okay catch"
 			else:
 				self._quality = "miss"
 				self._marker_color = (255, 0, 0)
-				self._quality_text = "Missed! Poor catch..."
+				self._quality_text = "❌ Missed! Poor catch..."
 
 	def update(self, dt):
 		if self.done:

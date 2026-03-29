@@ -5,12 +5,14 @@ Processes raw ores into metal ingots at a smeltery / blacksmith furnace.
 
 Minigame: horizontal timing bar (same mechanic as fishing).
   • Marker bounces; press SPACE when it's in the pour zone.
+    • Each ore now requires multiple timed pours in sequence.
+    • Missing perfect hits increases smelt-failure chance.
   • Perfect pour → Refined ingot  (+1 quality tier for forging)
   • Good pour    → normal ingot
   • Miss         → slag (low-value byproduct)
 
 Each ore type has a different bar speed and zone width.
-Batch smelting (e.g. "smelt 5 iron_ore") requires one press per ore.
+Batch smelting (e.g. "smelt 5 iron_ore") now requires multiple presses per ore.
 
 Commands added to engine.py:
   smelt            — show smelting recipes at current station
@@ -126,6 +128,9 @@ class SmeltingSystem:
             "═" * 55,
             "  Type: smelt <ore>         — smelt 1 ore",
             "  Type: smelt <n> <ore>     — smelt n ores\n",
+            "  Multi-hit mode: each ore needs several timed pours.",
+            "  Failure Risk: each non-perfect hit adds +33% fail chance.",
+            "  3 perfect hits = 0% fail, 0 perfect hits = 100% fail.",
         ]
 
         found = False
@@ -140,7 +145,7 @@ class SmeltingSystem:
         if not found:
             lines.append("  You have no smeltable ores in your inventory.")
 
-        lines.append("\n  Bonus: perfect timing produces Refined ingots (+50% value,")
+        lines.append("\n  Bonus: sustained accurate timing produces Refined ingots (+50% value,")
         lines.append("         improved crafting results when forging).")
         lines.append("═" * 55)
         return "\n".join(lines)
@@ -298,6 +303,13 @@ class SmeltingOverlay:
         dp = get_diff_params(ore_tier)
         self._zone_mult = dp["zone_mult"]
 
+        # Multi-hit smelting sequence (more frequent timing inputs)
+        self._hits_required = 3
+        self._hits_done = 0
+        self._hit_scores = []
+        self._perfect_hits = 0
+        self._fail_chance = 0.0
+
         # generate zone for first press
         self._zone_start, self._zone_end = self._generate_zone()
 
@@ -319,6 +331,9 @@ class SmeltingOverlay:
         # result auto-advance
         self._pause_timer  = 0.0
         self._in_pause     = False
+        self._pause_duration = 0.0
+        self._advance_next_hit = False
+        self._advance_next_ore = False
 
         # animation
         self._anim_frame  = 0
@@ -334,9 +349,31 @@ class SmeltingOverlay:
 
     def _generate_zone(self):
         w = self.recipe.get("zone_width", 0.22) * getattr(self, "_zone_mult", 1.0)
+        # Narrower zone late in each ore sequence raises execution pressure.
+        if self._hits_required > 1:
+            stage_ratio = self._hits_done / (self._hits_required - 1)
+            w *= (1.0 - 0.14 * stage_ratio)
         w = max(0.08, min(0.50, w))  # clamp between 8% and 50%
         start = random.uniform(0.15, 0.85 - w)
         return start, start + w
+
+    def _resolve_ore_quality(self):
+        points = {"refined": 2.0, "normal": 1.0, "slag": 0.0}
+        avg = sum(points.get(q, 0.0) for q in self._hit_scores) / max(1, len(self._hit_scores))
+        if avg >= 1.6:
+            return "refined"
+        if avg >= 0.85:
+            return "normal"
+        return "slag"
+
+    def _reset_for_next_ore(self):
+        self._hits_done = 0
+        self._hit_scores = []
+        self._perfect_hits = 0
+        self._fail_chance = 0.0
+        self._zone_start, self._zone_end = self._generate_zone()
+        self._pos = 0.0
+        self._direction = 1
 
     # ── Events ───────────────────────────────────────────────────────────────
 
@@ -362,16 +399,64 @@ class SmeltingOverlay:
             dist = min(abs(pos - self._zone_start), abs(pos - self._zone_end))
             quality = "normal" if dist < 0.10 else "slag"
 
-        result_text = self.system._apply_smelt(self.ore_id, self.recipe, quality)
-        self._results.append(quality)
-        self._remaining -= 1
+        self._hit_scores.append(quality)
+        self._hits_done += 1
+        if quality == "refined":
+            self._perfect_hits += 1
+        
+        # Weighted fail-chance: refined=0%, dark green(normal)=16%, slag=100%
+        fail_weights = {"refined": 0.0, "normal": 0.16, "slag": 1.0}
+        total_weight = sum(fail_weights.get(q, 0.0) for q in self._hit_scores)
+        max_possible = self._hits_required * 1.0  # max weight is 1.0 per hit (slag)
+        self._fail_chance = total_weight / max(1, max_possible)
 
         tier = SMELT_QUALITY[quality]
         self._flash_color = tier["color"]
-        self._flash_text  = result_text.strip()
-        self._flash_timer = 0.5
+        if self._hits_done < self._hits_required:
+            # Mid-sequence feedback (frequent timing cadence)
+            if quality == "refined":
+                self._flash_text = f"⭐ CLEAN HIT {self._hits_done}/{self._hits_required}  |  Fail Risk {int(self._fail_chance * 100)}%"
+            elif quality == "normal":
+                self._flash_text = f"✓ HIT {self._hits_done}/{self._hits_required}  |  Fail Risk {int(self._fail_chance * 100)}%"
+            else:
+                self._flash_text = f"❌ BAD HIT {self._hits_done}/{self._hits_required}  |  Fail Risk {int(self._fail_chance * 100)}%"
+            self._flash_timer = 0.45
+            self._advance_next_hit = True
+            self._advance_next_ore = False
+            self._pause_duration = 0.28
+        else:
+            # Final failure roll driven by missed perfect timings.
+            # 3/3 perfect => 0% fail, 0/3 perfect => 100% fail.
+            if random.random() < self._fail_chance:
+                ore_quality = "slag"
+            else:
+                ore_quality = self._resolve_ore_quality()
+            result_text = self.system._apply_smelt(self.ore_id, self.recipe, ore_quality)
+            self._results.append(ore_quality)
+            self._remaining -= 1
 
-        self._in_pause    = True
+            gui = getattr(self.system.engine, "gui", None)
+            if gui and result_text:
+                gui.append(
+                    f"  🔥 Smelt result ({self.recipe.get('name', self.ore_id)}): "
+                    f"{result_text.strip()}  |  Perfects {self._perfect_hits}/{self._hits_required}  |  "
+                    f"Fail Risk {int(self._fail_chance * 100)}%"
+                )
+
+            tier = SMELT_QUALITY[ore_quality]
+            self._flash_color = tier["color"]
+            if ore_quality == "refined":
+                self._flash_text = f"⭐ REFINED INGOT FORGED!  |  Final Fail Risk {int(self._fail_chance * 100)}%"
+            elif ore_quality == "normal":
+                self._flash_text = f"✓ Ingot formed  |  Final Fail Risk {int(self._fail_chance * 100)}%"
+            else:
+                self._flash_text = f"❌ Smelt failed — Slag  |  Final Fail Risk {int(self._fail_chance * 100)}%"
+            self._flash_timer = 0.85
+            self._advance_next_hit = False
+            self._advance_next_ore = True
+            self._pause_duration = 0.90
+
+        self._in_pause = True
         self._pause_timer = 0.0
 
         # Jump furnace frame to "pouring" frame
@@ -401,24 +486,36 @@ class SmeltingOverlay:
             if self._time_left <= 0:
                 self._time_left = 0.0
                 # Auto-fail: lose remaining ores
+                done_count = self.quantity - self._remaining
+                failed = self._remaining
                 self._remaining = 0
                 self._in_pause  = True
                 self._pause_timer = 0.0
                 self._flash_text  = "TIME'S UP"
                 self._flash_color = (200, 60, 60)
                 self._flash_timer = 1.0
+                gui = getattr(self.system.engine, "gui", None)
+                if gui:
+                    gui.append(
+                        f"  ❌ Smelting timed out: {self.recipe.get('name', self.ore_id)}. "
+                        f"Processed {done_count}/{self.quantity}; {failed} ore(s) not smelted."
+                    )
 
         if self._in_pause:
             self._pause_timer += dt
-            if self._pause_timer >= 1.4:  # 1.4s baseline (was 0.9)
+            if self._pause_timer >= self._pause_duration:
                 self._in_pause = False
                 if self._remaining <= 0:
                     self.done = True
                 else:
-                    # Reset bar for next ore
-                    self._zone_start, self._zone_end = self._generate_zone()
-                    self._pos       = 0.0
-                    self._direction = 1
+                    if self._advance_next_ore:
+                        self._reset_for_next_ore()
+                    elif self._advance_next_hit:
+                        self._zone_start, self._zone_end = self._generate_zone()
+                        self._pos = 0.0
+                        self._direction = 1
+                self._advance_next_hit = False
+                self._advance_next_ore = False
             return
 
         # Bounce marker
@@ -502,7 +599,7 @@ class SmeltingOverlay:
         # Instruction
         inst_y = bar_y - 26
         if not self._in_pause:
-            render_label(surface, "[SPACE]  to pour",
+            render_label(surface, f"[SPACE]  pour timing  {self._hits_done + 1}/{self._hits_required}  |  Fail Risk {int(self._fail_chance * 100)}%",
                          px + pw // 2, inst_y, color=(170, 170, 220))
 
         # Flash result text
@@ -513,7 +610,8 @@ class SmeltingOverlay:
 
         # Batch counter
         done_count = self.quantity - self._remaining
-        batch_text = f"Ore: {done_count} / {self.quantity}  smelted"
+        hit_fill = "■" * self._hits_done + "□" * max(0, self._hits_required - self._hits_done)
+        batch_text = f"Ore: {done_count} / {self.quantity}  |  Sequence: {hit_fill}  |  Perfects: {self._perfect_hits}/{self._hits_required}"
         render_label(surface, batch_text,
                      px + pw // 2, py + ph - 26,
                      color=(160, 160, 160), small=True)
