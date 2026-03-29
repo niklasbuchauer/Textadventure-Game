@@ -7,3 +7,34 @@ __pycache__/
 # Web API session save files
 web_saves/
 
+__pycache__/achievement_system.cpython-313.pyc
+__pycache__/alchemy_system.cpython-313.pyc
+__pycache__/ascii_art.cpython-313.pyc
+__pycache__/book_overlay.cpython-313.pyc
+__pycache__/combat_system.cpython-313.pyc
+__pycache__/crafting_system.cpython-313.pyc
+__pycache__/debug_commands.cpython-313.pyc
+__pycache__/dungeon_generator.cpython-313.pyc
+__pycache__/dungeon_instance.cpython-313.pyc
+__pycache__/enchanting_system.cpython-313.pyc
+__pycache__/engine.cpython-313.pyc
+__pycache__/equipment_system.cpython-313.pyc
+__pycache__/fishing_system.cpython-313.pyc
+__pycache__/forging_system.cpython-313.pyc
+__pycache__/home_assets.cpython-313.pyc
+__pycache__/home_items.cpython-313.pyc
+__pycache__/home_system.cpython-313.pyc
+__pycache__/item_effects.cpython-313.pyc
+__pycache__/live_map_window.cpython-313.pyc
+__pycache__/npc_system.cpython-313.pyc
+__pycache__/overworld_encounters.cpython-313.pyc
+__pycache__/progression_system.cpython-313.pyc
+__pycache__/pygame_ui.cpython-313.pyc
+__pycache__/quest_system.cpython-313.pyc
+__pycache__/ritual_system.cpython-313.pyc
+__pycache__/searchable_items_window.cpython-313.pyc
+__pycache__/shop_system.cpython-313.pyc
+__pycache__/skill_tree_data.cpython-313.pyc
+__pycache__/skill_tree.cpython-313.pyc
+__pycache__/smelting_system.cpython-313.pyc
+__pycache__/title_screen.cpython-313.pyc
