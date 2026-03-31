@@ -598,6 +598,7 @@ class CommandHandler:
 	"""
 	def __init__(self, engine):
 		self.engine = engine
+		self.command_registry = self._build_command_registry()
 
 	def _check_conditions(self, conds):
 		"""Check conditions dict: supports {"state": {"key": value}}.
@@ -612,6 +613,79 @@ class CommandHandler:
 				# Allow optional custom 'fail_text' in conditions in future
 				return False, conds.get("fail_text") or "You can't do that now."
 		return True, ""
+
+	def _build_command_registry(self):
+		"""Build registry for high-traffic commands; legacy chain handles the rest."""
+		return {
+			"go": self._cmd_go,
+			"walk": self._cmd_go,
+			"move": self._cmd_go,
+			"enter": self._cmd_enter,
+			"look": self._cmd_look,
+			"l": self._cmd_look,
+			"collect": self._cmd_collect,
+			"take": self._cmd_collect,
+			"get": self._cmd_collect,
+			"pickup": self._cmd_collect,
+			"pick": self._cmd_collect,
+			"drop": self._cmd_drop,
+			"inventory": self._cmd_inventory,
+			"inv": self._cmd_inventory,
+			"i": self._cmd_inventory,
+			"save": self._cmd_save,
+			"load": self._cmd_load,
+			"help": self._cmd_help,
+			"commands": self._cmd_help,
+			"?": self._cmd_help,
+			"stats": self._cmd_stats,
+			"level": self._cmd_stats,
+			"class": self._cmd_stats,
+		}
+
+	def _dispatch_registry_command(self, verb, args):
+		handler = self.command_registry.get(verb)
+		if not handler:
+			return False, None
+		return True, handler(args)
+
+	def _cmd_go(self, args):
+		if not args:
+			return "Go where?"
+		direction = args[0].lower()
+		if direction == "enter":
+			return self.handle_enter_command()
+		return self._go(direction)
+
+	def _cmd_enter(self, _args):
+		return self.handle_enter_command()
+
+	def _cmd_look(self, _args):
+		return self._look()
+
+	def _cmd_collect(self, args):
+		if not args:
+			return "Pick up what?"
+		return self._collect(" ".join(args))
+
+	def _cmd_drop(self, args):
+		if not args:
+			return "Drop what?"
+		return self._drop(" ".join(args))
+
+	def _cmd_inventory(self, _args):
+		return self._inventory()
+
+	def _cmd_save(self, _args):
+		return self.engine.save_game()
+
+	def _cmd_load(self, _args):
+		return self.engine.load_game(interactive=False)
+
+	def _cmd_help(self, _args):
+		return self._show_commands()
+
+	def _cmd_stats(self, _args):
+		return self._show_player_stats()
 
 	def handle(self, raw):
 		cmd = (raw or "").strip()
@@ -743,6 +817,10 @@ class CommandHandler:
 			if not ok:
 				return msg
 			return self._perform_action(effect, room, cmd)
+
+		handled, registry_response = self._dispatch_registry_command(verb, args)
+		if handled:
+			return registry_response
 
 		# fallback to built-in verbs
 		if verb in ("go", "walk", "move"):
