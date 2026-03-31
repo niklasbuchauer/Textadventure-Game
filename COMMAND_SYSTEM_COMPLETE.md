@@ -24,7 +24,8 @@
 
 ### Next migration targets
 
-- Board/ship travel and debug command routing
+- Registry migration target set is complete for standard gameplay command groups.
+- Remaining non-registry routes are intentional specialized command handlers (secret/easter-egg/puzzle pathways).
 
 ## Summary
 

@@ -713,6 +713,14 @@ class CommandHandler:
 			"ritual": self._cmd_ritual,
 			"enchant": self._cmd_enchant,
 			"fight": self._cmd_fight,
+			"debug": self._cmd_debug,
+			"board": self._cmd_board,
+			"rooms": self._cmd_rooms,
+			"room_browser": self._cmd_rooms,
+			"areas": self._cmd_rooms,
+			"bestiary": self._cmd_bestiary,
+			"monsters": self._cmd_bestiary,
+			"enemies": self._cmd_bestiary,
 		}
 
 	def _build_command_metadata(self):
@@ -768,6 +776,10 @@ class CommandHandler:
 			"ritual": {"category": "Crafting", "usage": "ritual [name]", "aliases": []},
 			"enchant": {"category": "Crafting", "usage": "enchant", "aliases": []},
 			"fight": {"category": "Combat", "usage": "fight", "aliases": []},
+			"debug": {"category": "Debug", "usage": "debug <subcommand>", "aliases": []},
+			"board": {"category": "Travel", "usage": "board [destination]", "aliases": []},
+			"rooms": {"category": "Exploration", "usage": "rooms", "aliases": ["room_browser", "areas"]},
+			"bestiary": {"category": "Exploration", "usage": "bestiary", "aliases": ["monsters", "enemies"]},
 		}
 
 	def _dispatch_registry_command(self, verb, args):
@@ -1071,6 +1083,50 @@ class CommandHandler:
 	def _cmd_fight(self, _args):
 		return self._fight_visible_enemy()
 
+	def _cmd_debug(self, args):
+		if args and args[0].lower() == "commands":
+			return self._show_debug_menu()
+		return self._handle_debug_command(args)
+
+	def _cmd_board(self, args):
+		room = self.engine.get_room_data(self.engine.player.current_room)
+		exits = room.exits if hasattr(room, 'exits') else (room.get('exits', {}) if isinstance(room, dict) else {})
+		full_cmd = "board" if not args else f"board {' '.join(args)}"
+		if full_cmd in exits:
+			return self._go(full_cmd)
+		boat_exits = {k: v for k, v in exits.items() if isinstance(v, dict) and v.get("type") == "boat_travel"}
+		if not boat_exits:
+			return "There is no ship here to board."
+		if not args:
+			lines = [
+				"\n╔══════════════════════════════════════════════════════╗",
+				"║                  AVAILABLE SHIPS                    ║",
+				"╠══════════════════════════════════════════════════════╣",
+			]
+			for key, info in boat_exits.items():
+				display = info.get("display", key)
+				fare = info.get("fare_cost", 0)
+				lvl = info.get("min_level", 1)
+				if fare > 0:
+					row = f"║  {key:<22}  → {display:<18} {fare}g lvl{lvl}+ ║"
+				else:
+					row = f"║  {key:<22}  → {display:<28} ║"
+				lines.append(row)
+			lines.append("╚══════════════════════════════════════════════════════╝")
+			lines.append("  Type the full command to sail (e.g. 'board mainland')")
+			return "\n".join(lines)
+		partial = full_cmd.lower()
+		for key in boat_exits:
+			if key.startswith(partial) or partial in key:
+				return self._go(key)
+		return f"No ship going to '{' '.join(args)}'. Type 'board' to see available ships."
+
+	def _cmd_rooms(self, _args):
+		return "__OPEN_ROOMS__"
+
+	def _cmd_bestiary(self, _args):
+		return "__OPEN_BESTIARY__"
+
 	def _build_compact_help_lines(self):
 		"""Build compact help lines directly from command metadata by category."""
 		category_order = [
@@ -1085,6 +1141,8 @@ class CommandHandler:
 			"NPC",
 			"Gathering",
 			"Crafting",
+			"Travel",
+			"Debug",
 		]
 		by_category = {}
 		for command, meta in self.command_metadata.items():
@@ -1349,57 +1407,7 @@ class CommandHandler:
 		
 		# Shop, bank, NPC interaction, and station commands are handled through the command registry.
 		
-		# Commands and debug
-		if verb == "debug":
-			if args and args[0].lower() == "commands":
-				return self._show_debug_menu()
-			return self._handle_debug_command(args)
-
-		# Progression, equipment, and combat commands are handled through the command registry.
-
-		# Board / ship travel command
-		if verb == "board":
-			room = self.engine.get_room_data(self.engine.player.current_room)
-			exits = room.exits if hasattr(room, 'exits') else (room.get('exits', {}) if isinstance(room, dict) else {})
-			# Exact exit key match — delegate to _go
-			if cmd in exits:
-				return self._go(cmd)
-			# Collect all boat_travel exits
-			boat_exits = {k: v for k, v in exits.items()
-						  if isinstance(v, dict) and v.get("type") == "boat_travel"}
-			if not boat_exits:
-				return "There is no ship here to board."
-			if not args:
-				# List available ships
-				lines = ["\n╔══════════════════════════════════════════════════════╗",
-						 "║                  AVAILABLE SHIPS                    ║",
-						 "╠══════════════════════════════════════════════════════╣"]
-				for key, info in boat_exits.items():
-					display = info.get("display", key)
-					fare = info.get("fare_cost", 0)
-					lvl = info.get("min_level", 1)
-					if fare > 0:
-						row = f"║  {key:<22}  → {display:<18} {fare}g lvl{lvl}+ ║"
-					else:
-						row = f"║  {key:<22}  → {display:<28} ║"
-					lines.append(row)
-				lines.append("╚══════════════════════════════════════════════════════╝")
-				lines.append("  Type the full command to sail (e.g. 'board mainland')")
-				return "\n".join(lines)
-			# Typed "board <something>" — try partial match
-			partial = cmd.lower()
-			for k in boat_exits:
-				if k.startswith(partial) or partial in k:
-					return self._go(k)
-			return f"No ship going to '{' '.join(args)}'. Type 'board' to see available ships."
-
-		# Room Browser window
-		if verb in ("rooms", "room_browser", "areas"):
-			return "__OPEN_ROOMS__"
-
-		# Bestiary window
-		if verb in ("bestiary", "monsters", "enemies"):
-			return "__OPEN_BESTIARY__"
+		# Debug, progression, equipment, combat, travel, and browser commands are handled through the command registry.
 
 		# ── Easter egg: doabigcheese ────────────────────────────────────────────
 		if verb == "doabigcheese":
