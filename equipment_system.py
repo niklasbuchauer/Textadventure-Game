@@ -2447,6 +2447,10 @@ SET_BONUS_DEFINITIONS = {
         "bonuses": {
             2: {"strength": 2, "defense": 2},
             3: {"strength": 4, "defense": 3, "perception": 2},
+            4: {"strength": 6, "defense": 5, "perception": 3},
+        },
+        "utility_effects": {
+            4: {"combat_gold_mult": 1.10},
         },
     },
     "lich_king_regalia": {
@@ -2460,8 +2464,17 @@ SET_BONUS_DEFINITIONS = {
         "bonuses": {
             2: {"charisma": 2, "constitution": 2},
             3: {"charisma": 4, "constitution": 3, "perception": 2},
+            4: {"charisma": 6, "constitution": 5, "perception": 3},
+        },
+        "utility_effects": {
+            4: {"extra_rare_roll_chance": 0.20},
         },
     },
+}
+
+SET_UTILITY_LABELS = {
+    "combat_gold_mult": "Bonus combat gold",
+    "extra_rare_roll_chance": "Extra elite rare roll chance",
 }
 
 
@@ -2560,6 +2573,7 @@ def _compute_active_set_data(player):
     equipped_ids = {item_id for item_id in equip.values() if item_id}
     active_sets = []
     totals = {}
+    utility_totals = {}
 
     for set_id, data in SET_BONUS_DEFINITIONS.items():
         set_items = set(data.get("items", []))
@@ -2575,6 +2589,10 @@ def _compute_active_set_data(player):
                     totals[stat] = totals.get(stat, 0) + val
 
         if active_tier > 0:
+            for req in sorted(data.get("utility_effects", {}).keys()):
+                if pieces >= req:
+                    for effect, val in data["utility_effects"][req].items():
+                        utility_totals[effect] = utility_totals.get(effect, 0) + val
             active_sets.append({
                 "set_id": set_id,
                 "name": data.get("name", set_id.replace("_", " ").title()),
@@ -2582,7 +2600,7 @@ def _compute_active_set_data(player):
                 "tier": active_tier,
             })
 
-    return active_sets, totals
+    return active_sets, totals, utility_totals
 
 
 def _sync_set_bonus_stats(player):
@@ -2591,18 +2609,34 @@ def _sync_set_bonus_stats(player):
     for stat, val in prev.items():
         player.stats[stat] = player.stats.get(stat, 0) - val
 
-    active_sets, totals = _compute_active_set_data(player)
+    active_sets, totals, utility_totals = _compute_active_set_data(player)
     for stat, val in totals.items():
         player.stats[stat] = player.stats.get(stat, 0) + val
 
     player.state["active_set_bonus_stats"] = totals
     player.state["active_sets"] = active_sets
+    player.state["active_set_utility_effects"] = utility_totals
 
 
 def get_active_set_bonuses(player):
     """Return active set entries and current set-bonus stat totals."""
     _sync_set_bonus_stats(player)
     return list(player.state.get("active_sets", [])), dict(player.state.get("active_set_bonus_stats", {}))
+
+
+def get_active_set_utility_effects(player):
+    """Return active utility effects granted by equipped set tiers."""
+    _sync_set_bonus_stats(player)
+    return dict(player.state.get("active_set_utility_effects", {}))
+
+
+def get_item_set_names(item_id):
+    """Return list of set names that include this item."""
+    names = []
+    for _set_id, data in SET_BONUS_DEFINITIONS.items():
+        if item_id in data.get("items", []):
+            names.append(data.get("name", _set_id.replace("_", " ").title()))
+    return names
 
 
 def _ensure_cosmetic_state(player):
@@ -2928,6 +2962,18 @@ def get_equipment_display(player):
             if val != 0:
                 nice = stat.replace("_", " ").capitalize()
                 result += f"    {nice}: +{val}\n"
+
+        utility = get_active_set_utility_effects(player)
+        if utility:
+            result += "\n  --- Active Set Utility Effects ---\n"
+            for key, val in sorted(utility.items()):
+                label = SET_UTILITY_LABELS.get(key, key.replace("_", " ").title())
+                if "chance" in key:
+                    result += f"    {label}: {int(val * 100)}%\n"
+                elif "mult" in key:
+                    result += f"    {label}: {int((val - 1.0) * 100)}%\n"
+                else:
+                    result += f"    {label}: {val}\n"
 
     result += "=" * 50 + "\n"
     return result

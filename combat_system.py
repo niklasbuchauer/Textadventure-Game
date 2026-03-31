@@ -890,11 +890,24 @@ def roll_elite_table_drops(player, combat):
         player.inventory[item_id] = player.inventory.get(item_id, 0) + 1
         dropped.append(item_id)
 
+    utility_fx = player.state.get("active_set_utility_effects", {}) if hasattr(player, "state") else {}
+    extra_roll_chance = float(utility_fx.get("extra_rare_roll_chance", 0.0))
+
+    rare_hit = False
     for item_id, chance in table.get("rare", []):
         if random.random() < float(chance):
             player.inventory[item_id] = player.inventory.get(item_id, 0) + 1
             dropped.append(item_id)
+            rare_hit = True
             break
+
+    # Set utility: one extra rare roll attempt if the first rare roll misses.
+    if not rare_hit and extra_roll_chance > 0 and random.random() < extra_roll_chance:
+        for item_id, chance in table.get("rare", []):
+            if random.random() < float(chance):
+                player.inventory[item_id] = player.inventory.get(item_id, 0) + 1
+                dropped.append(item_id)
+                break
 
     return dropped
 
@@ -2204,6 +2217,8 @@ def generate_victory_result(player, combat):
 
     # Check for double gold effect
     active_effects = player.state.get("active_effects", {})
+    set_utility = player.state.get("active_set_utility_effects", {}) if hasattr(player, "state") else {}
+    set_gold_mult = float(set_utility.get("combat_gold_mult", 1.0))
     gold_mult = active_effects.get("double_gold", 1)
     if gold_mult > 1:
         gold = int(gold * gold_mult)
@@ -2211,6 +2226,12 @@ def generate_victory_result(player, combat):
         result += f"  💰 Gold (x{gold_mult}): +{gold}\n"
     elif gold > 0:
         result += f"  💰 Gold: +{gold}\n"
+
+    if gold > 0 and set_gold_mult > 1.0:
+        bonus_gold = int(max(0, gold * (set_gold_mult - 1.0)))
+        if bonus_gold > 0:
+            gold += bonus_gold
+            result += f"  ✨ Set bonus gold: +{bonus_gold}\n"
 
     if gold > 0:
         player.stats["gold"] = player.stats.get("gold", 0) + gold

@@ -55,6 +55,7 @@ def test_loot_command_output():
     assert "MINI-BOSS LOOT TABLES" in mini_msg
     assert "TARGETED LOOT LOOKUP" in targeted_msg
     assert "Crystal Titan" in targeted_msg
+    assert "[Set: Crystal Titan Regalia]" in targeted_msg
     assert "TARGETED LOOT LOOKUP" in fuzzy_titan_msg
     assert "Crystal Titan" in fuzzy_titan_msg
     assert "TARGETED LOOT LOOKUP" in fuzzy_lich_msg

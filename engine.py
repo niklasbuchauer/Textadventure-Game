@@ -157,7 +157,8 @@ try:
 		EQUIPMENT_DATABASE, EQUIPMENT_SLOTS,
 		equip_item, unequip_item, get_equipment_display,
 		get_total_equipment_bonuses, get_attack_power, get_defense_power,
-		apply_transmog, get_cosmetics_display, get_active_set_bonuses
+		apply_transmog, get_cosmetics_display, get_active_set_bonuses,
+		get_active_set_utility_effects, get_item_set_names
 	)
 	EQUIPMENT_AVAILABLE = True
 except Exception as e:
@@ -837,10 +838,20 @@ class CommandHandler:
 		def _format_table_lines(enemy_id, table):
 			guaranteed = table.get("guaranteed", [])
 			rare = table.get("rare", [])
-			g_label = guaranteed[0].replace("_", " ") if guaranteed else "none"
+			if guaranteed:
+				g_item = guaranteed[0]
+				g_sets = get_item_set_names(g_item) if EQUIPMENT_AVAILABLE else []
+				g_label = g_item.replace("_", " ")
+				if g_sets:
+					g_label += f" [Set: {g_sets[0]}]"
+			else:
+				g_label = "none"
 			if rare:
 				r_item, r_chance = rare[0]
+				r_sets = get_item_set_names(r_item) if EQUIPMENT_AVAILABLE else []
 				r_label = f"{r_item.replace('_', ' ')} ({int(float(r_chance) * 100)}%)"
+				if r_sets:
+					r_label += f" [Set: {r_sets[0]}]"
 			else:
 				r_label = "none"
 			return [
@@ -1695,6 +1706,17 @@ class CommandHandler:
 						if val:
 							nice = stat.replace("_", " ").capitalize()
 							result += f"  {nice}: +{val}\n"
+					utility_fx = get_active_set_utility_effects(self.engine.player)
+					if utility_fx:
+						result += "\n  --- Set Utility Effects ---\n"
+						for key, val in sorted(utility_fx.items()):
+							label = key.replace("_", " ").title()
+							if "chance" in key:
+								result += f"  {label}: {int(val * 100)}%\n"
+							elif "mult" in key:
+								result += f"  {label}: {int((val - 1.0) * 100)}%\n"
+							else:
+								result += f"  {label}: {val}\n"
 
 		if ARTIFACT_AVAILABLE:
 			artifact_id = get_equipped_artifact(self.engine.player)
