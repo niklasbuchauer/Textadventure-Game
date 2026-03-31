@@ -1,5 +1,30 @@
 # Command System Enhancement - Complete Implementation
 
+## April 2026 Registry Overhaul Update
+
+### What changed
+
+1. Added a registry-first dispatcher in `CommandHandler` (`engine.py`) for command routing.
+2. Migrated additional command families to registry handlers:
+   - Progression: `stats`, `skills`, `ability`, `synergy`, `achievements`, `prestige`, `faction`, `pet`, `party`
+   - Equipment: `equip`, `unequip`, `equipment`, `transmog`, `cosmetics`, `artifact`
+   - Combat: `attack`, `defend`, `flee`
+3. Added canonical metadata map (`_build_command_metadata`) to centralize category/usage/alias definitions for future auto-generated help/docs.
+4. Removed redundant legacy branch checks for all migrated commands while preserving fallback for non-migrated command groups.
+
+### Validation
+
+- `test_command_system.py` passes after migration.
+- `engine.py` has no reported static errors.
+
+### Next migration targets
+
+- Shop and merchant commands
+- Bank commands
+- NPC conversation/gift/reputation commands
+- Fishing/alchemy/smelting/ritual/enchant station commands
+- Board/ship travel and debug command routing
+
 ## Summary
 
 Successfully implemented comprehensive command system improvements including:

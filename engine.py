@@ -599,6 +599,7 @@ class CommandHandler:
 	def __init__(self, engine):
 		self.engine = engine
 		self.command_registry = self._build_command_registry()
+		self.command_metadata = self._build_command_metadata()
 
 	def _check_conditions(self, conds):
 		"""Check conditions dict: supports {"state": {"key": value}}.
@@ -654,6 +655,84 @@ class CommandHandler:
 			"stats": self._cmd_stats,
 			"level": self._cmd_stats,
 			"class": self._cmd_stats,
+			"skills": self._cmd_skills,
+			"skilltree": self._cmd_skills,
+			"skill": self._cmd_skills,
+			"ability": self._cmd_ability,
+			"abilities": self._cmd_ability,
+			"ab": self._cmd_ability,
+			"synergy": self._cmd_synergy,
+			"synergies": self._cmd_synergy,
+			"achievements": self._cmd_achievements,
+			"achieve": self._cmd_achievements,
+			"ach": self._cmd_achievements,
+			"prestige": self._cmd_prestige,
+			"ascend": self._cmd_prestige,
+			"ascension": self._cmd_prestige,
+			"faction": self._cmd_faction,
+			"factions": self._cmd_faction,
+			"guild": self._cmd_faction,
+			"guilds": self._cmd_faction,
+			"pet": self._cmd_pet,
+			"pets": self._cmd_pet,
+			"companion": self._cmd_pet,
+			"companions": self._cmd_pet,
+			"party": self._cmd_party,
+			"team": self._cmd_party,
+			"squad": self._cmd_party,
+			"equip": self._cmd_equip,
+			"unequip": self._cmd_unequip,
+			"equipment": self._cmd_equipment,
+			"transmog": self._cmd_transmog,
+			"skin": self._cmd_transmog,
+			"cosmetics": self._cmd_cosmetics,
+			"cosmetic": self._cmd_cosmetics,
+			"artifact": self._cmd_artifact,
+			"artifacts": self._cmd_artifact,
+			"relic": self._cmd_artifact,
+			"relics": self._cmd_artifact,
+			"attack": self._cmd_attack,
+			"defend": self._cmd_defend,
+			"flee": self._cmd_flee,
+		}
+
+	def _build_command_metadata(self):
+		"""Canonical command metadata used for docs/help synchronization."""
+		return {
+			"go": {"category": "Movement", "usage": "go <direction>", "aliases": ["walk", "move", "n", "s", "e", "w", "u", "d"]},
+			"enter": {"category": "Movement", "usage": "enter", "aliases": []},
+			"look": {"category": "Exploration", "usage": "look", "aliases": ["l"]},
+			"collect": {"category": "Inventory", "usage": "collect <item>", "aliases": ["take", "get", "pickup", "pick"]},
+			"drop": {"category": "Inventory", "usage": "drop <item>", "aliases": []},
+			"inventory": {"category": "Inventory", "usage": "inventory", "aliases": ["inv", "i"]},
+			"save": {"category": "System", "usage": "save", "aliases": []},
+			"load": {"category": "System", "usage": "load", "aliases": []},
+			"help": {"category": "System", "usage": "help", "aliases": ["commands", "?"]},
+			"recipes": {"category": "Crafting", "usage": "recipes", "aliases": ["crafting"]},
+			"examine": {"category": "Exploration", "usage": "examine <target>", "aliases": ["inspect", "x"]},
+			"search": {"category": "Exploration", "usage": "search", "aliases": []},
+			"open": {"category": "Exploration", "usage": "open map | open chest", "aliases": []},
+			"close": {"category": "Exploration", "usage": "close map", "aliases": []},
+			"journal": {"category": "System", "usage": "journal", "aliases": ["quests", "quest", "j"]},
+			"exit": {"category": "System", "usage": "exit", "aliases": ["quit"]},
+			"stats": {"category": "Progression", "usage": "stats", "aliases": ["level", "class"]},
+			"skills": {"category": "Progression", "usage": "skills", "aliases": ["skilltree", "skill"]},
+			"ability": {"category": "Progression", "usage": "ability <name>", "aliases": ["abilities", "ab"]},
+			"synergy": {"category": "Progression", "usage": "synergy", "aliases": ["synergies"]},
+			"achievements": {"category": "Progression", "usage": "achievements", "aliases": ["achieve", "ach"]},
+			"prestige": {"category": "Progression", "usage": "prestige", "aliases": ["ascend", "ascension"]},
+			"faction": {"category": "Progression", "usage": "faction", "aliases": ["factions", "guild", "guilds"]},
+			"pet": {"category": "Progression", "usage": "pet", "aliases": ["pets", "companion", "companions"]},
+			"party": {"category": "Progression", "usage": "party", "aliases": ["team", "squad"]},
+			"equip": {"category": "Equipment", "usage": "equip <item>", "aliases": []},
+			"unequip": {"category": "Equipment", "usage": "unequip <slot_or_item>", "aliases": []},
+			"equipment": {"category": "Equipment", "usage": "equipment", "aliases": []},
+			"transmog": {"category": "Equipment", "usage": "transmog <slot_or_item> <skin|clear>", "aliases": ["skin"]},
+			"cosmetics": {"category": "Equipment", "usage": "cosmetics", "aliases": ["cosmetic"]},
+			"artifact": {"category": "Equipment", "usage": "artifact", "aliases": ["artifacts", "relic", "relics"]},
+			"attack": {"category": "Combat", "usage": "attack", "aliases": []},
+			"defend": {"category": "Combat", "usage": "defend", "aliases": []},
+			"flee": {"category": "Combat", "usage": "flee", "aliases": []},
 		}
 
 	def _dispatch_registry_command(self, verb, args):
@@ -732,6 +811,69 @@ class CommandHandler:
 
 	def _cmd_stats(self, _args):
 		return self._show_player_stats()
+
+	def _cmd_skills(self, args):
+		if args and args[0].lower() == "list":
+			return self._show_skills_text()
+		return self._open_skill_tree()
+
+	def _cmd_ability(self, args):
+		if not args:
+			return self._show_abilities()
+		return self._use_ability(" ".join(args))
+
+	def _cmd_synergy(self, _args):
+		return self._show_synergies()
+
+	def _cmd_achievements(self, _args):
+		return self._show_achievements()
+
+	def _cmd_prestige(self, args):
+		if args and args[0].lower() in ("status", "info"):
+			return self._show_prestige_status()
+		return self._start_prestige()
+
+	def _cmd_faction(self, args):
+		return self._handle_faction_command(args)
+
+	def _cmd_pet(self, args):
+		return self._handle_pet_command(args)
+
+	def _cmd_party(self, _args):
+		return "__OPEN_PARTY_FACTION__"
+
+	def _cmd_equip(self, args):
+		if not args:
+			return "Equip what? (e.g. 'equip iron_sword')"
+		return self._equip_item(" ".join(args))
+
+	def _cmd_unequip(self, args):
+		if not args:
+			return "Unequip what? (e.g. 'unequip weapon' or 'unequip iron_sword')"
+		return self._unequip_item(" ".join(args))
+
+	def _cmd_equipment(self, _args):
+		return self._show_equipment()
+
+	def _cmd_transmog(self, args):
+		if len(args) < 2:
+			return "Usage: transmog <slot_or_item> <cosmetic_id|clear>"
+		return self._apply_transmog(" ".join(args[:-1]), args[-1])
+
+	def _cmd_cosmetics(self, _args):
+		return self._show_cosmetics()
+
+	def _cmd_artifact(self, args):
+		return self._handle_artifact_command(args)
+
+	def _cmd_attack(self, _args):
+		return self._combat_attack()
+
+	def _cmd_defend(self, _args):
+		return self._combat_defend()
+
+	def _cmd_flee(self, _args):
+		return self._combat_flee()
 
 	def handle(self, raw):
 		cmd = (raw or "").strip()
@@ -1155,59 +1297,7 @@ class CommandHandler:
 				return self._show_debug_menu()
 			return self._handle_debug_command(args)
 
-		# Progression commands
-		if verb in ("stats", "level", "class"):
-			return self._show_player_stats()
-		if verb in ("skills", "skilltree", "skill"):
-			if args and args[0].lower() == "list":
-				return self._show_skills_text()
-			return self._open_skill_tree()
-		if verb in ("ability", "abilities", "ab"):
-			if not args:
-				return self._show_abilities()
-			return self._use_ability(" ".join(args))
-		if verb in ("synergy", "synergies"):
-			return self._show_synergies()
-		if verb in ("achievements", "achieve", "ach"):
-			return self._show_achievements()
-		if verb in ("prestige", "ascend", "ascension"):
-			if args and args[0].lower() in ("status", "info"):
-				return self._show_prestige_status()
-			return self._start_prestige()
-		if verb in ("faction", "factions", "guild", "guilds"):
-			return self._handle_faction_command(args)
-		if verb in ("pet", "pets", "companion", "companions"):
-			return self._handle_pet_command(args)
-		if verb in ("party", "team", "squad"):
-			return "__OPEN_PARTY_FACTION__"
-
-		# Equipment commands
-		if verb == "equip":
-			if not args:
-				return "Equip what? (e.g. 'equip iron_sword')"
-			return self._equip_item(" ".join(args))
-		if verb == "unequip":
-			if not args:
-				return "Unequip what? (e.g. 'unequip weapon' or 'unequip iron_sword')"
-			return self._unequip_item(" ".join(args))
-		if verb == "equipment":
-			return self._show_equipment()
-		if verb in ("transmog", "skin"):
-			if len(args) < 2:
-				return "Usage: transmog <slot_or_item> <cosmetic_id|clear>"
-			return self._apply_transmog(" ".join(args[:-1]), args[-1])
-		if verb in ("cosmetics", "cosmetic"):
-			return self._show_cosmetics()
-		if verb in ("artifact", "artifacts", "relic", "relics"):
-			return self._handle_artifact_command(args)
-
-		# Combat commands
-		if verb == "attack":
-			return self._combat_attack()
-		if verb == "defend":
-			return self._combat_defend()
-		if verb == "flee":
-			return self._combat_flee()
+		# Progression, equipment, and combat commands are handled through the command registry.
 
 		# Board / ship travel command
 		if verb == "board":
