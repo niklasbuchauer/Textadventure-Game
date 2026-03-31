@@ -637,6 +637,20 @@ class CommandHandler:
 			"help": self._cmd_help,
 			"commands": self._cmd_help,
 			"?": self._cmd_help,
+			"recipes": self._cmd_recipes,
+			"crafting": self._cmd_recipes,
+			"examine": self._cmd_examine,
+			"inspect": self._cmd_examine,
+			"x": self._cmd_examine,
+			"search": self._cmd_search,
+			"open": self._cmd_open,
+			"close": self._cmd_close,
+			"journal": self._cmd_journal,
+			"quests": self._cmd_journal,
+			"quest": self._cmd_journal,
+			"j": self._cmd_journal,
+			"quit": self._cmd_exit,
+			"exit": self._cmd_exit,
 			"stats": self._cmd_stats,
 			"level": self._cmd_stats,
 			"class": self._cmd_stats,
@@ -683,6 +697,38 @@ class CommandHandler:
 
 	def _cmd_help(self, _args):
 		return self._show_commands()
+
+	def _cmd_recipes(self, _args):
+		return self._show_recipes()
+
+	def _cmd_examine(self, args):
+		if not args:
+			return "Examine what?"
+		return self._examine(" ".join(args))
+
+	def _cmd_search(self, _args):
+		return self._search_room()
+
+	def _cmd_open(self, args):
+		if args and args[0].lower() == "map":
+			return self._open_map()
+		if args and args[0].lower() == "chest":
+			return self._open_chest()
+		return "Open what?"
+
+	def _cmd_close(self, args):
+		if args and args[0].lower() == "map":
+			return self._close_map()
+		return "Close what?"
+
+	def _cmd_journal(self, _args):
+		return self._show_journal()
+
+	def _cmd_exit(self, args):
+		if args and args[0].lower() == "home":
+			return self._exit_home()
+		self.engine.should_quit = True
+		return "Goodbye."
 
 	def _cmd_stats(self, _args):
 		return self._show_player_stats()
@@ -913,12 +959,6 @@ class CommandHandler:
 			return self._go("leave")
 		if verb == "exit" and args and args[0].lower() == "home":
 			return self._exit_home()
-		if verb in ("quit", "exit"):
-			# set flag so GUI can act on it
-			self.engine.should_quit = True
-			return "Goodbye."
-		if verb in ("help", "?"):
-			return self._show_commands()
 		if verb == "feel" and args and args[0].lower() == "preview":
 			if len(args) > 1:
 				return self._preview_game_feel(args[1])
@@ -927,15 +967,7 @@ class CommandHandler:
 			if len(args) > 1:
 				return self._preview_game_feel(args[1])
 			return self._preview_game_feel()
-		if verb in ("recipes", "crafting"):
-			return self._show_recipes()
-		if verb in ("examine", "inspect", "x"):
-			if not args:
-				return "Examine what?"
-			return self._examine(" ".join(args))
-		# Quest / Journal commands
-		if verb in ("journal", "quests", "quest", "j"):
-			return self._show_journal()
+		# Quest / Journal commands are handled through the command registry.
 		# add sell verb handling
 		if verb == "sell":
 			if not args:
@@ -1058,10 +1090,6 @@ class CommandHandler:
 			# Show all NPC reputations
 			return self.engine.reputation_manager.get_all_summaries()
 		
-		# Search command
-		if verb == "search":
-			return self._search_room()
-
 		# Fishing commands
 		if verb == "fish":
 			if not FISHING_AVAILABLE or not self.engine.fishing_system:
@@ -1121,20 +1149,7 @@ class CommandHandler:
 		if verb == "fight":
 			return self._fight_visible_enemy()
 		
-		# Map commands
-		if verb == "open":
-			if args and args[0].lower() == "map":
-				return self._open_map()
-			if args and args[0].lower() == "chest":
-				return self._open_chest()
-			return "Open what?"
-		if verb == "close":
-			if args and args[0].lower() == "map":
-				return self._close_map()
-			return "Close what?"
 		# Commands and debug
-		if verb == "commands":
-			return self._show_commands()
 		if verb == "debug":
 			if args and args[0].lower() == "commands":
 				return self._show_debug_menu()
