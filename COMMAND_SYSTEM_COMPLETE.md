@@ -22,6 +22,13 @@
    - `debug set grant <set_name> [equip]`
    - `debug set clear <set_name>`
    - `debug set status <set_name>`
+8. Added new debug cosmetics/skin QA commands:
+   - `debug cosmetics list`
+   - `debug cosmetics unlock <id|all>`
+   - `debug cosmetics lock <id|all>`
+   - `debug cosmetics apply <slot_or_item> <id|clear>`
+   - `debug cosmetics reset`
+   - `debug cosmetics status`
 
 ### Validation
 

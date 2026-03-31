@@ -91,6 +91,15 @@
 - `debug set clear <set_name>` = Remove all set items from inventory and equipment
 - `debug set status <set_name>` = Show owned/equipped/missing status for each set piece
 
+## Debug Cosmetics And Skin Commands
+
+- `debug cosmetics list` = List all cosmetic IDs, sources, and lock status
+- `debug cosmetics unlock <id|all>` = Unlock one cosmetic or every cosmetic
+- `debug cosmetics lock <id|all>` = Relock a cosmetic or reset unlocked cosmetics to defaults
+- `debug cosmetics apply <slot_or_item> <id|clear>` = Apply skin override to equipped slot/item
+- `debug cosmetics reset` = Clear all active appearance overrides
+- `debug cosmetics status` = Show unlocked cosmetics and active transmog assignments
+
 ## Inspect Command
 
 ### General Usage

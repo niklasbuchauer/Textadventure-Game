@@ -77,6 +77,8 @@ def handle_debug_commands(engine, args):
         return _debug_loot_preview(engine, args[1:])
     elif subcommand == "set":
         return _debug_set_command(engine, args[1:])
+    elif subcommand == "cosmetics":
+        return _debug_cosmetics_command(engine, args[1:])
     elif subcommand == "stats":
         return _debug_show_stats(engine)
     elif subcommand == "home":
@@ -148,6 +150,14 @@ Elite Loot & Set Testing:
     debug set clear <set_name>            - Remove set items from inventory/equipment
     debug set status <set_name>           - Show owned/equipped set progress
 
+Cosmetics & Skins:
+    debug cosmetics list                    - Show all cosmetic IDs and status
+    debug cosmetics unlock <id|all>         - Unlock one cosmetic or all cosmetics
+    debug cosmetics lock <id|all>           - Relock one cosmetic or reset to defaults
+    debug cosmetics apply <slot> <id|clear> - Apply/clear skin override on equipped slot
+    debug cosmetics reset                   - Clear all active appearance overrides
+    debug cosmetics status                  - Show unlocked skins + active overrides
+
 Items & Inventory:
   debug items                   - Show your inventory
   debug items all               - Open searchable items window
@@ -194,6 +204,8 @@ Examples:
   debug spawn item iron_sword
     debug loot sim boss crystal_titan 100
     debug set grant crystal titan regalia equip
+    debug cosmetics unlock all
+    debug cosmetics apply weapon slayer_crimson
   debug teleport mountain_peak
   debug dungeon open dungeon_forest_entrance
     debug home free
@@ -501,6 +513,175 @@ def _debug_set_status(engine, status_args):
         lines.append(f"  - {row['item_id']} ({', '.join(parts)})")
     lines.append("=" * 62)
     return "\n".join(lines)
+
+
+def _debug_cosmetics_usage():
+    return (
+        "Usage: debug cosmetics list | status | reset\n"
+        "       debug cosmetics unlock <id|all>\n"
+        "       debug cosmetics lock <id|all>\n"
+        "       debug cosmetics apply <slot_or_item> <id|clear>"
+    )
+
+
+def _debug_cosmetics_command(engine, cos_args):
+    if not getattr(engine, "player", None):
+        return "No player found"
+
+    if not cos_args:
+        return _debug_cosmetics_usage()
+
+    action = cos_args[0].strip().lower()
+    payload = cos_args[1:]
+
+    if action in ("list", "ids"):
+        return _debug_cosmetics_list(engine)
+    if action in ("status", "show"):
+        return _debug_cosmetics_status(engine)
+    if action == "unlock":
+        return _debug_cosmetics_unlock(engine, payload)
+    if action == "lock":
+        return _debug_cosmetics_lock(engine, payload)
+    if action == "apply":
+        return _debug_cosmetics_apply(engine, payload)
+    if action == "reset":
+        return _debug_cosmetics_reset(engine)
+
+    return f"Unknown cosmetics action: {action}\n{_debug_cosmetics_usage()}"
+
+
+def _debug_cosmetics_list(engine):
+    try:
+        from cosmetics_db import COSMETICS_DATABASE
+        from equipment_system import get_unlocked_cosmetics
+    except Exception as exc:
+        return f"Cosmetics system not available: {exc}"
+
+    unlocked = get_unlocked_cosmetics(engine.player)
+    lines = [
+        "\n" + "=" * 66,
+        "  DEBUG COSMETICS LIST",
+        "=" * 66,
+    ]
+
+    for cid in sorted(COSMETICS_DATABASE.keys()):
+        data = COSMETICS_DATABASE.get(cid, {})
+        marker = "UNLOCKED" if cid in unlocked else "locked"
+        source = data.get("source", "unknown")
+        slots = ", ".join(data.get("allowed_slots", []))
+        lines.append(f"- {cid} [{marker}] ({source})")
+        lines.append(f"    slots: {slots}")
+
+    lines.append("=" * 66)
+    return "\n".join(lines)
+
+
+def _debug_cosmetics_status(engine):
+    try:
+        from equipment_system import get_cosmetics_display
+    except Exception as exc:
+        return f"Cosmetics system not available: {exc}"
+    return get_cosmetics_display(engine.player)
+
+
+def _debug_cosmetics_unlock(engine, unlock_args):
+    if not unlock_args:
+        return "Usage: debug cosmetics unlock <id|all>"
+
+    target = " ".join(unlock_args).strip().lower().replace(" ", "_")
+    try:
+        from cosmetics_db import COSMETICS_DATABASE
+        from equipment_system import unlock_cosmetic
+    except Exception as exc:
+        return f"Cosmetics system not available: {exc}"
+
+    if target == "all":
+        unlocked_count = 0
+        for cid in sorted(COSMETICS_DATABASE.keys()):
+            was_new, _msg = unlock_cosmetic(engine.player, cid)
+            if was_new:
+                unlocked_count += 1
+        return f"[DEBUG] Unlocked {unlocked_count} cosmetic skins."
+
+    was_new, msg = unlock_cosmetic(engine.player, target)
+    if was_new:
+        return f"[DEBUG] {msg}"
+    if msg:
+        return msg
+    return f"[DEBUG] Cosmetic '{target}' was already unlocked."
+
+
+def _debug_cosmetics_lock(engine, lock_args):
+    if not lock_args:
+        return "Usage: debug cosmetics lock <id|all>"
+
+    target = " ".join(lock_args).strip().lower().replace(" ", "_")
+    try:
+        from cosmetics_db import COSMETICS_DATABASE, DEFAULT_UNLOCKED_COSMETICS, normalize_cosmetic_id
+    except Exception as exc:
+        return f"Cosmetics system not available: {exc}"
+
+    unlocked = set(engine.player.state.get("unlocked_cosmetics", []))
+
+    if target == "all":
+        engine.player.state["unlocked_cosmetics"] = sorted(set(DEFAULT_UNLOCKED_COSMETICS))
+        return "[DEBUG] Cosmetics reset to default unlocked set."
+
+    cid = normalize_cosmetic_id(target)
+    if cid not in COSMETICS_DATABASE:
+        return f"Unknown cosmetic: {target}"
+    if cid in DEFAULT_UNLOCKED_COSMETICS:
+        return f"Cannot lock default cosmetic '{cid}'."
+    if cid not in unlocked:
+        return f"[DEBUG] Cosmetic '{cid}' is already locked."
+
+    unlocked.remove(cid)
+    engine.player.state["unlocked_cosmetics"] = sorted(unlocked)
+
+    # Remove active overrides that depend on the now-locked cosmetic.
+    appearance = engine.player.state.get("equipment_appearance", {})
+    for slot, active_id in list(appearance.items()):
+        if active_id == cid:
+            appearance[slot] = None
+    engine.player.state["equipment_appearance"] = appearance
+
+    return f"[DEBUG] Locked cosmetic '{cid}' and cleared active uses."
+
+
+def _debug_cosmetics_apply(engine, apply_args):
+    if len(apply_args) < 2:
+        return "Usage: debug cosmetics apply <slot_or_item> <id|clear>"
+
+    slot_or_item = apply_args[0]
+    cosmetic_id = " ".join(apply_args[1:])
+
+    try:
+        from equipment_system import apply_transmog
+    except Exception as exc:
+        return f"Cosmetics system not available: {exc}"
+
+    ok, msg = apply_transmog(engine.player, slot_or_item, cosmetic_id)
+    if ok:
+        return f"[DEBUG] {msg}"
+    return msg
+
+
+def _debug_cosmetics_reset(engine):
+    try:
+        from equipment_system import get_equipment, EQUIPMENT_SLOTS
+    except Exception as exc:
+        return f"Cosmetics system not available: {exc}"
+
+    # Ensure state exists through slot access path.
+    get_equipment(engine.player)
+    appearance = engine.player.state.get("equipment_appearance", {})
+    cleared = 0
+    for slot in EQUIPMENT_SLOTS:
+        if appearance.get(slot):
+            cleared += 1
+        appearance[slot] = None
+    engine.player.state["equipment_appearance"] = appearance
+    return f"[DEBUG] Cleared {cleared} active cosmetic overrides."
 
 
 def _debug_hide_map(engine):

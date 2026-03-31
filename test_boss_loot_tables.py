@@ -93,9 +93,31 @@ def test_debug_loot_and_set_commands():
     assert progress_after["owned_count"] == 0
 
 
+def test_debug_cosmetics_commands():
+    engine = GameEngine()
+    engine.new_game()
+
+    # Ensure we have an equipped weapon slot for apply testing.
+    engine.process_command("debug spawn item iron_sword")
+    engine.process_command("equip iron_sword")
+
+    list_msg = engine.process_command("debug cosmetics list")
+    unlock_msg = engine.process_command("debug cosmetics unlock all")
+    apply_msg = engine.process_command("debug cosmetics apply weapon slayer_crimson")
+    status_msg = engine.process_command("debug cosmetics status")
+    reset_msg = engine.process_command("debug cosmetics reset")
+
+    assert "DEBUG COSMETICS LIST" in list_msg
+    assert "Unlocked" in unlock_msg or "unlocked" in unlock_msg
+    assert "Applied" in apply_msg
+    assert "COSMETICS" in status_msg
+    assert "Cleared" in reset_msg
+
+
 if __name__ == "__main__":
     test_guaranteed_boss_table_drop()
     test_guaranteed_miniboss_table_drop()
     test_loot_command_output()
     test_debug_loot_and_set_commands()
+    test_debug_cosmetics_commands()
     print("PASS: elite loot tables and loot command")

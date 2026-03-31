@@ -152,6 +152,12 @@ DEBUG_COMMANDS = [
     ("debug set grant <set> [equip]", "Debug / Player", "Grant all items from a set",            "debug set grant <set_name> [equip]", "debug set grant crystal titan regalia equip"),
     ("debug set clear <set>",  "Debug / Player", "Remove set items from inventory/equipment",     "debug set clear <set_name>",      "debug set clear crystal titan regalia"),
     ("debug set status <set>", "Debug / Player", "Show owned/equipped status for a set",          "debug set status <set_name>",     "debug set status lich king regalia"),
+    ("debug cosmetics list",   "Debug / Player", "List all cosmetic skin IDs and unlock states",   "debug cosmetics list",             "debug cosmetics list"),
+    ("debug cosmetics unlock <id|all>", "Debug / Player", "Unlock one or all cosmetics",           "debug cosmetics unlock <id|all>",  "debug cosmetics unlock all"),
+    ("debug cosmetics lock <id|all>",   "Debug / Player", "Relock one or all cosmetics",           "debug cosmetics lock <id|all>",    "debug cosmetics lock slayer_crimson"),
+    ("debug cosmetics apply <slot> <id|clear>", "Debug / Player", "Apply/clear skin override",     "debug cosmetics apply <slot> <id|clear>", "debug cosmetics apply weapon slayer_crimson"),
+    ("debug cosmetics reset",  "Debug / Player", "Clear all active cosmetic overrides",             "debug cosmetics reset",            "debug cosmetics reset"),
+    ("debug cosmetics status", "Debug / Player", "Show unlocked skins and active overrides",        "debug cosmetics status",           "debug cosmetics status"),
     # Debug / World
     ("debug teleport <room>",  "Debug / World",  "Teleport to any room by ID",                    "debug teleport <room_id>",        "debug teleport port_haven"),
     ("debug rooms [page]",     "Debug / World",  "List all rooms (with pagination)",              "debug rooms [page]",              "debug rooms 2"),
