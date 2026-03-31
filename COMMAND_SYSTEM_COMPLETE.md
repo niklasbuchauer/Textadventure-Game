@@ -27,6 +27,8 @@
    - `debug cosmetics unlock <id|all>`
    - `debug cosmetics lock <id|all>`
    - `debug cosmetics apply <slot_or_item> <id|clear>`
+   - `debug cosmetics preview <slot>`
+   - `debug cosmetics randomize`
    - `debug cosmetics reset`
    - `debug cosmetics status`
 

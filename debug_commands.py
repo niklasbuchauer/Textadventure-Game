@@ -155,6 +155,8 @@ Cosmetics & Skins:
     debug cosmetics unlock <id|all>         - Unlock one cosmetic or all cosmetics
     debug cosmetics lock <id|all>           - Relock one cosmetic or reset to defaults
     debug cosmetics apply <slot> <id|clear> - Apply/clear skin override on equipped slot
+    debug cosmetics preview <slot>          - Show valid skins for a slot and unlock state
+    debug cosmetics randomize               - Apply random valid unlocked skins to equipped slots
     debug cosmetics reset                   - Clear all active appearance overrides
     debug cosmetics status                  - Show unlocked skins + active overrides
 
@@ -205,6 +207,8 @@ Examples:
     debug loot sim boss crystal_titan 100
     debug set grant crystal titan regalia equip
     debug cosmetics unlock all
+    debug cosmetics preview weapon
+    debug cosmetics randomize
     debug cosmetics apply weapon slayer_crimson
   debug teleport mountain_peak
   debug dungeon open dungeon_forest_entrance
@@ -517,10 +521,11 @@ def _debug_set_status(engine, status_args):
 
 def _debug_cosmetics_usage():
     return (
-        "Usage: debug cosmetics list | status | reset\n"
+        "Usage: debug cosmetics list | status | reset | randomize\n"
         "       debug cosmetics unlock <id|all>\n"
         "       debug cosmetics lock <id|all>\n"
-        "       debug cosmetics apply <slot_or_item> <id|clear>"
+        "       debug cosmetics apply <slot_or_item> <id|clear>\n"
+        "       debug cosmetics preview <slot>"
     )
 
 
@@ -544,6 +549,10 @@ def _debug_cosmetics_command(engine, cos_args):
         return _debug_cosmetics_lock(engine, payload)
     if action == "apply":
         return _debug_cosmetics_apply(engine, payload)
+    if action == "preview":
+        return _debug_cosmetics_preview(engine, payload)
+    if action == "randomize":
+        return _debug_cosmetics_randomize(engine)
     if action == "reset":
         return _debug_cosmetics_reset(engine)
 
@@ -664,6 +673,85 @@ def _debug_cosmetics_apply(engine, apply_args):
     if ok:
         return f"[DEBUG] {msg}"
     return msg
+
+
+def _debug_cosmetics_preview(engine, preview_args):
+    if not preview_args:
+        return "Usage: debug cosmetics preview <slot>"
+
+    slot = str(preview_args[0]).strip().lower().replace(" ", "_")
+    try:
+        from cosmetics_db import get_cosmetics_for_slot
+        from equipment_system import EQUIPMENT_SLOTS, get_unlocked_cosmetics
+    except Exception as exc:
+        return f"Cosmetics system not available: {exc}"
+
+    if slot not in EQUIPMENT_SLOTS:
+        return f"Unknown slot '{slot}'. Valid slots: {', '.join(EQUIPMENT_SLOTS)}"
+
+    options = get_cosmetics_for_slot(slot)
+    unlocked = get_unlocked_cosmetics(engine.player)
+
+    lines = [
+        "\n" + "=" * 66,
+        "  DEBUG COSMETIC PREVIEW",
+        "=" * 66,
+        f"Slot: {slot}",
+    ]
+
+    if not options:
+        lines.append("No cosmetics available for this slot.")
+        lines.append("=" * 66)
+        return "\n".join(lines)
+
+    for cid in sorted(options.keys()):
+        data = options.get(cid, {})
+        marker = "UNLOCKED" if cid in unlocked else "locked"
+        lines.append(f"- {cid} [{marker}] : {data.get('name', cid)}")
+
+    lines.append("=" * 66)
+    return "\n".join(lines)
+
+
+def _debug_cosmetics_randomize(engine):
+    try:
+        import random
+        from cosmetics_db import get_cosmetics_for_slot
+        from equipment_system import EQUIPMENT_SLOTS, get_equipment, get_unlocked_cosmetics, apply_transmog
+    except Exception as exc:
+        return f"Cosmetics system not available: {exc}"
+
+    equip = get_equipment(engine.player)
+    unlocked = get_unlocked_cosmetics(engine.player)
+    if not unlocked:
+        return "No cosmetics are unlocked. Use 'debug cosmetics unlock all' first."
+
+    applied = 0
+    skipped = []
+    for slot in EQUIPMENT_SLOTS:
+        if not equip.get(slot):
+            continue
+        options = get_cosmetics_for_slot(slot)
+        valid = [cid for cid in options.keys() if cid in unlocked]
+        if not valid:
+            skipped.append(slot)
+            continue
+
+        chosen = random.choice(valid)
+        ok, _msg = apply_transmog(engine.player, slot, chosen)
+        if ok:
+            applied += 1
+        else:
+            skipped.append(slot)
+
+    if applied <= 0:
+        if skipped:
+            return f"No valid unlocked cosmetics for equipped slots ({', '.join(skipped)})."
+        return "No equipped items found. Equip gear first, then run randomize."
+
+    if skipped:
+        return f"[DEBUG] Randomized cosmetics on {applied} slot(s). Skipped: {', '.join(skipped)}"
+    return f"[DEBUG] Randomized cosmetics on {applied} equipped slot(s)."
 
 
 def _debug_cosmetics_reset(engine):

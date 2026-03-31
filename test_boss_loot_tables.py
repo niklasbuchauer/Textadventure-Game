@@ -103,12 +103,16 @@ def test_debug_cosmetics_commands():
 
     list_msg = engine.process_command("debug cosmetics list")
     unlock_msg = engine.process_command("debug cosmetics unlock all")
+    preview_msg = engine.process_command("debug cosmetics preview weapon")
+    randomize_msg = engine.process_command("debug cosmetics randomize")
     apply_msg = engine.process_command("debug cosmetics apply weapon slayer_crimson")
     status_msg = engine.process_command("debug cosmetics status")
     reset_msg = engine.process_command("debug cosmetics reset")
 
     assert "DEBUG COSMETICS LIST" in list_msg
     assert "Unlocked" in unlock_msg or "unlocked" in unlock_msg
+    assert "DEBUG COSMETIC PREVIEW" in preview_msg
+    assert "Randomized" in randomize_msg or "No valid unlocked cosmetics" in randomize_msg
     assert "Applied" in apply_msg
     assert "COSMETICS" in status_msg
     assert "Cleared" in reset_msg
