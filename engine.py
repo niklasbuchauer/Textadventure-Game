@@ -737,7 +737,7 @@ class CommandHandler:
 			"save": {"category": "System", "usage": "save", "aliases": []},
 			"load": {"category": "System", "usage": "load", "aliases": []},
 			"help": {"category": "System", "usage": "help", "aliases": ["commands", "?"]},
-			"loot": {"category": "System", "usage": "loot [boss|miniboss]", "aliases": []},
+			"loot": {"category": "System", "usage": "loot [boss|miniboss|name]", "aliases": []},
 			"recipes": {"category": "Crafting", "usage": "recipes", "aliases": ["crafting"]},
 			"examine": {"category": "Exploration", "usage": "examine <target>", "aliases": ["inspect", "x"]},
 			"search": {"category": "Exploration", "usage": "search", "aliases": []},
@@ -834,6 +834,21 @@ class CommandHandler:
 		if not COMBAT_AVAILABLE:
 			return "Combat system not available."
 
+		def _format_table_lines(enemy_id, table):
+			guaranteed = table.get("guaranteed", [])
+			rare = table.get("rare", [])
+			g_label = guaranteed[0].replace("_", " ") if guaranteed else "none"
+			if rare:
+				r_item, r_chance = rare[0]
+				r_label = f"{r_item.replace('_', ' ')} ({int(float(r_chance) * 100)}%)"
+			else:
+				r_label = "none"
+			return [
+				f"- {enemy_id.replace('_', ' ').title()}",
+				f"    Guaranteed: {g_label}",
+				f"    Rare: {r_label}",
+			]
+
 		which = args[0].lower() if args else "boss"
 		if which in ("boss", "bosses"):
 			tables = BOSS_LOOT_TABLES
@@ -842,7 +857,35 @@ class CommandHandler:
 			tables = MINI_BOSS_LOOT_TABLES
 			title = "MINI-BOSS LOOT TABLES"
 		else:
-			return "Usage: loot [boss|miniboss]"
+			query = " ".join(args).strip().lower().replace("-", " ").replace("_", " ")
+			all_tables = {}
+			all_tables.update(BOSS_LOOT_TABLES)
+			all_tables.update(MINI_BOSS_LOOT_TABLES)
+			matches = []
+			for enemy_id, table in all_tables.items():
+				enemy_name = enemy_id.replace("_", " ")
+				if query in enemy_name.lower() or enemy_name.lower() in query:
+					matches.append((enemy_id, table))
+
+			if not matches:
+				return "No loot table match found. Usage: loot [boss|miniboss|name]"
+
+			if len(matches) > 1:
+				lines = ["Multiple matches found:"]
+				for enemy_id, _table in sorted(matches, key=lambda x: x[0]):
+					lines.append(f"- {enemy_id.replace('_', ' ').title()}")
+				lines.append("Try a more specific name, e.g. 'loot crystal titan'.")
+				return "\n".join(lines)
+
+			enemy_id, table = matches[0]
+			lines = [
+				"\n" + "=" * 62,
+				"  TARGETED LOOT LOOKUP",
+				"=" * 62,
+			]
+			lines.extend(_format_table_lines(enemy_id, table))
+			lines.append("=" * 62)
+			return "\n".join(lines)
 
 		if not tables:
 			return "No loot tables available."
@@ -854,20 +897,11 @@ class CommandHandler:
 		]
 		for enemy_id in sorted(tables.keys()):
 			table = tables.get(enemy_id, {})
-			guaranteed = table.get("guaranteed", [])
-			rare = table.get("rare", [])
-			g_label = guaranteed[0].replace("_", " ") if guaranteed else "none"
-			if rare:
-				r_item, r_chance = rare[0]
-				r_label = f"{r_item.replace('_', ' ')} ({int(float(r_chance) * 100)}%)"
-			else:
-				r_label = "none"
-			lines.append(f"- {enemy_id.replace('_', ' ').title()}")
-			lines.append(f"    Guaranteed: {g_label}")
-			lines.append(f"    Rare: {r_label}")
+			lines.extend(_format_table_lines(enemy_id, table))
 
 		lines.append("=" * 62)
-		lines.append("Tip: use 'bestiary' and inspect bosses to see table hints in UI.")
+		lines.append("Tip: use 'loot <name>' for a targeted lookup.")
+		lines.append("Tip: use 'bestiary' and inspect elites to see table hints in UI.")
 		return "\n".join(lines)
 
 	def _cmd_recipes(self, _args):
@@ -6454,7 +6488,7 @@ Do you wish to enter? (yes/no)
 		result += """║  [SYSTEM]                                                      ║
 ║ ---------------------------------------------------------------║
 ║    help / commands / ?  - Show this command list               ║
-║    loot [boss|miniboss] - Show elite loot table previews       ║
+║    loot [boss|miniboss|name] - Show elite loot table previews  ║
 ║    recipes / crafting   - View all known crafting recipes      ║
 ║    journal / quests / j - View quest journal                   ║
 ║    save                 - Save your game                       ║

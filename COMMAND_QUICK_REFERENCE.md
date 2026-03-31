@@ -23,6 +23,7 @@
 - `?` = Same as help
 - `loot boss` = Show boss loot table previews
 - `loot miniboss` = Show mini-boss loot table previews
+- `loot <name>` = Show targeted loot table for a specific elite (example: `loot crystal titan`)
 
 ## Progression And Meta Commands
 

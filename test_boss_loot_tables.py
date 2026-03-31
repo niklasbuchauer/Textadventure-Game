@@ -46,9 +46,12 @@ def test_loot_command_output():
 
     boss_msg = engine.process_command("loot boss")
     mini_msg = engine.process_command("loot miniboss")
+    targeted_msg = engine.process_command("loot crystal titan")
 
     assert "BOSS LOOT TABLES" in boss_msg
     assert "MINI-BOSS LOOT TABLES" in mini_msg
+    assert "TARGETED LOOT LOOKUP" in targeted_msg
+    assert "Crystal Titan" in targeted_msg
 
 
 if __name__ == "__main__":
