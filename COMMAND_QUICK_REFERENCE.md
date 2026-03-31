@@ -24,6 +24,7 @@
 - `loot boss` = Show boss loot table previews
 - `loot miniboss` = Show mini-boss loot table previews
 - `loot <name>` = Show targeted loot table for a specific elite (example: `loot crystal titan`)
+- Shortcuts also work: `loot titan`, `loot lich` (fuzzy name matching)
 
 ## Progression And Meta Commands
 

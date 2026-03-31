@@ -47,11 +47,19 @@ def test_loot_command_output():
     boss_msg = engine.process_command("loot boss")
     mini_msg = engine.process_command("loot miniboss")
     targeted_msg = engine.process_command("loot crystal titan")
+    fuzzy_titan_msg = engine.process_command("loot titan")
+    fuzzy_lich_msg = engine.process_command("loot lich")
+    ambiguous_msg = engine.process_command("loot sovereign")
 
     assert "BOSS LOOT TABLES" in boss_msg
     assert "MINI-BOSS LOOT TABLES" in mini_msg
     assert "TARGETED LOOT LOOKUP" in targeted_msg
     assert "Crystal Titan" in targeted_msg
+    assert "TARGETED LOOT LOOKUP" in fuzzy_titan_msg
+    assert "Crystal Titan" in fuzzy_titan_msg
+    assert "TARGETED LOOT LOOKUP" in fuzzy_lich_msg
+    assert "Lich King" in fuzzy_lich_msg
+    assert "Multiple close matches found" in ambiguous_msg
 
 
 if __name__ == "__main__":

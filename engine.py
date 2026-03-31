@@ -858,31 +858,60 @@ class CommandHandler:
 			title = "MINI-BOSS LOOT TABLES"
 		else:
 			query = " ".join(args).strip().lower().replace("-", " ").replace("_", " ")
-			all_tables = {}
-			all_tables.update(BOSS_LOOT_TABLES)
-			all_tables.update(MINI_BOSS_LOOT_TABLES)
-			matches = []
-			for enemy_id, table in all_tables.items():
-				enemy_name = enemy_id.replace("_", " ")
-				if query in enemy_name.lower() or enemy_name.lower() in query:
-					matches.append((enemy_id, table))
 
-			if not matches:
+			def _token_overlap_score(q, name):
+				q_tokens = set(t for t in q.split() if t)
+				n_tokens = set(t for t in name.split() if t)
+				if not q_tokens or not n_tokens:
+					return 0.0
+				return len(q_tokens & n_tokens) / float(len(q_tokens))
+
+			all_tables = []
+			for enemy_id, table in BOSS_LOOT_TABLES.items():
+				all_tables.append((enemy_id, table, "boss"))
+			for enemy_id, table in MINI_BOSS_LOOT_TABLES.items():
+				all_tables.append((enemy_id, table, "miniboss"))
+
+			scored = []
+			for enemy_id, table, elite_type in all_tables:
+				enemy_name = enemy_id.replace("_", " ").lower()
+				overlap = _token_overlap_score(query, enemy_name)
+				contains = query in enemy_name
+				reverse_contains = enemy_name in query
+				prefix = enemy_name.startswith(query)
+				score = overlap
+				if contains:
+					score += 1.2
+				if reverse_contains:
+					score += 0.5
+				if prefix:
+					score += 0.3
+				if score > 0:
+					scored.append((score, enemy_id, table, elite_type))
+
+			if not scored:
 				return "No loot table match found. Usage: loot [boss|miniboss|name]"
 
-			if len(matches) > 1:
-				lines = ["Multiple matches found:"]
-				for enemy_id, _table in sorted(matches, key=lambda x: x[0]):
-					lines.append(f"- {enemy_id.replace('_', ' ').title()}")
+			scored.sort(key=lambda x: (-x[0], x[1]))
+			best_score = scored[0][0]
+			best_matches = [row for row in scored if abs(row[0] - best_score) < 0.001]
+
+			if len(best_matches) > 1 and (len(query.split()) <= 1 or best_score < 2.0):
+				lines = ["Multiple close matches found:"]
+				for _score, enemy_id, _table, elite_type in best_matches[:5]:
+					tag = "Boss" if elite_type == "boss" else "Mini-Boss"
+					lines.append(f"- {enemy_id.replace('_', ' ').title()} [{tag}]")
 				lines.append("Try a more specific name, e.g. 'loot crystal titan'.")
 				return "\n".join(lines)
 
-			enemy_id, table = matches[0]
+			_enemy_score, enemy_id, table, elite_type = scored[0]
 			lines = [
 				"\n" + "=" * 62,
 				"  TARGETED LOOT LOOKUP",
 				"=" * 62,
 			]
+			tag = "Boss" if elite_type == "boss" else "Mini-Boss"
+			lines.append(f"  Type: {tag}")
 			lines.extend(_format_table_lines(enemy_id, table))
 			lines.append("=" * 62)
 			return "\n".join(lines)
