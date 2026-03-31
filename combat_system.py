@@ -825,6 +825,58 @@ DUNGEON_BOSS_MAP = {
     "verdant_labyrinth": "verdant_guardian",
 }
 
+# Targeted boss rewards layered on top of regular combat loot.
+BOSS_LOOT_TABLES = {
+    "crystal_titan": {
+        "guaranteed": ["heart_crystal_fragment"],
+        "rare": [("titans_crystalline_edge", 0.20), ("prismatic_crown", 0.18)],
+    },
+    "iron_forgemaster": {
+        "guaranteed": ["eternal_ember"],
+        "rare": [("forgemasters_warhammer", 0.20), ("eternal_anvil_shield", 0.18)],
+    },
+    "shadow_sovereign": {
+        "guaranteed": ["concentrated_void_essence"],
+        "rare": [("sovereigns_edge", 0.20), ("void_crown", 0.18)],
+    },
+    "lich_king": {
+        "guaranteed": ["soul_gem"],
+        "rare": [("lich_king_soul_blade", 0.20), ("crown_of_the_lich_king", 0.18)],
+    },
+    "frost_sovereign": {
+        "guaranteed": ["eternal_frost_essence"],
+        "rare": [("frostbite_mythic", 0.16), ("frost_sovereign_crown", 0.14)],
+    },
+    "verdant_guardian": {
+        "guaranteed": ["guardian_heartwood"],
+        "rare": [("verdant_wrath", 0.16), ("worldtree_crown", 0.14)],
+    },
+}
+
+
+def roll_boss_table_drops(player, combat):
+    """Apply guaranteed + rare boss table drops and return dropped item IDs."""
+    if not getattr(combat, "is_boss", False):
+        return []
+
+    boss_id = getattr(combat, "enemy_id", "")
+    table = BOSS_LOOT_TABLES.get(boss_id)
+    if not table:
+        return []
+
+    dropped = []
+    for item_id in table.get("guaranteed", []):
+        player.inventory[item_id] = player.inventory.get(item_id, 0) + 1
+        dropped.append(item_id)
+
+    for item_id, chance in table.get("rare", []):
+        if random.random() < float(chance):
+            player.inventory[item_id] = player.inventory.get(item_id, 0) + 1
+            dropped.append(item_id)
+            break
+
+    return dropped
+
 # Elite dungeon bosses
 BOSS_DATABASE["frost_sovereign"] = {
     "name": "Frost Sovereign",
@@ -2153,6 +2205,13 @@ def generate_victory_result(player, combat):
         result += "  Loot:\n"
         for d in dropped:
             result += f"     - {d}\n"
+
+    # Targeted boss loot tables guarantee progression-defining rewards.
+    table_drops = roll_boss_table_drops(player, combat)
+    if table_drops:
+        result += "  Boss Loot Table:\n"
+        for item_id in table_drops:
+            result += f"     - {item_id.replace('_', ' ')}\n"
 
     if feel == "high":
         streak = getattr(combat, "attack_streak", 0)

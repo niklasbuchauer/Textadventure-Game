@@ -115,10 +115,12 @@ def _build_bestiary():
     except Exception:
         pass
     try:
-        from combat_system import BOSS_DATABASE
+        from combat_system import BOSS_DATABASE, BOSS_LOOT_TABLES
         for eid, data in BOSS_DATABASE.items():
             d = dict(data); d["id"] = eid; d["tier"] = "boss"
-            d["category"] = "BOSSES"; registry[eid] = d
+            d["category"] = "BOSSES"
+            d["boss_loot_table"] = BOSS_LOOT_TABLES.get(eid, {})
+            registry[eid] = d
     except Exception:
         pass
     return registry
@@ -563,6 +565,25 @@ class BestiaryOverlay:
         fr = d.get("floor_range")
         if fr:
             _stat("Floors", f"{fr[0]}–{fr[1]}", mid)
+
+        boss_table = d.get("boss_loot_table") or {}
+        if tier == "boss" and boss_table and y < frame.bottom - 95:
+            y += 4
+            pygame.draw.line(surf, div, (frame.x + 4, y), (frame.x + frame.width - 4, y), 1)
+            y += 6
+            surf.blit(self._f(11, bold=True).render("BOSS TABLE", True, ink), (frame.x + 6, y)); y += 15
+            guaranteed = boss_table.get("guaranteed") or []
+            rare = boss_table.get("rare") or []
+            if guaranteed:
+                gtxt = guaranteed[0].replace("_", " ").title()
+                surf.blit(self._f(10).render(f"Guaranteed: {gtxt[:30]}", True, _blend((80, 120, 70), C_PARCHMENT_L, cf)),
+                          (frame.x + 8, y)); y += 13
+            if rare:
+                rid, rchance = rare[0]
+                rtxt = rid.replace("_", " ").title()
+                pct = int(float(rchance) * 100)
+                surf.blit(self._f(10).render(f"Rare: {rtxt[:24]} ({pct}%)", True, _blend((145, 95, 35), C_PARCHMENT_L, cf)),
+                          (frame.x + 8, y)); y += 13
 
         if y < frame.bottom - 60:
             y += 4

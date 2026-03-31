@@ -7,6 +7,21 @@ import datetime
 from zoneinfo import ZoneInfo
 import random
 
+try:
+    from equipment_system import get_equipment_info
+except Exception:
+    def get_equipment_info(_item_id):
+        return None
+
+
+def _is_boss_loot_exclusive(item_id):
+    """Boss-exclusive items should not appear in normal shop rotations."""
+    info = get_equipment_info(item_id)
+    if not info:
+        return False
+    source = str(info.get("source", "")).lower()
+    return source.startswith("boss_") or source == "secret_boss_drop"
+
 
 # Item database with metadata for display
 ITEM_DATABASE = {
@@ -214,6 +229,8 @@ class Shop:
         self.inventory = {}
         self.shop_inventory = {}
         for item_id, item_data in self.item_database.items():
+            if _is_boss_loot_exclusive(item_id):
+                continue
             if random.random() < item_data["spawn_chance"]:
                 quantity = random.randint(1, 3)
                 price = item_data["value"]
