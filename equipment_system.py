@@ -2434,6 +2434,36 @@ SLOT_INFO = {
 
 EQUIPMENT_SLOTS = ["weapon", "armor", "shield", "helm", "boots", "gloves", "accessory"]
 
+# Elite set bonuses reward collecting thematic boss gear.
+SET_BONUS_DEFINITIONS = {
+    "crystal_titan_regalia": {
+        "name": "Crystal Titan Regalia",
+        "items": [
+            "titans_crystalline_edge",
+            "titans_carapace",
+            "prismatic_crown",
+            "heart_of_the_titan",
+        ],
+        "bonuses": {
+            2: {"strength": 2, "defense": 2},
+            3: {"strength": 4, "defense": 3, "perception": 2},
+        },
+    },
+    "lich_king_regalia": {
+        "name": "Lich King Regalia",
+        "items": [
+            "lich_king_soul_blade",
+            "deathshroud_robes",
+            "crown_of_the_lich_king",
+            "phylactery_shard",
+        ],
+        "bonuses": {
+            2: {"charisma": 2, "constitution": 2},
+            3: {"charisma": 4, "constitution": 3, "perception": 2},
+        },
+    },
+}
+
 
 # ═════════════════════════════════════════════════════════════════════
 # HELPER FUNCTIONS
@@ -2522,6 +2552,57 @@ def get_equipped_item(player, slot):
     """Get the item ID equipped in a given slot, or None."""
     equip = get_equipment(player)
     return equip.get(slot)
+
+
+def _compute_active_set_data(player):
+    """Compute active set tiers and total set-bonus stats."""
+    equip = get_equipment(player)
+    equipped_ids = {item_id for item_id in equip.values() if item_id}
+    active_sets = []
+    totals = {}
+
+    for set_id, data in SET_BONUS_DEFINITIONS.items():
+        set_items = set(data.get("items", []))
+        pieces = len(equipped_ids & set_items)
+        if pieces <= 0:
+            continue
+
+        active_tier = 0
+        for req in sorted(data.get("bonuses", {}).keys()):
+            if pieces >= req:
+                active_tier = req
+                for stat, val in data["bonuses"][req].items():
+                    totals[stat] = totals.get(stat, 0) + val
+
+        if active_tier > 0:
+            active_sets.append({
+                "set_id": set_id,
+                "name": data.get("name", set_id.replace("_", " ").title()),
+                "pieces": pieces,
+                "tier": active_tier,
+            })
+
+    return active_sets, totals
+
+
+def _sync_set_bonus_stats(player):
+    """Refresh applied set-bonus stats on the player safely and idempotently."""
+    prev = dict(player.state.get("active_set_bonus_stats", {}))
+    for stat, val in prev.items():
+        player.stats[stat] = player.stats.get(stat, 0) - val
+
+    active_sets, totals = _compute_active_set_data(player)
+    for stat, val in totals.items():
+        player.stats[stat] = player.stats.get(stat, 0) + val
+
+    player.state["active_set_bonus_stats"] = totals
+    player.state["active_sets"] = active_sets
+
+
+def get_active_set_bonuses(player):
+    """Return active set entries and current set-bonus stat totals."""
+    _sync_set_bonus_stats(player)
+    return list(player.state.get("active_sets", [])), dict(player.state.get("active_set_bonus_stats", {}))
 
 
 def _ensure_cosmetic_state(player):
@@ -2698,6 +2779,9 @@ def equip_item(player, item_name):
     for stat, val in eq_data.get("stats", {}).items():
         player.stats[stat] = player.stats.get(stat, 0) + val
 
+    # Recompute set bonuses after gear changes.
+    _sync_set_bonus_stats(player)
+
     # Build result message
     result = "\n" + "=" * 50 + "\n"
     result += f"  {slot_info['icon']} EQUIPPED: {eq_data['name']}\n"
@@ -2711,6 +2795,12 @@ def equip_item(player, item_name):
         for stat, val in eq_data["stats"].items():
             nice = stat.replace("_", " ").capitalize()
             result += f"    {nice}: +{val}\n"
+
+    active_sets, _set_totals = get_active_set_bonuses(player)
+    if active_sets:
+        result += "\n  Active set bonuses:\n"
+        for entry in active_sets:
+            result += f"    {entry['name']} ({entry['pieces']} pieces, {entry['tier']}-piece active)\n"
     result += "=" * 50 + "\n"
     return True, result
 
@@ -2766,6 +2856,9 @@ def unequip_item(player, slot_or_name):
 
     # Clear slot
     equip[slot] = None
+
+    # Recompute set bonuses after gear changes.
+    _sync_set_bonus_stats(player)
 
     result = "\n" + "=" * 50 + "\n"
     result += f"  {slot_info['icon']} UNEQUIPPED: {item_name}\n"
@@ -2826,12 +2919,23 @@ def get_equipment_display(player):
                 nice = stat.replace("_", " ").capitalize()
                 result += f"    {nice}: +{val}\n"
 
+    active_sets, set_totals = get_active_set_bonuses(player)
+    if active_sets:
+        result += "\n  --- Active Set Bonuses ---\n"
+        for entry in active_sets:
+            result += f"    {entry['name']}: {entry['pieces']} pieces ({entry['tier']}-piece active)\n"
+        for stat, val in sorted(set_totals.items()):
+            if val != 0:
+                nice = stat.replace("_", " ").capitalize()
+                result += f"    {nice}: +{val}\n"
+
     result += "=" * 50 + "\n"
     return result
 
 
 def get_total_equipment_bonuses(player):
     """Calculate the total stat bonuses from all equipped items."""
+    _sync_set_bonus_stats(player)
     equip = get_equipment(player)
     totals = {}
     for slot in EQUIPMENT_SLOTS:
@@ -2840,6 +2944,8 @@ def get_total_equipment_bonuses(player):
             eq_data = EQUIPMENT_DATABASE.get(item_id, {})
             for stat, val in eq_data.get("stats", {}).items():
                 totals[stat] = totals.get(stat, 0) + val
+    for stat, val in player.state.get("active_set_bonus_stats", {}).items():
+        totals[stat] = totals.get(stat, 0) + val
     return totals
 
 

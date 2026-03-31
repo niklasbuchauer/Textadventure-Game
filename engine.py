@@ -157,7 +157,7 @@ try:
 		EQUIPMENT_DATABASE, EQUIPMENT_SLOTS,
 		equip_item, unequip_item, get_equipment_display,
 		get_total_equipment_bonuses, get_attack_power, get_defense_power,
-		apply_transmog, get_cosmetics_display
+		apply_transmog, get_cosmetics_display, get_active_set_bonuses
 	)
 	EQUIPMENT_AVAILABLE = True
 except Exception as e:
@@ -1686,6 +1686,15 @@ class CommandHandler:
 				if bonuses:
 					result += f"  Attack Power:  {get_attack_power(self.engine.player)}\n"
 					result += f"  Defense Power: {get_defense_power(self.engine.player)}\n"
+				active_sets, set_totals = get_active_set_bonuses(self.engine.player)
+				if active_sets:
+					result += "\n  --- Active Set Bonuses ---\n"
+					for entry in active_sets:
+						result += f"  {entry['name']}: {entry['pieces']} pieces ({entry['tier']}-piece active)\n"
+					for stat, val in sorted(set_totals.items()):
+						if val:
+							nice = stat.replace("_", " ").capitalize()
+							result += f"  {nice}: +{val}\n"
 
 		if ARTIFACT_AVAILABLE:
 			artifact_id = get_equipped_artifact(self.engine.player)
