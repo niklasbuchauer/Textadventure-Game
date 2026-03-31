@@ -211,6 +211,7 @@ try:
 		should_spawn_enemy, create_enemy_instance, create_boss_instance,
 		create_mini_boss_instance,
 		ENEMY_SPAWN_CHANCE, DUNGEON_BOSS_MAP, DUNGEON_MINI_BOSS_MAP,
+		BOSS_LOOT_TABLES, MINI_BOSS_LOOT_TABLES,
 		_apply_status,
 	)
 	COMBAT_AVAILABLE = True
@@ -638,6 +639,7 @@ class CommandHandler:
 			"help": self._cmd_help,
 			"commands": self._cmd_help,
 			"?": self._cmd_help,
+			"loot": self._cmd_loot,
 			"recipes": self._cmd_recipes,
 			"crafting": self._cmd_recipes,
 			"examine": self._cmd_examine,
@@ -735,6 +737,7 @@ class CommandHandler:
 			"save": {"category": "System", "usage": "save", "aliases": []},
 			"load": {"category": "System", "usage": "load", "aliases": []},
 			"help": {"category": "System", "usage": "help", "aliases": ["commands", "?"]},
+			"loot": {"category": "System", "usage": "loot [boss|miniboss]", "aliases": []},
 			"recipes": {"category": "Crafting", "usage": "recipes", "aliases": ["crafting"]},
 			"examine": {"category": "Exploration", "usage": "examine <target>", "aliases": ["inspect", "x"]},
 			"search": {"category": "Exploration", "usage": "search", "aliases": []},
@@ -826,6 +829,46 @@ class CommandHandler:
 
 	def _cmd_help(self, _args):
 		return self._show_commands()
+
+	def _cmd_loot(self, args):
+		if not COMBAT_AVAILABLE:
+			return "Combat system not available."
+
+		which = args[0].lower() if args else "boss"
+		if which in ("boss", "bosses"):
+			tables = BOSS_LOOT_TABLES
+			title = "BOSS LOOT TABLES"
+		elif which in ("mini", "miniboss", "mini-boss", "minibosses", "mini-bosses"):
+			tables = MINI_BOSS_LOOT_TABLES
+			title = "MINI-BOSS LOOT TABLES"
+		else:
+			return "Usage: loot [boss|miniboss]"
+
+		if not tables:
+			return "No loot tables available."
+
+		lines = [
+			"\n" + "=" * 62,
+			f"  {title}",
+			"=" * 62,
+		]
+		for enemy_id in sorted(tables.keys()):
+			table = tables.get(enemy_id, {})
+			guaranteed = table.get("guaranteed", [])
+			rare = table.get("rare", [])
+			g_label = guaranteed[0].replace("_", " ") if guaranteed else "none"
+			if rare:
+				r_item, r_chance = rare[0]
+				r_label = f"{r_item.replace('_', ' ')} ({int(float(r_chance) * 100)}%)"
+			else:
+				r_label = "none"
+			lines.append(f"- {enemy_id.replace('_', ' ').title()}")
+			lines.append(f"    Guaranteed: {g_label}")
+			lines.append(f"    Rare: {r_label}")
+
+		lines.append("=" * 62)
+		lines.append("Tip: use 'bestiary' and inspect bosses to see table hints in UI.")
+		return "\n".join(lines)
 
 	def _cmd_recipes(self, _args):
 		return self._show_recipes()
@@ -6411,6 +6454,7 @@ Do you wish to enter? (yes/no)
 		result += """║  [SYSTEM]                                                      ║
 ║ ---------------------------------------------------------------║
 ║    help / commands / ?  - Show this command list               ║
+║    loot [boss|miniboss] - Show elite loot table previews       ║
 ║    recipes / crafting   - View all known crafting recipes      ║
 ║    journal / quests / j - View quest journal                   ║
 ║    save                 - Save your game                       ║

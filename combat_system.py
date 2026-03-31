@@ -853,14 +853,35 @@ BOSS_LOOT_TABLES = {
     },
 }
 
+MINI_BOSS_LOOT_TABLES = {
+    "crystal_matriarch": {
+        "guaranteed": ["heart_crystal_fragment"],
+        "rare": [("spidersilk_gloves", 0.18), ("matriarch_eye_amulet", 0.16)],
+    },
+    "iron_warden": {
+        "guaranteed": ["tempered_steel_ingot"],
+        "rare": [("warden_core_shield", 0.18), ("overclock_gear_ring", 0.14)],
+    },
+    "void_weaver": {
+        "guaranteed": ["concentrated_void_essence"],
+        "rare": [("phase_shift_boots", 0.18), ("weaver_cowl", 0.16)],
+    },
+    "bone_colossus": {
+        "guaranteed": ["soul_gem"],
+        "rare": [("colossus_ribcage_plate", 0.18), ("bonewrought_helm", 0.16)],
+    },
+}
 
-def roll_boss_table_drops(player, combat):
-    """Apply guaranteed + rare boss table drops and return dropped item IDs."""
-    if not getattr(combat, "is_boss", False):
-        return []
 
-    boss_id = getattr(combat, "enemy_id", "")
-    table = BOSS_LOOT_TABLES.get(boss_id)
+def roll_elite_table_drops(player, combat):
+    """Apply guaranteed + rare drops for bosses and mini-bosses."""
+    enemy_id = getattr(combat, "enemy_id", "")
+    table = None
+    if getattr(combat, "is_boss", False):
+        table = BOSS_LOOT_TABLES.get(enemy_id)
+    elif getattr(combat, "is_mini_boss", False):
+        table = MINI_BOSS_LOOT_TABLES.get(enemy_id)
+
     if not table:
         return []
 
@@ -2207,9 +2228,10 @@ def generate_victory_result(player, combat):
             result += f"     - {d}\n"
 
     # Targeted boss loot tables guarantee progression-defining rewards.
-    table_drops = roll_boss_table_drops(player, combat)
+    table_drops = roll_elite_table_drops(player, combat)
     if table_drops:
-        result += "  Boss Loot Table:\n"
+        table_label = "Boss Loot Table" if getattr(combat, "is_boss", False) else "Mini-Boss Loot Table"
+        result += f"  {table_label}:\n"
         for item_id in table_drops:
             result += f"     - {item_id.replace('_', ' ')}\n"
 

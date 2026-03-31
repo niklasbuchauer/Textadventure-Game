@@ -1,9 +1,10 @@
 """
-Basic regression checks for boss loot table rewards.
-Ensures boss victories grant guaranteed boss-table drops.
+Basic regression checks for elite loot table rewards.
+Ensures boss and mini-boss victories grant guaranteed table drops.
 """
 
-from combat_system import BOSS_DATABASE, CombatState, generate_victory_result
+from combat_system import BOSS_DATABASE, MINI_BOSS_DATABASE, CombatState, generate_victory_result
+from engine import GameEngine
 
 
 class DummyPlayer:
@@ -26,6 +27,32 @@ def test_guaranteed_boss_table_drop():
     assert "Boss Loot Table" in msg
 
 
+def test_guaranteed_miniboss_table_drop():
+    player = DummyPlayer()
+
+    enemy_data = dict(MINI_BOSS_DATABASE["crystal_matriarch"])
+    enemy_data["id"] = "crystal_matriarch"
+    combat = CombatState(enemy_data, is_mini_boss=True, level=1)
+
+    msg = generate_victory_result(player, combat)
+
+    assert player.inventory.get("heart_crystal_fragment", 0) >= 1
+    assert "Mini-Boss Loot Table" in msg
+
+
+def test_loot_command_output():
+    engine = GameEngine()
+    engine.new_game()
+
+    boss_msg = engine.process_command("loot boss")
+    mini_msg = engine.process_command("loot miniboss")
+
+    assert "BOSS LOOT TABLES" in boss_msg
+    assert "MINI-BOSS LOOT TABLES" in mini_msg
+
+
 if __name__ == "__main__":
     test_guaranteed_boss_table_drop()
-    print("PASS: boss loot table guaranteed drop")
+    test_guaranteed_miniboss_table_drop()
+    test_loot_command_output()
+    print("PASS: elite loot tables and loot command")

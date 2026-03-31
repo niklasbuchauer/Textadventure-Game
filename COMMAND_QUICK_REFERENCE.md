@@ -21,6 +21,8 @@
 - `help` = Show comprehensive command list
 - `commands` = Same as help
 - `?` = Same as help
+- `loot boss` = Show boss loot table previews
+- `loot miniboss` = Show mini-boss loot table previews
 
 ## Progression And Meta Commands
 
