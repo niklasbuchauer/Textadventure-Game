@@ -2639,6 +2639,52 @@ def get_item_set_names(item_id):
     return names
 
 
+def get_set_progress(player, set_name):
+    """Return owned/equipped progress details for a set by display name."""
+    target = str(set_name or "").strip().lower()
+    if not target:
+        return None
+
+    matched = None
+    for _set_id, data in SET_BONUS_DEFINITIONS.items():
+        name = data.get("name", _set_id.replace("_", " ").title())
+        if name.lower() == target:
+            matched = data
+            break
+
+    if not matched:
+        return None
+
+    set_items = list(matched.get("items", []))
+    inv = getattr(player, "inventory", {}) if player else {}
+    equip = get_equipment(player) if player else {}
+    equipped_items = {item_id for item_id in equip.values() if item_id}
+
+    owned_count = 0
+    equipped_count = 0
+    item_rows = []
+    for item_id in set_items:
+        owned_qty = int(inv.get(item_id, 0) or 0)
+        is_equipped = item_id in equipped_items
+        if owned_qty > 0 or is_equipped:
+            owned_count += 1
+        if is_equipped:
+            equipped_count += 1
+        item_rows.append({
+            "item_id": item_id,
+            "owned": owned_qty,
+            "equipped": is_equipped,
+        })
+
+    return {
+        "name": matched.get("name", "Unknown Set"),
+        "total": len(set_items),
+        "owned_count": owned_count,
+        "equipped_count": equipped_count,
+        "items": item_rows,
+    }
+
+
 def _ensure_cosmetic_state(player):
     """Ensure cosmetic fields exist and are save-compatible."""
     if "unlocked_cosmetics" not in player.state or not isinstance(player.state.get("unlocked_cosmetics"), list):

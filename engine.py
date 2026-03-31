@@ -158,7 +158,7 @@ try:
 		equip_item, unequip_item, get_equipment_display,
 		get_total_equipment_bonuses, get_attack_power, get_defense_power,
 		apply_transmog, get_cosmetics_display, get_active_set_bonuses,
-		get_active_set_utility_effects, get_item_set_names
+		get_active_set_utility_effects, get_item_set_names, get_set_progress
 	)
 	EQUIPMENT_AVAILABLE = True
 except Exception as e:
@@ -924,6 +924,37 @@ class CommandHandler:
 			tag = "Boss" if elite_type == "boss" else "Mini-Boss"
 			lines.append(f"  Type: {tag}")
 			lines.extend(_format_table_lines(enemy_id, table))
+
+			if EQUIPMENT_AVAILABLE:
+				set_names = []
+				for item_id in table.get("guaranteed", []):
+					for sname in get_item_set_names(item_id):
+						if sname not in set_names:
+							set_names.append(sname)
+				for item_id, _chance in table.get("rare", []):
+					for sname in get_item_set_names(item_id):
+						if sname not in set_names:
+							set_names.append(sname)
+
+				if set_names:
+					lines.append("- Set Progress:")
+					for sname in set_names:
+						progress = get_set_progress(self.engine.player, sname)
+						if not progress:
+							continue
+						lines.append(
+							f"    {progress['name']}: owned {progress['owned_count']}/{progress['total']}, "
+							f"equipped {progress['equipped_count']}/{progress['total']}"
+						)
+						for row in progress.get("items", []):
+							status = []
+							if row.get("owned", 0) > 0:
+								status.append(f"owned x{row['owned']}")
+							if row.get("equipped"):
+								status.append("equipped")
+							if not status:
+								status.append("missing")
+							lines.append(f"      - {row['item_id'].replace('_', ' ')} ({', '.join(status)})")
 			lines.append("=" * 62)
 			return "\n".join(lines)
 
