@@ -5,6 +5,7 @@ Ensures boss and mini-boss victories grant guaranteed table drops.
 
 from combat_system import BOSS_DATABASE, MINI_BOSS_DATABASE, CombatState, generate_victory_result
 from engine import GameEngine
+from equipment_system import get_set_progress
 
 
 class DummyPlayer:
@@ -66,8 +67,35 @@ def test_loot_command_output():
     assert "Multiple close matches found" in ambiguous_msg
 
 
+def test_debug_loot_and_set_commands():
+    engine = GameEngine()
+    engine.new_game()
+
+    dbg_loot_msg = engine.process_command("debug loot boss")
+    dbg_sim_msg = engine.process_command("debug loot sim boss crystal_titan 10")
+    dbg_grant_msg = engine.process_command("debug set grant crystal titan regalia equip")
+    dbg_status_msg = engine.process_command("debug set status crystal titan regalia")
+
+    assert "BOSS LOOT TABLES" in dbg_loot_msg
+    assert "DEBUG ELITE LOOT SIMULATION" in dbg_sim_msg
+    assert "Crystal Titan Regalia" in dbg_grant_msg
+    assert "DEBUG SET STATUS" in dbg_status_msg
+
+    progress = get_set_progress(engine.player, "Crystal Titan Regalia")
+    assert progress is not None
+    assert progress["owned_count"] >= 4
+
+    dbg_clear_msg = engine.process_command("debug set clear crystal titan regalia")
+    assert "Cleared Crystal Titan Regalia" in dbg_clear_msg
+
+    progress_after = get_set_progress(engine.player, "Crystal Titan Regalia")
+    assert progress_after is not None
+    assert progress_after["owned_count"] == 0
+
+
 if __name__ == "__main__":
     test_guaranteed_boss_table_drop()
     test_guaranteed_miniboss_table_drop()
     test_loot_command_output()
+    test_debug_loot_and_set_commands()
     print("PASS: elite loot tables and loot command")

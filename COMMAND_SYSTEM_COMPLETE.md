@@ -16,6 +16,12 @@
    - NPC interaction: `talk`, `gift/give`, `reputation/rep`
    - Gathering/Crafting stations: `fish`, `bait`, `brew/alchemy`, `smelt`, `ritual`, `enchant`, `fight`
 6. Connected metadata to help rendering by generating compact help sections from `_build_command_metadata`.
+7. Added new debug QA commands for elite progression testing:
+   - `debug loot <boss|miniboss|name>`
+   - `debug loot sim <boss|miniboss> <enemy_id> [runs]`
+   - `debug set grant <set_name> [equip]`
+   - `debug set clear <set_name>`
+   - `debug set status <set_name>`
 
 ### Validation
 

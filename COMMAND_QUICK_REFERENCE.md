@@ -83,6 +83,14 @@
 - `debug home items` = Add one copy of every home item
 - `debug home reset` = Full home wipe (ownership/layout/upgrades/bonuses)
 
+## Debug Loot And Set Test Commands
+
+- `debug loot <boss|miniboss|name>` = Open elite loot preview through debug flow
+- `debug loot sim <boss|miniboss> <enemy_id> [runs]` = Simulate elite drop rates for balancing
+- `debug set grant <set_name> [equip]` = Add full set items (optionally auto-equip)
+- `debug set clear <set_name>` = Remove all set items from inventory and equipment
+- `debug set status <set_name>` = Show owned/equipped/missing status for each set piece
+
 ## Inspect Command
 
 ### General Usage

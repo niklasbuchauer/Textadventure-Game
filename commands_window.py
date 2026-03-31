@@ -43,6 +43,7 @@ CAT_COLORS = {
     "Crafting":      (120, 100,  30),
     "Skills":        (80,  80, 150),
     "System":        (80,  80,  80),
+    "Debug / Loot":  (95,  70, 130),
     "Debug / Map":   (70, 110,  55),
     "Debug / Player":(110, 75,  30),
     "Debug / Spawn": (150,  50,  40),
@@ -120,6 +121,7 @@ COMMANDS = [
     ("assign <skill>",      "Skills",      "Assign a skill point to a skill",              "assign <skill>",        "assign fireball"),
     # System
     ("help / commands",     "System",      "Show this commands reference overlay",         "help",                  "commands"),
+    ("loot <boss|miniboss|name>", "System", "Preview elite loot tables",                   "loot <target>",         "loot crystal titan"),
     ("journal",             "System",      "Open your journal / quest log",                "journal",               "journal"),
     ("stats",               "System",      "View your character statistics",               "stats",                 "stats"),
     ("save",                "System",      "Save the game",                                "save",                  "save"),
@@ -145,6 +147,11 @@ DEBUG_COMMANDS = [
     ("debug enemies",          "Debug / Spawn",  "List all available enemy IDs",                  "debug enemies",                   "debug enemies"),
     ("debug items list",       "Debug / Spawn",  "List all available item IDs",                   "debug items list",                "debug items list"),
     ("debug items all",        "Debug / Spawn",  "Open the full item browser window",             "debug items all",                 "debug items all"),
+    ("debug loot <target>",    "Debug / Loot",   "Preview elite loot tables via debug",           "debug loot <boss|miniboss|name>", "debug loot crystal titan"),
+    ("debug loot sim <type> <id> [runs]", "Debug / Loot", "Simulate elite drops over many runs", "debug loot sim <boss|miniboss> <id> [runs]", "debug loot sim boss crystal_titan 100"),
+    ("debug set grant <set> [equip]", "Debug / Player", "Grant all items from a set",            "debug set grant <set_name> [equip]", "debug set grant crystal titan regalia equip"),
+    ("debug set clear <set>",  "Debug / Player", "Remove set items from inventory/equipment",     "debug set clear <set_name>",      "debug set clear crystal titan regalia"),
+    ("debug set status <set>", "Debug / Player", "Show owned/equipped status for a set",          "debug set status <set_name>",     "debug set status lich king regalia"),
     # Debug / World
     ("debug teleport <room>",  "Debug / World",  "Teleport to any room by ID",                    "debug teleport <room_id>",        "debug teleport port_haven"),
     ("debug rooms [page]",     "Debug / World",  "List all rooms (with pagination)",              "debug rooms [page]",              "debug rooms 2"),

@@ -1,5 +1,7 @@
 """Debug commands for testing and development."""
 
+from types import SimpleNamespace
+
 
 def handle_debug_commands(engine, args):
     """Handle debug commands."""
@@ -67,6 +69,14 @@ def handle_debug_commands(engine, args):
         elif spawn_type == "item":
             return _debug_spawn_item(engine, args[2])
         return "Usage: debug spawn enemy <id> [level] | debug spawn item <id>"
+    elif subcommand == "loot":
+        if len(args) < 2:
+            return _debug_loot_usage()
+        if args[1].lower() == "sim":
+            return _debug_loot_simulation(engine, args[2:])
+        return _debug_loot_preview(engine, args[1:])
+    elif subcommand == "set":
+        return _debug_set_command(engine, args[1:])
     elif subcommand == "stats":
         return _debug_show_stats(engine)
     elif subcommand == "home":
@@ -131,6 +141,13 @@ Combat & Enemies:
   debug spawn enemy <id> [lv]   - Spawn enemy (optional level override)
   debug heal                    - Restore health
 
+Elite Loot & Set Testing:
+    debug loot <boss|miniboss|name>      - Show loot preview (same as loot command)
+    debug loot sim <type> <id> [runs]    - Simulate elite drops (type=boss|miniboss)
+    debug set grant <set_name> [equip]   - Add full set to inventory, optional auto-equip
+    debug set clear <set_name>            - Remove set items from inventory/equipment
+    debug set status <set_name>           - Show owned/equipped set progress
+
 Items & Inventory:
   debug items                   - Show your inventory
   debug items all               - Open searchable items window
@@ -175,6 +192,8 @@ Examples:
   debug spawn enemy crystal_beetle
   debug spawn enemy crystal_beetle 10
   debug spawn item iron_sword
+    debug loot sim boss crystal_titan 100
+    debug set grant crystal titan regalia equip
   debug teleport mountain_peak
   debug dungeon open dungeon_forest_entrance
     debug home free
@@ -192,6 +211,296 @@ def _debug_reveal_map(engine):
         else:
             return "Map hidden: Fog of war restored"
     return "Map window not open. Use 'open map' first."
+
+
+def _debug_loot_usage():
+    return (
+        "Usage: debug loot <boss|miniboss|name>\n"
+        "       debug loot sim <boss|miniboss> <enemy_id> [runs]"
+    )
+
+
+def _debug_loot_preview(engine, loot_args):
+    """Proxy to the player-facing loot command for quick QA access."""
+    query = " ".join(loot_args).strip()
+    if not query:
+        return _debug_loot_usage()
+    return engine.process_command(f"loot {query}")
+
+
+def _debug_loot_simulation(engine, sim_args):
+    """Run repeated elite loot rolls to estimate practical drop rates."""
+    if len(sim_args) < 2:
+        return "Usage: debug loot sim <boss|miniboss> <enemy_id> [runs]"
+
+    elite_type = sim_args[0].strip().lower()
+    enemy_id = sim_args[1].strip().lower()
+    runs = 100
+    if len(sim_args) >= 3:
+        try:
+            runs = int(sim_args[2])
+        except ValueError:
+            return f"Invalid run count: {sim_args[2]}"
+
+    if runs < 1 or runs > 5000:
+        return "Runs must be between 1 and 5000."
+
+    try:
+        from combat_system import BOSS_LOOT_TABLES, MINI_BOSS_LOOT_TABLES, roll_elite_table_drops
+    except Exception as exc:
+        return f"Combat system not available: {exc}"
+
+    if elite_type in ("boss", "bosses"):
+        table = BOSS_LOOT_TABLES.get(enemy_id)
+        is_boss = True
+        is_mini = False
+        label = "Boss"
+    elif elite_type in ("mini", "miniboss", "mini-boss", "minibosses", "mini-bosses"):
+        table = MINI_BOSS_LOOT_TABLES.get(enemy_id)
+        is_boss = False
+        is_mini = True
+        label = "Mini-Boss"
+    else:
+        return "Type must be 'boss' or 'miniboss'."
+
+    if not table:
+        return f"No {label.lower()} loot table found for '{enemy_id}'."
+
+    if not getattr(engine, "player", None):
+        return "No player found. Start a run first with 'new game'."
+
+    rare_counts = {}
+    guaranteed_counts = {}
+
+    rare_items = [item_id for item_id, _chance in table.get("rare", [])]
+    for item_id in rare_items:
+        rare_counts[item_id] = 0
+    for item_id in table.get("guaranteed", []):
+        guaranteed_counts[item_id] = 0
+
+    for _ in range(runs):
+        before = dict(engine.player.inventory)
+        fake_combat = SimpleNamespace(enemy_id=enemy_id, is_boss=is_boss, is_mini_boss=is_mini)
+        dropped = roll_elite_table_drops(engine.player, fake_combat)
+
+        for item_id in table.get("guaranteed", []):
+            if item_id in dropped:
+                guaranteed_counts[item_id] += 1
+
+        for item_id in rare_items:
+            delta = engine.player.inventory.get(item_id, 0) - before.get(item_id, 0)
+            if delta > 0:
+                rare_counts[item_id] += delta
+
+    lines = [
+        "\n" + "=" * 66,
+        "  DEBUG ELITE LOOT SIMULATION",
+        "=" * 66,
+        f"Target: {enemy_id.replace('_', ' ').title()} [{label}]",
+        f"Runs: {runs}",
+    ]
+
+    if guaranteed_counts:
+        lines.append("Guaranteed item results:")
+        for item_id in sorted(guaranteed_counts.keys()):
+            lines.append(f"  - {item_id}: {guaranteed_counts[item_id]}/{runs}")
+
+    if rare_counts:
+        lines.append("Rare item hit rates:")
+        for item_id in sorted(rare_counts.keys()):
+            hits = rare_counts[item_id]
+            pct = (hits / float(runs)) * 100.0
+            lines.append(f"  - {item_id}: {hits}/{runs} ({pct:.1f}%)")
+
+    lines.append("Note: simulation adds awarded items to your inventory.")
+    lines.append("=" * 66)
+    return "\n".join(lines)
+
+
+def _debug_set_command(engine, set_args):
+    """Dispatch set-test helpers for progression and bonus QA."""
+    if not set_args:
+        return (
+            "Usage: debug set grant <set_name> [equip] | "
+            "debug set clear <set_name> | debug set status <set_name>"
+        )
+
+    if not getattr(engine, "player", None):
+        return "No player found"
+
+    action = set_args[0].strip().lower()
+    payload = set_args[1:]
+
+    if action == "grant":
+        return _debug_set_grant(engine, payload)
+    if action == "clear":
+        return _debug_set_clear(engine, payload)
+    if action == "status":
+        return _debug_set_status(engine, payload)
+
+    return (
+        f"Unknown set action: {action}\n"
+        "Usage: debug set grant <set_name> [equip] | "
+        "debug set clear <set_name> | debug set status <set_name>"
+    )
+
+
+def _resolve_set_by_name(raw_name):
+    """Resolve loose user text to a concrete set definition."""
+    try:
+        from equipment_system import SET_BONUS_DEFINITIONS
+    except Exception:
+        return None, None, "Equipment system not available."
+
+    target = str(raw_name or "").strip().lower().replace("-", " ").replace("_", " ")
+    if not target:
+        return None, None, "Missing set name."
+
+    candidates = []
+    for set_id, data in SET_BONUS_DEFINITIONS.items():
+        display_name = data.get("name", set_id.replace("_", " ").title())
+        search_id = set_id.replace("_", " ")
+        search_name = display_name.lower()
+        score = 0
+        if target == search_name or target == search_id:
+            score += 100
+        if target in search_name or target in search_id:
+            score += 40
+        target_tokens = [tok for tok in target.split() if tok]
+        if target_tokens:
+            overlap = sum(1 for tok in target_tokens if tok in search_name or tok in search_id)
+            score += overlap * 10
+        if score > 0:
+            candidates.append((score, set_id, data, display_name))
+
+    if not candidates:
+        return None, None, f"No set matched '{raw_name}'."
+
+    candidates.sort(key=lambda row: (-row[0], row[1]))
+    best = candidates[0]
+    return best[1], best[2], None
+
+
+def _debug_set_grant(engine, grant_args):
+    if not grant_args:
+        return "Usage: debug set grant <set_name> [equip]"
+
+    auto_equip = False
+    if grant_args[-1].lower() in ("equip", "autoequip", "auto-equip"):
+        auto_equip = True
+        set_name = " ".join(grant_args[:-1]).strip()
+    else:
+        set_name = " ".join(grant_args).strip()
+
+    set_id, set_data, err = _resolve_set_by_name(set_name)
+    if err:
+        return err
+
+    try:
+        from equipment_system import equip_item
+    except Exception as exc:
+        return f"Equipment system not available: {exc}"
+
+    added = 0
+    equipped = 0
+    for item_id in set_data.get("items", []):
+        engine.player.inventory[item_id] = engine.player.inventory.get(item_id, 0) + 1
+        added += 1
+        if auto_equip:
+            ok, _msg = equip_item(engine.player, item_id)
+            if ok:
+                equipped += 1
+
+    if hasattr(engine, "_inventory_changed"):
+        engine._inventory_changed = True
+
+    action_text = f" Added {added} set items"
+    if auto_equip:
+        action_text += f" and auto-equipped {equipped} pieces"
+    return f"[DEBUG] {set_data.get('name', set_id)}:{action_text}."
+
+
+def _debug_set_clear(engine, clear_args):
+    if not clear_args:
+        return "Usage: debug set clear <set_name>"
+
+    set_name = " ".join(clear_args).strip()
+    set_id, set_data, err = _resolve_set_by_name(set_name)
+    if err:
+        return err
+
+    try:
+        from equipment_system import get_equipment, unequip_item, get_active_set_bonuses
+    except Exception as exc:
+        return f"Equipment system not available: {exc}"
+
+    removed_inventory = 0
+    unequipped = 0
+    set_items = set(set_data.get("items", []))
+
+    equipment = get_equipment(engine.player)
+    for slot, item_id in list(equipment.items()):
+        if item_id in set_items:
+            ok, _msg = unequip_item(engine.player, slot)
+            if ok:
+                unequipped += 1
+
+    for item_id in set_items:
+        qty = int(engine.player.inventory.get(item_id, 0) or 0)
+        if qty > 0:
+            removed_inventory += qty
+            del engine.player.inventory[item_id]
+
+    get_active_set_bonuses(engine.player)
+
+    if hasattr(engine, "_inventory_changed"):
+        engine._inventory_changed = True
+
+    return (
+        f"[DEBUG] Cleared {set_data.get('name', set_id)}: "
+        f"removed {removed_inventory} inventory items, unequipped {unequipped} pieces."
+    )
+
+
+def _debug_set_status(engine, status_args):
+    if not status_args:
+        return "Usage: debug set status <set_name>"
+
+    set_name = " ".join(status_args).strip()
+    set_id, set_data, err = _resolve_set_by_name(set_name)
+    if err:
+        return err
+
+    try:
+        from equipment_system import get_set_progress
+    except Exception as exc:
+        return f"Equipment system not available: {exc}"
+
+    progress = get_set_progress(engine.player, set_data.get("name", set_id))
+    if not progress:
+        return f"Could not load progress for set '{set_data.get('name', set_id)}'."
+
+    lines = [
+        "\n" + "=" * 62,
+        "  DEBUG SET STATUS",
+        "=" * 62,
+        f"Set: {progress['name']}",
+        f"Owned: {progress['owned_count']}/{progress['total']}",
+        f"Equipped: {progress['equipped_count']}/{progress['total']}",
+        "Items:",
+    ]
+    for row in progress.get("items", []):
+        parts = []
+        owned = int(row.get("owned", 0) or 0)
+        if owned > 0:
+            parts.append(f"owned x{owned}")
+        if row.get("equipped"):
+            parts.append("equipped")
+        if not parts:
+            parts.append("missing")
+        lines.append(f"  - {row['item_id']} ({', '.join(parts)})")
+    lines.append("=" * 62)
+    return "\n".join(lines)
 
 
 def _debug_hide_map(engine):
