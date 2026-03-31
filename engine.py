@@ -694,6 +694,25 @@ class CommandHandler:
 			"attack": self._cmd_attack,
 			"defend": self._cmd_defend,
 			"flee": self._cmd_flee,
+			"shop": self._cmd_shop,
+			"talk": self._cmd_talk,
+			"bank": self._cmd_bank,
+			"deposit": self._cmd_deposit,
+			"withdraw": self._cmd_withdraw,
+			"balance": self._cmd_balance,
+			"upgrade": self._cmd_upgrade,
+			"gift": self._cmd_gift,
+			"give": self._cmd_gift,
+			"reputation": self._cmd_reputation,
+			"rep": self._cmd_reputation,
+			"fish": self._cmd_fish,
+			"bait": self._cmd_bait,
+			"brew": self._cmd_brew,
+			"alchemy": self._cmd_brew,
+			"smelt": self._cmd_smelt,
+			"ritual": self._cmd_ritual,
+			"enchant": self._cmd_enchant,
+			"fight": self._cmd_fight,
 		}
 
 	def _build_command_metadata(self):
@@ -733,13 +752,32 @@ class CommandHandler:
 			"attack": {"category": "Combat", "usage": "attack", "aliases": []},
 			"defend": {"category": "Combat", "usage": "defend", "aliases": []},
 			"flee": {"category": "Combat", "usage": "flee", "aliases": []},
+			"shop": {"category": "Economy", "usage": "shop <browse|buy|sell|talk|info>", "aliases": []},
+			"talk": {"category": "NPC", "usage": "talk to <name>", "aliases": []},
+			"bank": {"category": "Economy", "usage": "bank <help|balance|upgrade>", "aliases": []},
+			"deposit": {"category": "Economy", "usage": "deposit <amount|all>", "aliases": []},
+			"withdraw": {"category": "Economy", "usage": "withdraw <amount|all>", "aliases": []},
+			"balance": {"category": "Economy", "usage": "balance", "aliases": []},
+			"upgrade": {"category": "Economy", "usage": "upgrade bank", "aliases": []},
+			"gift": {"category": "NPC", "usage": "gift <npc> <item>", "aliases": ["give"]},
+			"reputation": {"category": "NPC", "usage": "reputation [npc]", "aliases": ["rep"]},
+			"fish": {"category": "Gathering", "usage": "fish [bait]", "aliases": []},
+			"bait": {"category": "Gathering", "usage": "bait", "aliases": []},
+			"brew": {"category": "Crafting", "usage": "brew [recipe]", "aliases": ["alchemy"]},
+			"smelt": {"category": "Crafting", "usage": "smelt [recipe]", "aliases": []},
+			"ritual": {"category": "Crafting", "usage": "ritual [name]", "aliases": []},
+			"enchant": {"category": "Crafting", "usage": "enchant", "aliases": []},
+			"fight": {"category": "Combat", "usage": "fight", "aliases": []},
 		}
 
 	def _dispatch_registry_command(self, verb, args):
 		handler = self.command_registry.get(verb)
 		if not handler:
 			return False, None
-		return True, handler(args)
+		response = handler(args)
+		if response is None:
+			return False, None
+		return True, response
 
 	def _cmd_go(self, args):
 		if not args:
@@ -874,6 +912,197 @@ class CommandHandler:
 
 	def _cmd_flee(self, _args):
 		return self._combat_flee()
+
+	def _cmd_shop(self, args):
+		if not args:
+			return self._shop_help()
+		subcommand = args[0].lower()
+		if subcommand in ("browse", "view", "inventory"):
+			return self._shop_browse()
+		if subcommand == "buy":
+			if len(args) < 2:
+				return "Buy what? (Usage: shop buy <item_name>)"
+			item_name = " ".join(args[1:]).lower()
+			return self._shop_buy(item_name)
+		if subcommand == "sell":
+			if len(args) < 3:
+				return "Usage: shop sell <item_name> <gold_amount>"
+			item_name = " ".join(args[1:-1]).lower()
+			try:
+				price = int(args[-1])
+			except ValueError:
+				return "Price must be a number."
+			return self._shop_sell(item_name, price)
+		if subcommand == "talk":
+			return self._shop_talk()
+		if subcommand == "info":
+			return self._shop_info()
+		return self._shop_help()
+
+	def _cmd_talk(self, args):
+		if len(args) >= 2 and args[0].lower() == "to":
+			target = " ".join(args[1:]).lower()
+			if target == "shopkeeper":
+				return self._shop_talk()
+			if NPC_AVAILABLE and self.engine.npc_manager:
+				return self.engine.npc_manager.start_conversation(target)
+			return "There's nobody here by that name."
+		if not args:
+			return "Talk to whom? (e.g. 'talk to bartender')"
+		target = " ".join(args).lower()
+		if NPC_AVAILABLE and self.engine.npc_manager:
+			return self.engine.npc_manager.start_conversation(target)
+		return "Talk to whom?"
+
+	def _cmd_bank(self, args):
+		if not args:
+			return self._bank_help()
+		sub = args[0].lower()
+		if sub == "help":
+			return self._bank_help()
+		if sub == "balance":
+			return self._bank_balance()
+		if sub == "upgrade":
+			return self._bank_upgrade()
+		return self._bank_help()
+
+	def _cmd_deposit(self, args):
+		if not args:
+			return "Deposit how much? (e.g. 'deposit 500')"
+		try:
+			amount = int(args[0])
+		except ValueError:
+			if args[0].lower() == "all":
+				amount = self.engine.player.stats.get("gold", 0)
+			else:
+				return "Amount must be a number."
+		return self._bank_deposit(amount)
+
+	def _cmd_withdraw(self, args):
+		if not args:
+			return "Withdraw how much? (e.g. 'withdraw 200')"
+		try:
+			amount = int(args[0])
+		except ValueError:
+			if args[0].lower() == "all":
+				amount = self.engine.player.state.get("bank_gold", 0)
+			else:
+				return "Amount must be a number."
+		return self._bank_withdraw(amount)
+
+	def _cmd_balance(self, _args):
+		return self._bank_balance()
+
+	def _cmd_upgrade(self, args):
+		if args and args[0].lower() == "bank":
+			return self._bank_upgrade()
+		return None
+
+	def _cmd_gift(self, args):
+		if not args:
+			return "Gift what to whom? (e.g. 'gift bartender health_potion')"
+		if len(args) < 2:
+			return "Usage: gift <npc_name> <item_name>\nExample: gift bartender health_potion"
+		npc_target = args[0].lower()
+		item_target = "_".join(args[1:]).lower()
+		if NPC_AVAILABLE and self.engine.npc_manager:
+			return self.engine.npc_manager.handle_gift(npc_target, item_target)
+		return "The NPC system is not available."
+
+	def _cmd_reputation(self, args):
+		if not NPC_REP_AVAILABLE or not self.engine.reputation_manager:
+			return "The reputation system is not available."
+		if args:
+			npc_target = args[0].lower()
+			return self.engine.reputation_manager.get_summary(npc_target)
+		return self.engine.reputation_manager.get_all_summaries()
+
+	def _cmd_fish(self, args):
+		if not FISHING_AVAILABLE or not self.engine.fishing_system:
+			return "The fishing system is not available."
+		bait_id = args[0].lower() if args else None
+		return self.engine.fishing_system.start_fishing(bait_id)
+
+	def _cmd_bait(self, _args):
+		if not FISHING_AVAILABLE or not self.engine.fishing_system:
+			return "The fishing system is not available."
+		return self.engine.fishing_system.show_bait_info()
+
+	def _cmd_brew(self, args):
+		if not ALCHEMY_AVAILABLE or not self.engine.alchemy_system:
+			return "The alchemy system is not available."
+		if self._in_home() and self.engine._home_has_use_action("alchemy"):
+			if args:
+				return self.engine._run_with_temp_home_station("campfire", lambda: self.engine.alchemy_system.start_brew(" ".join(args)))
+			return self.engine._run_with_temp_home_station("campfire", self.engine.alchemy_system.show_brew_menu)
+		if args:
+			return self.engine.alchemy_system.start_brew(" ".join(args))
+		return self.engine.alchemy_system.show_brew_menu()
+
+	def _cmd_smelt(self, args):
+		if not SMELTING_AVAILABLE or not self.engine.smelting_system:
+			return "The smelting system is not available."
+		if self._in_home() and self.engine._home_has_use_action("smelt"):
+			if args:
+				return self.engine._run_with_temp_home_station("forge", lambda: self.engine.smelting_system.start_smelt(args))
+			return self.engine._run_with_temp_home_station("forge", self.engine.smelting_system.show_smelt_menu)
+		if args:
+			return self.engine.smelting_system.start_smelt(args)
+		return self.engine.smelting_system.show_smelt_menu()
+
+	def _cmd_ritual(self, args):
+		if not RITUAL_AVAILABLE or not self.engine.ritual_system:
+			return "The ritual system is not available."
+		if self._in_home() and self.engine._home_has_use_action("ritual"):
+			if args:
+				return self.engine._run_with_temp_home_station("altar_crystal", lambda: self.engine.ritual_system.start_ritual(" ".join(args)))
+			return self.engine._run_with_temp_home_station("altar_crystal", self.engine.ritual_system.show_ritual_menu)
+		if args:
+			return self.engine.ritual_system.start_ritual(" ".join(args))
+		return self.engine.ritual_system.show_ritual_menu()
+
+	def _cmd_enchant(self, _args):
+		if not ENCHANTING_AVAILABLE or not self.engine.enchanting_system:
+			return "The enchanting system is not available."
+		if self._in_home() and self.engine._home_has_use_action("enchant"):
+			return self.engine._run_with_temp_home_station("forge", self.engine.enchanting_system.show_enchanting_menu)
+		return self.engine.enchanting_system.show_enchanting_menu()
+
+	def _cmd_fight(self, _args):
+		return self._fight_visible_enemy()
+
+	def _build_compact_help_lines(self):
+		"""Build compact help lines directly from command metadata by category."""
+		category_order = [
+			"Movement",
+			"Exploration",
+			"Inventory",
+			"System",
+			"Progression",
+			"Equipment",
+			"Combat",
+			"Economy",
+			"NPC",
+			"Gathering",
+			"Crafting",
+		]
+		by_category = {}
+		for command, meta in self.command_metadata.items():
+			category = meta.get("category", "Other")
+			usage = meta.get("usage", command)
+			by_category.setdefault(category, []).append(usage)
+
+		lines = []
+		for category in category_order:
+			usages = by_category.get(category)
+			if not usages:
+				continue
+			unique = sorted(set(usages))
+			preview = ", ".join(unique[:5])
+			if len(unique) > 5:
+				preview += ", ..."
+			lines.append(f"- {category}: {preview}")
+		return lines
 
 	def handle(self, raw):
 		cmd = (raw or "").strip()
@@ -1118,178 +1347,7 @@ class CommandHandler:
 		if verb == "buy" and len(args) >= 2 and args[0].lower() == "home" and args[1].lower() == "deed":
 			return self._buy_home_deed()
 		
-		# Shop commands
-		if verb == "shop":
-			if not args:
-				return self._shop_help()
-			subcommand = args[0].lower()
-			if subcommand == "browse" or subcommand == "view" or subcommand == "inventory":
-				return self._shop_browse()
-			elif subcommand == "buy":
-				if len(args) < 2:
-					return "Buy what? (Usage: shop buy <item_name>)"
-				item_name = " ".join(args[1:]).lower()
-				return self._shop_buy(item_name)
-			elif subcommand == "sell":
-				if len(args) < 3:
-					return "Usage: shop sell <item_name> <gold_amount>"
-				item_name = " ".join(args[1:-1]).lower()
-				try:
-					price = int(args[-1])
-				except ValueError:
-					return "Price must be a number."
-				return self._shop_sell(item_name, price)
-			elif subcommand == "talk":
-				return self._shop_talk()
-			elif subcommand == "info":
-				return self._shop_info()
-			else:
-				return self._shop_help()
-		
-		if verb == "talk":
-			if len(args) >= 2 and args[0].lower() == "to":
-				target = " ".join(args[1:]).lower()
-				# Try shopkeeper first (in shop rooms)
-				if target == "shopkeeper":
-					return self._shop_talk()
-				# Try NPC system
-				if NPC_AVAILABLE and self.engine.npc_manager:
-					return self.engine.npc_manager.start_conversation(target)
-				return "There's nobody here by that name."
-			if not args:
-				return "Talk to whom? (e.g. 'talk to bartender')"
-			# Also support "talk bartender" (without "to")
-			target = " ".join(args).lower()
-			if NPC_AVAILABLE and self.engine.npc_manager:
-				return self.engine.npc_manager.start_conversation(target)
-			return "Talk to whom?"
-
-		# ── Bank commands (only available in bank_of_estoria) ──────────────────────
-		if verb == "bank":
-			if not args:
-				return self._bank_help()
-			sub = args[0].lower()
-			if sub == "help":
-				return self._bank_help()
-			elif sub == "balance":
-				return self._bank_balance()
-			elif sub == "upgrade":
-				return self._bank_upgrade()
-			else:
-				return self._bank_help()
-
-		if verb == "deposit":
-			if not args:
-				return "Deposit how much? (e.g. 'deposit 500')"
-			try:
-				amount = int(args[0])
-			except ValueError:
-				# allow "all"
-				if args[0].lower() == "all":
-					amount = self.engine.player.stats.get("gold", 0)
-				else:
-					return "Amount must be a number."
-			return self._bank_deposit(amount)
-
-		if verb == "withdraw":
-			if not args:
-				return "Withdraw how much? (e.g. 'withdraw 200')"
-			try:
-				amount = int(args[0])
-			except ValueError:
-				if args[0].lower() == "all":
-					amount = self.engine.player.state.get("bank_gold", 0)
-				else:
-					return "Amount must be a number."
-			return self._bank_withdraw(amount)
-
-		if verb == "balance":
-			return self._bank_balance()
-
-		if verb in ("upgrade",) and args and args[0].lower() == "bank":
-			return self._bank_upgrade()
-
-		# Gift command: gift <npc> <item>
-		if verb == "gift" or verb == "give":
-			if not args:
-				return "Gift what to whom? (e.g. 'gift bartender health_potion')"
-			if len(args) < 2:
-				return "Usage: gift <npc_name> <item_name>\nExample: gift bartender health_potion"
-			npc_target = args[0].lower()
-			item_target = "_".join(args[1:]).lower()
-			if NPC_AVAILABLE and self.engine.npc_manager:
-				return self.engine.npc_manager.handle_gift(npc_target, item_target)
-			return "The NPC system is not available."
-
-		# Reputation command
-		if verb in ("reputation", "rep"):
-			if not NPC_REP_AVAILABLE or not self.engine.reputation_manager:
-				return "The reputation system is not available."
-			if args:
-				# Show specific NPC reputation
-				npc_target = args[0].lower()
-				return self.engine.reputation_manager.get_summary(npc_target)
-			# Show all NPC reputations
-			return self.engine.reputation_manager.get_all_summaries()
-		
-		# Fishing commands
-		if verb == "fish":
-			if not FISHING_AVAILABLE or not self.engine.fishing_system:
-				return "The fishing system is not available."
-			bait_id = args[0].lower() if args else None
-			return self.engine.fishing_system.start_fishing(bait_id)
-		if verb == "bait":
-			if not FISHING_AVAILABLE or not self.engine.fishing_system:
-				return "The fishing system is not available."
-			return self.engine.fishing_system.show_bait_info()
-
-		# Alchemy / brewing commands
-		if verb in ("brew", "alchemy"):
-			if not ALCHEMY_AVAILABLE or not self.engine.alchemy_system:
-				return "The alchemy system is not available."
-			if self._in_home() and self.engine._home_has_use_action("alchemy"):
-				if args:
-					return self.engine._run_with_temp_home_station("campfire", lambda: self.engine.alchemy_system.start_brew(" ".join(args)))
-				return self.engine._run_with_temp_home_station("campfire", self.engine.alchemy_system.show_brew_menu)
-			if args:
-				return self.engine.alchemy_system.start_brew(" ".join(args))
-			return self.engine.alchemy_system.show_brew_menu()
-
-		# Smelting commands
-		if verb == "smelt":
-			if not SMELTING_AVAILABLE or not self.engine.smelting_system:
-				return "The smelting system is not available."
-			if self._in_home() and self.engine._home_has_use_action("smelt"):
-				if args:
-					return self.engine._run_with_temp_home_station("forge", lambda: self.engine.smelting_system.start_smelt(args))
-				return self.engine._run_with_temp_home_station("forge", self.engine.smelting_system.show_smelt_menu)
-			if args:
-				return self.engine.smelting_system.start_smelt(args)
-			return self.engine.smelting_system.show_smelt_menu()
-
-		# Ritual commands
-		if verb == "ritual":
-			if not RITUAL_AVAILABLE or not self.engine.ritual_system:
-				return "The ritual system is not available."
-			if self._in_home() and self.engine._home_has_use_action("ritual"):
-				if args:
-					return self.engine._run_with_temp_home_station("altar_crystal", lambda: self.engine.ritual_system.start_ritual(" ".join(args)))
-				return self.engine._run_with_temp_home_station("altar_crystal", self.engine.ritual_system.show_ritual_menu)
-			if args:
-				return self.engine.ritual_system.start_ritual(" ".join(args))
-			return self.engine.ritual_system.show_ritual_menu()
-
-		# Enchanting command — use an altar to enchant equipment
-		if verb == "enchant":
-			if not ENCHANTING_AVAILABLE or not self.engine.enchanting_system:
-				return "The enchanting system is not available."
-			if self._in_home() and self.engine._home_has_use_action("enchant"):
-				return self.engine._run_with_temp_home_station("forge", self.engine.enchanting_system.show_enchanting_menu)
-			return self.engine.enchanting_system.show_enchanting_menu()
-
-		# Fight command — engage visible overworld enemy
-		if verb == "fight":
-			return self._fight_visible_enemy()
+		# Shop, bank, NPC interaction, and station commands are handled through the command registry.
 		
 		# Commands and debug
 		if verb == "debug":
@@ -6209,17 +6267,8 @@ Do you wish to enter? (yes/no)
 			in_shop = current_room.shop
 
 		if feel == "low":
-			lines = [
-				"\nAVAILABLE COMMANDS (COMPACT)",
-				"- Movement: go <dir>, n/s/e/w, enter, leave",
-				"- Explore: look, inspect <target>, search, fight",
-				"- Inventory: inventory, take <item>, drop <item>, use <item>",
-				"- System: help, journal, recipes, save, quit",
-			]
-			if PROGRESSION_AVAILABLE:
-				lines.append("- Progression: stats, skills, abilities, ability <name>, prestige, artifact, faction, pet, party")
-			if EQUIPMENT_AVAILABLE:
-				lines.append("- Equipment: equip <item>, unequip <slot/item>, equipment")
+			lines = ["\nAVAILABLE COMMANDS (COMPACT)"]
+			lines.extend(self._build_compact_help_lines())
 			if NPC_AVAILABLE and hasattr(current_room, 'npcs') and current_room.npcs:
 				lines.append("- NPC: talk to <name>, gift <npc> <item>, reputation")
 			if in_dungeon:

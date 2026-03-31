@@ -3,9 +3,9 @@
 ## Registry Migration Status (April 2026)
 
 - Command dispatch now uses a registry-first flow in `CommandHandler` with legacy fallback for non-migrated commands.
-- Migrated groups: core movement/exploration/system, progression, equipment, and combat.
-- Canonical command metadata now lives in `CommandHandler._build_command_metadata()` and is the source of truth for upcoming help/doc auto-generation.
-- Remaining major groups for migration: shop, bank, NPC interaction, fishing/crafting stations, and ship-travel/debug paths.
+- Migrated groups: core movement/exploration/system, progression, equipment, combat, shop/bank, NPC interaction, and gathering/crafting station commands.
+- Canonical command metadata now lives in `CommandHandler._build_command_metadata()` and is now used to generate compact help output categories.
+- Remaining major groups for migration: ship-travel, room/bestiary window verbs, and debug command routing.
 
 ## New Command Aliases
 

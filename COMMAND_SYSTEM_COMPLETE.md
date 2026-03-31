@@ -11,6 +11,11 @@
    - Combat: `attack`, `defend`, `flee`
 3. Added canonical metadata map (`_build_command_metadata`) to centralize category/usage/alias definitions for future auto-generated help/docs.
 4. Removed redundant legacy branch checks for all migrated commands while preserving fallback for non-migrated command groups.
+5. Migrated additional command families into registry handlers:
+   - Shop/Bank: `shop`, `bank`, `deposit`, `withdraw`, `balance`, `upgrade bank`
+   - NPC interaction: `talk`, `gift/give`, `reputation/rep`
+   - Gathering/Crafting stations: `fish`, `bait`, `brew/alchemy`, `smelt`, `ritual`, `enchant`, `fight`
+6. Connected metadata to help rendering by generating compact help sections from `_build_command_metadata`.
 
 ### Validation
 
@@ -19,10 +24,6 @@
 
 ### Next migration targets
 
-- Shop and merchant commands
-- Bank commands
-- NPC conversation/gift/reputation commands
-- Fishing/alchemy/smelting/ritual/enchant station commands
 - Board/ship travel and debug command routing
 
 ## Summary
