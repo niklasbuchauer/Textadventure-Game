@@ -157,7 +157,7 @@ DEBUG_COMMANDS = [
     ("debug cosmetics lock <id|all>",   "Debug / Player", "Relock one or all cosmetics",           "debug cosmetics lock <id|all>",    "debug cosmetics lock slayer_crimson"),
     ("debug cosmetics apply <slot> <id|clear>", "Debug / Player", "Apply/clear skin override",     "debug cosmetics apply <slot> <id|clear>", "debug cosmetics apply weapon slayer_crimson"),
     ("debug cosmetics preview <slot>", "Debug / Player", "Show valid skins for a specific slot",    "debug cosmetics preview <slot>",   "debug cosmetics preview weapon"),
-    ("debug cosmetics randomize", "Debug / Player", "Randomize valid unlocked skins on equipped gear", "debug cosmetics randomize", "debug cosmetics randomize"),
+    ("debug cosmetics randomize [slot]", "Debug / Player", "Randomize valid unlocked skins on equipped gear or one slot", "debug cosmetics randomize [slot]", "debug cosmetics randomize weapon"),
     ("debug cosmetics reset",  "Debug / Player", "Clear all active cosmetic overrides",             "debug cosmetics reset",            "debug cosmetics reset"),
     ("debug cosmetics status", "Debug / Player", "Show unlocked skins and active overrides",        "debug cosmetics status",           "debug cosmetics status"),
     # Debug / World

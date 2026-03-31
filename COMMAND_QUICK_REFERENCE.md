@@ -98,7 +98,7 @@
 - `debug cosmetics lock <id|all>` = Relock a cosmetic or reset unlocked cosmetics to defaults
 - `debug cosmetics apply <slot_or_item> <id|clear>` = Apply skin override to equipped slot/item
 - `debug cosmetics preview <slot>` = Show valid skins for one equipment slot
-- `debug cosmetics randomize` = Randomly apply valid unlocked skins to equipped slots
+- `debug cosmetics randomize [slot]` = Randomly apply valid unlocked skins to equipped slots or one slot
 - `debug cosmetics reset` = Clear all active appearance overrides
 - `debug cosmetics status` = Show unlocked cosmetics and active transmog assignments
 
