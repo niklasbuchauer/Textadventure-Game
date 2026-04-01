@@ -486,6 +486,7 @@ class PygameAdventureGUI:
     _COMMAND_VOCAB = [
         "look", "search", "inventory", "journal", "stats", "commands", "help",
         "go north", "go south", "go east", "go west", "n", "s", "e", "w",
+        "go up", "go down",
         "enter", "leave", "fight", "attack", "defend", "flee", "skill",
         "use", "take", "drop", "examine", "inspect", "open chest",
         "home", "home use", "home inventory", "home upgrades", "home edit",
@@ -1593,6 +1594,26 @@ class PygameAdventureGUI:
 
         return ["look", "go <direction>", "inventory", "journal", "commands"]
 
+    def _autocomplete_context_commands(self):
+        """Return high-priority commands for current game context."""
+        if not self.engine:
+            return ["look", "inventory", "help", "commands"]
+
+        in_combat = getattr(self.engine, "pending_combat", None) is not None
+        room_id = ""
+        try:
+            room_id = str(getattr(self.engine.player, "current_room", "") or "").lower()
+        except Exception:
+            room_id = ""
+
+        if in_combat:
+            return ["attack", "defend", "skill", "use", "flee"]
+        if "home" in room_id:
+            return ["home use", "home inventory", "home upgrades", "place", "remove", "leave"]
+        if "dungeon" in room_id:
+            return ["look", "search", "fight", "open chest", "go up", "go down"]
+        return ["look", "go north", "go south", "inventory", "journal", "commands"]
+
     def _refresh_command_helper(self, force=False):
         if not hasattr(self, "command_helper_label"):
             return
@@ -1612,20 +1633,30 @@ class PygameAdventureGUI:
         t = (typed or "").strip().lower()
         if not t:
             return []
-        seen = set()
-        out = []
+        context = [c.lower() for c in self._autocomplete_context_commands()]
+        cset = set(context)
+
+        prefix = []
+        contains = []
         for c in self._COMMAND_VOCAB:
             cl = c.lower()
-            if cl.startswith(t) and cl not in seen:
-                out.append(c)
-                seen.add(cl)
-        if not out:
-            for c in self._COMMAND_VOCAB:
-                cl = c.lower()
-                if t in cl and cl not in seen:
-                    out.append(c)
-                    seen.add(cl)
-        return out[:5]
+            if cl.startswith(t):
+                prefix.append(c)
+            elif t in cl:
+                contains.append(c)
+
+        if not prefix and not contains:
+            return []
+
+        pool = prefix if prefix else contains
+
+        def _score(cmd):
+            cl = cmd.lower()
+            starts = 0 if cl.startswith(t) else 1
+            ctx_rank = context.index(cl) if cl in cset else 99
+            return (starts, ctx_rank, len(cl), cl)
+
+        return sorted(pool, key=_score)[:5]
 
     def _refresh_autocomplete_hint(self):
         if not self.entry:
@@ -1656,8 +1687,20 @@ class PygameAdventureGUI:
         t = (typed or "").strip().lower()
         if not t:
             return ""
-        best = difflib.get_close_matches(t, self._COMMAND_VOCAB, n=1, cutoff=0.55)
-        return best[0] if best else ""
+        context = [c.lower() for c in self._autocomplete_context_commands()]
+        pool = context + [c.lower() for c in self._COMMAND_VOCAB if c.lower() not in set(context)]
+
+        best_cmd = ""
+        best_score = 0.0
+        for cand in pool:
+            score = difflib.SequenceMatcher(None, t, cand).ratio()
+            if cand in context:
+                score += 0.08
+            if score > best_score:
+                best_score = score
+                best_cmd = cand
+
+        return best_cmd if best_score >= 0.55 else ""
 
     # ------------------------------------------------------------------
     #  STATS WINDOW
