@@ -650,11 +650,74 @@ class StatsOverlay(BookOverlay):
         if not (self.gui.engine and self.gui.engine.player):
             surf.blit(self._f(12).render("No data.",True,mid),(frame.x+8,y+8))
             return
+        player = self.gui.engine.player
         stats=self.gui.engine.player.stats or {}
         try:
-            from progression_system import get_stat_cap
+            from progression_system import get_stat_cap, CLASS_DEFINITIONS
         except Exception:
             get_stat_cap = None
+            CLASS_DEFINITIONS = {}
+
+        try:
+            from skill_tree_data import SKILL_TREES_DATA
+        except Exception:
+            SKILL_TREES_DATA = {}
+
+        try:
+            from artifact_system import ARTIFACT_DATABASE
+        except Exception:
+            ARTIFACT_DATABASE = {}
+
+        class_id = stats.get("class", "none")
+        class_base = CLASS_DEFINITIONS.get(class_id, {}).get("starting_stats", {})
+        unlocked_skills = set(player.state.get("unlocked_skills", []))
+        skill_nodes = SKILL_TREES_DATA.get(class_id, [])
+        node_index = {n.get("id"): n for n in skill_nodes}
+        synergy_bonuses = player.state.get("_synergy_bonuses", {})
+        enchantments = player.state.get("enchantments", {})
+        active_effects = player.state.get("active_effects", {})
+        equipped_artifact = player.state.get("artifact_slot")
+        artifact_stats = ARTIFACT_DATABASE.get(equipped_artifact, {}).get("stats", {})
+
+        def _source_breakdown(stat_key, total_value):
+            base = int(class_base.get(stat_key, 0))
+
+            skill_bonus = 0
+            for sid in unlocked_skills:
+                node = node_index.get(sid)
+                if not node:
+                    continue
+                bonuses = node.get("stat_bonuses", {})
+                skill_bonus += int(bonuses.get(stat_key, 0) or 0)
+
+            synergy_bonus = int(synergy_bonuses.get(stat_key, 0) or 0)
+
+            enchant_bonus = 0
+            for ench in enchantments.values():
+                if not isinstance(ench, dict):
+                    continue
+                enchant_bonus += int((ench.get("stats", {}) or {}).get(stat_key, 0) or 0)
+
+            artifact_bonus = int(artifact_stats.get(stat_key, 0) or 0)
+
+            temp_bonus = 0
+            if stat_key == "strength":
+                temp_bonus = int((active_effects.get("attack_boost", {}) or {}).get("value", 0) or 0)
+            elif stat_key == "defense":
+                temp_bonus = int((active_effects.get("defense_boost", {}) or {}).get("value", 0) or 0)
+
+            known_total = base + skill_bonus + synergy_bonus + enchant_bonus + artifact_bonus + temp_bonus
+            other = int(total_value) - known_total
+
+            return {
+                "base": base,
+                "skill": skill_bonus,
+                "synergy": synergy_bonus,
+                "ench": enchant_bonus,
+                "artifact": artifact_bonus,
+                "temp": temp_bonus,
+                "other": other,
+            }
         # RPG attributes
         ATTRS=[
             ("strength",    "⚔  Strength",   C_RED),
@@ -665,6 +728,48 @@ class StatsOverlay(BookOverlay):
             ("constitution","💪  Constitution",C_INK),
         ]
         drawn=False
+
+        def _fmt_bonus(v):
+            if v > 0:
+                return f"+{v}"
+            return str(v)
+
+        def _draw_detail_segments(x, y0, breakdown):
+            detail_font = self._f(9)
+            pos_col = _blend(C_GREEN, bg, cf)
+            neg_col = _blend(C_RED, bg, cf)
+            neu_col = mid
+            sep_col = light
+
+            parts = [
+                ("Base", breakdown["base"]),
+                ("Skill", breakdown["skill"]),
+                ("Syn", breakdown["synergy"]),
+                ("Ench", breakdown["ench"]),
+                ("Art", breakdown["artifact"]),
+                ("Temp", breakdown["temp"]),
+            ]
+            if breakdown["other"]:
+                parts.append(("Other", breakdown["other"]))
+
+            for idx, (name, value) in enumerate(parts):
+                color = neu_col
+                if name != "Base":
+                    if value > 0:
+                        color = pos_col
+                    elif value < 0:
+                        color = neg_col
+
+                txt = f"{name} {value if name == 'Base' else _fmt_bonus(value)}"
+                ts = detail_font.render(txt, True, color)
+                surf.blit(ts, (x, y0))
+                x += ts.get_width()
+
+                if idx < len(parts) - 1:
+                    sep = detail_font.render(" | ", True, sep_col)
+                    surf.blit(sep, (x, y0))
+                    x += sep.get_width()
+
         for key,label,col in ATTRS:
             v=stats.get(key,0)
             if v<=0: continue
@@ -687,7 +792,9 @@ class StatsOverlay(BookOverlay):
                 value_text = f"{v}/{max_v}"
             vs=self._f(13,True).render(value_text,True,ink)
             surf.blit(vs,(frame.x+frame.width-vs.get_width()-8,y+10))
-            y+=34
+            br = _source_breakdown(key, v)
+            _draw_detail_segments(frame.x+8, y+25, br)
+            y+=46
             if y>frame.bottom-50: break
         if not drawn:
             # fallback: show all stats
@@ -695,7 +802,7 @@ class StatsOverlay(BookOverlay):
                 s=self._f(11).render(f"{k}: {stats[k]}",True,mid)
                 surf.blit(s,(frame.x+6,y)); y+=17
                 if y>frame.bottom-50: break
-        self._footer_hint(surf,frame,"Esc to close",cf,False)
+        self._footer_hint(surf,frame,"Esc to close  •  Base / Skill / Syn / Ench / Art / Temp",cf,False)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1163,7 +1270,7 @@ class SkillTreeBookOverlay(BookOverlay):
         try:
             from skill_tree import (get_tree_for_class, get_unlocked_skills,
                                     get_available_skills, LCENTER, RING_GAP,
-                                    CLASS_BRANCHES)
+                                    CLASS_BRANCHES, get_node_preview)
             if not (self.gui.engine and self.gui.engine.player):
                 return
             p = self.gui.engine.player
@@ -1172,8 +1279,10 @@ class SkillTreeBookOverlay(BookOverlay):
             self._unlocked    = set(get_unlocked_skills(p))
             self._avail       = {n["id"] for n in get_available_skills(p)}
             self._branches_data = CLASS_BRANCHES.get(self._cls_id, {})
+            self._get_node_preview = get_node_preview
             self._compute_positions(LCENTER, RING_GAP)
         except Exception:
+            self._get_node_preview = None
             pass
 
     # ── position computation (ported from SkillTreeWindow) ───────────────────
@@ -1504,6 +1613,14 @@ class SkillTreeBookOverlay(BookOverlay):
         C_AMB   = _blend((220, 140, 40),  _bg, cf)
         C_LCK   = _blend((55, 65, 105),   _bg, cf)
 
+        def _draw_wrapped_line(text, font, color, x, y0, max_width, line_step=13):
+            yy = y0
+            for part in _wrap(str(text), font, max_width):
+                ts = font.render(part, True, color)
+                surf.blit(ts, (x, yy))
+                yy += line_step
+            return yy
+
         y = frame.y + 8
 
         # title row
@@ -1522,66 +1639,148 @@ class SkillTreeBookOverlay(BookOverlay):
         surf.blit(sps, (frame.right - sps.get_width() - 6, y)); y += 19
         pygame.draw.line(surf, C_DIV, (frame.x + 4, y), (frame.right - 4, y)); y += 8
 
-        sel = self._selected_id
-        if sel and self._tree:
-            node = next((n for n in self._tree if n["id"] == sel), None)
-            if node:
-                is_unl = sel in self._unlocked
-                is_avl = sel in self._avail
+        preview_id = self._hover_id or self._selected_id
+        preview = None
+        if preview_id and self._tree:
+            try:
+                if self._get_node_preview and self.gui.engine and self.gui.engine.player:
+                    preview = self._get_node_preview(self.gui.engine.player, preview_id)
+            except Exception:
+                preview = None
 
-                # name
-                name_s = self._f(12, True).render(node["name"], True, C_VAL)
-                surf.blit(name_s, (frame.x + 6, y)); y += 18
+        if preview:
+            node = preview["node"]
+            is_unl = preview_id in self._unlocked
+            is_avl = preview_id in self._avail
+            is_hover = preview_id == self._hover_id
 
-                # status pill
-                if is_unl:
-                    pill_bg = (20, 70, 30);  pill_tc = C_GRN;  pill_lbl = "UNLOCKED"
-                elif is_avl:
-                    pill_bg = (30, 65, 15);  pill_tc = (150, 220, 60); pill_lbl = "AVAILABLE"
+            def _format_change(change):
+                before_text = _preview_value_text(change["before"])
+                after_text = _preview_value_text(change["after"])
+                raw_delta = change["raw_delta"]
+                if isinstance(raw_delta, float):
+                    delta_text = f"{raw_delta:+.0%}" if abs(raw_delta) < 1 else f"{raw_delta:+.2f}".rstrip("0").rstrip(".")
                 else:
-                    pill_bg = (18, 20, 42);  pill_tc = C_LCK;  pill_lbl = "LOCKED"
-                sbr = pygame.Rect(frame.x + 6, y, frame.width - 12, 15)
-                ps  = pygame.Surface((sbr.width, sbr.height), pygame.SRCALPHA)
-                pygame.draw.rect(ps, (*pill_bg, 210), (0, 0, sbr.width, sbr.height), border_radius=4)
-                pygame.draw.rect(ps, (*pill_tc, 130), (0, 0, sbr.width, sbr.height), width=1, border_radius=4)
-                surf.blit(ps, (sbr.x, sbr.y))
-                sts = self._f(9, True).render(pill_lbl, True, pill_tc)
-                surf.blit(sts, sts.get_rect(center=sbr.center)); y += 22
+                    delta_text = f"{raw_delta:+d}"
+                if change.get("capped", False):
+                    return f"{change['label']}: {before_text} -> {after_text} ({delta_text}, capped)"
+                return f"{change['label']}: {before_text} -> {after_text} ({delta_text})"
 
-                # meta
-                for lbl2, val in [
-                    ("Tier", str(node.get("tier", "?"))),
-                    ("Type", node.get("type", "passive").capitalize()),
-                    ("Cost", f"{node.get('cost', '?')} SP"),
-                ]:
+            def _preview_value_text(value):
+                if isinstance(value, float):
+                    if abs(value) < 1.0 and value != int(value):
+                        return f"{value:.0%}"
+                    if value.is_integer():
+                        return str(int(value))
+                    return f"{value:.2f}".rstrip("0").rstrip(".")
+                return str(int(value)) if isinstance(value, int) else str(value)
+
+            name_s = self._f(12, True).render(node["name"], True, C_VAL)
+            surf.blit(name_s, (frame.x + 6, y)); y += 18
+
+            if is_unl:
+                pill_bg = (20, 70, 30);  pill_tc = C_GRN;  pill_lbl = "UNLOCKED"
+            elif is_avl:
+                pill_bg = (30, 65, 15);  pill_tc = (150, 220, 60); pill_lbl = "AVAILABLE"
+            else:
+                pill_bg = (18, 20, 42);  pill_tc = C_LCK;  pill_lbl = "LOCKED"
+            sbr = pygame.Rect(frame.x + 6, y, frame.width - 12, 15)
+            ps  = pygame.Surface((sbr.width, sbr.height), pygame.SRCALPHA)
+            pygame.draw.rect(ps, (*pill_bg, 210), (0, 0, sbr.width, sbr.height), border_radius=4)
+            pygame.draw.rect(ps, (*pill_tc, 130), (0, 0, sbr.width, sbr.height), width=1, border_radius=4)
+            surf.blit(ps, (sbr.x, sbr.y))
+            sts = self._f(9, True).render(pill_lbl, True, pill_tc)
+            surf.blit(sts, sts.get_rect(center=sbr.center)); y += 22
+
+            # meta
+            meta_rows = [
+                ("Tier", str(node.get("tier", "?"))),
+                ("Type", preview["node_type"]),
+                ("Mode", preview["unlock_mode"]),
+                ("Cost", f"{preview.get('cost', node.get('cost', '?'))} SP"),
+            ]
+            for lbl2, val in meta_rows:
+                l3 = self._f(9, True).render(lbl2, True, C_LABEL)
+                surf.blit(l3, (frame.x + 6, y))
+                value_col = C_VAL if lbl2 != "Mode" else (C_GLD if val == "Synergy-driven" else C_VAL)
+                val_x = frame.x + 46
+                val_w = max(12, frame.right - 6 - val_x)
+                y = _draw_wrapped_line(val, self._f(9, True), value_col, val_x, y, val_w, line_step=13)
+                y += 1
+
+            if preview["branch"] != "origin":
+                branch_line = f"Branch: {preview['branch_label']}  ({preview['branch_before']} -> {preview['branch_after']})"
+                y = _draw_wrapped_line(branch_line, self._f(9), C_DIM, frame.x + 6, y, frame.width - 12, line_step=13)
+
+            prereqs = preview.get("prerequisite_names", [])
+            prereq_text = ", ".join(prereqs) if prereqs else "None"
+            y = _draw_wrapped_line(f"Requires: {prereq_text}", self._f(9), C_DIM, frame.x + 6, y, frame.width - 12, line_step=13)
+
+            pygame.draw.line(surf, C_DIV, (frame.x + 4, y), (frame.right - 4, y)); y += 5
+
+            for line in _wrap(node.get("description", ""), self._f(10), frame.width - 12):
+                ds = self._f(10).render(line, True, C_DIM)
+                surf.blit(ds, (frame.x + 6, y)); y += 13
+                if y > frame.bottom - 72:
+                    break
+
+            if preview.get("ability") and y < frame.bottom - 64:
+                ability = preview["ability"]
+                pygame.draw.line(surf, C_DIV, (frame.x + 4, y), (frame.right - 4, y)); y += 4
+                ability_name = ability.get("name", node["name"])
+                ability_rows = [
+                    ("Ability", ability_name),
+                    ("Cooldown", f"{ability.get('cooldown', 0)} turns"),
+                ]
+                mana_cost = None
+                try:
+                    from skill_tree import MANA_COSTS
+                    mana_cost = MANA_COSTS.get(preview_id)
+                except Exception:
+                    mana_cost = None
+                if mana_cost is not None:
+                    ability_rows.append(("Mana", f"{mana_cost} MP"))
+                if ability.get("combat"):
+                    ability_rows.append(("Use", "Combat ability"))
+                for lbl2, val in ability_rows:
                     l3 = self._f(9, True).render(lbl2, True, C_LABEL)
                     surf.blit(l3, (frame.x + 6, y))
-                    v3 = self._f(9).render(val, True, C_VAL)
-                    surf.blit(v3, (frame.x + 46, y)); y += 14
+                    val_x = frame.x + 46
+                    val_w = max(12, frame.right - 6 - val_x)
+                    y = _draw_wrapped_line(val, self._f(9), C_VAL, val_x, y, val_w, line_step=13)
 
-                pygame.draw.line(surf, C_DIV, (frame.x + 4, y), (frame.right - 4, y)); y += 5
-
-                # description
-                for line in _wrap(node.get("description", ""), self._f(10), frame.width - 12):
-                    ds = self._f(10).render(line, True, C_DIM)
-                    surf.blit(ds, (frame.x + 6, y)); y += 13
-                    if y > frame.bottom - 52:
+            if preview.get("stat_changes") and y < frame.bottom - 48:
+                pygame.draw.line(surf, C_DIV, (frame.x + 4, y), (frame.right - 4, y)); y += 4
+                hdr = self._f(10, True).render("Exact stat changes", True, C_GLD)
+                surf.blit(hdr, (frame.x + 6, y)); y += 13
+                for change in preview["stat_changes"]:
+                    line = _format_change(change)
+                    color = C_GRN
+                    if change.get("capped", False):
+                        color = C_AMB
+                    y = _draw_wrapped_line(line, self._f(9), color, frame.x + 6, y, frame.width - 12, line_step=13)
+                    if y > frame.bottom - 34:
                         break
 
-                # stat bonuses
-                bonuses = node.get("stat_bonuses", {})
-                if bonuses and y < frame.bottom - 38:
-                    pygame.draw.line(surf, C_DIV, (frame.x + 4, y),
-                                     (frame.right - 4, y)); y += 4
-                    for stat, mod in bonuses.items():
-                        bs3 = self._f(9).render(f"+{mod} {stat}", True, C_GRN)
-                        surf.blit(bs3, (frame.x + 6, y)); y += 13
-                        if y > frame.bottom - 28: break
+            if preview.get("synergy_preview") and y < frame.bottom - 24:
+                pygame.draw.line(surf, C_DIV, (frame.x + 4, y), (frame.right - 4, y)); y += 4
+                hdr = self._f(10, True).render("Synergy preview", True, C_GLD)
+                surf.blit(hdr, (frame.x + 6, y)); y += 13
+                for synergy in preview["synergy_preview"]:
+                    bonuses = []
+                    for stat, val in synergy["bonuses"].items():
+                        label = stat.replace("_", " ").title().replace("Health Max Bonus", "Max Health")
+                        if isinstance(val, float):
+                            bonus_text = f"{label} +{val:.0%}" if abs(val) < 1 else f"{label} +{val:.2f}".rstrip("0").rstrip(".")
+                        else:
+                            bonus_text = f"{label} +{val}"
+                        bonuses.append(bonus_text)
+                    syn_line = f"{synergy['branch_label']} {synergy['rank']} ({synergy['before_count']} -> {synergy['after_count']}): " + ", ".join(bonuses)
+                    y = _draw_wrapped_line(syn_line, self._f(9), C_GLD, frame.x + 6, y, frame.width - 12, line_step=13)
 
-                # unlock hint
-                if is_avl and not is_unl:
-                    hint = self._f(10).render("← Click to unlock", True, C_GLD)
-                    surf.blit(hint, (frame.x + 6, frame.bottom - 24))
+            if is_avl and not is_unl and y < frame.bottom - 18:
+                hint = self._f(10).render("← Click to unlock", True, C_GLD)
+                surf.blit(hint, (frame.x + 6, frame.bottom - 24))
 
         else:
             # idle: legend
@@ -1604,7 +1803,7 @@ class SkillTreeBookOverlay(BookOverlay):
         # footer
         pygame.draw.line(surf, C_DIV, (frame.x + 4, frame.bottom - 25),
                          (frame.right - 4, frame.bottom - 25))
-        fh = self._f(9).render("Scroll=zoom  Drag=pan", True, C_DIM)
+        fh = self._f(9).render("Hover=preview  Click=unlock  Scroll=zoom  Drag=pan", True, C_DIM)
         surf.blit(fh, (frame.x + 6, frame.bottom - 16))
 
     # ── radial tree canvas ────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 {
   "save_version": 5,
   "player": {
-    "current_room": "forest_path",
+    "current_room": "woodland_shrine",
     "inventory": {
       "prayer_candle": 1,
       "iron_dagger": 7,
@@ -655,8 +655,8 @@
       "health": 365,
       "health_max": 365,
       "level": 14,
-      "xp": 5831,
-      "xp_to_next": 969,
+      "xp": 5837,
+      "xp_to_next": 963,
       "skill_points": 0,
       "class": "warrior",
       "strength": 40,
@@ -673,37 +673,39 @@
       "prestige_xp_multiplier": 1.0
     },
     "visited_rooms": [
-      "grand_harbor_square",
-      "dusty_crossroads",
-      "smugglers_cove",
-      "village_west_end",
-      "sunken_ruins",
-      "forest_swamp_border",
-      "dungeon_forest_entrance",
-      "grand_harbor_gate",
-      "player_home",
-      "village_south_road",
-      "farmland_east",
-      "desert_border",
-      "village_square",
-      "reef_shallows",
-      "mossy_hollow",
-      "farmland_center",
-      "stormbreak_docks",
-      "sandy_beach",
-      "chapel",
-      "forest_path",
-      "forest_pool",
-      "farmland_west",
       "harbor_south_pier",
-      "desert_dunes_west",
+      "reef_shallows",
+      "grand_harbor_gate",
+      "desert_border",
       "coastal_road_north",
-      "crossroads",
-      "coastal_cliffs",
-      "harbor_east_dock",
+      "village_west_end",
+      "village_south_road",
       "grand_harbor_road",
+      "sandy_beach",
+      "stormbreak_docks",
+      "harbor_east_dock",
+      "forest_clearing",
+      "chapel",
+      "forest_pool",
+      "dungeon_forest_entrance",
+      "crossroads",
+      "forest_path",
+      "grand_harbor_square",
       "village_east_end",
-      "deep_forest"
+      "farmland_east",
+      "forest_swamp_border",
+      "woodland_shrine",
+      "farmland_west",
+      "deep_forest",
+      "village_square",
+      "player_home",
+      "coastal_cliffs",
+      "farmland_center",
+      "smugglers_cove",
+      "desert_dunes_west",
+      "sunken_ruins",
+      "dusty_crossroads",
+      "mossy_hollow"
     ],
     "unlocked_islands": [
       "stormbreak_island"
@@ -8051,9 +8053,9 @@
   },
   "overworld_encounters": {
     "recent_rooms": [
-      "dungeon_forest_entrance",
-      "mossy_hollow",
-      "forest_path"
+      "forest_path",
+      "forest_clearing",
+      "woodland_shrine"
     ],
     "visible_enemies": {
       "sandy_beach": {
@@ -8122,34 +8124,36 @@
       }
     },
     "rooms_rolled": [
-      "dusty_crossroads",
-      "smugglers_cove",
+      "meteor_crater",
       "mesa_top",
-      "graveyard",
-      "forest_swamp_border",
-      "dungeon_forest_entrance",
-      "farmland_east",
-      "desert_border",
       "canyon_entrance",
       "reef_shallows",
-      "mossy_hollow",
-      "farmland_center",
-      "graveyard_gates",
-      "sandy_beach",
-      "desert_cliffs",
-      "meteor_crater",
-      "forest_path",
-      "forest_pool",
-      "mesa_base",
-      "farmland_west",
-      "desert_dunes_west",
+      "desert_border",
       "coastal_road_north",
+      "farmland",
+      "sandy_beach",
+      "forest_clearing",
+      "forest_pool",
+      "dungeon_forest_entrance",
+      "mesa_base",
       "crossroads",
+      "forest_path",
+      "farmland_east",
+      "forest_swamp_border",
+      "woodland_shrine",
+      "farmland_west",
+      "graveyard",
+      "deep_forest",
       "village_road",
       "coastal_cliffs",
-      "farmland",
+      "farmland_center",
       "scorpion_flats",
-      "deep_forest"
+      "smugglers_cove",
+      "desert_dunes_west",
+      "dusty_crossroads",
+      "graveyard_gates",
+      "desert_cliffs",
+      "mossy_hollow"
     ]
   },
   "fishing": {
@@ -8180,9 +8184,9 @@
   },
   "dungeon_scheduler": {
     "debug_force_open": [
+      "iron_halls",
       "crystal_caverns",
-      "sunken_catacombs",
-      "iron_halls"
+      "sunken_catacombs"
     ]
   }
 }

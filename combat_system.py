@@ -1026,6 +1026,7 @@ class CombatState:
         # Tactical affinity system for enemy weaknesses/resistances
         self.enemy_vulnerability, self.enemy_resistance = self._roll_enemy_affinities()
         self.last_damage_note = ""
+        self.last_damage_tags = []
 
         # Boss phase system (phase 1 = full health, 2 = below 50%, 3 = below 25%)
         self.boss_phase = 1
@@ -1109,6 +1110,7 @@ class CombatState:
         cs.enemy_vulnerability = data.get("enemy_vulnerability", "physical")
         cs.enemy_resistance = data.get("enemy_resistance", "bleed")
         cs.last_damage_note = ""
+        cs.last_damage_tags = data.get("last_damage_tags", [])
         cs.boss_phase = data.get("boss_phase", 1)
         cs.phase_transitions_done = set(data.get("phase_transitions_done", []))
         return cs
@@ -1154,6 +1156,21 @@ def _get_affinity_damage_bonus(combat, damage_tag):
     return 1.0, ""
 
 
+def _combat_tags(*tags):
+    parts = [f"[{str(tag).upper()}]" for tag in tags if tag]
+    return " ".join(parts)
+
+
+def _format_combat_line(summary, details=None, tags=None):
+    tag_text = _combat_tags(*(tags or ()))
+    if tag_text:
+        summary = f"{tag_text} {summary}"
+    result = f"\n  {summary}"
+    if details:
+        result += f"\n  ↳ {details}"
+    return result
+
+
 def calculate_player_damage(player, combat, multiplier=1.0, damage_tag="physical"):
     """
     Calculate damage the player deals to the enemy.
@@ -1172,6 +1189,11 @@ def calculate_player_damage(player, combat, multiplier=1.0, damage_tag="physical
     affinity_mult, note = _get_affinity_damage_bonus(combat, damage_tag)
     raw_damage = int(raw_damage * affinity_mult)
     note_parts = [note] if note else []
+    note_tags = []
+    if damage_tag == getattr(combat, "enemy_vulnerability", None):
+        note_tags.append("WEAK")
+    elif damage_tag == getattr(combat, "enemy_resistance", None):
+        note_tags.append("RESIST")
 
     # Artifact outgoing modifiers
     artifact_fx, artifact_id = get_artifact_combat_effects(player)
@@ -1207,6 +1229,7 @@ def calculate_player_damage(player, combat, multiplier=1.0, damage_tag="physical
                 note_parts.append(f"You siphon {actual} HP.")
 
     combat.last_damage_note = " ".join(p for p in note_parts if p)
+    combat.last_damage_tags = note_tags
 
     return damage
 
@@ -1322,7 +1345,7 @@ def _process_enemy_ability(player, combat):
         if combat.player_defending:
             dmg = max(1, dmg // 2)
         player.stats["health"] = player.stats.get("health", 100) - dmg
-        result = f"\n  {combat.enemy_name} {text} ({dmg} damage)"
+        result = _format_combat_line(f"{combat.enemy_name} {text}.", f"Damage dealt: {dmg}.", tags=["DAMAGE"])
 
     elif ab_type == "damage_status":
         low, high = ab["value"]
@@ -1336,8 +1359,11 @@ def _process_enemy_ability(player, combat):
         _apply_status(combat.player_statuses, status, status_dmg, status_dur)
         se = STATUS_EFFECTS.get(status, {})
         icon = se.get("icon", "")
-        result = f"\n  {combat.enemy_name} {text} ({dmg} damage)"
-        result += f"\n  {icon} You {se.get('message_apply', 'are afflicted!')}"
+        result = _format_combat_line(
+            f"{combat.enemy_name} {text}.",
+            f"Damage dealt: {dmg}. {icon} You {se.get('message_apply', 'are afflicted!')}",
+            tags=["POISON" if status == "poison" else status.upper(), "DAMAGE"]
+        )
 
     elif ab_type == "status":
         status = ab.get("status", "stun")
@@ -1345,8 +1371,11 @@ def _process_enemy_ability(player, combat):
         _apply_status(combat.player_statuses, status, 0, status_dur)
         se = STATUS_EFFECTS.get(status, {})
         icon = se.get("icon", "")
-        result = f"\n  {combat.enemy_name} {text}"
-        result += f"\n  {icon} You {se.get('message_apply', 'are afflicted!')}"
+        result = _format_combat_line(
+            f"{combat.enemy_name} {text}.",
+            f"{icon} You {se.get('message_apply', 'are afflicted!')}",
+            tags=[status.upper(), "DEBUFF"]
+        )
 
     elif ab_type == "damage_stun":
         low, high = ab["value"]
@@ -1356,14 +1385,17 @@ def _process_enemy_ability(player, combat):
         player.stats["health"] = player.stats.get("health", 100) - dmg
         stun_dur = ab.get("stun_dur", 1)
         _apply_status(combat.player_statuses, "stun", 0, stun_dur)
-        result = f"\n  {combat.enemy_name} {text} ({dmg} damage)"
-        result += f"\n  💫 You are stunned!"
+        result = _format_combat_line(
+            f"{combat.enemy_name} {text}.",
+            f"Damage dealt: {dmg}. You are stunned for {stun_dur} turn(s).",
+            tags=["STUN", "DAMAGE"]
+        )
 
     elif ab_type == "heal":
         low, high = ab["value"]
         heal = random.randint(low, high)
         combat.hp = min(combat.max_hp, combat.hp + heal)
-        result = f"\n  ✨ {combat.enemy_name} {text} (+{heal} HP)"
+        result = _format_combat_line(f"{combat.enemy_name} {text}.", f"Heals {heal} HP.", tags=["HEAL"])
 
     elif ab_type == "damage_heal":
         low, high = ab["value"]
@@ -1372,12 +1404,16 @@ def _process_enemy_ability(player, combat):
             dmg = max(1, dmg // 2)
         player.stats["health"] = player.stats.get("health", 100) - dmg
         combat.hp = min(combat.max_hp, combat.hp + dmg)
-        result = f"\n  {combat.enemy_name} {text} ({dmg} damage, heals {dmg} HP)"
+        result = _format_combat_line(
+            f"{combat.enemy_name} {text}.",
+            f"Deals {dmg} damage and heals {dmg} HP.",
+            tags=["DAMAGE", "HEAL"]
+        )
 
     elif ab_type == "buff_defense":
         buff_val = ab.get("value", 2)
         combat.enemy_buff_defense += buff_val
-        result = f"\n  🛡️ {combat.enemy_name} {text} (+{buff_val} Defense)"
+        result = _format_combat_line(f"{combat.enemy_name} {text}.", f"Defense +{buff_val}.", tags=["BUFF"])
 
     return result
 
@@ -1478,7 +1514,7 @@ def _enemy_turn(player, combat):
         result += "\n" + "\n".join(enemy_stun_msgs)
 
     if enemy_stunned:
-        result += f"\n  The {combat.enemy_name} is stunned and cannot act!"
+        result += _format_combat_line(f"The {combat.enemy_name} is stunned and cannot act.", None, tags=["STUN"])
         return result
 
     # Enemy DOT damage (bleed, burn, poison on enemy)
@@ -1507,7 +1543,7 @@ def _enemy_turn(player, combat):
             # Basic attack
             enemy_dmg = calculate_enemy_damage(player, combat)
             player.stats["health"] = player.stats.get("health", 100) - enemy_dmg
-            result += f"\n  The {combat.enemy_name} attacks you for {enemy_dmg} damage!"
+            result += _format_combat_line(f"The {combat.enemy_name} attacks.", f"Damage dealt: {enemy_dmg}.", tags=["DAMAGE"])
         elif roll < ability_thresh:
             # Use ability
             ab_msg = _process_enemy_ability(player, combat)
@@ -1516,7 +1552,7 @@ def _enemy_turn(player, combat):
             else:
                 enemy_dmg = calculate_enemy_damage(player, combat)
                 player.stats["health"] = player.stats.get("health", 100) - enemy_dmg
-                result += f"\n  The {combat.enemy_name} attacks you for {enemy_dmg} damage!"
+                result += _format_combat_line(f"The {combat.enemy_name} attacks.", f"Damage dealt: {enemy_dmg}.", tags=["DAMAGE"])
         elif roll < heavy_thresh:
             # Heavy attack (1.5x damage, 2x in final phase)
             base_dmg = calculate_enemy_damage(player, combat)
@@ -1524,24 +1560,24 @@ def _enemy_turn(player, combat):
             heavy_dmg = max(1, int(base_dmg * heavy_mult))
             player.stats["health"] = player.stats.get("health", 100) - heavy_dmg
             if phase >= 3:
-                result += f"\n  💥 The {combat.enemy_name} unleashes a DEVASTATING attack! ({heavy_dmg} damage!)"
+                result += _format_combat_line(f"The {combat.enemy_name} unleashes a devastating attack.", f"Damage dealt: {heavy_dmg}.", tags=["HEAVY", "DAMAGE"])
             else:
-                result += f"\n  The {combat.enemy_name} winds up a HEAVY attack! ({heavy_dmg} damage!)"
+                result += _format_combat_line(f"The {combat.enemy_name} winds up a heavy attack.", f"Damage dealt: {heavy_dmg}.", tags=["HEAVY", "DAMAGE"])
         else:
             # Defend / heal
             if combat.hp < combat.max_hp * 0.5:
                 heal = random.randint(5, 15)
                 combat.hp = min(combat.max_hp, combat.hp + heal)
-                result += f"\n  The {combat.enemy_name} retreats and recovers! (+{heal} HP)"
+                result += _format_combat_line(f"The {combat.enemy_name} retreats and recovers.", f"Heals {heal} HP.", tags=["HEAL"])
             else:
                 combat.enemy_buff_defense += 1
-                result += f"\n  The {combat.enemy_name} takes a defensive stance! (+1 Def)"
+                result += _format_combat_line(f"The {combat.enemy_name} takes a defensive stance.", "Defense +1.", tags=["BUFF"])
     else:
         # Regular enemy AI
         if roll < 0.40:
             enemy_dmg = calculate_enemy_damage(player, combat)
             player.stats["health"] = player.stats.get("health", 100) - enemy_dmg
-            result += f"\n  The {combat.enemy_name} attacks you for {enemy_dmg} damage!"
+            result += _format_combat_line(f"The {combat.enemy_name} attacks.", f"Damage dealt: {enemy_dmg}.", tags=["DAMAGE"])
         elif roll < 0.70:
             ab_msg = _process_enemy_ability(player, combat)
             if ab_msg:
@@ -1549,17 +1585,17 @@ def _enemy_turn(player, combat):
             else:
                 enemy_dmg = calculate_enemy_damage(player, combat)
                 player.stats["health"] = player.stats.get("health", 100) - enemy_dmg
-                result += f"\n  The {combat.enemy_name} attacks you for {enemy_dmg} damage!"
+                result += _format_combat_line(f"The {combat.enemy_name} attacks.", f"Damage dealt: {enemy_dmg}.", tags=["DAMAGE"])
         elif roll < 0.90:
             base_dmg = calculate_enemy_damage(player, combat)
             heavy_dmg = max(1, int(base_dmg * 1.3))
             player.stats["health"] = player.stats.get("health", 100) - heavy_dmg
-            result += f"\n  The {combat.enemy_name} strikes hard! ({heavy_dmg} damage)"
+            result += _format_combat_line(f"The {combat.enemy_name} strikes hard.", f"Damage dealt: {heavy_dmg}.", tags=["HEAVY", "DAMAGE"])
         else:
             # Enemy hesitates / weak attack
             weak_dmg = max(1, calculate_enemy_damage(player, combat) // 2)
             player.stats["health"] = player.stats.get("health", 100) - weak_dmg
-            result += f"\n  The {combat.enemy_name} hesitates... (glancing blow: {weak_dmg} damage)"
+            result += _format_combat_line(f"The {combat.enemy_name} hesitates.", f"Glancing blow: {weak_dmg} damage.", tags=["WEAK", "DAMAGE"])
 
     # Passive mana regen at end of every enemy turn
     mana_regen_bonus = player.stats.get("mana_regen_bonus", 0.0)
@@ -1593,7 +1629,7 @@ def process_player_attack(player, combat):
 
     if player_stunned:
         combat.attack_streak = 0
-        result += "\n  You are stunned and cannot attack this turn!"
+        result += _format_combat_line("You are stunned and cannot attack this turn.", None, tags=["STUN"])
         # Enemy still attacks
         enemy_result = _enemy_turn(player, combat)
         result += enemy_result
@@ -1621,19 +1657,19 @@ def process_player_attack(player, combat):
     )
     combat.hp -= player_dmg
 
-    if is_crit:
-        result += f"\n  ⚔️ CRITICAL HIT! You strike the {combat.enemy_name} for {player_dmg} damage!"
-    else:
-        result += f"\n  ⚔️ You strike the {combat.enemy_name} for {player_dmg} damage!"
-
-    if combat.attack_streak >= 3:
-        result += f"\n  🔥 {combat.attack_streak}-HIT STREAK! (+{streak_bonus_pct}% momentum damage)"
-
-    if getattr(combat, "feel_intensity", "normal") == "high" and combat.attack_streak >= 5:
-        result += "\n  ⚡ Battle rhythm surges! Keep the pressure on!"
-
+    detail_parts = []
     if combat.last_damage_note:
-        result += f"\n  {combat.last_damage_note}"
+        detail_parts.append(combat.last_damage_note)
+    if combat.attack_streak >= 3:
+        detail_parts.append(f"{combat.attack_streak}-hit momentum (+{streak_bonus_pct}% damage)")
+    if getattr(combat, "feel_intensity", "normal") == "high" and combat.attack_streak >= 5:
+        detail_parts.append("Battle rhythm surges.")
+
+    result += _format_combat_line(
+        f"You strike the {combat.enemy_name} for {player_dmg} damage.",
+        " | ".join(detail_parts) if detail_parts else None,
+        tags=["CRIT"] if is_crit else None,
+    )
 
     if combat.hp <= 0:
         combat.hp = 0
@@ -1671,13 +1707,13 @@ def process_player_defend(player, combat):
         player.stats["health"] = player.stats.get("health", 100) - player_dot_dmg
 
     if player_stunned:
-        result += "\n  You are stunned and cannot defend properly!"
+        result += _format_combat_line("You are stunned and cannot defend properly.", None, tags=["STUN"])
         combat.player_defending = False
         enemy_result = _enemy_turn(player, combat)
         result += enemy_result
         return result + "\n"
 
-    result += "\n  🛡️ You raise your guard!"
+    result += _format_combat_line("You raise your guard.", None, tags=["BUFF"])
 
     # Enemy turn (will deal halved damage due to player_defending)
     hp_before = player.stats.get("health", 100)
@@ -1693,7 +1729,7 @@ def process_player_defend(player, combat):
         heal = min(con, player.stats.get("health_max", 100) - player.stats.get("health", 0))
         if heal > 0:
             player.stats["health"] = player.stats.get("health", 0) + heal
-            result += f"\n  💚 Your fortitude restores {heal} HP!"
+            result += _format_combat_line(f"Your fortitude restores {heal} HP.", None, tags=["HEAL"])
 
     # Counterattack chance (20% base + 2% per strength for warrior, 3% per dex for rogue)
     player_class = player.stats.get("class", "warrior")
@@ -1710,7 +1746,7 @@ def process_player_defend(player, combat):
     if random.random() < counter_chance and combat.hp > 0:
         counter_dmg = max(1, calculate_player_damage(player, combat, multiplier=0.6))
         combat.hp -= counter_dmg
-        result += f"\n  ⚡ COUNTERATTACK! You strike back for {counter_dmg} damage!"
+        result += _format_combat_line(f"Counterattack lands for {counter_dmg} damage.", None, tags=["COUNTER"])
 
     # Adrenaline from big blocks (damage blocked > 8)
     if damage_taken > 0 and hp_before - hp_after < damage_taken * 2:
@@ -1718,7 +1754,11 @@ def process_player_defend(player, combat):
         if blocked_amount >= 4:
             adrenaline = min(blocked_amount, 8)
             combat.player_adrenaline += adrenaline
-            result += f"\n  🔥 Adrenaline surges! (+{adrenaline} bonus damage on next attack)"
+            result += _format_combat_line(
+                f"Adrenaline surges (+{adrenaline} bonus damage next attack).",
+                None,
+                tags=["BUFF"]
+            )
 
     return result + "\n"
 
@@ -1736,8 +1776,12 @@ def process_player_flee(player, combat):
         enemy_dmg = calculate_enemy_damage(player, combat)
         player.stats["health"] = player.stats.get("health", 100) - enemy_dmg
         return False, (
-            f"\n  You cannot flee from the {combat.enemy_name}!"
-            f"\n  It strikes you as you turn - {enemy_dmg} damage!\n"
+            _format_combat_line(
+                f"You cannot flee from the {combat.enemy_name}.",
+                f"It strikes you as you turn for {enemy_dmg} damage.",
+                tags=["FAIL"]
+            )
+            + "\n"
         )
 
     dex = player.stats.get("dexterity", 0)
@@ -1748,13 +1792,17 @@ def process_player_flee(player, combat):
 
     if random.random() < flee_chance:
         combat.player_fled = True
-        return True, "\n  💨 You successfully flee from combat!\n"
+        return True, _format_combat_line("You successfully flee from combat.", None, tags=["FLEE"]) + "\n"
     else:
         enemy_dmg = calculate_enemy_damage(player, combat)
         player.stats["health"] = player.stats.get("health", 100) - enemy_dmg
         return False, (
-            f"\n  ❌ You fail to escape!"
-            f"\n  The {combat.enemy_name} strikes you - {enemy_dmg} damage!\n"
+            _format_combat_line(
+                "You fail to escape.",
+                f"The {combat.enemy_name} strikes you for {enemy_dmg} damage.",
+                tags=["FAIL"]
+            )
+            + "\n"
         )
 
 
@@ -1780,7 +1828,7 @@ def process_ability_in_combat(player, combat, ability_data):
         player.stats["health"] = player.stats.get("health", 100) - dot_dmg
 
     if player_stunned:
-        result += "\n  You are stunned and cannot use abilities!"
+        result += _format_combat_line("You are stunned and cannot use abilities.", None, tags=["STUN"])
         enemy_result = _enemy_turn(player, combat)
         result += enemy_result
         return result + "\n"
@@ -1804,13 +1852,13 @@ def process_ability_in_combat(player, combat, ability_data):
         # Pure damage with multiplier
         dmg = calculate_player_damage(player, combat, multiplier=value, damage_tag=damage_tag)
         combat.hp -= dmg
-        result += f"\n  ⚔️ You deal {dmg} damage!"
+        result += _format_combat_line(f"You deal {dmg} damage.", None, tags=["DAMAGE"])
 
     elif effect == "combat_crit_attack":
         # Guaranteed crit with multiplier
         dmg = calculate_player_damage(player, combat, multiplier=value, damage_tag=damage_tag)
         combat.hp -= dmg
-        result += f"\n  ⚔️ GUARANTEED CRITICAL! You deal {dmg} damage!"
+        result += _format_combat_line(f"You deal {dmg} damage.", None, tags=["CRIT", "DAMAGE"])
 
     elif effect == "combat_stun":
         # Damage + stun
@@ -1818,8 +1866,11 @@ def process_ability_in_combat(player, combat, ability_data):
         combat.hp -= dmg
         stun_dur = ability_data.get("duration", 1)
         _apply_status(combat.enemy_statuses, "stun", 0, stun_dur)
-        result += f"\n  ⚔️ You deal {dmg} damage!"
-        result += f"\n  💫 The {combat.enemy_name} is STUNNED for {stun_dur} turn(s)!"
+        result += _format_combat_line(
+            f"You deal {dmg} damage.",
+            f"The {combat.enemy_name} is stunned for {stun_dur} turn(s).",
+            tags=["STUN", "DAMAGE"]
+        )
 
     elif effect == "combat_poison":
         # Normal damage + poison DOT
@@ -1828,8 +1879,11 @@ def process_ability_in_combat(player, combat, ability_data):
         poison_dmg = ability_data.get("value", 4)
         poison_dur = ability_data.get("duration", 3)
         _apply_status(combat.enemy_statuses, "poison", poison_dmg, poison_dur)
-        result += f"\n  ⚔️ You deal {dmg} damage!"
-        result += f"\n  ☠️ The {combat.enemy_name} is POISONED! ({poison_dmg}/turn for {poison_dur} turns)"
+        result += _format_combat_line(
+            f"You deal {dmg} damage.",
+            f"The {combat.enemy_name} is poisoned for {poison_dur} turns ({poison_dmg}/turn).",
+            tags=["POISON", "DAMAGE"]
+        )
 
     elif effect == "combat_freeze_attack":
         # Damage + freeze debuff
@@ -1837,8 +1891,11 @@ def process_ability_in_combat(player, combat, ability_data):
         combat.hp -= dmg
         freeze_dur = ability_data.get("duration", 2)
         _apply_status(combat.enemy_statuses, "freeze", 0, freeze_dur)
-        result += f"\n  ⚔️ You deal {dmg} damage!"
-        result += f"\n  ❄️ The {combat.enemy_name} is FROZEN! (-30% attack for {freeze_dur} turns)"
+        result += _format_combat_line(
+            f"You deal {dmg} damage.",
+            f"The {combat.enemy_name} is frozen for {freeze_dur} turns.",
+            tags=["FREEZE", "DEBUFF", "DAMAGE"]
+        )
 
     elif effect == "combat_damage_burn":
         # Damage + burn DOT
@@ -1847,8 +1904,11 @@ def process_ability_in_combat(player, combat, ability_data):
         burn_dmg = ability_data.get("burn", 3)
         burn_dur = ability_data.get("duration", 2)
         _apply_status(combat.enemy_statuses, "burn", burn_dmg, burn_dur)
-        result += f"\n  ⚔️ You deal {dmg} damage!"
-        result += f"\n  🔥 The {combat.enemy_name} is BURNING! ({burn_dmg}/turn for {burn_dur} turns)"
+        result += _format_combat_line(
+            f"You deal {dmg} damage.",
+            f"The {combat.enemy_name} is burning for {burn_dur} turns ({burn_dmg}/turn).",
+            tags=["BURN", "DAMAGE"]
+        )
 
     elif effect == "combat_damage_stun":
         # Damage + stun
@@ -1856,8 +1916,11 @@ def process_ability_in_combat(player, combat, ability_data):
         combat.hp -= dmg
         stun_dur = ability_data.get("duration", 1)
         _apply_status(combat.enemy_statuses, "stun", 0, stun_dur)
-        result += f"\n  ⚔️ You deal {dmg} damage!"
-        result += f"\n  💫 The {combat.enemy_name} is STUNNED for {stun_dur} turn(s)!"
+        result += _format_combat_line(
+            f"You deal {dmg} damage.",
+            f"The {combat.enemy_name} is stunned for {stun_dur} turn(s).",
+            tags=["STUN", "DAMAGE"]
+        )
 
     elif effect == "combat_heal":
         # Heal the player
@@ -1866,7 +1929,7 @@ def process_ability_in_combat(player, combat, ability_data):
         hp_max = player.stats.get("health_max", 100)
         actual_heal = min(heal_val, hp_max - hp)
         player.stats["health"] = hp + actual_heal
-        result += f"\n  💚 You heal for {actual_heal} HP!"
+        result += _format_combat_line(f"You heal for {actual_heal} HP.", None, tags=["HEAL"])
 
     elif effect == "combat_execute":
         # Instant kill below threshold, otherwise big damage
@@ -1874,11 +1937,15 @@ def process_ability_in_combat(player, combat, ability_data):
         enemy_hp_pct = combat.hp / combat.max_hp if combat.max_hp > 0 else 1.0
         if enemy_hp_pct <= threshold:
             combat.hp = 0
-            result += f"\n  💀 EXECUTE! The {combat.enemy_name} is slain instantly!"
+            result += _format_combat_line(
+                f"The {combat.enemy_name} is slain instantly.",
+                None,
+                tags=["EXECUTE", "CRIT"]
+            )
         else:
             dmg = calculate_player_damage(player, combat, multiplier=3.0, damage_tag=damage_tag)
             combat.hp -= dmg
-            result += f"\n  ⚔️ You deal {dmg} massive damage!"
+            result += _format_combat_line(f"You deal {dmg} massive damage.", None, tags=["EXECUTE", "DAMAGE"])
 
     elif effect == "combat_bleed_attack":
         # Damage + bleed DOT
@@ -1887,16 +1954,23 @@ def process_ability_in_combat(player, combat, ability_data):
         bleed_dmg = ability_data.get("bleed", 5)
         bleed_dur = ability_data.get("duration", 3)
         _apply_status(combat.enemy_statuses, "bleed", bleed_dmg, bleed_dur)
-        result += f"\n  ⚔️ You deal {dmg} damage!"
-        result += f"\n  🩸 The {combat.enemy_name} is BLEEDING! ({bleed_dmg}/turn for {bleed_dur} turns)"
+        result += _format_combat_line(
+            f"You deal {dmg} damage.",
+            f"The {combat.enemy_name} is bleeding for {bleed_dur} turns ({bleed_dmg}/turn).",
+            tags=["BLEED", "DAMAGE"]
+        )
 
     elif effect == "guaranteed_flee":
         # Guaranteed flee (unless boss)
         if combat.is_boss:
-            result += f"\n  The smoke clears... The {combat.enemy_name} cannot be escaped!"
+            result += _format_combat_line(
+                f"The {combat.enemy_name} cannot be escaped.",
+                "The smoke clears and the boss holds firm.",
+                tags=["FAIL"]
+            )
         else:
             combat.player_fled = True
-            result += "\n  💨 You vanish in a cloud of smoke and escape!"
+            result += _format_combat_line("You vanish in a cloud of smoke and escape.", None, tags=["FLEE"])
             return result + "\n"
 
     elif effect == "buff_attack":
@@ -1907,7 +1981,7 @@ def process_ability_in_combat(player, combat, ability_data):
         active_effects["attack_boost"] = {"value": boost, "duration": duration}
         player.state["active_effects"] = active_effects
         add_stat_bonus(player, "strength", boost, allow_overflow=True)
-        result += f"\n  ⚡ Your strength surges by {boost} for {duration} turns!"
+        result += _format_combat_line(f"Strength rises by {boost} for {duration} turns.", None, tags=["BUFF"])
 
     elif effect == "extra_gold":
         # Double gold on next kill
@@ -1924,7 +1998,7 @@ def process_ability_in_combat(player, combat, ability_data):
         active_effects["defense_boost"] = {"value": boost, "duration": duration}
         player.state["active_effects"] = active_effects
         add_stat_bonus(player, "defense", boost, allow_overflow=True)
-        result += f"\n  🛡️ Your defense surges by {boost} for {duration} turns!"
+        result += _format_combat_line(f"Defense rises by {boost} for {duration} turns.", None, tags=["BUFF"])
 
     elif effect == "restore_mana":
         # Restore a percentage of max mana in combat
@@ -1942,8 +2016,11 @@ def process_ability_in_combat(player, combat, ability_data):
         burn_dmg = ability_data.get("burn", 4)
         burn_dur = ability_data.get("duration", 3)
         _apply_status(combat.enemy_statuses, "burn", burn_dmg, burn_dur)
-        result += f"\n  🔥 TRUE FIREBALL! You deal {dmg} damage!"
-        result += f"\n  🔥 The {combat.enemy_name} ignites! ({burn_dmg}/turn for {burn_dur} turns)"
+        result += _format_combat_line(
+            f"True Fireball deals {dmg} damage.",
+            f"The {combat.enemy_name} burns for {burn_dur} turns ({burn_dmg}/turn).",
+            tags=["BURN", "DAMAGE"]
+        )
         player.state["pending_travel"] = {
             "source": ability_data.get("name", "True Fireball"),
             "type": "fireball",
@@ -1952,13 +2029,13 @@ def process_ability_in_combat(player, combat, ability_data):
             "burn": ability_data.get("travel_burn", 3),
             "burn_dur": ability_data.get("travel_burn_dur", 2),
         }
-        result += f"\n  🔥 The fireball streaks off into the next room..."
+        result += _format_combat_line("The fireball streaks into the next room.", None, tags=["TRAVEL"])
 
     elif effect == "chain_bounce":
         # Damage to current enemy + pre-damages adjacent rooms
         dmg = calculate_player_damage(player, combat, multiplier=value, damage_tag="arcane")
         combat.hp -= dmg
-        result += f"\n  ⚡ You deal {dmg} damage!"
+        result += _format_combat_line(f"You deal {dmg} damage.", None, tags=["ARCANE", "DAMAGE"])
         bounce_dmg  = ability_data.get("bounce_damage", 15)
         bounce_range = ability_data.get("bounce_range", 2)
         player.state["pending_travel"] = {
@@ -1968,7 +2045,11 @@ def process_ability_in_combat(player, combat, ability_data):
             "damage": bounce_dmg,
             "stun": ability_data.get("bounce_stun", 0),
         }
-        result += f"\n  ⚡ The effect bounces off into {bounce_range} nearby room(s)..."
+        result += _format_combat_line(
+            f"The effect bounces into {bounce_range} nearby room(s).",
+            None,
+            tags=["TRAVEL"]
+        )
 
     elif effect == "seismic_wave":
         # Damage + optional stun/freeze locally + shockwave pre-damages 1 adjacent room
@@ -1978,12 +2059,20 @@ def process_ability_in_combat(player, combat, ability_data):
         wave_dur    = ability_data.get("wave_dur", 1)
         if wave_effect == "stun":
             _apply_status(combat.enemy_statuses, "stun", 0, wave_dur)
-            result += f"\n  🌍 SHOCKWAVE! {dmg} damage + {combat.enemy_name} STUNNED {wave_dur} turn(s)!"
+            result += _format_combat_line(
+                f"Shockwave deals {dmg} damage.",
+                f"The {combat.enemy_name} is stunned for {wave_dur} turn(s).",
+                tags=["STUN", "DAMAGE"]
+            )
         elif wave_effect == "freeze":
             _apply_status(combat.enemy_statuses, "freeze", 0, wave_dur)
-            result += f"\n  ❄️ FROST WAVE! {dmg} damage + {combat.enemy_name} FROZEN {wave_dur} turn(s)!"
+            result += _format_combat_line(
+                f"Frost Wave deals {dmg} damage.",
+                f"The {combat.enemy_name} is frozen for {wave_dur} turn(s).",
+                tags=["FREEZE", "DEBUFF", "DAMAGE"]
+            )
         else:
-            result += f"\n  🌍 SEISMIC STOMP! You deal {dmg} damage!"
+            result += _format_combat_line(f"Seismic Stomp deals {dmg} damage.", None, tags=["DAMAGE"])
         player.state["pending_travel"] = {
             "source": ability_data.get("name", "Seismic Wave"),
             "type": "wave",
@@ -1992,7 +2081,7 @@ def process_ability_in_combat(player, combat, ability_data):
             "wave_effect": wave_effect,
             "wave_dur": wave_dur,
         }
-        result += f"\n  🌍 A shockwave ripples into the next room..."
+        result += _format_combat_line("A shockwave ripples into the next room.", None, tags=["TRAVEL"])
 
     elif effect == "shadow_drift":
         # Normal damage + poison current + optionally pre-poisons / pre-stuns adjacent room
@@ -2002,10 +2091,13 @@ def process_ability_in_combat(player, combat, ability_data):
         poison_dur = ability_data.get("poison_dur", 3)
         if poison_dmg > 0:
             _apply_status(combat.enemy_statuses, "poison", poison_dmg, poison_dur)
-            result += f"\n  ☠️ You deal {dmg} damage!"
-            result += f"\n  ☠️ The {combat.enemy_name} is POISONED! ({poison_dmg}/turn for {poison_dur} turns)"
+            result += _format_combat_line(
+                f"You deal {dmg} damage.",
+                f"The {combat.enemy_name} is poisoned for {poison_dur} turns ({poison_dmg}/turn).",
+                tags=["POISON", "DAMAGE"]
+            )
         else:
-            result += f"\n  🌑 SHADOW BLINK! You deal {dmg} damage!"
+            result += _format_combat_line("Shadow Blink deals damage.", f"You deal {dmg} damage.", tags=["DAMAGE"])
         player.state["pending_travel"] = {
             "source": ability_data.get("name", "Shadow Drift"),
             "type": "drift",
@@ -2015,14 +2107,18 @@ def process_ability_in_combat(player, combat, ability_data):
             "poison_dur": ability_data.get("travel_poison_dur", 2),
             "stun": ability_data.get("shadow_stun", 0),
         }
-        result += f"\n  ☠️ A shadow trace drifts into the next room..."
+        result += _format_combat_line("A shadow trace drifts into the next room.", None, tags=["TRAVEL"])
 
     elif effect == "smoke_cascade":
         # Flee current combat (non-boss) + pre-stuns enemies in adjacent rooms
         cascade_range = ability_data.get("cascade_range", 1)
         cascade_stun  = ability_data.get("cascade_stun", 1)
         if combat.is_boss:
-            result += f"\n  The smoke clears... The {combat.enemy_name} cannot be escaped!"
+            result += _format_combat_line(
+                f"The {combat.enemy_name} cannot be escaped.",
+                "The smoke clears and the boss holds firm.",
+                tags=["FAIL"]
+            )
         else:
             combat.player_fled = True
             player.state["pending_travel"] = {
@@ -2032,7 +2128,7 @@ def process_ability_in_combat(player, combat, ability_data):
                 "damage": 0,
                 "stun": cascade_stun,
             }
-            result += f"\n  💨 SMOKE CASCADE! You vanish and smoke blinds the surrounding rooms!"
+            result += _format_combat_line("Smoke Cascade blinds the surrounding rooms.", "You vanish in a cloud of smoke.", tags=["FLEE", "DEBUFF"])
             return result + "\n"
 
     if combat.last_damage_note and ("You deal" in result or "You strike" in result):

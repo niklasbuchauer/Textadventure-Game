@@ -23,7 +23,7 @@
         "game_feel_intensity": "normal"
     },
     "accessibility": {
-        "high_contrast": false,
+        "high_contrast": true,
         "text_size": 10
     },
     "ui": {

@@ -21,7 +21,12 @@ from skill_tree_data import (
     WARRIOR_BRANCHES, ROGUE_BRANCHES, MAGE_BRANCHES,
     MANA_COSTS,
 )
-from progression_system import add_stat_bonus, normalize_core_stats
+from progression_system import (
+    add_stat_bonus,
+    normalize_core_stats,
+    clamp_stat_value,
+    is_core_stat,
+)
 
 # =====================================================================
 # SYNERGY / SET BONUSES
@@ -169,6 +174,174 @@ def get_available_skills(player):
         if sp >= node["cost"]:
             available.append(node)
     return available
+
+
+_PREVIEW_STAT_LABELS = {
+    "strength": "Strength",
+    "defense": "Defense",
+    "dexterity": "Dexterity",
+    "perception": "Perception",
+    "charisma": "Charisma",
+    "constitution": "Constitution",
+    "health_max": "Max Health",
+    "health": "Health",
+    "crit_chance_bonus": "Crit Chance",
+    "crafting_bonus": "Crafting Bonus",
+    "disarm_bonus": "Disarm Bonus",
+}
+
+
+def _preview_stat_label(stat_name):
+    return _PREVIEW_STAT_LABELS.get(stat_name, stat_name.replace("_", " ").title())
+
+
+def _preview_numeric_text(value):
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, float):
+        if abs(value) < 1.0 and value != int(value):
+            return f"{value:.0%}"
+        if value.is_integer():
+            return str(int(value))
+        return f"{value:.2f}".rstrip("0").rstrip(".")
+    return str(int(value)) if isinstance(value, int) or (isinstance(value, str) and str(value).isdigit()) else str(value)
+
+
+def _format_preview_change(label, before, after, raw_delta, capped=False, is_percent=False):
+    before_text = _preview_numeric_text(before)
+    after_text = _preview_numeric_text(after)
+    if is_percent:
+        delta_text = f"{raw_delta:+.0%}" if isinstance(raw_delta, float) else f"{raw_delta:+}%"
+    else:
+        delta_text = f"{raw_delta:+g}" if isinstance(raw_delta, float) else f"{raw_delta:+d}"
+    if capped:
+        return f"{label}: {before_text} -> {after_text} ({delta_text}, capped)"
+    return f"{label}: {before_text} -> {after_text} ({delta_text})"
+
+
+def get_node_preview(player, skill_id):
+    """Return a non-mutating preview of what unlocking a node would do."""
+    class_id = player.stats.get("class", "")
+    node = get_node_by_id(class_id, skill_id)
+    if not node:
+        return None
+
+    unlocked = set(get_unlocked_skills(player))
+    branch = node.get("branch", "origin")
+    branch_counts = get_branch_counts(player)
+    branch_before = branch_counts.get(branch, 0)
+    branch_after = branch_before + (0 if skill_id in unlocked or branch == "origin" else 1)
+
+    current_stats = dict(getattr(player, "stats", {}) or {})
+    preview_stats = dict(current_stats)
+    stat_changes = []
+
+    for stat_name, value in node.get("stat_bonuses", {}).items():
+        if stat_name == "health_max_bonus":
+            value = int(value)
+            before_max = int(preview_stats.get("health_max", 100))
+            before_hp = int(preview_stats.get("health", 100))
+            after_max = before_max + value
+            after_hp = min(before_hp + value, after_max)
+            preview_stats["health_max"] = after_max
+            preview_stats["health"] = after_hp
+            stat_changes.append({
+                "label": _preview_stat_label("health_max"),
+                "before": before_max,
+                "after": after_max,
+                "raw_delta": value,
+                "capped": False,
+                "kind": "health_max",
+            })
+            if after_hp != before_hp:
+                stat_changes.append({
+                    "label": _preview_stat_label("health"),
+                    "before": before_hp,
+                    "after": after_hp,
+                    "raw_delta": after_hp - before_hp,
+                    "capped": False,
+                    "kind": "health",
+                })
+            continue
+
+        before_value = preview_stats.get(stat_name, 0)
+        if stat_name in ("crafting_bonus", "crit_chance_bonus", "disarm_bonus"):
+            after_value = before_value + value
+            preview_stats[stat_name] = after_value
+            stat_changes.append({
+                "label": _preview_stat_label(stat_name),
+                "before": before_value,
+                "after": after_value,
+                "raw_delta": value,
+                "capped": False,
+                "kind": stat_name,
+            })
+            continue
+
+        if is_core_stat(stat_name):
+            raw_after = before_value + value
+            after_value = clamp_stat_value(stat_name, raw_after)
+            preview_stats[stat_name] = after_value
+            stat_changes.append({
+                "label": _preview_stat_label(stat_name),
+                "before": before_value,
+                "after": after_value,
+                "raw_delta": value,
+                "capped": after_value != raw_after,
+                "kind": stat_name,
+            })
+        else:
+            after_value = before_value + value
+            preview_stats[stat_name] = after_value
+            stat_changes.append({
+                "label": _preview_stat_label(stat_name),
+                "before": before_value,
+                "after": after_value,
+                "raw_delta": value,
+                "capped": False,
+                "kind": stat_name,
+            })
+
+    synergy_preview = []
+    if branch != "origin" and skill_id not in unlocked:
+        for threshold, rank, base_bonuses in SYNERGY_THRESHOLDS:
+            if branch_before < threshold <= branch_after:
+                combined = dict(base_bonuses)
+                for stat_name, value in BRANCH_SYNERGY_EXTRAS.get(branch, {}).get(threshold, {}).items():
+                    combined[stat_name] = combined.get(stat_name, 0) + value
+                synergy_preview.append({
+                    "branch": branch,
+                    "branch_label": branch.replace("_", " ").title(),
+                    "rank": rank,
+                    "threshold": threshold,
+                    "before_count": branch_before,
+                    "after_count": branch_after,
+                    "bonuses": combined,
+                })
+
+    prereq_ids = node.get("prerequisites", [])
+    prereq_names = []
+    for prereq_id in prereq_ids:
+        prereq_node = get_node_by_id(class_id, prereq_id)
+        prereq_names.append(prereq_node["name"] if prereq_node else prereq_id)
+
+    ability = node.get("ability", {}) if node.get("type") == "active" else {}
+    unlock_mode = "Synergy-driven" if synergy_preview else "Direct"
+
+    return {
+        "node": node,
+        "node_type": node.get("type", "passive").capitalize(),
+        "unlock_mode": unlock_mode,
+        "branch": branch,
+        "branch_label": branch.replace("_", " ").title(),
+        "branch_before": branch_before,
+        "branch_after": branch_after,
+        "cost": node.get("cost", 0),
+        "prerequisite_names": prereq_names,
+        "stat_changes": stat_changes,
+        "synergy_preview": synergy_preview,
+        "ability": ability,
+    }
 
 
 def unlock_skill(player, skill_id):

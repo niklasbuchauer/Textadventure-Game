@@ -2338,16 +2338,16 @@ class CommandHandler:
 			if dmg > 0:
 				# Leave enemy with at least 1 HP (finish in actual combat)
 				combat.hp = max(1, combat.hp - dmg)
-				msgs.append(f"  💥 {src} slams into the {combat.enemy_name} for {dmg} pre-emptive damage!")
+				msgs.append(f"  [TRAVEL] [DAMAGE] {src} slams into the {combat.enemy_name} for {dmg} pre-emptive damage!")
 			if hit.get("stun", 0) > 0 and COMBAT_AVAILABLE:
 				_apply_status(combat.enemy_statuses, "stun", 0, hit["stun"])
-				msgs.append(f"  💫 {src} left the {combat.enemy_name} STUNNED!")
+				msgs.append(f"  [TRAVEL] [STUN] {src} left the {combat.enemy_name} stunned!")
 			if hit.get("poison_dmg", 0) > 0 and COMBAT_AVAILABLE:
 				_apply_status(combat.enemy_statuses, "poison", hit["poison_dmg"], hit.get("poison_dur", 2))
-				msgs.append(f"  ☠️ {src} has already POISONED the {combat.enemy_name}!")
+				msgs.append(f"  [TRAVEL] [POISON] {src} has already poisoned the {combat.enemy_name}!")
 			if hit.get("burn", 0) > 0 and COMBAT_AVAILABLE:
 				_apply_status(combat.enemy_statuses, "burn", hit["burn"], hit.get("burn_dur", 2))
-				msgs.append(f"  🔥 {src} left the {combat.enemy_name} already BURNING!")
+				msgs.append(f"  [TRAVEL] [BURN] {src} left the {combat.enemy_name} burning!")
 		if msgs:
 			return "\n".join(msgs) + "\n"
 		return ""

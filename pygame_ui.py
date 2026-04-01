@@ -46,11 +46,35 @@ TAG_COLORS = {
     "system":      "#8AC07A",
     "command":     "#9A8B68",
     "default":     "#D8D0A0",
+    "detail":      "#C7BC92",
+    "timestamp":   "#A8A08A",
     "title_gold":  "#C4B896",
     "title_cyan":  "#50C8A0",
     "title_green": "#8AC07A",
     "title_purple":"#7A7858",
     "normal":      "#D8D0A0",
+}
+
+INLINE_COMBAT_TAG_COLORS = {
+    "CRIT": "#F4D06F",
+    "DAMAGE": "#E08A7A",
+    "HEAVY": "#D97E5B",
+    "WEAK": "#8AC07A",
+    "RESIST": "#91A4C8",
+    "BUFF": "#A7D38C",
+    "DEBUFF": "#D7B56D",
+    "STUN": "#B6A0E8",
+    "POISON": "#8CCB84",
+    "BURN": "#F0A15E",
+    "BLEED": "#D96E6E",
+    "FREEZE": "#86D5E6",
+    "HEAL": "#9DDCC0",
+    "FAIL": "#E39B73",
+    "FLEE": "#D9C68A",
+    "COUNTER": "#8AB8F0",
+    "EXECUTE": "#F0E1A0",
+    "TRAVEL": "#89CFC2",
+    "ARCANE": "#B89BE8",
 }
 
 # Nature-medieval forest palette
@@ -89,6 +113,34 @@ def escape_html(text):
     """Escape HTML special chars then convert newlines to <br>."""
     s = html_module.escape(str(text))
     return s.replace("\n", "<br>")
+
+
+def _style_inline_combat_tags(text):
+    """Highlight inline combat tags like [CRIT] and [DAMAGE]."""
+    pattern = re.compile(r"\[(CRIT|DAMAGE|HEAVY|WEAK|RESIST|BUFF|DEBUFF|STUN|POISON|BURN|BLEED|FREEZE|HEAL|FAIL|FLEE|COUNTER|EXECUTE|TRAVEL|ARCANE)\]")
+
+    def _replace(match):
+        tag = match.group(1).upper()
+        colour = INLINE_COMBAT_TAG_COLORS.get(tag, TAG_COLORS.get("default", "#D8D0A0"))
+        return f'<span style="color:{colour}; font-weight:700;">[{tag}]</span>'
+
+    return pattern.sub(_replace, text)
+
+
+def _format_panel_message(text, colour, detail_colour):
+    """Convert a panel message into HTML with inline combat emphasis."""
+    html_text = escape_html(text)
+    html_text = _style_inline_combat_tags(html_text)
+
+    lines = html_text.split("<br>")
+    formatted = []
+    for line in lines:
+        stripped = line.lstrip()
+        if stripped.startswith("↳"):
+            formatted.append(f'<font color="{detail_colour}"><i>{line}</i></font>')
+        else:
+            formatted.append(line)
+    return f'<font color="{colour}">' + "<br>".join(formatted) + "</font>"
 
 
 def draw_arcane_atmosphere(surface):
@@ -196,6 +248,7 @@ class PygamePanelWidget:
                        max_messages=50):
         self._max_msgs = max_messages
         colour = self.colors.get(tag, self.colors.get("default", "#DCDCDC"))
+        detail_colour = self.colors.get("detail", "#C7BC92")
 
         # ── Collapse repeated messages ───────────────────────────────────
         if text == self._last_msg and self._last_count >= 1:
@@ -208,9 +261,9 @@ class PygamePanelWidget:
                 # Rebuild HTML for that entry
                 ts_col = self.colors.get("timestamp", "#AAAAAA")
                 pre = f'<font color="{ts_col}">[{old_ts}] </font>' if old_ts else ""
+                body = _format_panel_message(new, old_col, detail_colour)
                 self._html_parts[-1] = (
-                    f'{pre}<font color="{old_col}">'
-                    f'{escape_html(new)}</font><br><br>'
+                    f'{pre}{body}<br><br>'
                 )
                 self._full_rebuild()
             return
@@ -227,8 +280,7 @@ class PygamePanelWidget:
         ts_col = self.colors.get("timestamp", "#AAAAAA")
         ts_html = (f'<font color="{ts_col}">[{timestamp}] </font>'
                    if timestamp else "")
-        frag = (f'{ts_html}<font color="{colour}">'
-                f'{escape_html(text)}</font><br><br>')
+        frag = f'{ts_html}{_format_panel_message(text, colour, detail_colour)}<br><br>'
         self._html_parts.append(frag)
 
         # ── Trim ─────────────────────────────────────────────────────────
