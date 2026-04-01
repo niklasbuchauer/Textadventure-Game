@@ -25,6 +25,7 @@ import copy
 import importlib
 import html as html_module
 import time
+import difflib
 
 # ---------------------------------------------------------------------------
 #  Constants
@@ -35,33 +36,33 @@ MIN_WIDTH   = 1024
 MIN_HEIGHT  = 600
 DEFAULT_FPS = 60
 
-# Tag → hex colour (matches CONFIG_DEFAULTS in engine.py)
+# Tag -> hex colour (matches CONFIG_DEFAULTS in engine.py)
 TAG_COLORS = {
-    "combat":      "#FF6B6B",
-    "item":        "#98FB98",
-    "dialogue":    "#87CEEB",
-    "status":      "#87CEFA",
-    "warning":     "#FFD700",
-    "system":      "#DA70D6",
-    "command":     "#AAAAAA",
-    "default":     "#DCDCDC",
-    "title_gold":  "#FFD700",
-    "title_cyan":  "#00FFFF",
-    "title_green": "#00FF00",
-    "title_purple":"#DA70D6",
-    "normal":      "#DCDCDC",
+    "combat":      "#E0826D",
+    "item":        "#8AC07A",
+    "dialogue":    "#50C8A0",
+    "status":      "#8B7D9A",
+    "warning":     "#B5A86A",
+    "system":      "#8AC07A",
+    "command":     "#9A8B68",
+    "default":     "#D8D0A0",
+    "title_gold":  "#C4B896",
+    "title_cyan":  "#50C8A0",
+    "title_green": "#8AC07A",
+    "title_purple":"#7A7858",
+    "normal":      "#D8D0A0",
 }
 
-# Dark theme colour palette (mirrors engine.py CONFIG_DEFAULTS)
+# Nature-medieval forest palette
 DARK = {
-    "bg":           (0x1e, 0x1e, 0x1e),
-    "dark_bg":      (0x14, 0x14, 0x14),
-    "entry_bg":     (0x2e, 0x2e, 0x2e),
-    "hotbar_bg":    (0x1a, 0x1a, 0x1a),
-    "panel_hdr":    (0x14, 0x14, 0x14),
-    "fg":           (0xdc, 0xdc, 0xdc),
-    "gold":         (0xFF, 0xD7, 0x00),
-    "sash":         (0x0a, 0x0a, 0x0a),
+    "bg":           (0x0D, 0x0D, 0x0A),
+    "dark_bg":      (0x08, 0x0A, 0x08),
+    "entry_bg":     (0x16, 0x14, 0x0F),
+    "hotbar_bg":    (0x14, 0x12, 0x10),
+    "panel_hdr":    (0x1A, 0x18, 0x15),
+    "fg":           (0xD8, 0xD0, 0xA0),
+    "gold":         (0xC4, 0xB8, 0x96),
+    "sash":         (0x05, 0x06, 0x04),
 }
 
 # ---------------------------------------------------------------------------
@@ -88,6 +89,22 @@ def escape_html(text):
     """Escape HTML special chars then convert newlines to <br>."""
     s = html_module.escape(str(text))
     return s.replace("\n", "<br>")
+
+
+def draw_arcane_atmosphere(surface):
+    """Subtle atmospheric pass for core UI scenes."""
+    w, h = surface.get_size()
+    veil = pygame.Surface((w, h), pygame.SRCALPHA)
+    veil.fill((10, 7, 16, 26))
+
+    # Upper mystical glow
+    pygame.draw.ellipse(veil, (82, 58, 118, 30),
+                        pygame.Rect(int(-w * 0.12), int(-h * 0.30), int(w * 1.24), int(h * 0.78)))
+    # Lower cool glow for depth
+    pygame.draw.ellipse(veil, (38, 78, 92, 22),
+                        pygame.Rect(int(-w * 0.18), int(h * 0.58), int(w * 1.36), int(h * 0.86)))
+
+    surface.blit(veil, (0, 0))
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -400,6 +417,7 @@ class GameApp:
 
             # ── Render ────────────────────────────────────────────────────
             self.surface.fill(DARK["bg"])
+            draw_arcane_atmosphere(self.surface)
 
             if self.scene == "title" and self.title_screen:
                 self.title_screen.render(self.surface)
@@ -465,6 +483,14 @@ class PygameAdventureGUI:
         "warning", "cannot", "can't", "invalid", "error",
         "failed", "unable", "not allowed", "not found",
     ])
+    _COMMAND_VOCAB = [
+        "look", "search", "inventory", "journal", "stats", "commands", "help",
+        "go north", "go south", "go east", "go west", "n", "s", "e", "w",
+        "enter", "leave", "fight", "attack", "defend", "flee", "skill",
+        "use", "take", "drop", "examine", "inspect", "open chest",
+        "home", "home use", "home inventory", "home upgrades", "home edit",
+        "place", "remove", "rename home", "save", "quit",
+    ]
 
     def __init__(self, app: GameApp):
         self.app     = app
@@ -475,6 +501,13 @@ class PygameAdventureGUI:
         # ── Load config ──────────────────────────────────────────────────
         self.config = self._load_config()
         self._hint_color = (90, 90, 110)
+        self._command_helper_enabled = bool(
+            self.config.get("ui", {}).get("command_helper", True)
+        )
+        self._command_helper_elapsed = 0.0
+        self._last_command_helper_text = ""
+        self._autocomplete_hint = ""
+        self._last_entry_text = ""
 
         # ── Engine / game references ─────────────────────────────────────
         self.engine = None
@@ -569,11 +602,12 @@ class PygameAdventureGUI:
             }
 
         if "timestamp" not in colors:
-            colors["timestamp"] = "#AAAAAA"
+            colors["timestamp"] = "#9A8B6A"
 
-        self._hint_color = (90, 90, 110)
+        self._hint_color = (128, 114, 88)
 
         ui_cfg = self.config.get("ui", {})
+        self._command_helper_enabled = bool(ui_cfg.get("command_helper", True))
         layout = ui_cfg.get("layout", "side_by_side")
         panel_flags = ui_cfg.get("panels", {})
         max_msgs = ui_cfg.get("max_messages", 50)
@@ -603,6 +637,7 @@ class PygameAdventureGUI:
                     pw.hide()
 
         self._relayout_panels()
+        self._refresh_command_helper(force=True)
 
     # ------------------------------------------------------------------
     #  BUILD UI
@@ -681,7 +716,15 @@ class PygameAdventureGUI:
 
         # Status label
         self.status_label = UILabel(
-            relative_rect=pygame.Rect(bx, btn_y, 200, btn_h),
+            relative_rect=pygame.Rect(bx, btn_y, 168, btn_h),
+            text="", manager=m,
+            container=self.toolbar_panel,
+            object_id=ObjectID("#status_label", "label"),
+        )
+
+        self.command_helper_label = UILabel(
+            relative_rect=pygame.Rect(
+                bx + 172, btn_y, max(120, W - (bx + 172) - 52), btn_h),
             text="", manager=m,
             container=self.toolbar_panel,
             object_id=ObjectID("#status_label", "label"),
@@ -901,6 +944,13 @@ class PygameAdventureGUI:
         # Toolbar
         self.toolbar_panel.set_dimensions((w, self._TOOLBAR_H))
         self.settings_btn.set_relative_position((w - 44, 4))
+        sb = self.status_label.get_relative_rect()
+        self.status_label.set_relative_position((sb.x, 4))
+        self.status_label.set_dimensions((168, self._TOOLBAR_H - 8))
+        h_x = sb.x + 172
+        h_w = max(120, w - h_x - 52)
+        self.command_helper_label.set_relative_position((h_x, 4))
+        self.command_helper_label.set_dimensions((h_w, self._TOOLBAR_H - 8))
 
         # Hotbar
         self.hotbar_panel.set_dimensions((w, self._HOTBAR_H))
@@ -1002,6 +1052,9 @@ class PygameAdventureGUI:
         # ── Keyboard shortcuts ───────────────────────────────────────────
         if event.type == pygame.KEYDOWN:
             mods = pygame.key.get_mods()
+            if event.key == pygame.K_TAB:
+                if self._apply_autocomplete():
+                    return
             # Ctrl+S  save
             if event.key == pygame.K_s and (mods & pygame.KMOD_CTRL):
                 self.on_save_shortcut()
@@ -1044,6 +1097,13 @@ class PygameAdventureGUI:
     def update(self, dt):
         for pw in self._panels.values():
             pw.update()
+
+        self._refresh_autocomplete_hint()
+
+        self._command_helper_elapsed += dt
+        if self._command_helper_elapsed >= 0.25:
+            self._command_helper_elapsed = 0.0
+            self._refresh_command_helper()
 
         # Update death overlay
         if self._death_overlay:
@@ -1116,11 +1176,18 @@ class PygameAdventureGUI:
         # Drawn when the entry box is empty so the user knows what it's for.
         if self.entry and not self.entry.get_text():
             if self._hint_font is None:
-                self._hint_font = pygame.font.SysFont("Courier New", 14)
+                self._hint_font = pygame.font.SysFont("Georgia", 14)
             r = self.entry.get_abs_rect()
             hint_surf = self._hint_font.render(
                 "Type a command...", True, self._hint_color)
             surface.blit(hint_surf, (r.x + 8, r.y + (r.height - hint_surf.get_height()) // 2))
+        elif self.entry and self._autocomplete_hint:
+            if self._hint_font is None:
+                self._hint_font = pygame.font.SysFont("Georgia", 14)
+            r = self.entry.get_abs_rect()
+            hint = self._hint_font.render(
+                f"Tab: {self._autocomplete_hint}", True, (150, 136, 104))
+            surface.blit(hint, (r.x + 8, r.y - hint.get_height() - 2))
 
         if self._death_overlay:
             self._death_overlay.render(surface)
@@ -1208,6 +1275,8 @@ class PygameAdventureGUI:
     def on_enter(self):
         cmd = self.entry.get_text().strip()
         self.entry.set_text("")
+        self._autocomplete_hint = ""
+        self._last_entry_text = ""
         if not cmd:
             return
 
@@ -1248,6 +1317,10 @@ class PygameAdventureGUI:
                 return
             msg_type = self._detect_type(resp)
             self.append(resp, msg_type)
+            if resp.lower().startswith("i don't understand"):
+                suggestion = self._closest_command(cmd)
+                if suggestion:
+                    self.append(f"Did you mean: {suggestion}", "system")
 
         self._update_combat_status_from_engine()
         self.refresh_inventory_display()
@@ -1493,9 +1566,98 @@ class PygameAdventureGUI:
                 f"Items: {total}  |  Value: {total_value}g")
         except Exception:
             pass
+        self._refresh_command_helper()
         # Refresh overlay if open
         if self.inventory_win and hasattr(self.inventory_win, '_refresh'):
             self.inventory_win._refresh()
+
+    def _command_helper_suggestions(self):
+        if not self.engine:
+            return ["help", "look", "inventory", "go north", "journal"]
+
+        in_combat = getattr(self.engine, "pending_combat", None) is not None
+        room_id = ""
+        try:
+            room_id = str(getattr(self.engine.player, "current_room", "") or "").lower()
+        except Exception:
+            room_id = ""
+
+        if in_combat:
+            return ["attack", "defend", "skill <name>", "use potion", "flee"]
+
+        if "home" in room_id:
+            return ["home use", "home inventory", "home upgrades", "place <item>", "leave"]
+
+        if "dungeon" in room_id:
+            return ["look", "search", "fight", "open chest", "go up"]
+
+        return ["look", "go <direction>", "inventory", "journal", "commands"]
+
+    def _refresh_command_helper(self, force=False):
+        if not hasattr(self, "command_helper_label"):
+            return
+        if not self._command_helper_enabled:
+            if force or self._last_command_helper_text:
+                self._last_command_helper_text = ""
+                self.command_helper_label.set_text("")
+            return
+
+        tips = self._command_helper_suggestions()
+        text = "Try: " + "  |  ".join(tips)
+        if force or text != self._last_command_helper_text:
+            self._last_command_helper_text = text
+            self.command_helper_label.set_text(text)
+
+    def _autocomplete_candidates(self, typed):
+        t = (typed or "").strip().lower()
+        if not t:
+            return []
+        seen = set()
+        out = []
+        for c in self._COMMAND_VOCAB:
+            cl = c.lower()
+            if cl.startswith(t) and cl not in seen:
+                out.append(c)
+                seen.add(cl)
+        if not out:
+            for c in self._COMMAND_VOCAB:
+                cl = c.lower()
+                if t in cl and cl not in seen:
+                    out.append(c)
+                    seen.add(cl)
+        return out[:5]
+
+    def _refresh_autocomplete_hint(self):
+        if not self.entry:
+            return
+        txt = self.entry.get_text()
+        if txt == self._last_entry_text:
+            return
+        self._last_entry_text = txt
+        candidates = self._autocomplete_candidates(txt)
+        self._autocomplete_hint = candidates[0] if candidates else ""
+
+    def _apply_autocomplete(self):
+        if not self.entry:
+            return False
+        txt = self.entry.get_text().strip()
+        if not txt:
+            return False
+        candidates = self._autocomplete_candidates(txt)
+        if not candidates:
+            return False
+        best = candidates[0]
+        self.entry.set_text(best + (" " if " " not in best else ""))
+        self._last_entry_text = self.entry.get_text()
+        self._autocomplete_hint = ""
+        return True
+
+    def _closest_command(self, typed):
+        t = (typed or "").strip().lower()
+        if not t:
+            return ""
+        best = difflib.get_close_matches(t, self._COMMAND_VOCAB, n=1, cutoff=0.55)
+        return best[0] if best else ""
 
     # ------------------------------------------------------------------
     #  STATS WINDOW

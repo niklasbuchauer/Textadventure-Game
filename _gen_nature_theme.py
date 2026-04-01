@@ -1,4 +1,7 @@
-{
+import json
+from pathlib import Path
+
+theme = {
     "defaults": {
         "colours": {
             "dark_bg": "#080a08",
@@ -55,25 +58,8 @@
             "normal_border": "#4a4338"
         },
         "font": {
-            "name": "Segoe UI Symbol",
+            "name": "Georgia",
             "size": "12"
-        },
-        "misc": {
-            "border_width": "1",
-            "shadow_width": "0"
-        }
-    },
-    "#settings_button": {
-        "colours": {
-            "normal_bg": "#14120f",
-            "hovered_bg": "#1c1915",
-            "normal_text": "#c4b896",
-            "hovered_text": "#ddd0a8",
-            "normal_border": "#4a4338"
-        },
-        "font": {
-            "name": "Segoe UI Symbol",
-            "size": "15"
         },
         "misc": {
             "border_width": "1",
@@ -90,41 +76,7 @@
             "normal_border": "#3e3a30"
         },
         "font": {
-            "name": "Segoe UI Symbol",
-            "size": "13"
-        },
-        "misc": {
-            "border_width": "1",
-            "shadow_width": "0"
-        }
-    },
-    "#hotbar_combat_button": {
-        "colours": {
-            "normal_bg": "#24130a",
-            "hovered_bg": "#3a2818",
-            "normal_text": "#e0826d",
-            "hovered_text": "#f0a080",
-            "normal_border": "#6a4a2a"
-        },
-        "font": {
-            "name": "Segoe UI Symbol",
-            "size": "13"
-        },
-        "misc": {
-            "border_width": "1",
-            "shadow_width": "0"
-        }
-    },
-    "#hotbar_dimmed_button": {
-        "colours": {
-            "normal_bg": "#0a0a08",
-            "hovered_bg": "#14120f",
-            "normal_text": "#6a6555",
-            "hovered_text": "#8a7a6a",
-            "normal_border": "#2a2620"
-        },
-        "font": {
-            "name": "Segoe UI Symbol",
+            "name": "Georgia",
             "size": "13"
         },
         "misc": {
@@ -153,7 +105,7 @@
             "normal_border": "#4a4338"
         },
         "font": {
-            "name": "Segoe UI Symbol",
+            "name": "Georgia",
             "size": "12"
         },
         "misc": {
@@ -255,143 +207,57 @@
             "shadow_width": "0"
         }
     },
-    "label": {
+    "scroll_bar": {
         "colours": {
-            "dark_bg": "#00000000",
-            "normal_bg": "#00000000",
-            "normal_text": "#d8d0a0"
-        },
-        "font": {
-            "name": "Georgia",
-            "size": "14"
-        },
-        "misc": {
-            "shadow_width": "0"
-        }
-    },
-    "#status_label": {
-        "colours": {
-            "normal_text": "#8b7d6a",
-            "dark_bg": "#00000000",
-            "normal_bg": "#00000000"
-        },
-        "font": {
-            "name": "Georgia",
-            "size": "12"
-        }
-    },
-    "#combat_player_label": {
-        "colours": {
-            "normal_text": "#8ac07a",
-            "dark_bg": "#00000000",
-            "normal_bg": "#00000000"
-        },
-        "font": {
-            "name": "Georgia",
-            "size": "13",
-            "bold": "1"
-        }
-    },
-    "#combat_enemy_label": {
-        "colours": {
-            "normal_text": "#e0826d",
-            "dark_bg": "#00000000",
-            "normal_bg": "#00000000"
-        },
-        "font": {
-            "name": "Georgia",
-            "size": "13",
-            "bold": "1"
-        }
-    },
-    "#hotbar_label": {
-        "colours": {
-            "normal_text": "#9a8b68",
-            "dark_bg": "#00000000",
-            "normal_bg": "#00000000"
-        },
-        "font": {
-            "name": "Georgia",
-            "size": "12",
-            "bold": "1"
-        }
-    },
-    "horizontal_slider": {
-        "colours": {
-            "dark_bg": "#0a0a08",
-            "normal_bg": "#1c1915",
-            "hovered_bg": "#24221c",
-            "selected_bg": "#2c2923",
-            "normal_text": "#d8d0a0",
-            "normal_border": "#4a4338"
-        }
-    },
-    "drop_down_menu": {
-        "colours": {
-            "dark_bg": "#0a0a08",
-            "normal_bg": "#14120f",
-            "hovered_bg": "#1c1915",
-            "selected_bg": "#24221c",
-            "normal_text": "#d8d0a0",
-            "hovered_text": "#e8dbb0",
-            "normal_border": "#4a4338"
-        },
-        "font": {
-            "name": "Georgia",
-            "size": "14"
-        }
-    },
-    "panel": {
-        "colours": {
-            "dark_bg": "#0d0d0a",
-            "normal_bg": "#0d0d0a",
-            "normal_border": "#2d2a25"
+            "normal_bg": "#0f0d0a",
+            "hovered_bg": "#14120f",
+            "normal_border": "#3d3a2f"
         },
         "misc": {
             "border_width": "1",
             "shadow_width": "0"
         }
     },
-    "scroll_bar": {
-        "colours": {
-            "dark_bg": "#080a08",
-            "normal_bg": "#1c1915",
-            "hovered_bg": "#24221c",
-            "selected_bg": "#2c2923",
-            "normal_border": "#2d2a25"
-        }
-    },
-    "scroll_bar.button": {
-        "colours": {
-            "normal_bg": "#1c1915",
-            "hovered_bg": "#24221c",
-            "normal_text": "#9a8b68",
-            "hovered_text": "#b5a86a"
-        },
-        "misc": {
-            "border_width": "0",
-            "shadow_width": "0"
-        }
-    },
     "horizontal_scroll_bar": {
         "colours": {
-            "dark_bg": "#080a08",
-            "normal_bg": "#1c1915",
-            "hovered_bg": "#24221c",
-            "selected_bg": "#2c2923",
-            "normal_border": "#2d2a25"
-        }
-    },
-    "horizontal_scroll_bar.button": {
-        "colours": {
-            "normal_bg": "#1c1915",
-            "hovered_bg": "#24221c",
-            "normal_text": "#9a8b68",
-            "hovered_text": "#b5a86a"
+            "normal_bg": "#0f0d0a",
+            "hovered_bg": "#14120f",
+            "normal_border": "#3d3a2f"
         },
         "misc": {
-            "border_width": "0",
+            "border_width": "1",
             "shadow_width": "0"
+        }
+    },
+    "drop_down_menu": {
+        "colours": {
+            "normal_bg": "#14120f",
+            "hovered_bg": "#1c1915",
+            "selected_bg": "#24221c",
+            "normal_text": "#c4b896",
+            "hovered_text": "#ddd0a8",
+            "normal_border": "#4a4338"
+        },
+        "font": {
+            "name": "Georgia",
+            "size": "13"
+        },
+        "misc": {
+            "border_width": "1",
+            "shadow_width": "0"
+        }
+    },
+    "label": {
+        "colours": {
+            "normal_text": "#d8d0a0",
+            "normal_bg": "#0d0d0a"
+        },
+        "font": {
+            "name": "Georgia",
+            "size": "14"
         }
     }
 }
+
+Path("pygame_theme.json").write_text(json.dumps(theme, indent=4), encoding="utf-8")
+print("Nature medieval theme generated")

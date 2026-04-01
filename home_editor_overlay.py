@@ -3,6 +3,8 @@
 import pygame
 import random
 
+from ui_animation import UI_CLOSE_DUR, UI_OPEN_DUR, ease_out_cubic
+
 from home_items import HOME_ITEMS
 from home_system import (
     ensure_player_home_state,
@@ -67,8 +69,8 @@ def _font_pick(size, bold=False):
 
 
 class HomeEditorOverlay:
-    OPEN_DUR = 0.24
-    CLOSE_DUR = 0.2
+    OPEN_DUR = UI_OPEN_DUR
+    CLOSE_DUR = UI_CLOSE_DUR
 
     COLOR_PRESETS = [None, "#d46a6a", "#6ad49a", "#6aa8d4", "#d4b66a", "#c17ad4"]
     SKIN_PRESETS = ["default", "oak", "stone", "iron", "arcane"]
@@ -102,6 +104,8 @@ class HomeEditorOverlay:
 
         self._close_rect = pygame.Rect(0, 0, 1, 1)
         self._book_rect = pygame.Rect(0, 0, 1, 1)
+        self._panel_cache_size = (0, 0)
+        self._panel_cache_surface = None
 
     def is_open(self):
         return self._alive
@@ -420,29 +424,7 @@ class HomeEditorOverlay:
         else:
             self._anim = min(1.0, self._anim + speed)
 
-    def _draw_text(self, surf, text, x, y, size=16, color=INK, bold=False):
-        fs = self._f(size, bold=bold)
-        surf.blit(fs.render(str(text), True, color), (x, y))
-
-    def draw(self, surface):
-        if self._anim <= 0.0:
-            return
-
-        w, h = surface.get_size()
-        dim = pygame.Surface((w, h), pygame.SRCALPHA)
-        dim.fill((*BG, int(170 * self._anim)))
-        surface.blit(dim, (0, 0))
-
-        bw = int(w * 0.92)
-        bh = int(h * 0.88)
-        bx = (w - bw) // 2
-        by = (h - bh) // 2
-        self._book_rect = pygame.Rect(bx, by, bw, bh)
-
-        shadow = pygame.Surface((bw + 28, bh + 28), pygame.SRCALPHA)
-        pygame.draw.rect(shadow, (0, 0, 0, 82), pygame.Rect(14, 14, bw, bh), border_radius=10)
-        surface.blit(shadow, (bx - 14, by - 14))
-
+    def _build_panel_base(self, bw, bh):
         panel = pygame.Surface((bw, bh), pygame.SRCALPHA)
         mid_x = bw // 2
         pygame.draw.rect(panel, C_PARCHMENT, pygame.Rect(0, 0, mid_x + 2, bh), border_radius=8)
@@ -467,6 +449,37 @@ class HomeEditorOverlay:
         pygame.draw.rect(panel, C_COVER, panel.get_rect(), 3, border_radius=8)
         pygame.draw.line(panel, C_DIVIDER, (0, 60), (bw, 60), 1)
         pygame.draw.line(panel, C_DIVIDER, (0, bh - 46), (bw, bh - 46), 1)
+        return panel
+
+    def _draw_text(self, surf, text, x, y, size=16, color=INK, bold=False):
+        fs = self._f(size, bold=bold)
+        surf.blit(fs.render(str(text), True, color), (x, y))
+
+    def draw(self, surface):
+        if self._anim <= 0.0:
+            return
+
+        eased = ease_out_cubic(self._anim)
+        w, h = surface.get_size()
+        dim = pygame.Surface((w, h), pygame.SRCALPHA)
+        dim.fill((*BG, int(170 * eased)))
+        surface.blit(dim, (0, 0))
+
+        scale = 0.92 + (0.08 * eased)
+        bw = int(w * 0.92 * scale)
+        bh = int(h * 0.88 * scale)
+        bx = (w - bw) // 2
+        by = (h - bh) // 2
+        self._book_rect = pygame.Rect(bx, by, bw, bh)
+
+        shadow = pygame.Surface((bw + 28, bh + 28), pygame.SRCALPHA)
+        pygame.draw.rect(shadow, (0, 0, 0, 82), pygame.Rect(14, 14, bw, bh), border_radius=10)
+        surface.blit(shadow, (bx - 14, by - 14))
+
+        if self._panel_cache_surface is None or self._panel_cache_size != (bw, bh):
+            self._panel_cache_surface = self._build_panel_base(bw, bh)
+            self._panel_cache_size = (bw, bh)
+        panel = self._panel_cache_surface.copy()
 
         left_w = int(bw * 0.30)
         center_w = int(bw * 0.40)

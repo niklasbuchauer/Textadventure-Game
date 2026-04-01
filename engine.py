@@ -340,18 +340,18 @@ CONFIG_FILE = os.path.join(os.path.dirname(__file__), "config.json")
 CONFIG_DEFAULTS = {
     "visual": {
         "colors": {
-            "combat":   "#FF6B6B",
-            "item":     "#98FB98",
-            "dialogue": "#87CEEB",
-            "status":   "#87CEFA",
-            "warning":  "#FFD700",
-            "system":   "#DA70D6",
-            "command":  "#AAAAAA",
-            "default":  "#DCDCDC",
+            "combat":   "#E0826D",
+            "item":     "#8AC07A",
+            "dialogue": "#50C8A0",
+            "status":   "#8B7D9A",
+            "warning":  "#B5A86A",
+            "system":   "#8AC07A",
+            "command":  "#9A8B68",
+            "default":  "#D8D0A0",
         },
-        "bg_color":    "#1e1e1e",
-        "fg_color":    "#dcdcdc",
-        "font_family": "Courier New",
+        "bg_color":    "#0d0d0a",
+        "fg_color":    "#d8d0a0",
+        "font_family": "Georgia",
 		"font_size":   10,
     },
     "gameplay": {
@@ -367,6 +367,7 @@ CONFIG_DEFAULTS = {
     },
     "ui": {
         "timestamps":   False,
+		"command_helper": True,
         "max_messages": 50,
         "layout":       "side_by_side",
         "panels": {

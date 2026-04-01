@@ -14,6 +14,14 @@ import pygame
 import math
 import random
 
+from ui_animation import (
+    UI_CLOSE_DUR,
+    UI_CONTENT_DUR,
+    UI_OPEN_DUR,
+    ease_in_out_cubic,
+    ease_out_cubic,
+)
+
 # ── Palette (matches journal_window.py) ──────────────────────────────────────
 C_PARCHMENT   = (238, 220, 178)
 C_PARCHMENT_L = (248, 234, 196)
@@ -37,12 +45,11 @@ C_GREEN       = ( 45, 110,  45)
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _ease_out(t):
-    t = max(0.0, min(1.0, t))
-    return 1.0 - (1.0 - t) ** 3
+    return ease_out_cubic(t)
+
 
 def _ease_io(t):
-    t = max(0.0, min(1.0, t))
-    return 4 * t**3 if t < 0.5 else 1.0 - (-2*t+2)**3 / 2
+    return ease_in_out_cubic(t)
 
 def _blend(col, bg, a):
     a = max(0.0, min(1.0, a))
@@ -73,9 +80,9 @@ def _font(size, bold=False):
 #  BASE BOOK OVERLAY
 # ═══════════════════════════════════════════════════════════════════════════
 class BookOverlay:
-    OPEN_DUR    = 0.36
-    CLOSE_DUR   = 0.24
-    CONTENT_DUR = 0.28
+    OPEN_DUR    = UI_OPEN_DUR
+    CLOSE_DUR   = UI_CLOSE_DUR
+    CONTENT_DUR = UI_CONTENT_DUR
     TURN_DUR    = 0.20
     _SPOT_SEED  = 4217
 
@@ -98,6 +105,8 @@ class BookOverlay:
         self._close_rect  = pygame.Rect(0,0,1,1)
         self._scale_factor = 1.0  # Track animation scale for button collision detection
         self._draw_origin = (0, 0)
+        self._book_bg_cache_size = (0, 0)
+        self._book_bg_cache = None
 
     # ── Public ───────────────────────────────────────────────────────────────
 
@@ -204,6 +213,42 @@ class BookOverlay:
         self._turn_t = 0.0
         self._cfade  = max(0.15, self._cfade - 0.25)
 
+    def _get_book_bg_layer(self, BW, BH):
+        if self._book_bg_cache is not None and self._book_bg_cache_size == (BW, BH):
+            return self._book_bg_cache
+
+        layer = pygame.Surface((BW, BH), pygame.SRCALPHA)
+        MID = BW // 2
+
+        # pages
+        pygame.draw.rect(layer, C_PARCHMENT, pygame.Rect(0, 0, BW // 2 + 3, BH), border_radius=8)
+        pygame.draw.rect(layer, C_PARCHMENT_L, pygame.Rect(MID - 2, 0, BW // 2 + 2, BH), border_radius=8)
+
+        # age spots
+        rng = random.Random(self._SPOT_SEED)
+        sp = pygame.Surface((BW, BH), pygame.SRCALPHA)
+        for _ in range(120):
+            sx2 = rng.randint(6, BW - 6)
+            sy2 = rng.randint(6, BH - 6)
+            r2 = rng.randint(2, 6)
+            a2 = rng.randint(8, 26)
+            pygame.draw.circle(sp, (90, 60, 22, a2), (sx2, sy2), r2)
+        layer.blit(sp, (0, 0))
+
+        # spine
+        pygame.draw.rect(layer, C_LEATHER, pygame.Rect(MID - 11, 0, 22, BH))
+        pygame.draw.rect(layer, C_COVER, pygame.Rect(MID - 4, 0, 4, BH))
+        for i in range(1, 7):
+            ly = int(BH * i / 7)
+            pygame.draw.rect(layer, C_SPINE_LINE, pygame.Rect(MID - 11, ly - 2, 22, 4), border_radius=1)
+
+        # border
+        pygame.draw.rect(layer, C_COVER, pygame.Rect(0, 0, BW, BH), width=3, border_radius=8)
+
+        self._book_bg_cache = layer
+        self._book_bg_cache_size = (BW, BH)
+        return layer
+
     def _draw_book(self, surf, BW, BH, ox, oy):
         self._draw_origin = (ox, oy)
         MID = ox + BW//2
@@ -212,25 +257,8 @@ class BookOverlay:
         sh = pygame.Surface((BW+28,BH+28), pygame.SRCALPHA)
         pygame.draw.rect(sh,(0,0,0,80),pygame.Rect(16,16,BW,BH),border_radius=10)
         surf.blit(sh,(ox-14,oy-14))
-        # pages
-        pygame.draw.rect(surf, C_PARCHMENT,   pygame.Rect(ox,oy,BW//2+3,BH), border_radius=8)
-        pygame.draw.rect(surf, C_PARCHMENT_L, pygame.Rect(MID-2,oy,BW//2+2,BH), border_radius=8)
-        # age spots
-        rng = random.Random(self._SPOT_SEED)
-        sp = pygame.Surface((BW,BH), pygame.SRCALPHA)
-        for _ in range(120):
-            sx2=rng.randint(6,BW-6); sy2=rng.randint(6,BH-6)
-            r2=rng.randint(2,6); a2=rng.randint(8,26)
-            pygame.draw.circle(sp,(90,60,22,a2),(sx2,sy2),r2)
-        surf.blit(sp,(ox,oy))
-        # spine
-        pygame.draw.rect(surf, C_LEATHER, pygame.Rect(MID-11,oy,22,BH))
-        pygame.draw.rect(surf, C_COVER,   pygame.Rect(MID-4,oy,4,BH))
-        for i in range(1,7):
-            ly=oy+int(BH*i/7)
-            pygame.draw.rect(surf,C_SPINE_LINE,pygame.Rect(MID-11,ly-2,22,4),border_radius=1)
-        # outer border
-        pygame.draw.rect(surf,C_COVER,pygame.Rect(ox,oy,BW,BH),width=3,border_radius=8)
+        # cached static book background
+        surf.blit(self._get_book_bg_layer(BW, BH), (ox, oy))
         # inner frames
         pad=16
         lf=pygame.Rect(ox+pad,oy+pad,BW//2-pad-14,BH-pad*2)
@@ -1858,7 +1886,7 @@ _CFG_DEFAULTS = {
                       "difficulty_modifier": 1.0},
     "accessibility": {"high_contrast": False, "text_size": 13},
     "ui":            {"layout": "side_by_side", "timestamps": False,
-                      "max_messages": 200},
+                      "command_helper": True, "max_messages": 200},
 }
 
 _COMBAT_SPEEDS = ["slow", "normal", "fast"]
@@ -1979,6 +2007,8 @@ class SettingsOverlay(BookOverlay):
                                        max(8, self._w("accessibility","text_size",default=13)-1)),
             "timestamps_toggle":   lambda: self._wset("ui","timestamps",
                                        not self._w("ui","timestamps",default=False)),
+            "command_helper_toggle": lambda: self._wset("ui","command_helper",
+                                       not self._w("ui","command_helper",default=True)),
             "hc_toggle":           lambda: self._wset("accessibility","high_contrast",
                                        not self._w("accessibility","high_contrast",default=False)),
             "maxmsg_dec":          lambda: self._wset("ui","max_messages",
@@ -2144,6 +2174,9 @@ class SettingsOverlay(BookOverlay):
         ts = self._w("ui", "timestamps", default=False)
         y  = self._row_toggle(surf, frame, y, "Show Timestamps", ts,
                                "timestamps_toggle", cf)
+        ch = self._w("ui", "command_helper", default=True)
+        y  = self._row_toggle(surf, frame, y, "Command Helper", ch,
+                       "command_helper_toggle", cf)
         hc = self._w("accessibility", "high_contrast", default=False)
         y  = self._row_toggle(surf, frame, y, "High Contrast", hc,
                                "hc_toggle", cf)

@@ -13,6 +13,8 @@ import pygame
 import math
 import random
 
+from ui_animation import UI_CLOSE_DUR, UI_CONTENT_DUR, UI_OPEN_DUR, ease_out_cubic
+
 # ── Shared colour palette (mirrors journal_window.py) ────────────────────────
 C_PARCHMENT    = (238, 220, 178)
 C_PARCHMENT_L  = (248, 234, 196)
@@ -54,10 +56,6 @@ CATEGORY_ORDER = [c[0] for c in CATEGORIES]
 
 
 # ── Easing helpers ────────────────────────────────────────────────────
-def _ease_out_cubic(t):
-    t = max(0.0, min(1.0, t))
-    return 1.0 - (1.0 - t) ** 3
-
 def _blend(col, bg, alpha):
     a = max(0.0, min(1.0, alpha))
     return tuple(int(c * a + b * (1 - a)) for c, b in zip(col[:3], bg[:3]))
@@ -136,9 +134,9 @@ class BestiaryOverlay:
     Left page: search + creature list.  Right page: selected creature detail.
     """
 
-    OPEN_DUR    = 0.38
-    CLOSE_DUR   = 0.26
-    CONTENT_DUR = 0.30
+    OPEN_DUR    = UI_OPEN_DUR
+    CLOSE_DUR   = UI_CLOSE_DUR
+    CONTENT_DUR = UI_CONTENT_DUR
     _SPOTS_SEED = 5519
 
     def __init__(self, gui):
@@ -166,6 +164,8 @@ class BestiaryOverlay:
         self._dst_y = 0
 
         self._fcache: dict = {}
+        self._book_bg_cache_size = (0, 0)
+        self._book_bg_cache = None
         self._load_data()
 
     # ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -311,7 +311,7 @@ class BestiaryOverlay:
     def draw(self, surface):
         if not self._alive:
             return
-        scale = _ease_out_cubic(self._anim)
+        scale = ease_out_cubic(self._anim)
         if scale < 0.02:
             return
 
@@ -360,6 +360,36 @@ class BestiaryOverlay:
 
     # ── Core book draw ─────────────────────────────────────────────────────────
 
+    def _get_book_bg_layer(self, BW, BH):
+        if self._book_bg_cache is not None and self._book_bg_cache_size == (BW, BH):
+            return self._book_bg_cache
+
+        layer = pygame.Surface((BW, BH), pygame.SRCALPHA)
+        MID = BW // 2
+
+        pygame.draw.rect(layer, C_PARCHMENT, pygame.Rect(0, 0, BW // 2 + 3, BH), border_radius=8)
+        pygame.draw.rect(layer, C_PARCHMENT_L, pygame.Rect(MID - 2, 0, BW // 2 + 2, BH), border_radius=8)
+
+        rng = random.Random(self._SPOTS_SEED)
+        spot_s = pygame.Surface((BW, BH), pygame.SRCALPHA)
+        for _ in range(130):
+            pygame.draw.circle(spot_s, (90, 60, 22, rng.randint(10, 30)),
+                               (rng.randint(6, BW - 6), rng.randint(6, BH - 6)),
+                               rng.randint(2, 7))
+        layer.blit(spot_s, (0, 0))
+
+        pygame.draw.rect(layer, C_LEATHER, pygame.Rect(MID - 11, 0, 22, BH))
+        pygame.draw.rect(layer, C_COVER, pygame.Rect(MID - 4, 0, 4, BH))
+        for i in range(1, 7):
+            ly = int(BH * i / 7)
+            pygame.draw.rect(layer, C_SPINE_LINE, pygame.Rect(MID - 11, ly - 2, 22, 4), border_radius=1)
+
+        pygame.draw.rect(layer, C_COVER, pygame.Rect(0, 0, BW, BH), width=3, border_radius=8)
+
+        self._book_bg_cache = layer
+        self._book_bg_cache_size = (BW, BH)
+        return layer
+
     def _draw_book(self, surf, BW, BH):
         MID = BW // 2
         cf  = self._cfade
@@ -368,24 +398,7 @@ class BestiaryOverlay:
         pygame.draw.rect(sh_s, (0, 0, 0, 85), pygame.Rect(16, 16, BW, BH), border_radius=10)
         surf.blit(sh_s, (-14, -14))
 
-        pygame.draw.rect(surf, C_PARCHMENT,   pygame.Rect(0,       0, BW // 2 + 3, BH), border_radius=8)
-        pygame.draw.rect(surf, C_PARCHMENT_L, pygame.Rect(MID - 2, 0, BW // 2 + 2, BH), border_radius=8)
-
-        rng = random.Random(self._SPOTS_SEED)
-        spot_s = pygame.Surface((BW, BH), pygame.SRCALPHA)
-        for _ in range(130):
-            pygame.draw.circle(spot_s, (90, 60, 22, rng.randint(10, 30)),
-                               (rng.randint(6, BW - 6), rng.randint(6, BH - 6)),
-                               rng.randint(2, 7))
-        surf.blit(spot_s, (0, 0))
-
-        pygame.draw.rect(surf, C_LEATHER, pygame.Rect(MID - 11, 0, 22, BH))
-        pygame.draw.rect(surf, C_COVER,   pygame.Rect(MID - 4,  0,  4, BH))
-        for i in range(1, 7):
-            ly = int(BH * i / 7)
-            pygame.draw.rect(surf, C_SPINE_LINE, pygame.Rect(MID - 11, ly - 2, 22, 4), border_radius=1)
-
-        pygame.draw.rect(surf, C_COVER, pygame.Rect(0, 0, BW, BH), width=3, border_radius=8)
+        surf.blit(self._get_book_bg_layer(BW, BH), (0, 0))
 
         pad = 16
         lf = pygame.Rect(pad,      pad, BW // 2 - pad - 14, BH - pad * 2)

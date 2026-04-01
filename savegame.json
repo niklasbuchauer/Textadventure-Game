@@ -1,7 +1,7 @@
 {
   "save_version": 5,
   "player": {
-    "current_room": "forest_pool",
+    "current_room": "dungeon_forest_entrance",
     "inventory": {
       "prayer_candle": 1,
       "iron_dagger": 7,
@@ -21,7 +21,8 @@
       "altar_of_knowledge": 4,
       "potent_mana_potion": 5,
       "slag": 5,
-      "spider_silk": 1
+      "spider_silk": 1,
+      "raw_meat": 1
     },
     "state": {
       "unlocked_skills": [
@@ -99,8 +100,9 @@
         "w_glad_might"
       ],
       "cooldowns": {
-        "w_arc_multishot": 2,
-        "w_wm_power_strike": 3
+        "w_wm_power_strike": 1,
+        "w_arc_power_shot": 2,
+        "w_arc_multishot": 5
       },
       "active_effects": {},
       "equipment": {
@@ -128,10 +130,10 @@
         "flawless_victory"
       ],
       "achievement_tracking": {
-        "kills": 2,
-        "total_gold": 7,
+        "kills": 4,
+        "total_gold": 21,
         "easter_eggs_found": 1,
-        "flawless_wins": 1
+        "flawless_wins": 3
       },
       "_synergy_bonuses": {
         "attack": 64,
@@ -617,7 +619,7 @@
       "artifact_slot": null,
       "faction_membership": "iron_brotherhood",
       "faction_xp": {
-        "iron_brotherhood": 3
+        "iron_brotherhood": 9
       },
       "faction_rank": {
         "iron_brotherhood": 0
@@ -625,7 +627,7 @@
       "pets": {
         "spirit_wolf": {
           "level": 8,
-          "xp": 51
+          "xp": 61
         },
         "ember_fox": {
           "level": 4,
@@ -648,12 +650,12 @@
       "pet_temporary_buffs": {}
     },
     "stats": {
-      "gold": 2171,
+      "gold": 2184,
       "health": 345,
       "health_max": 345,
       "level": 13,
-      "xp": 5478,
-      "xp_to_next": 422,
+      "xp": 5525,
+      "xp_to_next": 175,
       "skill_points": 0,
       "class": "warrior",
       "strength": 42,
@@ -662,7 +664,7 @@
       "perception": 36,
       "charisma": 5,
       "constitution": 32,
-      "mana": 80,
+      "mana": 48,
       "max_mana": 100,
       "mana_regen_bonus": 0.01,
       "attack": 70,
@@ -670,33 +672,35 @@
       "prestige_xp_multiplier": 1.0
     },
     "visited_rooms": [
-      "smugglers_cove",
-      "desert_dunes_west",
-      "farmland_east",
-      "village_south_road",
-      "grand_harbor_road",
-      "desert_border",
-      "sunken_ruins",
-      "reef_shallows",
-      "forest_pool",
       "grand_harbor_gate",
+      "harbor_south_pier",
+      "dusty_crossroads",
       "chapel",
+      "grand_harbor_road",
+      "forest_pool",
+      "sandy_beach",
+      "village_square",
+      "desert_dunes_west",
       "forest_swamp_border",
       "crossroads",
-      "stormbreak_docks",
-      "coastal_cliffs",
-      "coastal_road_north",
-      "harbor_south_pier",
-      "grand_harbor_square",
-      "player_home",
-      "harbor_east_dock",
-      "dusty_crossroads",
-      "village_square",
-      "farmland_center",
-      "village_west_end",
+      "farmland_west",
       "village_east_end",
-      "sandy_beach",
-      "farmland_west"
+      "coastal_cliffs",
+      "village_west_end",
+      "stormbreak_docks",
+      "desert_border",
+      "village_south_road",
+      "farmland_east",
+      "deep_forest",
+      "player_home",
+      "coastal_road_north",
+      "grand_harbor_square",
+      "smugglers_cove",
+      "dungeon_forest_entrance",
+      "sunken_ruins",
+      "harbor_east_dock",
+      "farmland_center",
+      "reef_shallows"
     ],
     "unlocked_islands": [
       "stormbreak_island"
@@ -8044,45 +8048,11 @@
   },
   "overworld_encounters": {
     "recent_rooms": [
-      "dusty_crossroads",
-      "forest_swamp_border",
-      "forest_pool"
+      "forest_pool",
+      "deep_forest",
+      "dungeon_forest_entrance"
     ],
     "visible_enemies": {
-      "dungeon_forest_entrance": {
-        "enemy_id": "wild_boar",
-        "enemy_data": {
-          "name": "Wild Boar",
-          "description": "A stocky boar with sharp tusks and a foul temper.",
-          "hp": 28,
-          "attack": 5,
-          "defense": 3,
-          "xp_reward": 14,
-          "gold_reward": [
-            3,
-            7
-          ],
-          "loot": [
-            [
-              "raw_meat",
-              0.5
-            ],
-            [
-              "boar_tusk",
-              0.2
-            ],
-            [
-              "leather_scrap",
-              0.25
-            ]
-          ],
-          "abilities": [
-            "charge",
-            "gore"
-          ],
-          "id": "wild_boar"
-        }
-      },
       "sandy_beach": {
         "enemy_id": "pirate_raider",
         "enemy_data": {
@@ -8149,33 +8119,33 @@
       }
     },
     "rooms_rolled": [
-      "deep_forest",
-      "smugglers_cove",
-      "desert_dunes_west",
-      "farmland_east",
-      "canyon_entrance",
-      "desert_border",
-      "meteor_crater",
-      "village_road",
-      "desert_cliffs",
-      "reef_shallows",
-      "forest_pool",
-      "forest_swamp_border",
-      "farmland",
-      "crossroads",
-      "coastal_cliffs",
-      "mesa_base",
-      "coastal_road_north",
-      "graveyard",
-      "forest_path",
-      "graveyard_gates",
-      "mesa_top",
-      "scorpion_flats",
       "dusty_crossroads",
-      "farmland_center",
+      "farmland",
+      "forest_pool",
+      "desert_cliffs",
+      "mesa_base",
       "sandy_beach",
+      "desert_dunes_west",
+      "scorpion_flats",
+      "mesa_top",
+      "forest_swamp_border",
+      "meteor_crater",
+      "crossroads",
       "farmland_west",
-      "dungeon_forest_entrance"
+      "canyon_entrance",
+      "graveyard",
+      "coastal_cliffs",
+      "desert_border",
+      "farmland_east",
+      "graveyard_gates",
+      "deep_forest",
+      "coastal_road_north",
+      "forest_path",
+      "village_road",
+      "smugglers_cove",
+      "dungeon_forest_entrance",
+      "farmland_center",
+      "reef_shallows"
     ]
   },
   "fishing": {
@@ -8207,8 +8177,8 @@
   "dungeon_scheduler": {
     "debug_force_open": [
       "crystal_caverns",
-      "iron_halls",
-      "sunken_catacombs"
+      "sunken_catacombs",
+      "iron_halls"
     ]
   }
 }

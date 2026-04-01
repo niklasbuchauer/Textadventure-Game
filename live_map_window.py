@@ -15,6 +15,8 @@ from pygame_gui.elements import (
     UIButton, UILabel, UIWindow, UIImage,
 )
 
+from ui_animation import UI_OPEN_DUR, ease_out_cubic
+
 try:
     from home_system import is_home_room, get_unlocked_tiles
     from home_items import get_home_item
@@ -113,6 +115,7 @@ class LiveMapWindow:
     ZOOM_MIN = 0.05
     ZOOM_MAX = 0.69
     ZOOM_STEP = 0.15
+    OPEN_DUR = UI_OPEN_DUR
 
     # ── construction ────────────────────────────────────────────────
     def __init__(self, app, rooms_data, game_engine=None):
@@ -190,6 +193,8 @@ class LiveMapWindow:
         self._font_icon = None
         self._font_legend = None
         self._font_header = None
+        self._open_started_ms = 0
+        self._open_t = 1.0
 
     def _init_fonts(self):
         if self._font_label is not None:
@@ -278,6 +283,9 @@ class LiveMapWindow:
             text="", manager=self.manager, container=self.window,
         )
 
+        self._open_started_ms = pygame.time.get_ticks()
+        self._open_t = 0.0
+
         self._needs_redraw = True
         self.redraw_map()
 
@@ -299,10 +307,32 @@ class LiveMapWindow:
         if not self._map_image or not self._map_image.alive():
             return
         rect = self._map_image.get_abs_rect()
-        screen.blit(self._map_surface, rect.topleft)
+        if self._open_t >= 0.999:
+            screen.blit(self._map_surface, rect.topleft)
+            return
+
+        eased = ease_out_cubic(self._open_t)
+        scale = 0.90 + (0.10 * eased)
+        tw = max(2, int(rect.width * scale))
+        th = max(2, int(rect.height * scale))
+        tx = rect.x + (rect.width - tw) // 2
+        ty = rect.y + (rect.height - th) // 2
+
+        scaled = pygame.transform.smoothscale(self._map_surface, (tw, th))
+        if eased < 0.999:
+            scaled = scaled.copy()
+            scaled.set_alpha(int(255 * eased))
+        screen.blit(scaled, (tx, ty))
+
+    def _tick_open_animation(self):
+        if not self.is_open() or self._open_t >= 1.0:
+            return
+        elapsed = (pygame.time.get_ticks() - self._open_started_ms) / 1000.0
+        self._open_t = min(1.0, elapsed / self.OPEN_DUR)
 
     def tick(self):
         """Called once per game-frame to perform any deferred redraw."""
+        self._tick_open_animation()
         if self.is_open() and self._needs_redraw:
             self.redraw_map()
 

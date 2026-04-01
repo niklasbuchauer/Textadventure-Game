@@ -25,11 +25,25 @@ BG = (24, 24, 28)
 
 
 # =====================================================================
+# ANIMATION HELPERS
+# =====================================================================
+
+def _ease_out_cubic(t):
+    """Ease-out cubic easing function."""
+    t = max(0.0, min(1.0, t))
+    return 1.0 - (1.0 - t) ** 3
+
+
+# =====================================================================
 # TINY MODAL HELPERS (message / confirm / input)
 # =====================================================================
 
 class _ModalBase:
-    """Base for small modal dialog overlays."""
+    """Base for small modal dialog overlays with popup animation."""
+    
+    OPEN_DUR = 0.25  # seconds to fully open
+    CLOSE_DUR = 0.15  # seconds to fully close
+    
     def __init__(self, manager, title, w=380, h=160):
         sw, sh = pygame.display.get_surface().get_size()
         self.window = UIWindow(
@@ -39,6 +53,44 @@ class _ModalBase:
         self.manager = manager
         self.result = None
         self.done = False
+        
+        # Animation state
+        self._anim = 0.0  # 0 = fully closed, 1 = fully open
+        self._closing = False
+        self._orig_rect = self.window.rect.copy()
+        
+        # Initial state - appear from center scaled down
+        self.window.visible = True
+
+    def update(self, dt):
+        """Update animation state. Call from main loop."""
+        if self._closing:
+            self._anim = max(0.0, self._anim - dt / self.CLOSE_DUR)
+            if self._anim <= 0.0:
+                self.kill()
+        else:
+            self._anim = min(1.0, self._anim + dt / self.OPEN_DUR)
+        
+        # Apply animation scale and position
+        ease = _ease_out_cubic(self._anim)
+        scale = 0.8 + (ease * 0.2)  # Scale from 80% to 100%
+        
+        # Update window position and size with animation
+        orig_w, orig_h = self._orig_rect.width, self._orig_rect.height
+        new_w = int(orig_w * scale)
+        new_h = int(orig_h * scale)
+        new_x = self._orig_rect.x + (orig_w - new_w) // 2
+        new_y = self._orig_rect.y + (orig_h - new_h) // 2
+        
+        self.window.rect = pygame.Rect(new_x, new_y, new_w, new_h)
+        
+        # Fade opacity
+        alpha = int(255 * ease)
+        self.window.ui_container.visual_depth = alpha / 255.0  # Some containers support this
+
+    def close(self):
+        """Trigger closing animation."""
+        self._closing = True
 
     def kill(self):
         if self.window and self.window.alive():
@@ -60,7 +112,7 @@ class MsgBox(_ModalBase):
     def handle_event(self, ev):
         if ev.type == pygame_gui.UI_BUTTON_PRESSED and ev.ui_element == self._ok:
             self.done = True
-            self.kill()
+            self.close()
 
 
 class ConfirmBox(_ModalBase):
@@ -84,11 +136,11 @@ class ConfirmBox(_ModalBase):
             if ev.ui_element == self._yes:
                 self.result = True
                 self.done = True
-                self.kill()
+                self.close()
             elif ev.ui_element == self._no:
                 self.result = False
                 self.done = True
-                self.kill()
+                self.close()
 
 
 class InputBox(_ModalBase):
@@ -118,16 +170,16 @@ class InputBox(_ModalBase):
             if ev.ui_element == self._ok:
                 self.result = self._entry.get_text()
                 self.done = True
-                self.kill()
+                self.close()
             elif ev.ui_element == self._cancel:
                 self.result = None
                 self.done = True
-                self.kill()
+                self.close()
         if ev.type == pygame_gui.UI_TEXT_ENTRY_FINISHED:
             if ev.ui_element == self._entry:
                 self.result = self._entry.get_text()
                 self.done = True
-                self.kill()
+                self.close()
 
 
 # =====================================================================
@@ -1099,6 +1151,11 @@ class WorldEditor:
                 self.handle_event(event)
 
             self.manager.update(dt)
+            
+            # Update modal animation
+            if self._modal:
+                self._modal.update(dt)
+
             self.screen.fill(BG)
             self.manager.draw_ui(self.screen)
             pygame.display.flip()

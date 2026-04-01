@@ -12,6 +12,8 @@ from pygame_gui.elements import (
 )
 from pygame_gui.core import ObjectID
 
+from ui_animation import UI_OPEN_DUR, ease_out_cubic
+
 
 class SettingsWindow:
     """
@@ -24,6 +26,7 @@ class SettingsWindow:
     """
 
     TAB_NAMES = ["Visual", "Gameplay", "Accessibility", "UI Layout"]
+    OPEN_DUR = UI_OPEN_DUR
 
     def __init__(self, app, gui):
         self.app = app
@@ -39,6 +42,10 @@ class SettingsWindow:
             window_display_title="\u2699  Settings",
             resizable=False,
         )
+        self._open_started_ms = pygame.time.get_ticks()
+        self._open_done = False
+        self._target_rect = pygame.Rect((W - ww) // 2, (H - wh) // 2, ww, wh)
+        self._apply_open_scale(0.90)
 
         # Inner dimensions (window chrome takes some space)
         iw = ww - 60
@@ -106,6 +113,27 @@ class SettingsWindow:
             else:
                 panel.hide()
         self._active_tab = name
+
+    def _apply_open_scale(self, scale):
+        tr = self._target_rect
+        nw = max(320, int(tr.width * scale))
+        nh = max(280, int(tr.height * scale))
+        nx = tr.x + (tr.width - nw) // 2
+        ny = tr.y + (tr.height - nh) // 2
+        self.window.set_dimensions((nw, nh))
+        self.window.set_relative_position((nx, ny))
+
+    def _tick_open_animation(self):
+        if self._open_done or not self.window.alive():
+            return
+        elapsed = (pygame.time.get_ticks() - self._open_started_ms) / 1000.0
+        t = min(1.0, elapsed / self.OPEN_DUR)
+        eased = ease_out_cubic(t)
+        self._apply_open_scale(0.90 + 0.10 * eased)
+        if t >= 1.0:
+            self._open_done = True
+            self.window.set_dimensions((self._target_rect.width, self._target_rect.height))
+            self.window.set_relative_position((self._target_rect.x, self._target_rect.y))
 
     # ── VISUAL TAB ───────────────────────────────────────────────────────
 
@@ -384,6 +412,8 @@ class SettingsWindow:
         """Call per-frame to sync slider labels."""
         if not self.window.alive():
             return
+
+        self._tick_open_animation()
 
         try:
             fs = int(self._fontsize_slider.get_current_value())
