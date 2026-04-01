@@ -96,6 +96,8 @@ class BookOverlay:
         # click regions (absolute screen)
         self._book_rect   = pygame.Rect(0,0,1,1)
         self._close_rect  = pygame.Rect(0,0,1,1)
+        self._scale_factor = 1.0  # Track animation scale for button collision detection
+        self._draw_origin = (0, 0)
 
     # ── Public ───────────────────────────────────────────────────────────────
 
@@ -155,11 +157,13 @@ class BookOverlay:
             surface.blit(scaled, (sx, sy))
             self._book_rect  = pygame.Rect(sx, sy, sbw, sbh)
             sf = sbw/BW
+            self._scale_factor = sf  # Store scale for button collision detection
             self._close_rect = pygame.Rect(int(sx+(BW-34)*sf), int(sy+6*sf),
                                            int(26*sf), int(26*sf))
         else:
             self._draw_book(surface, BW, BH, bx, by)
             self._book_rect  = pygame.Rect(bx, by, BW, BH)
+            self._scale_factor = 1.0  # Full scale when not animating
             self._close_rect = pygame.Rect(bx+BW-34, by+6, 26, 26)
         # dust
         cx, cy = sw//2, by+20
@@ -201,6 +205,7 @@ class BookOverlay:
         self._cfade  = max(0.15, self._cfade - 0.25)
 
     def _draw_book(self, surf, BW, BH, ox, oy):
+        self._draw_origin = (ox, oy)
         MID = ox + BW//2
         cf  = self._cfade
         # shadow
@@ -1921,6 +1926,8 @@ class SettingsOverlay(BookOverlay):
             self.gui.config = _copy.deepcopy(self._working)
             if hasattr(self.gui, "save_config"):  self.gui.save_config()
             if hasattr(self.gui, "apply_config"): self.gui.apply_config()
+            if hasattr(self.gui, "append"):
+                self.gui.append("Settings saved. UI changes applied now; gameplay changes apply on new actions.", "system")
             self._save_flash = self._FLASH_DUR
             self.close()
         except Exception as ex:
@@ -1947,9 +1954,17 @@ class SettingsOverlay(BookOverlay):
         return False
 
     def _on_click(self, pos) -> bool:
+        if self._scale_factor <= 0:
+            return True
+
+        bx, by = self._book_rect.x, self._book_rect.y
+        local_x = (pos[0] - bx) / self._scale_factor
+        local_y = (pos[1] - by) / self._scale_factor
+
         for rect, action in self._btn_hits:
-            if rect.collidepoint(pos):
-                self._dispatch(action); return True
+            if rect.collidepoint(local_x, local_y):
+                self._dispatch(action)
+                return True
         return True
 
     def _dispatch(self, action: str):
@@ -2037,9 +2052,8 @@ class SettingsOverlay(BookOverlay):
         pygame.draw.rect(surf, mid, dr, width=1, border_radius=3)
         surf.blit(self._tf(11,True).render("\u25c4",True,mid),
                   self._tf(11,True).render("\u25c4",True,mid).get_rect(center=dr.center))
-        self._btn_hits.append((pygame.Rect(self._book_rect.x+dr.x,
-                                           self._book_rect.y+dr.y,
-                                           dr.width,dr.height), act_dec))
+        ox, oy = self._draw_origin
+        self._btn_hits.append((pygame.Rect(dr.x - ox, dr.y - oy, dr.width, dr.height), act_dec))
         # value
         vl  = self._tf(11).render(val_txt, True, ink)
         vox = vx + BTN_W + (val_w - BTN_W*2 - vl.get_width())//2
@@ -2052,9 +2066,7 @@ class SettingsOverlay(BookOverlay):
         pygame.draw.rect(surf, mid, ir, width=1, border_radius=3)
         surf.blit(self._tf(11,True).render("\u25ba",True,mid),
                   self._tf(11,True).render("\u25ba",True,mid).get_rect(center=ir.center))
-        self._btn_hits.append((pygame.Rect(self._book_rect.x+ir.x,
-                                           self._book_rect.y+ir.y,
-                                           ir.width,ir.height), act_inc))
+        self._btn_hits.append((pygame.Rect(ir.x - ox, ir.y - oy, ir.width, ir.height), act_inc))
         pygame.draw.line(surf, _blend(C_DIVIDER, bg, cf*0.4),
                          (frame.x+4, y+ROW_H), (frame.x+frame.width-4, y+ROW_H), 1)
         return y + ROW_H + 4
@@ -2081,9 +2093,8 @@ class SettingsOverlay(BookOverlay):
         ts2  = self._tf(8,True).render(lbl2,True,(30,20,10) if value_bool else (120,100,70))
         loff = bx+4 if value_bool else bx+14
         surf.blit(ts2, (loff, bby+(BOX_H-ts2.get_height())//2))
-        self._btn_hits.append((pygame.Rect(self._book_rect.x+br.x,
-                                           self._book_rect.y+br.y,
-                                           br.width,br.height), action))
+        ox, oy = self._draw_origin
+        self._btn_hits.append((pygame.Rect(br.x - ox, br.y - oy, br.width, br.height), action))
         pygame.draw.line(surf, _blend(C_DIVIDER, bg, cf*0.4),
                          (frame.x+4, y+ROW_H), (frame.x+frame.width-4, y+ROW_H), 1)
         return y + ROW_H + 4
@@ -2102,9 +2113,8 @@ class SettingsOverlay(BookOverlay):
         surf.blit(bs, (br.x, br.y))
         ts = self._tf(11,True).render(label, True, (245,235,210))
         surf.blit(ts, ts.get_rect(center=br.center))
-        self._btn_hits.append((pygame.Rect(self._book_rect.x+br.x,
-                                           self._book_rect.y+br.y,
-                                           br.width,br.height), action))
+        ox, oy = self._draw_origin
+        self._btn_hits.append((pygame.Rect(br.x - ox, br.y - oy, br.width, br.height), action))
         return y + BTN_H + 5
 
     # ---- left page ----------------------------------------------------

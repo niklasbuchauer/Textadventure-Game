@@ -254,6 +254,17 @@ class PygamePanelWidget:
     def apply_colors(self, colors: dict):
         self.colors.update(colors)
 
+    def apply_max_messages(self, max_messages: int):
+        self._max_msgs = max(10, int(max_messages))
+        trimmed = False
+        while len(self._messages) > self._max_msgs:
+            self._messages.pop(0)
+            if self._html_parts:
+                self._html_parts.pop(0)
+            trimmed = True
+        if trimmed:
+            self._full_rebuild()
+
     def clear(self):
         self._messages.clear()
         self._html_parts.clear()
@@ -540,8 +551,8 @@ class PygameAdventureGUI:
 
     def apply_config(self):
         """Re-apply config to all live panels."""
-        vcfg = self.config["visual"]
-        colors = vcfg["colors"]
+        vcfg = self.config.get("visual", {})
+        colors = dict(vcfg.get("colors", {}))
         if self.config["accessibility"]["high_contrast"]:
             colors = {
                 "combat": "#FF4444", "item": "#44FF44",
@@ -549,8 +560,37 @@ class PygameAdventureGUI:
                 "warning": "#FFFF00", "system": "#FF44FF",
                 "command": "#FFFFFF", "default": "#FFFFFF",
             }
+
+        ui_cfg = self.config.get("ui", {})
+        layout = ui_cfg.get("layout", "side_by_side")
+        panel_flags = ui_cfg.get("panels", {})
+        max_msgs = ui_cfg.get("max_messages", 50)
+
         for pw in self._panels.values():
             pw.apply_colors(colors)
+            pw.apply_max_messages(max_msgs)
+
+        # Apply panel visibility flags immediately.
+        main_panel = self._panels.get("main")
+        if main_panel:
+            main_panel.show()
+
+        if layout == "single":
+            for key in ("combat", "items", "dialogue", "system"):
+                pw = self._panels.get(key)
+                if pw:
+                    pw.hide()
+        else:
+            for key in ("combat", "items", "dialogue", "system"):
+                pw = self._panels.get(key)
+                if not pw:
+                    continue
+                if panel_flags.get(key, False):
+                    pw.show()
+                else:
+                    pw.hide()
+
+        self._relayout_panels()
 
     # ------------------------------------------------------------------
     #  BUILD UI

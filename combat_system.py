@@ -56,9 +56,9 @@ def calculate_enemy_level(floor_num, enemy_type="regular"):
     return base_level + floor_bonus
 
 
-def scale_enemy_stats(base_stats, level, enemy_type="regular"):
+def scale_enemy_stats(base_stats, level, enemy_type="regular", difficulty_modifier=1.0):
     """
-    Scale enemy stats based on level.
+    Scale enemy stats based on level and difficulty.
     
     Level 1 = base stats
     Each level adds:
@@ -68,40 +68,51 @@ def scale_enemy_stats(base_stats, level, enemy_type="regular"):
       - XP: +20%
       - Gold: +15%
     
+    difficulty_modifier: Multiplier for enemy difficulty (0.5 = 50% weaker, 2.0 = 2x stronger)
+    
     Returns dict with scaled stats.
     """
     if level <= 1:
-        return base_stats.copy()
+        scaled = base_stats.copy()
+    else:
+        scaled = base_stats.copy()
+        level_mult = level - 1  # Level 1 = no bonus
+        
+        # Scale HP (15% per level)
+        if "hp" in scaled:
+            scaled["hp"] = int(scaled["hp"] * (1 + 0.15 * level_mult))
+        
+        # Scale Attack (10% per level)
+        if "attack" in scaled:
+            scaled["attack"] = int(scaled["attack"] * (1 + 0.10 * level_mult))
+        
+        # Scale Defense (8% per level)
+        if "defense" in scaled:
+            scaled["defense"] = int(scaled["defense"] * (1 + 0.08 * level_mult))
+        
+        # Scale XP (20% per level)
+        if "xp_reward" in scaled:
+            scaled["xp_reward"] = int(scaled["xp_reward"] * (1 + 0.20 * level_mult))
+        
+        # Scale Gold (15% per level)
+        if "gold_reward" in scaled:
+            if isinstance(scaled["gold_reward"], (list, tuple)):
+                low, high = scaled["gold_reward"]
+                scaled["gold_reward"] = (
+                    int(low * (1 + 0.15 * level_mult)),
+                    int(high * (1 + 0.15 * level_mult))
+                )
+            else:
+                scaled["gold_reward"] = int(scaled["gold_reward"] * (1 + 0.15 * level_mult))
     
-    scaled = base_stats.copy()
-    level_mult = level - 1  # Level 1 = no bonus
-    
-    # Scale HP (15% per level)
-    if "hp" in scaled:
-        scaled["hp"] = int(scaled["hp"] * (1 + 0.15 * level_mult))
-    
-    # Scale Attack (10% per level)
-    if "attack" in scaled:
-        scaled["attack"] = int(scaled["attack"] * (1 + 0.10 * level_mult))
-    
-    # Scale Defense (8% per level)
-    if "defense" in scaled:
-        scaled["defense"] = int(scaled["defense"] * (1 + 0.08 * level_mult))
-    
-    # Scale XP (20% per level)
-    if "xp_reward" in scaled:
-        scaled["xp_reward"] = int(scaled["xp_reward"] * (1 + 0.20 * level_mult))
-    
-    # Scale Gold (15% per level)
-    if "gold_reward" in scaled:
-        if isinstance(scaled["gold_reward"], (list, tuple)):
-            low, high = scaled["gold_reward"]
-            scaled["gold_reward"] = (
-                int(low * (1 + 0.15 * level_mult)),
-                int(high * (1 + 0.15 * level_mult))
-            )
-        else:
-            scaled["gold_reward"] = int(scaled["gold_reward"] * (1 + 0.15 * level_mult))
+    # Apply difficulty modifier to combat-relevant stats
+    if difficulty_modifier != 1.0:
+        if "hp" in scaled:
+            scaled["hp"] = int(scaled["hp"] * difficulty_modifier)
+        if "attack" in scaled:
+            scaled["attack"] = int(scaled["attack"] * difficulty_modifier)
+        if "defense" in scaled:
+            scaled["defense"] = int(scaled["defense"] * difficulty_modifier)
     
     return scaled
 
@@ -2324,13 +2335,15 @@ def should_spawn_enemy(floor_num, room_data):
     return random.random() < chance
 
 
-def create_enemy_instance(enemy_id, level=None, floor_num=1, feel_intensity="normal"):
+def create_enemy_instance(enemy_id, level=None, floor_num=1, feel_intensity="normal", difficulty_modifier=1.0):
     """Create a fresh enemy instance from the database with level scaling.
     
     Args:
         enemy_id: The enemy template ID
         level: Specific level (overrides floor_num calculation)
         floor_num: Dungeon floor for level calculation (default 1)
+        feel_intensity: Game feel intensity level
+        difficulty_modifier: Difficulty scaling multiplier (0.5 = easier, 2.0 = harder)
     """
     template = ENEMY_DATABASE.get(enemy_id)
     if not template:
@@ -2340,8 +2353,8 @@ def create_enemy_instance(enemy_id, level=None, floor_num=1, feel_intensity="nor
     if level is None:
         level = calculate_enemy_level(floor_num, "regular")
     
-    # Scale stats based on level
-    data = scale_enemy_stats(dict(template), level, "regular")
+    # Scale stats based on level and difficulty
+    data = scale_enemy_stats(dict(template), level, "regular", difficulty_modifier)
     data["id"] = enemy_id
     
     # Filter abilities by level
@@ -2350,7 +2363,7 @@ def create_enemy_instance(enemy_id, level=None, floor_num=1, feel_intensity="nor
     return CombatState(data, is_boss=False, level=level, feel_intensity=feel_intensity)
 
 
-def create_boss_instance(dungeon_id, floor_num=3, feel_intensity="normal"):
+def create_boss_instance(dungeon_id, floor_num=3, feel_intensity="normal", difficulty_modifier=1.0):
     """Create a boss instance for the given dungeon with level scaling."""
     boss_data = get_boss_for_dungeon(dungeon_id)
     if not boss_data:
@@ -2359,14 +2372,14 @@ def create_boss_instance(dungeon_id, floor_num=3, feel_intensity="normal"):
     # Calculate boss level
     level = calculate_enemy_level(floor_num, "boss")
     
-    # Scale stats
-    scaled_data = scale_enemy_stats(boss_data, level, "boss")
+    # Scale stats including difficulty modifier
+    scaled_data = scale_enemy_stats(boss_data, level, "boss", difficulty_modifier)
     scaled_data["abilities"] = get_level_abilities(scaled_data["abilities"], level)
     
     return CombatState(scaled_data, is_boss=True, level=level, feel_intensity=feel_intensity)
 
 
-def create_mini_boss_instance(dungeon_id, floor_num=2, feel_intensity="normal"):
+def create_mini_boss_instance(dungeon_id, floor_num=2, feel_intensity="normal", difficulty_modifier=1.0):
     """Create a mini-boss instance for the given dungeon with level scaling."""
     mb_data = get_mini_boss_for_dungeon(dungeon_id)
     if not mb_data:
@@ -2375,8 +2388,8 @@ def create_mini_boss_instance(dungeon_id, floor_num=2, feel_intensity="normal"):
     # Calculate mini-boss level
     level = calculate_enemy_level(floor_num, "mini_boss")
     
-    # Scale stats
-    scaled_data = scale_enemy_stats(mb_data, level, "mini_boss")
+    # Scale stats including difficulty modifier
+    scaled_data = scale_enemy_stats(mb_data, level, "mini_boss", difficulty_modifier)
     scaled_data["abilities"] = get_level_abilities(scaled_data["abilities"], level)
     
     return CombatState(scaled_data, is_boss=False, is_mini_boss=True, level=level, feel_intensity=feel_intensity)

@@ -2196,6 +2196,11 @@ class CommandHandler:
 			return ""
 
 		feel_intensity = self._get_game_feel_intensity()
+		
+		# Get difficulty modifier from config
+		difficulty_modifier = 1.0
+		if self.engine.gui and hasattr(self.engine.gui, 'config'):
+			difficulty_modifier = self.engine.gui.config.get('gameplay', {}).get('difficulty_modifier', 1.0)
 
 		# Extract floor_num from current room if not provided
 		if floor_num is None:
@@ -2204,7 +2209,7 @@ class CommandHandler:
 			floor_num = int(floor_match.group(1)) if floor_match else 1
 
 		if boss_dungeon:
-			combat = create_boss_instance(boss_dungeon, floor_num, feel_intensity=feel_intensity)
+			combat = create_boss_instance(boss_dungeon, floor_num, feel_intensity=feel_intensity, difficulty_modifier=difficulty_modifier)
 			if not combat:
 				return ""
 			self.engine.pending_combat = combat
@@ -2219,7 +2224,7 @@ class CommandHandler:
 			return intro + get_combat_status(self.engine.player, combat)
 
 		if enemy_id:
-			combat = create_enemy_instance(enemy_id, floor_num=floor_num, feel_intensity=feel_intensity)
+			combat = create_enemy_instance(enemy_id, floor_num=floor_num, feel_intensity=feel_intensity, difficulty_modifier=difficulty_modifier)
 			if not combat:
 				return ""
 			self.engine.pending_combat = combat

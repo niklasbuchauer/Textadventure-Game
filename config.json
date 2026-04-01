@@ -20,7 +20,8 @@
         "combat_speed": "normal",
         "scroll_mode": "auto",
         "confirm_dangerous": true,
-        "difficulty_modifier": 1.05
+        "difficulty_modifier": 1.0,
+        "game_feel_intensity": "normal"
     },
     "accessibility": {
         "high_contrast": false,
