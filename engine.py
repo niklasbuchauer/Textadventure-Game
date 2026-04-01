@@ -352,8 +352,7 @@ CONFIG_DEFAULTS = {
         "bg_color":    "#1e1e1e",
         "fg_color":    "#dcdcdc",
         "font_family": "Courier New",
-        "font_size":   10,
-        "theme":       "dark",
+		"font_size":   10,
     },
     "gameplay": {
         "combat_speed":        "normal",

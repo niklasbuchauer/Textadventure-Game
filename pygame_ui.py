@@ -189,7 +189,8 @@ class PygamePanelWidget:
                 new = f"{clean}  (\u00d7{self._last_count})"
                 self._messages[-1] = (new, old_col, old_ts)
                 # Rebuild HTML for that entry
-                pre = f'<font color="#AAAAAA">[{old_ts}] </font>' if old_ts else ""
+                ts_col = self.colors.get("timestamp", "#AAAAAA")
+                pre = f'<font color="{ts_col}">[{old_ts}] </font>' if old_ts else ""
                 self._html_parts[-1] = (
                     f'{pre}<font color="{old_col}">'
                     f'{escape_html(new)}</font><br><br>'
@@ -206,7 +207,8 @@ class PygamePanelWidget:
 
         self._messages.append((full, colour, timestamp))
 
-        ts_html = (f'<font color="#AAAAAA">[{timestamp}] </font>'
+        ts_col = self.colors.get("timestamp", "#AAAAAA")
+        ts_html = (f'<font color="{ts_col}">[{timestamp}] </font>'
                    if timestamp else "")
         frag = (f'{ts_html}<font color="{colour}">'
                 f'{escape_html(text)}</font><br><br>')
@@ -472,6 +474,7 @@ class PygameAdventureGUI:
 
         # ── Load config ──────────────────────────────────────────────────
         self.config = self._load_config()
+        self._hint_color = (90, 90, 110)
 
         # ── Engine / game references ─────────────────────────────────────
         self.engine = None
@@ -518,6 +521,7 @@ class PygameAdventureGUI:
         # ── Build all widgets ────────────────────────────────────────────
         self._panels = {}
         self._build_ui()
+        self.apply_config()
 
     # ------------------------------------------------------------------
     #  CONFIG
@@ -552,14 +556,22 @@ class PygameAdventureGUI:
     def apply_config(self):
         """Re-apply config to all live panels."""
         vcfg = self.config.get("visual", {})
+
         colors = dict(vcfg.get("colors", {}))
+
         if self.config["accessibility"]["high_contrast"]:
             colors = {
                 "combat": "#FF4444", "item": "#44FF44",
                 "dialogue": "#44CCFF", "status": "#AAAAFF",
                 "warning": "#FFFF00", "system": "#FF44FF",
                 "command": "#FFFFFF", "default": "#FFFFFF",
+                "timestamp": "#D0D0D0",
             }
+
+        if "timestamp" not in colors:
+            colors["timestamp"] = "#AAAAAA"
+
+        self._hint_color = (90, 90, 110)
 
         ui_cfg = self.config.get("ui", {})
         layout = ui_cfg.get("layout", "side_by_side")
@@ -1107,7 +1119,7 @@ class PygameAdventureGUI:
                 self._hint_font = pygame.font.SysFont("Courier New", 14)
             r = self.entry.get_abs_rect()
             hint_surf = self._hint_font.render(
-                "Type a command...", True, (90, 90, 110))
+                "Type a command...", True, self._hint_color)
             surface.blit(hint_surf, (r.x + 8, r.y + (r.height - hint_surf.get_height()) // 2))
 
         if self._death_overlay:
