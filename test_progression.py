@@ -133,6 +133,25 @@ def test_stat_modifiers():
     assert per > 0
     print("  PASSED\n")
 
+def test_core_stat_cap():
+    print("=== Test: Core Stat Cap ===")
+    p = FakePlayer()
+    apply_class(p, "warrior")
+
+    assert get_stat_cap("strength") == 40
+
+    p.stats["strength"] = 39
+    add_stat_bonus(p, "strength", 5)
+    assert p.stats["strength"] == 40, f"Expected capped strength 40, got {p.stats['strength']}"
+
+    add_stat_bonus(p, "strength", 3, allow_overflow=True)
+    assert p.stats["strength"] == 43, f"Expected temporary overflow, got {p.stats['strength']}"
+
+    normalize_core_stats(p)
+    assert p.stats["strength"] == 40, f"Expected normalized strength 40, got {p.stats['strength']}"
+    print(f"  Strength cap enforced at {p.stats['strength']}")
+    print("  PASSED\n")
+
 def test_xp_awards_dict():
     print("=== Test: XP Awards Config ===")
     expected = ["first_visit_room", "survive_trap", "disarm_trap_easy", "open_chest_wooden", "sell_item",
@@ -150,6 +169,7 @@ if __name__ == "__main__":
     test_active_abilities()
     test_class_selection_text()
     test_stat_modifiers()
+    test_core_stat_cap()
     test_xp_awards_dict()
     print("=" * 50)
     print("ALL TESTS PASSED!")

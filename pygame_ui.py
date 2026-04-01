@@ -509,6 +509,9 @@ class PygameAdventureGUI:
         self._last_command_helper_text = ""
         self._autocomplete_hint = ""
         self._last_entry_text = ""
+        self._command_history = []
+        self._history_index = None
+        self._history_stash = ""
 
         # ── Engine / game references ─────────────────────────────────────
         self.engine = None
@@ -1053,6 +1056,12 @@ class PygameAdventureGUI:
         # ── Keyboard shortcuts ───────────────────────────────────────────
         if event.type == pygame.KEYDOWN:
             mods = pygame.key.get_mods()
+            if event.key == pygame.K_UP:
+                if self._history_browse(-1):
+                    return
+            if event.key == pygame.K_DOWN:
+                if self._history_browse(+1):
+                    return
             if event.key == pygame.K_TAB:
                 if self._apply_autocomplete():
                     return
@@ -1281,13 +1290,16 @@ class PygameAdventureGUI:
         if not cmd:
             return
 
+        self._history_push(cmd)
+
         self.append(f"> {cmd}")
 
         if not self.engine:
             self.append("Engine is still loading. Please wait...")
             return
 
-        resp = self.engine.process_command(cmd)
+        normalized_cmd = self._normalize_command_text(cmd)
+        resp = self.engine.process_command(normalized_cmd)
 
         # Travel animation
         travel = getattr(self.engine, "pending_travel_animation", None)
@@ -1628,6 +1640,93 @@ class PygameAdventureGUI:
         if force or text != self._last_command_helper_text:
             self._last_command_helper_text = text
             self.command_helper_label.set_text(text)
+
+    def _history_push(self, cmd):
+        text = (cmd or "").strip()
+        if not text:
+            return
+        if self._command_history and self._command_history[-1] == text:
+            self._history_index = None
+            self._history_stash = ""
+            return
+        self._command_history.append(text)
+        if len(self._command_history) > 150:
+            self._command_history = self._command_history[-150:]
+        self._history_index = None
+        self._history_stash = ""
+
+    def _history_browse(self, direction):
+        if not self.entry or not self._command_history:
+            return False
+
+        if direction < 0:
+            if self._history_index is None:
+                self._history_stash = self.entry.get_text()
+                self._history_index = len(self._command_history) - 1
+            elif self._history_index > 0:
+                self._history_index -= 1
+        elif direction > 0:
+            if self._history_index is None:
+                return False
+            if self._history_index < len(self._command_history) - 1:
+                self._history_index += 1
+            else:
+                self._history_index = None
+                self.entry.set_text(self._history_stash)
+                self._last_entry_text = self.entry.get_text()
+                self._refresh_autocomplete_hint()
+                return True
+
+        if self._history_index is None:
+            return False
+
+        self.entry.set_text(self._command_history[self._history_index])
+        self._last_entry_text = self.entry.get_text()
+        self._autocomplete_hint = ""
+        return True
+
+    def _normalize_command_text(self, cmd):
+        raw = (cmd or "").strip()
+        if not raw:
+            return raw
+
+        low = raw.lower()
+        exact_alias = {
+            "i": "inventory",
+            "inv": "inventory",
+            "inven": "inventory",
+            "invent": "inventory",
+            "l": "look",
+            "j": "journal",
+            "cmd": "commands",
+            "command": "commands",
+            "atk": "attack",
+            "def": "defend",
+        }
+        if low in exact_alias:
+            return exact_alias[low]
+
+        dir_short = {
+            "n": "north",
+            "s": "south",
+            "e": "east",
+            "w": "west",
+            "u": "up",
+            "d": "down",
+        }
+        if low in dir_short:
+            return f"go {dir_short[low]}"
+
+        parts = raw.split()
+        verb = parts[0].lower()
+        rest = " ".join(parts[1:]).strip()
+
+        if verb in ("atk", "def") and rest:
+            return f"{exact_alias[verb]} {rest}"
+        if verb == "go" and rest.lower() in dir_short:
+            return f"go {dir_short[rest.lower()]}"
+
+        return raw
 
     def _autocomplete_candidates(self, typed):
         t = (typed or "").strip().lower()

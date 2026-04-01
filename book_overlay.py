@@ -651,6 +651,10 @@ class StatsOverlay(BookOverlay):
             surf.blit(self._f(12).render("No data.",True,mid),(frame.x+8,y+8))
             return
         stats=self.gui.engine.player.stats or {}
+        try:
+            from progression_system import get_stat_cap
+        except Exception:
+            get_stat_cap = None
         # RPG attributes
         ATTRS=[
             ("strength",    "⚔  Strength",   C_RED),
@@ -666,7 +670,7 @@ class StatsOverlay(BookOverlay):
             if v<=0: continue
             drawn=True
             # bar style
-            max_v=30
+            max_v = get_stat_cap(key) if get_stat_cap else 40
             pct=min(1.0,v/max_v)
             bw2=frame.width-16
             bar_r=pygame.Rect(frame.x+4,y,bw2,9)
@@ -677,7 +681,11 @@ class StatsOverlay(BookOverlay):
             pygame.draw.rect(surf,div,bar_r,width=1,border_radius=4)
             ls2=self._f(12).render(label,True,_blend(col,bg,cf))
             surf.blit(ls2,(frame.x+8,y+12))
-            vs=self._f(13,True).render(str(v),True,ink)
+            if v > max_v:
+                value_text = f"{max_v}/{max_v} (+{v-max_v})"
+            else:
+                value_text = f"{v}/{max_v}"
+            vs=self._f(13,True).render(value_text,True,ink)
             surf.blit(vs,(frame.x+frame.width-vs.get_width()-8,y+10))
             y+=34
             if y>frame.bottom-50: break

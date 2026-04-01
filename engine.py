@@ -127,7 +127,8 @@ except Exception as e:
 try:
 	from progression_system import (
 		award_xp, check_level_up, apply_class, get_class_selection_text,
-		get_stat_modifier, XP_AWARDS, CLASS_DEFINITIONS, MAX_LEVEL
+		get_stat_modifier, XP_AWARDS, CLASS_DEFINITIONS, MAX_LEVEL,
+		normalize_core_stats, add_stat_bonus
 	)
 	from skill_tree import (
 		SkillTreeWindow, get_tree_for_class, get_unlocked_skills,
@@ -2750,7 +2751,10 @@ class CommandHandler:
 			duration = ability_data.get("duration", 1) if ability_data else 1
 			active_effects = self.engine.player.state.get("active_effects", {})
 			active_effects["attack_boost"] = {"value": value, "duration": duration}
-			self.engine.player.stats["strength"] = self.engine.player.stats.get("strength", 0) + value
+			if PROGRESSION_AVAILABLE:
+				add_stat_bonus(self.engine.player, "strength", value, allow_overflow=True)
+			else:
+				self.engine.player.stats["strength"] = self.engine.player.stats.get("strength", 0) + value
 			self.engine.player.state["active_effects"] = active_effects
 			msg += f"\n  Strength boosted by +{value} for {duration} moves!\n"
 		elif effect == "temp_defense" and not combat:
@@ -8124,6 +8128,7 @@ class GameEngine:
 				apply_synergy_bonuses(self.player)
 			except Exception:
 				pass
+			normalize_core_stats(self.player)
 
 		# Migrate old saves: add equipment slots if missing
 		if EQUIPMENT_AVAILABLE and self.player:
@@ -8185,7 +8190,13 @@ class GameEngine:
 			for slot, ench in enchant_data.items():
 				if equipment.get(slot) and ench.get("stats"):
 					for stat, val in ench["stats"].items():
-						self.player.stats[stat] = self.player.stats.get(stat, 0) + val
+						if PROGRESSION_AVAILABLE:
+							add_stat_bonus(self.player, stat, val)
+						else:
+							self.player.stats[stat] = self.player.stats.get(stat, 0) + val
+
+		if PROGRESSION_AVAILABLE and self.player:
+			normalize_core_stats(self.player)
 
 		# Restore NPC dialogue progress
 		if NPC_AVAILABLE and self.npc_manager and hasattr(self.npc_manager, 'load_from_dict'):

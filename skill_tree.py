@@ -21,6 +21,7 @@ from skill_tree_data import (
     WARRIOR_BRANCHES, ROGUE_BRANCHES, MAGE_BRANCHES,
     MANA_COSTS,
 )
+from progression_system import add_stat_bonus, normalize_core_stats
 
 # =====================================================================
 # SYNERGY / SET BONUSES
@@ -103,17 +104,18 @@ def apply_synergy_bonuses(player):
             player.stats["health_max"] = player.stats.get("health_max", 100) - val
             player.stats["health"] = min(player.stats.get("health", 100), player.stats.get("health_max", 100))
         else:
-            player.stats[stat] = player.stats.get(stat, 0) - val
+            add_stat_bonus(player, stat, -val)
 
     for stat, val in new_synergy.items():
         if stat == "health_max_bonus":
             player.stats["health_max"] = player.stats.get("health_max", 100) + val
             player.stats["health"] = min(player.stats.get("health", 100) + val, player.stats.get("health_max", 100))
         else:
-            player.stats[stat] = player.stats.get(stat, 0) + val
+            add_stat_bonus(player, stat, val)
 
     player.state["_synergy_bonuses"] = new_synergy
     player.state["_synergy_descriptions"] = descriptions
+    normalize_core_stats(player)
     return new_synergy, descriptions
 
 
@@ -200,7 +202,7 @@ def unlock_skill(player, skill_id):
         elif stat in ("crafting_bonus", "crit_chance_bonus", "disarm_bonus"):
             player.stats[stat] = player.stats.get(stat, 0) + value
         else:
-            player.stats[stat] = player.stats.get(stat, 0) + value
+            add_stat_bonus(player, stat, value)
 
     result = "\n" + "=" * 50 + "\n"
     result += f"  SKILL UNLOCKED: {node['name']}\n"
@@ -350,7 +352,7 @@ def _apply_ability_effect(player, effect, duration, value):
         active_effects["trap_stunned"] = duration
     elif effect == "temp_defense":
         active_effects["defense_boost"] = {"value": value, "duration": duration}
-        player.stats["defense"] = player.stats.get("defense", 0) + value
+        add_stat_bonus(player, "defense", value, allow_overflow=True)
     elif effect == "reveal_adjacent_traps":
         active_effects["reveal_traps"] = 1
     elif effect == "trap_immunity":
@@ -402,10 +404,10 @@ def tick_effects(player):
             if val["duration"] <= 0:
                 expired.append(key)
                 if key == "defense_boost":
-                    player.stats["defense"] = max(0, player.stats.get("defense", 0) - val.get("value", 0))
+                    add_stat_bonus(player, "defense", -val.get("value", 0), allow_overflow=True)
                     messages.append("  Your defense boost fades.")
                 elif key == "attack_boost":
-                    player.stats["strength"] = max(0, player.stats.get("strength", 0) - val.get("value", 0))
+                    add_stat_bonus(player, "strength", -val.get("value", 0), allow_overflow=True)
                     messages.append("  Your attack boost fades.")
         elif isinstance(val, int):
             active[key] = val - 1

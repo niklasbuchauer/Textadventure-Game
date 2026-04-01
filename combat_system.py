@@ -17,6 +17,8 @@ Features:
 
 import random
 
+from progression_system import add_stat_bonus
+
 try:
     from artifact_system import get_artifact_combat_effects, ARTIFACT_DATABASE
 except Exception:
@@ -1904,7 +1906,7 @@ def process_ability_in_combat(player, combat, ability_data):
         active_effects = player.state.get("active_effects", {})
         active_effects["attack_boost"] = {"value": boost, "duration": duration}
         player.state["active_effects"] = active_effects
-        player.stats["strength"] = player.stats.get("strength", 0) + boost
+        add_stat_bonus(player, "strength", boost, allow_overflow=True)
         result += f"\n  ⚡ Your strength surges by {boost} for {duration} turns!"
 
     elif effect == "extra_gold":
@@ -1921,7 +1923,7 @@ def process_ability_in_combat(player, combat, ability_data):
         active_effects = player.state.get("active_effects", {})
         active_effects["defense_boost"] = {"value": boost, "duration": duration}
         player.state["active_effects"] = active_effects
-        player.stats["defense"] = player.stats.get("defense", 0) + boost
+        add_stat_bonus(player, "defense", boost, allow_overflow=True)
         result += f"\n  🛡️ Your defense surges by {boost} for {duration} turns!"
 
     elif effect == "restore_mana":

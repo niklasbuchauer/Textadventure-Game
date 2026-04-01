@@ -4,6 +4,8 @@ Artifact / relic system.
 Artifacts are unique items that occupy a dedicated slot and grant passive stats.
 """
 
+from progression_system import add_stat_bonus, normalize_core_stats
+
 ARTIFACT_DATABASE = {
     "void_heart": {
         "name": "Void Heart",
@@ -85,7 +87,8 @@ def _resolve_artifact_id(query):
 def _apply_artifact_stats(player, artifact_id, sign=1):
     data = ARTIFACT_DATABASE.get(artifact_id, {})
     for stat, val in data.get("stats", {}).items():
-        player.stats[stat] = int(player.stats.get(stat, 0)) + (int(val) * int(sign))
+        add_stat_bonus(player, stat, int(val) * int(sign))
+    normalize_core_stats(player)
 
 
 def get_equipped_artifact(player):

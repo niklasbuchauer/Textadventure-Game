@@ -168,6 +168,8 @@ ENCHANTMENTS = {
 # Tier icons
 TIER_ICONS = {1: "✦", 2: "✦✦", 3: "✦✦✦"}
 
+from progression_system import add_stat_bonus, normalize_core_stats
+
 # =====================================================================
 # ENCHANTMENT SYSTEM
 # =====================================================================
@@ -441,7 +443,7 @@ class EnchantingSystem:
         if old_ench:
             # Remove old stat bonuses
             for stat, val in old_ench.get("stats", {}).items():
-                player.stats[stat] = player.stats.get(stat, 0) - val
+                add_stat_bonus(player, stat, -val)
 
         # Consume materials
         for mat_id, count in ench["materials"].items():
@@ -463,7 +465,8 @@ class EnchantingSystem:
 
         # Apply stat bonuses
         for stat, val in ench["stats"].items():
-            player.stats[stat] = player.stats.get(stat, 0) + val
+            add_stat_bonus(player, stat, val)
+        normalize_core_stats(player)
 
         # Launch Rune Inscription overlay if GUI available (bonus if perfect trace)
         gui = getattr(self.engine, "gui", None)
@@ -507,7 +510,8 @@ class EnchantingSystem:
         ench = enchants.get(slot)
         if ench:
             for stat, val in ench.get("stats", {}).items():
-                self.engine.player.stats[stat] = self.engine.player.stats.get(stat, 0) + val
+                add_stat_bonus(self.engine.player, stat, val)
+            normalize_core_stats(self.engine.player)
 
     def on_unequip(self, slot, item_id):
         """Called when an item is unequipped — remove enchantment bonuses.
@@ -516,7 +520,7 @@ class EnchantingSystem:
         ench = enchants.get(slot)
         if ench:
             for stat, val in ench.get("stats", {}).items():
-                self.engine.player.stats[stat] = self.engine.player.stats.get(stat, 0) - val
+                add_stat_bonus(self.engine.player, stat, -val)
             # Clear enchantment when item is unequipped
             del enchants[slot]
 

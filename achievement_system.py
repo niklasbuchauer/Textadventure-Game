@@ -10,6 +10,8 @@ try:
 except Exception:
     unlock_cosmetic = None
 
+from progression_system import add_stat_bonus
+
 
 # =====================================================================
 # ACHIEVEMENT DEFINITIONS
@@ -407,7 +409,7 @@ def apply_achievement_reward(player, ach_id, ach_data):
                     except Exception:
                         pass
         else:
-            player.stats[stat] = player.stats.get(stat, 0) + val
+              add_stat_bonus(player, stat, val)
 
     granted.add(ach_id)
     player.state["achievement_rewards_granted"] = list(granted)

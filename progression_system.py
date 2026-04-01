@@ -9,6 +9,64 @@ import math
 # Level 15 = endgame (~3000+ total XP from all sources)
 # =====================================================================
 
+CORE_STATS = (
+    "strength",
+    "defense",
+    "dexterity",
+    "perception",
+    "charisma",
+    "constitution",
+)
+
+CORE_STAT_CAP = 40
+
+
+def is_core_stat(stat_name):
+    return stat_name in CORE_STATS
+
+
+def get_stat_cap(stat_name):
+    return CORE_STAT_CAP if is_core_stat(stat_name) else None
+
+
+def clamp_stat_value(stat_name, value, *, allow_overflow=False):
+    if not is_core_stat(stat_name):
+        return value
+    try:
+        numeric = int(value)
+    except Exception:
+        numeric = 0
+    numeric = max(0, numeric)
+    if allow_overflow:
+        return numeric
+    return min(numeric, CORE_STAT_CAP)
+
+
+def add_stat_bonus(player, stat_name, delta, *, allow_overflow=False):
+    if not hasattr(player, "stats") or player.stats is None:
+        player.stats = {}
+    current = player.stats.get(stat_name, 0)
+    try:
+        new_value = current + delta
+    except Exception:
+        new_value = delta
+    new_value = max(0, new_value)
+    new_value = clamp_stat_value(stat_name, new_value, allow_overflow=allow_overflow)
+    player.stats[stat_name] = new_value
+    return new_value
+
+
+def normalize_core_stats(player):
+    if not hasattr(player, "stats") or not isinstance(player.stats, dict):
+        return {}
+    normalized = {}
+    for stat_name in CORE_STATS:
+        if stat_name in player.stats:
+            new_value = clamp_stat_value(stat_name, player.stats.get(stat_name, 0))
+            player.stats[stat_name] = new_value
+            normalized[stat_name] = new_value
+    return normalized
+
 # Levels 1-15: original hand-tuned values
 # Levels 16-30: +200 XP/level growth
 # Levels 31-45: +400 XP/level growth
@@ -363,13 +421,12 @@ def apply_class(player, class_id):
     stats["skill_points"] = 0
 
     # Set base RPG stats (all start at 0, class adds bonuses)
-    base_stats = ["strength", "defense", "constitution", "dexterity", "perception", "charisma"]
-    for stat in base_stats:
+    for stat in CORE_STATS:
         stats[stat] = 0
 
     # Apply class starting bonuses
     for stat, value in class_def["starting_stats"].items():
-        stats[stat] = stats.get(stat, 0) + value
+        add_stat_bonus(player, stat, value)
 
     # Initialize unlocked skills and cooldowns
     if "unlocked_skills" not in player.state:
@@ -392,6 +449,8 @@ def apply_class(player, class_id):
     center = center_nodes.get(class_id)
     if center and center not in player.state["unlocked_skills"]:
         player.state["unlocked_skills"].append(center)
+
+    normalize_core_stats(player)
 
 
 def get_class_selection_text():
