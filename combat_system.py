@@ -27,6 +27,11 @@ except Exception:
 
     ARTIFACT_DATABASE = {}
 
+try:
+    from equipment_system import EQUIPMENT_DATABASE
+except Exception:
+    EQUIPMENT_DATABASE = {}
+
 # =====================================================================
 # LEVEL SYSTEM
 # =====================================================================
@@ -187,6 +192,24 @@ DAMAGE_TAG_LABELS = {
     "arcane": "Arcane",
 }
 
+MATERIAL_DAMAGE_TAGS = {
+    "frost": "frost",
+    "void": "arcane",
+    "soul": "arcane",
+    "crystal": "arcane",
+    "nature": "poison",
+    "dragonscale": "burn",
+}
+
+_DAMAGE_TAG_ALIASES = {
+    "fire": "burn",
+    "flame": "burn",
+    "ice": "frost",
+    "shadow": "arcane",
+    "light": "arcane",
+    "venom": "poison",
+}
+
 GAME_FEEL_PROFILES = {
     "low": {
         "momentum_per_hit": 4,
@@ -217,6 +240,34 @@ GAME_FEEL_PROFILES = {
         "player_bar_len": 18,
         "show_weakness_hints": True,
         "detailed_hotbar": True,
+    },
+}
+
+TACTICAL_ACTIONS = {
+    "guard_break": {
+        "label": "Guard Break",
+        "cost": 1,
+        "cooldown": 2,
+    },
+    "analyze": {
+        "label": "Analyze",
+        "cost": 1,
+        "cooldown": 3,
+    },
+    "reposition": {
+        "label": "Reposition",
+        "cost": 1,
+        "cooldown": 3,
+    },
+    "interrupt": {
+        "label": "Interrupt",
+        "cost": 2,
+        "cooldown": 4,
+    },
+    "charge": {
+        "label": "Charge",
+        "cost": 2,
+        "cooldown": 3,
     },
 }
 
@@ -1032,6 +1083,18 @@ class CombatState:
         self.boss_phase = 1
         self.phase_transitions_done = set()  # tracks which phases have triggered
 
+        # Tactical combat state for anti-spam counterplay options.
+        self.tactical_points = 2
+        self.tactical_max_points = 3
+        self.tactical_cooldowns = {}
+        self.charge_bonus = 0.0
+        self.reposition_turns = 0
+        self.interrupt_turns = 0
+        self.analyze_turns = 0
+        self.enemy_intent = ""
+        self.enemy_intent_tags = []
+        self.ability_followup_required = False
+
     def _roll_enemy_affinities(self):
         """Pick one vulnerability and one resistance to create tactical variety."""
         tags = ["physical", "poison", "burn", "bleed", "frost", "arcane"]
@@ -1078,6 +1141,16 @@ class CombatState:
             "enemy_resistance": getattr(self, "enemy_resistance", "bleed"),
             "boss_phase": getattr(self, 'boss_phase', 1),
             "phase_transitions_done": list(getattr(self, 'phase_transitions_done', set())),
+            "tactical_points": getattr(self, "tactical_points", 2),
+            "tactical_max_points": getattr(self, "tactical_max_points", 3),
+            "tactical_cooldowns": dict(getattr(self, "tactical_cooldowns", {})),
+            "charge_bonus": getattr(self, "charge_bonus", 0.0),
+            "reposition_turns": getattr(self, "reposition_turns", 0),
+            "interrupt_turns": getattr(self, "interrupt_turns", 0),
+            "analyze_turns": getattr(self, "analyze_turns", 0),
+            "enemy_intent": getattr(self, "enemy_intent", ""),
+            "enemy_intent_tags": list(getattr(self, "enemy_intent_tags", [])),
+            "ability_followup_required": bool(getattr(self, "ability_followup_required", False)),
         }
 
     @classmethod
@@ -1113,7 +1186,41 @@ class CombatState:
         cs.last_damage_tags = data.get("last_damage_tags", [])
         cs.boss_phase = data.get("boss_phase", 1)
         cs.phase_transitions_done = set(data.get("phase_transitions_done", []))
+        cs.tactical_points = data.get("tactical_points", 2)
+        cs.tactical_max_points = data.get("tactical_max_points", 3)
+        cs.tactical_cooldowns = dict(data.get("tactical_cooldowns", {}))
+        cs.charge_bonus = data.get("charge_bonus", 0.0)
+        cs.reposition_turns = data.get("reposition_turns", 0)
+        cs.interrupt_turns = data.get("interrupt_turns", 0)
+        cs.analyze_turns = data.get("analyze_turns", 0)
+        cs.enemy_intent = data.get("enemy_intent", "")
+        cs.enemy_intent_tags = list(data.get("enemy_intent_tags", []))
+        cs.ability_followup_required = bool(data.get("ability_followup_required", False))
         return cs
+
+
+def _advance_tactical_state(combat):
+    """Regenerate tactical points and tick tactical cooldowns once per player turn."""
+    combat.tactical_points = min(
+        getattr(combat, "tactical_max_points", 3),
+        getattr(combat, "tactical_points", 0) + 1,
+    )
+    cooldowns = getattr(combat, "tactical_cooldowns", {})
+    for key in list(cooldowns.keys()):
+        cooldowns[key] = max(0, int(cooldowns.get(key, 0)) - 1)
+    combat.tactical_cooldowns = cooldowns
+
+
+def _mitigate_enemy_damage(player, combat, dmg):
+    """Apply reposition mitigation/evasion to incoming enemy damage."""
+    level_gap = max(0, combat.level - player.stats.get("level", 1))
+    if getattr(combat, "reposition_turns", 0) > 0:
+        evade_chance = max(0.20, 0.55 - 0.05 * level_gap)
+        if random.random() < evade_chance:
+            return 0, "You reposition and evade the strike.", ["BUFF"]
+        reduced = max(1, int(dmg * 0.65))
+        return reduced, "You reposition to soften the impact.", ["BUFF"]
+    return max(0, int(dmg)), None, None
 
 
 # =====================================================================
@@ -1161,6 +1268,71 @@ def _combat_tags(*tags):
     return " ".join(parts)
 
 
+def _normalize_damage_tag(tag):
+    """Normalize external tag aliases into combat affinity tags."""
+    if not tag:
+        return ""
+    text = str(tag).strip().lower().replace("-", "_").replace(" ", "_")
+    text = _DAMAGE_TAG_ALIASES.get(text, text)
+    if text in DAMAGE_TAG_LABELS:
+        return text
+    return ""
+
+
+def _infer_enchant_damage_tag(player):
+    """Infer elemental damage type from weapon enchant naming conventions."""
+    ench = ((getattr(player, "state", {}) or {}).get("enchantments", {}) or {}).get("weapon", {})
+    ench_id = str(ench.get("enchant_id", "")).lower()
+    ench_name = str(ench.get("name", "")).lower()
+    probe = f"{ench_id} {ench_name}"
+    if not probe.strip():
+        return ""
+
+    keyword_map = {
+        "frost": "frost",
+        "ice": "frost",
+        "fire": "burn",
+        "flame": "burn",
+        "inferno": "burn",
+        "venom": "poison",
+        "poison": "poison",
+        "void": "arcane",
+        "shadow": "arcane",
+        "arcane": "arcane",
+        "radiant": "arcane",
+    }
+    for keyword, mapped_tag in keyword_map.items():
+        if keyword in probe:
+            return mapped_tag
+    return ""
+
+
+def _get_player_attack_damage_tag(player):
+    """Resolve basic-attack damage type from equipped weapon/enchant."""
+    equip = ((getattr(player, "state", {}) or {}).get("equipment", {}) or {})
+    weapon_id = equip.get("weapon")
+    if not weapon_id:
+        return "physical"
+
+    weapon = EQUIPMENT_DATABASE.get(weapon_id, {}) if isinstance(EQUIPMENT_DATABASE, dict) else {}
+    explicit = (
+        weapon.get("damage_tag")
+        or weapon.get("damage_type")
+        or weapon.get("element")
+        or weapon.get("element_type")
+    )
+    normalized = _normalize_damage_tag(explicit)
+    if normalized:
+        return normalized
+
+    enchant_tag = _infer_enchant_damage_tag(player)
+    if enchant_tag:
+        return enchant_tag
+
+    material = str(weapon.get("material", "")).strip().lower()
+    return MATERIAL_DAMAGE_TAGS.get(material, "physical")
+
+
 def _format_combat_line(summary, details=None, tags=None):
     tag_text = _combat_tags(*(tags or ()))
     if tag_text:
@@ -1194,6 +1366,11 @@ def calculate_player_damage(player, combat, multiplier=1.0, damage_tag="physical
         note_tags.append("WEAK")
     elif damage_tag == getattr(combat, "enemy_resistance", None):
         note_tags.append("RESIST")
+
+    # Analyze rewards deliberate target selection for a few turns.
+    if getattr(combat, "analyze_turns", 0) > 0 and damage_tag == getattr(combat, "enemy_vulnerability", None):
+        raw_damage = int(raw_damage * 1.15)
+        note_parts.append("Analysis exposes a clean opening.")
 
     # Artifact outgoing modifiers
     artifact_fx, artifact_id = get_artifact_combat_effects(player)
@@ -1270,6 +1447,13 @@ def calculate_enemy_damage(player, combat):
     feel_profile = _get_feel_profile(combat)
     damage = max(1, int(damage * feel_profile.get("enemy_damage_mult", 1.0)))
 
+    # Higher-level enemies hit harder; lower-level enemies are less punishing.
+    level_gap = combat.level - player.stats.get("level", 1)
+    if level_gap > 0:
+        damage = max(1, int(damage * (1.0 + min(0.24, 0.04 * level_gap))))
+    elif level_gap < 0:
+        damage = max(1, int(damage * (1.0 - min(0.20, 0.04 * abs(level_gap)))))
+
     return damage
 
 
@@ -1336,22 +1520,33 @@ def _process_enemy_ability(player, combat):
         return ""
 
     result = ""
+    level_gap = combat.level - player.stats.get("level", 1)
     ab_type = ab.get("type", "damage")
     text = ab.get("text", "attacks!")
 
     if ab_type == "damage":
         low, high = ab["value"]
         dmg = random.randint(low, high)
+        if level_gap > 0:
+            dmg = int(dmg * (1.0 + min(0.30, 0.05 * level_gap)))
         if combat.player_defending:
             dmg = max(1, dmg // 2)
+        dmg, mitigation_note, _mit_tags = _mitigate_enemy_damage(player, combat, dmg)
         player.stats["health"] = player.stats.get("health", 100) - dmg
-        result = _format_combat_line(f"{combat.enemy_name} {text}.", f"Damage dealt: {dmg}.", tags=["DAMAGE"])
+        result = _format_combat_line(
+            f"{combat.enemy_name} {text}.",
+            f"Damage dealt: {dmg}." + (f" {mitigation_note}" if mitigation_note else ""),
+            tags=["DAMAGE"]
+        )
 
     elif ab_type == "damage_status":
         low, high = ab["value"]
         dmg = random.randint(low, high)
+        if level_gap > 0:
+            dmg = int(dmg * (1.0 + min(0.30, 0.05 * level_gap)))
         if combat.player_defending:
             dmg = max(1, dmg // 2)
+        dmg, mitigation_note, _mit_tags = _mitigate_enemy_damage(player, combat, dmg)
         player.stats["health"] = player.stats.get("health", 100) - dmg
         status = ab.get("status", "poison")
         status_dmg = ab.get("status_dmg", 3)
@@ -1361,7 +1556,7 @@ def _process_enemy_ability(player, combat):
         icon = se.get("icon", "")
         result = _format_combat_line(
             f"{combat.enemy_name} {text}.",
-            f"Damage dealt: {dmg}. {icon} You {se.get('message_apply', 'are afflicted!')}",
+            f"Damage dealt: {dmg}." + (f" {mitigation_note}" if mitigation_note else "") + f" {icon} You {se.get('message_apply', 'are afflicted!')}",
             tags=["POISON" if status == "poison" else status.upper(), "DAMAGE"]
         )
 
@@ -1380,14 +1575,17 @@ def _process_enemy_ability(player, combat):
     elif ab_type == "damage_stun":
         low, high = ab["value"]
         dmg = random.randint(low, high)
+        if level_gap > 0:
+            dmg = int(dmg * (1.0 + min(0.30, 0.05 * level_gap)))
         if combat.player_defending:
             dmg = max(1, dmg // 2)
+        dmg, mitigation_note, _mit_tags = _mitigate_enemy_damage(player, combat, dmg)
         player.stats["health"] = player.stats.get("health", 100) - dmg
         stun_dur = ab.get("stun_dur", 1)
         _apply_status(combat.player_statuses, "stun", 0, stun_dur)
         result = _format_combat_line(
             f"{combat.enemy_name} {text}.",
-            f"Damage dealt: {dmg}. You are stunned for {stun_dur} turn(s).",
+            f"Damage dealt: {dmg}." + (f" {mitigation_note}" if mitigation_note else "") + f" You are stunned for {stun_dur} turn(s).",
             tags=["STUN", "DAMAGE"]
         )
 
@@ -1400,13 +1598,16 @@ def _process_enemy_ability(player, combat):
     elif ab_type == "damage_heal":
         low, high = ab["value"]
         dmg = random.randint(low, high)
+        if level_gap > 0:
+            dmg = int(dmg * (1.0 + min(0.30, 0.05 * level_gap)))
         if combat.player_defending:
             dmg = max(1, dmg // 2)
+        dmg, mitigation_note, _mit_tags = _mitigate_enemy_damage(player, combat, dmg)
         player.stats["health"] = player.stats.get("health", 100) - dmg
         combat.hp = min(combat.max_hp, combat.hp + dmg)
         result = _format_combat_line(
             f"{combat.enemy_name} {text}.",
-            f"Deals {dmg} damage and heals {dmg} HP.",
+            f"Deals {dmg} damage and heals {dmg} HP." + (f" {mitigation_note}" if mitigation_note else ""),
             tags=["DAMAGE", "HEAL"]
         )
 
@@ -1500,6 +1701,8 @@ def _enemy_turn(player, combat):
     In phase 2+, bosses use abilities more often and hit harder.
     """
     result = ""
+    player_level = player.stats.get("level", 1)
+    level_gap = combat.level - player_level
 
     # Check boss phase transitions
     phase_msg = _check_boss_phase_transition(combat)
@@ -1515,6 +1718,8 @@ def _enemy_turn(player, combat):
 
     if enemy_stunned:
         result += _format_combat_line(f"The {combat.enemy_name} is stunned and cannot act.", None, tags=["STUN"])
+        combat.reposition_turns = max(0, getattr(combat, "reposition_turns", 0) - 1)
+        combat.analyze_turns = max(0, getattr(combat, "analyze_turns", 0) - 1)
         return result
 
     # Enemy DOT damage (bleed, burn, poison on enemy)
@@ -1539,30 +1744,74 @@ def _enemy_turn(player, combat):
             # Normal: 35% basic, 40% ability, 15% heavy, 10% defend
             basic_thresh, ability_thresh, heavy_thresh = 0.35, 0.75, 0.90
 
+        if level_gap >= 2:
+            basic_thresh = max(0.15, basic_thresh - 0.05)
+            ability_thresh = min(0.88, ability_thresh + 0.05)
+            heavy_thresh = min(0.97, heavy_thresh + 0.03)
+
+        combat.enemy_intent = "Boss pressure pattern"
+        combat.enemy_intent_tags = ["DANGER"]
+
         if roll < basic_thresh:
             # Basic attack
             enemy_dmg = calculate_enemy_damage(player, combat)
+            enemy_dmg, mitigation_note, _mit_tags = _mitigate_enemy_damage(player, combat, enemy_dmg)
             player.stats["health"] = player.stats.get("health", 100) - enemy_dmg
-            result += _format_combat_line(f"The {combat.enemy_name} attacks.", f"Damage dealt: {enemy_dmg}.", tags=["DAMAGE"])
+            result += _format_combat_line(
+                f"The {combat.enemy_name} attacks.",
+                f"Damage dealt: {enemy_dmg}." + (f" {mitigation_note}" if mitigation_note else ""),
+                tags=["DAMAGE"]
+            )
         elif roll < ability_thresh:
             # Use ability
+            if getattr(combat, "interrupt_turns", 0) > 0:
+                interrupt_chance = max(0.20, min(0.70, 0.50 + player.stats.get("perception", 0) * 0.005 - max(0, level_gap) * 0.06))
+                combat.interrupt_turns = 0
+                if random.random() < interrupt_chance:
+                    result += _format_combat_line(
+                        "You interrupt the incoming ability.",
+                        f"Interrupt chance: {int(interrupt_chance * 100)}%.",
+                        tags=["COUNTER", "BUFF"]
+                    )
+                    combat.reposition_turns = max(0, combat.reposition_turns - 1)
+                    combat.analyze_turns = max(0, combat.analyze_turns - 1)
+                    return result
+                result += _format_combat_line(
+                    "You fail to interrupt the cast.",
+                    f"Interrupt chance: {int(interrupt_chance * 100)}%.",
+                    tags=["FAIL"]
+                )
             ab_msg = _process_enemy_ability(player, combat)
             if ab_msg:
                 result += ab_msg
             else:
                 enemy_dmg = calculate_enemy_damage(player, combat)
+                enemy_dmg, mitigation_note, _mit_tags = _mitigate_enemy_damage(player, combat, enemy_dmg)
                 player.stats["health"] = player.stats.get("health", 100) - enemy_dmg
-                result += _format_combat_line(f"The {combat.enemy_name} attacks.", f"Damage dealt: {enemy_dmg}.", tags=["DAMAGE"])
+                result += _format_combat_line(
+                    f"The {combat.enemy_name} attacks.",
+                    f"Damage dealt: {enemy_dmg}." + (f" {mitigation_note}" if mitigation_note else ""),
+                    tags=["DAMAGE"]
+                )
         elif roll < heavy_thresh:
             # Heavy attack (1.5x damage, 2x in final phase)
             base_dmg = calculate_enemy_damage(player, combat)
             heavy_mult = 2.0 if phase >= 3 else 1.5
             heavy_dmg = max(1, int(base_dmg * heavy_mult))
+            heavy_dmg, mitigation_note, _mit_tags = _mitigate_enemy_damage(player, combat, heavy_dmg)
             player.stats["health"] = player.stats.get("health", 100) - heavy_dmg
             if phase >= 3:
-                result += _format_combat_line(f"The {combat.enemy_name} unleashes a devastating attack.", f"Damage dealt: {heavy_dmg}.", tags=["HEAVY", "DAMAGE"])
+                result += _format_combat_line(
+                    f"The {combat.enemy_name} unleashes a devastating attack.",
+                    f"Damage dealt: {heavy_dmg}." + (f" {mitigation_note}" if mitigation_note else ""),
+                    tags=["HEAVY", "DAMAGE"]
+                )
             else:
-                result += _format_combat_line(f"The {combat.enemy_name} winds up a heavy attack.", f"Damage dealt: {heavy_dmg}.", tags=["HEAVY", "DAMAGE"])
+                result += _format_combat_line(
+                    f"The {combat.enemy_name} winds up a heavy attack.",
+                    f"Damage dealt: {heavy_dmg}." + (f" {mitigation_note}" if mitigation_note else ""),
+                    tags=["HEAVY", "DAMAGE"]
+                )
         else:
             # Defend / heal
             if combat.hp < combat.max_hp * 0.5:
@@ -1574,28 +1823,86 @@ def _enemy_turn(player, combat):
                 result += _format_combat_line(f"The {combat.enemy_name} takes a defensive stance.", "Defense +1.", tags=["BUFF"])
     else:
         # Regular enemy AI
-        if roll < 0.40:
+        basic_thresh = 0.40
+        ability_thresh = 0.70
+        heavy_thresh = 0.90
+
+        if level_gap >= 2:
+            # Higher-level enemies play more deliberately and waste fewer turns.
+            basic_thresh = 0.30
+            ability_thresh = 0.75
+            heavy_thresh = 0.98
+            combat.enemy_intent = "Aggressive pattern"
+            combat.enemy_intent_tags = ["DANGER"]
+        elif level_gap >= 0:
+            combat.enemy_intent = "Balanced pattern"
+            combat.enemy_intent_tags = ["DAMAGE"]
+        else:
+            basic_thresh = 0.45
+            ability_thresh = 0.72
+            heavy_thresh = 0.90
+            combat.enemy_intent = "Cautious pattern"
+            combat.enemy_intent_tags = ["WEAK"]
+
+        if roll < basic_thresh:
             enemy_dmg = calculate_enemy_damage(player, combat)
+            enemy_dmg, mitigation_note, _mit_tags = _mitigate_enemy_damage(player, combat, enemy_dmg)
             player.stats["health"] = player.stats.get("health", 100) - enemy_dmg
-            result += _format_combat_line(f"The {combat.enemy_name} attacks.", f"Damage dealt: {enemy_dmg}.", tags=["DAMAGE"])
-        elif roll < 0.70:
+            result += _format_combat_line(
+                f"The {combat.enemy_name} attacks.",
+                f"Damage dealt: {enemy_dmg}." + (f" {mitigation_note}" if mitigation_note else ""),
+                tags=["DAMAGE"]
+            )
+        elif roll < ability_thresh:
+            if getattr(combat, "interrupt_turns", 0) > 0:
+                interrupt_chance = max(0.20, min(0.70, 0.50 + player.stats.get("perception", 0) * 0.005 - max(0, level_gap) * 0.06))
+                combat.interrupt_turns = 0
+                if random.random() < interrupt_chance:
+                    result += _format_combat_line(
+                        "You interrupt the incoming ability.",
+                        f"Interrupt chance: {int(interrupt_chance * 100)}%.",
+                        tags=["COUNTER", "BUFF"]
+                    )
+                    combat.reposition_turns = max(0, combat.reposition_turns - 1)
+                    combat.analyze_turns = max(0, combat.analyze_turns - 1)
+                    return result
+                result += _format_combat_line(
+                    "You fail to interrupt the cast.",
+                    f"Interrupt chance: {int(interrupt_chance * 100)}%.",
+                    tags=["FAIL"]
+                )
             ab_msg = _process_enemy_ability(player, combat)
             if ab_msg:
                 result += ab_msg
             else:
                 enemy_dmg = calculate_enemy_damage(player, combat)
+                enemy_dmg, mitigation_note, _mit_tags = _mitigate_enemy_damage(player, combat, enemy_dmg)
                 player.stats["health"] = player.stats.get("health", 100) - enemy_dmg
-                result += _format_combat_line(f"The {combat.enemy_name} attacks.", f"Damage dealt: {enemy_dmg}.", tags=["DAMAGE"])
-        elif roll < 0.90:
+                result += _format_combat_line(
+                    f"The {combat.enemy_name} attacks.",
+                    f"Damage dealt: {enemy_dmg}." + (f" {mitigation_note}" if mitigation_note else ""),
+                    tags=["DAMAGE"]
+                )
+        elif roll < heavy_thresh:
             base_dmg = calculate_enemy_damage(player, combat)
             heavy_dmg = max(1, int(base_dmg * 1.3))
+            heavy_dmg, mitigation_note, _mit_tags = _mitigate_enemy_damage(player, combat, heavy_dmg)
             player.stats["health"] = player.stats.get("health", 100) - heavy_dmg
-            result += _format_combat_line(f"The {combat.enemy_name} strikes hard.", f"Damage dealt: {heavy_dmg}.", tags=["HEAVY", "DAMAGE"])
+            result += _format_combat_line(
+                f"The {combat.enemy_name} strikes hard.",
+                f"Damage dealt: {heavy_dmg}." + (f" {mitigation_note}" if mitigation_note else ""),
+                tags=["HEAVY", "DAMAGE"]
+            )
         else:
             # Enemy hesitates / weak attack
             weak_dmg = max(1, calculate_enemy_damage(player, combat) // 2)
+            weak_dmg, mitigation_note, _mit_tags = _mitigate_enemy_damage(player, combat, weak_dmg)
             player.stats["health"] = player.stats.get("health", 100) - weak_dmg
-            result += _format_combat_line(f"The {combat.enemy_name} hesitates.", f"Glancing blow: {weak_dmg} damage.", tags=["WEAK", "DAMAGE"])
+            result += _format_combat_line(
+                f"The {combat.enemy_name} hesitates.",
+                f"Glancing blow: {weak_dmg} damage." + (f" {mitigation_note}" if mitigation_note else ""),
+                tags=["WEAK", "DAMAGE"]
+            )
 
     # Passive mana regen at end of every enemy turn
     mana_regen_bonus = player.stats.get("mana_regen_bonus", 0.0)
@@ -1604,6 +1911,8 @@ def _enemy_turn(player, combat):
         regen = max(1, int(max_mana * (0.02 + mana_regen_bonus)))
         player.stats["mana"] = min(player.stats.get("mana", 0) + regen, max_mana)
 
+    combat.reposition_turns = max(0, getattr(combat, "reposition_turns", 0) - 1)
+    combat.analyze_turns = max(0, getattr(combat, "analyze_turns", 0) - 1)
     return result
 
 
@@ -1614,6 +1923,8 @@ def process_player_attack(player, combat):
     """
     combat.turn += 1
     combat.player_defending = False
+    _advance_tactical_state(combat)
+    combat.ability_followup_required = False
 
     result = ""
 
@@ -1649,15 +1960,20 @@ def process_player_attack(player, combat):
     is_crit, crit_mult = calculate_crit(player)
 
     # Player attacks
+    attack_tag = _get_player_attack_damage_tag(player)
     player_dmg = calculate_player_damage(
         player,
         combat,
-        multiplier=crit_mult * streak_mult,
-        damage_tag="physical",
+        multiplier=crit_mult * streak_mult * (1.0 + max(0.0, float(getattr(combat, "charge_bonus", 0.0)))),
+        damage_tag=attack_tag,
     )
+    if getattr(combat, "charge_bonus", 0.0) > 0:
+        detail_parts = [f"Charged strike consumed (+{int(combat.charge_bonus * 100)}% damage)."]
+    else:
+        detail_parts = []
+    combat.charge_bonus = 0.0
     combat.hp -= player_dmg
 
-    detail_parts = []
     if combat.last_damage_note:
         detail_parts.append(combat.last_damage_note)
     if combat.attack_streak >= 3:
@@ -1693,6 +2009,8 @@ def process_player_defend(player, combat):
     combat.turn += 1
     combat.player_defending = True
     combat.attack_streak = 0
+    _advance_tactical_state(combat)
+    combat.ability_followup_required = False
 
     result = ""
 
@@ -1771,6 +2089,8 @@ def process_player_flee(player, combat):
     combat.turn += 1
     combat.player_defending = False
     combat.attack_streak = 0
+    _advance_tactical_state(combat)
+    combat.ability_followup_required = False
 
     if combat.is_boss:
         enemy_dmg = calculate_enemy_damage(player, combat)
@@ -1806,6 +2126,101 @@ def process_player_flee(player, combat):
         )
 
 
+def process_player_tactical(player, combat, action_id):
+    """Process tactical combat actions that reward timing and counterplay."""
+    action = TACTICAL_ACTIONS.get(action_id)
+    if not action:
+        return False, "Unknown tactical action."
+
+    combat.turn += 1
+    combat.player_defending = False
+    combat.attack_streak = 0
+    _advance_tactical_state(combat)
+    combat.ability_followup_required = False
+
+    result = ""
+
+    # Tick player status effects
+    status_msgs, dot_dmg, player_stunned = _tick_status_effects(
+        combat.player_statuses, "You"
+    )
+    if status_msgs:
+        result += "\n".join(status_msgs) + "\n"
+    if dot_dmg > 0:
+        player.stats["health"] = player.stats.get("health", 100) - dot_dmg
+
+    if player_stunned:
+        result += _format_combat_line("You are stunned and cannot execute tactics.", None, tags=["STUN"])
+        result += _enemy_turn(player, combat)
+        return True, result + "\n"
+
+    cost = int(action.get("cost", 0))
+    if getattr(combat, "tactical_points", 0) < cost:
+        return False, f"Need {cost} tactical point(s), have {combat.tactical_points}."
+
+    cooldown_key = action_id
+    current_cd = int(getattr(combat, "tactical_cooldowns", {}).get(cooldown_key, 0))
+    if current_cd > 0:
+        return False, f"{action['label']} is on cooldown for {current_cd} more turn(s)."
+
+    combat.tactical_points = max(0, combat.tactical_points - cost)
+    combat.tactical_cooldowns[cooldown_key] = int(action.get("cooldown", 0))
+
+    if action_id == "guard_break":
+        broken = max(0, int(getattr(combat, "enemy_buff_defense", 0)))
+        combat.enemy_buff_defense = 0
+        dmg = calculate_player_damage(player, combat, multiplier=0.75, damage_tag="physical")
+        combat.hp -= dmg
+        detail = f"You deal {dmg} damage."
+        if broken > 0:
+            _apply_status(combat.enemy_statuses, "stun", 0, 1)
+            detail += f" Enemy guard shatters (-{broken} defense) and they are staggered."
+        result += _format_combat_line("Guard Break lands.", detail, tags=["COUNTER", "DAMAGE"])
+
+    elif action_id == "analyze":
+        combat.analyze_turns = max(getattr(combat, "analyze_turns", 0), 3)
+        vuln = DAMAGE_TAG_LABELS.get(getattr(combat, "enemy_vulnerability", "physical"), "Physical")
+        resist = DAMAGE_TAG_LABELS.get(getattr(combat, "enemy_resistance", "bleed"), "Bleed")
+        gap = combat.level - player.stats.get("level", 1)
+        pressure = "severe" if gap >= 4 else "high" if gap >= 2 else "even" if gap >= 0 else "low"
+        result += _format_combat_line(
+            "You analyze the enemy's posture and weaknesses.",
+            f"Weak to {vuln}, resists {resist}, threat pressure: {pressure}.",
+            tags=["BUFF"]
+        )
+
+    elif action_id == "reposition":
+        combat.reposition_turns = max(getattr(combat, "reposition_turns", 0), 2)
+        result += _format_combat_line(
+            "You reposition to deny easy angles.",
+            "Next enemy attacks are harder to land cleanly.",
+            tags=["BUFF"]
+        )
+
+    elif action_id == "interrupt":
+        combat.interrupt_turns = max(getattr(combat, "interrupt_turns", 0), 2)
+        result += _format_combat_line(
+            "You prepare to interrupt the next cast.",
+            "Timing window active for enemy ability attempts.",
+            tags=["COUNTER", "BUFF"]
+        )
+
+    elif action_id == "charge":
+        combat.charge_bonus = min(1.25, float(getattr(combat, "charge_bonus", 0.0)) + 0.75)
+        result += _format_combat_line(
+            "You charge power for a decisive strike.",
+            f"Next basic attack gets +{int(combat.charge_bonus * 100)}% damage.",
+            tags=["BUFF"]
+        )
+
+    if combat.hp <= 0:
+        combat.hp = 0
+        return True, result + "\n"
+
+    result += _enemy_turn(player, combat)
+    return True, result + "\n"
+
+
 def process_ability_in_combat(player, combat, ability_data):
     """
     Process a skill tree ability used in combat.
@@ -1815,6 +2230,8 @@ def process_ability_in_combat(player, combat, ability_data):
     combat.turn += 1
     combat.player_defending = False
     combat.attack_streak = 0
+    _advance_tactical_state(combat)
+    combat.ability_followup_required = True
 
     result = ""
 
@@ -1835,18 +2252,25 @@ def process_ability_in_combat(player, combat, ability_data):
 
     effect = ability_data.get("effect", "")
     value = ability_data.get("value", 1.0)
-    damage_tag = "arcane"
+    damage_tag = _normalize_damage_tag(
+        ability_data.get("damage_tag")
+        or ability_data.get("damage_type")
+        or ability_data.get("element")
+    )
 
-    if effect in ("combat_damage", "combat_crit_attack", "combat_execute"):
-        damage_tag = "physical"
-    elif effect == "combat_poison":
-        damage_tag = "poison"
-    elif effect == "combat_damage_burn":
-        damage_tag = "burn"
-    elif effect == "combat_bleed_attack":
-        damage_tag = "bleed"
-    elif effect == "combat_freeze_attack":
-        damage_tag = "frost"
+    if not damage_tag:
+        if effect in ("combat_damage", "combat_crit_attack", "combat_execute", "combat_stun", "combat_damage_stun"):
+            damage_tag = "physical"
+        elif effect == "combat_poison":
+            damage_tag = "poison"
+        elif effect == "combat_damage_burn" or effect == "traveling_fireball":
+            damage_tag = "burn"
+        elif effect == "combat_bleed_attack":
+            damage_tag = "bleed"
+        elif effect == "combat_freeze_attack":
+            damage_tag = "frost"
+        else:
+            damage_tag = "arcane"
 
     if effect == "combat_damage":
         # Pure damage with multiplier
@@ -1862,7 +2286,7 @@ def process_ability_in_combat(player, combat, ability_data):
 
     elif effect == "combat_stun":
         # Damage + stun
-        dmg = calculate_player_damage(player, combat, multiplier=value, damage_tag="physical")
+        dmg = calculate_player_damage(player, combat, multiplier=value, damage_tag=damage_tag)
         combat.hp -= dmg
         stun_dur = ability_data.get("duration", 1)
         _apply_status(combat.enemy_statuses, "stun", 0, stun_dur)
@@ -1912,7 +2336,7 @@ def process_ability_in_combat(player, combat, ability_data):
 
     elif effect == "combat_damage_stun":
         # Damage + stun
-        dmg = calculate_player_damage(player, combat, multiplier=value, damage_tag="physical")
+        dmg = calculate_player_damage(player, combat, multiplier=value, damage_tag=damage_tag)
         combat.hp -= dmg
         stun_dur = ability_data.get("duration", 1)
         _apply_status(combat.enemy_statuses, "stun", 0, stun_dur)
@@ -2278,11 +2702,36 @@ def get_combat_status(player, combat):
         vuln = DAMAGE_TAG_LABELS.get(getattr(combat, "enemy_vulnerability", "physical"), "Physical")
         resist = DAMAGE_TAG_LABELS.get(getattr(combat, "enemy_resistance", "bleed"), "Bleed")
         result += f"  🎯 Weak to: {vuln}  |  🧱 Resists: {resist}\n"
+        atk_tag = _get_player_attack_damage_tag(player)
+        atk_label = DAMAGE_TAG_LABELS.get(atk_tag, "Physical")
+        result += f"  ⚔️ Basic attack type: {atk_label}\n"
+
+    tp = int(getattr(combat, "tactical_points", 0))
+    tp_max = int(getattr(combat, "tactical_max_points", 3))
+    tp_bar = "◆" * max(0, min(tp, tp_max)) + "◇" * max(0, tp_max - tp)
+    result += f"  Tactical: [{tp_bar}] {tp}/{tp_max}\n"
+
+    active_tactics = []
+    if getattr(combat, "reposition_turns", 0) > 0:
+        active_tactics.append(f"Reposition {combat.reposition_turns}T")
+    if getattr(combat, "interrupt_turns", 0) > 0:
+        active_tactics.append(f"Interrupt {combat.interrupt_turns}T")
+    if getattr(combat, "analyze_turns", 0) > 0:
+        active_tactics.append(f"Analyze {combat.analyze_turns}T")
+    if getattr(combat, "charge_bonus", 0.0) > 0:
+        active_tactics.append(f"Charge +{int(combat.charge_bonus * 100)}%")
+    if active_tactics:
+        result += "  Tactical Effects: " + " | ".join(active_tactics) + "\n"
+
+    intent = getattr(combat, "enemy_intent", "")
+    if intent:
+        result += f"  Enemy Intent: {intent}\n"
 
     result += f"  Feel: {getattr(combat, 'feel_intensity', 'normal').upper()}\n"
 
     result += "═" * 50 + "\n"
-    result += "  Commands: attack | defend | flee"
+    result += "  Commands: attack | defend | flee | analyze | reposition"
+    result += "\n            guard break | interrupt | charge"
     if hasattr(player, 'state') and player.state.get("unlocked_skills"):
         result += " | ability <name>"
         # Show ready abilities with hotbar numbers

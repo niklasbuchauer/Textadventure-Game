@@ -61,6 +61,52 @@ BRANCH_SYNERGY_EXTRAS = {
     "shadow":       {3: {"attack": 1}, 5: {"crit_chance_bonus": 0.02}, 8: {"attack": 3}},
 }
 
+BRANCH_DAMAGE_TAGS = {
+    "fire": "burn",
+    "ice": "frost",
+    "lightning": "arcane",
+    "arcane": "arcane",
+    "shadow": "arcane",
+    "earth": "physical",
+    "wind": "physical",
+    "assassin": "poison",
+    "trickster": "arcane",
+    "phantom": "arcane",
+    "archer": "physical",
+    "weaponmaster": "physical",
+    "berserker": "physical",
+    "gladiator": "physical",
+    "commander": "physical",
+    "tank": "physical",
+    "bounty_hunter": "physical",
+    "healer": "arcane",
+}
+
+
+def _infer_ability_damage_tag(node, ability):
+    """Infer combat damage tag so weakness/resistance checks work across classes."""
+    if not isinstance(ability, dict):
+        return ""
+
+    explicit = ability.get("damage_tag") or ability.get("damage_type") or ability.get("element")
+    if explicit:
+        text = str(explicit).strip().lower()
+        alias = {"fire": "burn", "ice": "frost", "flame": "burn", "venom": "poison"}
+        return alias.get(text, text)
+
+    effect = str(ability.get("effect", "")).strip().lower()
+    if "burn" in effect or "fire" in effect:
+        return "burn"
+    if "freeze" in effect or "frost" in effect or "ice" in effect:
+        return "frost"
+    if "poison" in effect:
+        return "poison"
+    if "bleed" in effect:
+        return "bleed"
+
+    branch = str((node or {}).get("branch", "")).strip().lower()
+    return BRANCH_DAMAGE_TAGS.get(branch, "physical")
+
 
 def get_branch_counts(player):
     class_id = player.stats.get("class", "")
@@ -441,6 +487,7 @@ def get_active_abilities(player):
             ability["skill_name"] = node["name"]
             ability["description"] = node.get("description", "")
             ability["mana_cost"] = MANA_COSTS.get(node["id"], ability.get("mana_cost", 0))
+            ability["damage_tag"] = _infer_ability_damage_tag(node, ability)
             abilities.append(ability)
     return abilities
 

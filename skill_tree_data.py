@@ -52,6 +52,88 @@ CLASS_BRANCHES = {
     "mage": MAGE_BRANCHES,
 }
 
+BRANCH_DAMAGE_TAGS = {
+   "berserker": "physical",
+   "tank": "physical",
+   "archer": "physical",
+   "commander": "physical",
+   "weaponmaster": "physical",
+   "gladiator": "physical",
+   "assassin": "poison",
+   "trickster": "arcane",
+   "thief": "physical",
+   "bounty_hunter": "physical",
+   "phantom": "arcane",
+   "fire": "burn",
+   "ice": "frost",
+   "earth": "physical",
+   "wind": "physical",
+   "lightning": "arcane",
+   "arcane": "arcane",
+   "healer": "arcane",
+   "shadow": "arcane",
+}
+
+EFFECT_DAMAGE_TAGS = {
+   "combat_damage": "physical",
+   "combat_crit_attack": "physical",
+   "combat_stun": "physical",
+   "combat_damage_stun": "physical",
+   "combat_execute": "physical",
+   "combat_poison": "poison",
+   "combat_bleed_attack": "bleed",
+   "combat_freeze_attack": "frost",
+   "combat_damage_burn": "burn",
+   "traveling_fireball": "burn",
+   "chain_bounce": "arcane",
+   "seismic_wave": "physical",
+   "shadow_drift": "arcane",
+   "smoke_cascade": "arcane",
+}
+
+_TAG_ALIASES = {
+   "fire": "burn",
+   "flame": "burn",
+   "ice": "frost",
+   "venom": "poison",
+}
+
+
+def _normalize_damage_tag(tag):
+   if not tag:
+      return ""
+   text = str(tag).strip().lower().replace("-", "_").replace(" ", "_")
+   return _TAG_ALIASES.get(text, text)
+
+
+def _infer_ability_damage_tag(branch, ability):
+   """Determine explicit ability damage tag so affinity logic is always consistent."""
+   if not isinstance(ability, dict):
+      return ""
+
+   explicit = _normalize_damage_tag(
+      ability.get("damage_tag") or ability.get("damage_type") or ability.get("element")
+   )
+   if explicit:
+      return explicit
+
+   effect = str(ability.get("effect", "")).strip().lower()
+   if effect in EFFECT_DAMAGE_TAGS:
+      return EFFECT_DAMAGE_TAGS[effect]
+
+   # Non-damaging abilities should not show a fake type.
+   non_damage = {
+      "combat_heal", "buff_attack", "extra_gold", "restore_mana",
+      "temp_defense", "guaranteed_flee",
+   }
+   if effect in non_damage:
+      return ""
+
+   if effect.startswith("combat_"):
+      return BRANCH_DAMAGE_TAGS.get(str(branch).lower(), "physical")
+
+   return ""
+
 # Helper to build many nodes concisely
 def _p(id, name, tier, cost, prereqs, bonuses, desc, branch, pos=None):
     """Build a passive node dict."""
@@ -65,16 +147,21 @@ def _p(id, name, tier, cost, prereqs, bonuses, desc, branch, pos=None):
     return node
 
 def _a(id, name, tier, cost, prereqs, ability, desc, branch, pos=None):
-    """Build an active node dict."""
-    node = {
-        "id": id, "name": name, "tier": tier, "type": "active",
-        "cost": cost, "prerequisites": prereqs,
-        "stat_bonuses": {}, "ability": ability,
-        "description": desc, "branch": branch,
-    }
-    if pos:
-        node["position_hint"] = pos
-    return node
+   """Build an active node dict."""
+   ability_data = dict(ability or {})
+   tag = _infer_ability_damage_tag(branch, ability_data)
+   if tag:
+      ability_data["damage_tag"] = tag
+
+   node = {
+      "id": id, "name": name, "tier": tier, "type": "active",
+      "cost": cost, "prerequisites": prereqs,
+      "stat_bonuses": {}, "ability": ability_data,
+      "description": desc, "branch": branch,
+   }
+   if pos:
+      node["position_hint"] = pos
+   return node
 
 
 # =====================================================================

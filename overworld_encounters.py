@@ -926,10 +926,10 @@ SAFE_ROOMS = {
 # =====================================================================
 
 # Base chance of random encounter in wilderness rooms (0.0 - 1.0)
-OVERWORLD_SPAWN_CHANCE = 0.20
+OVERWORLD_SPAWN_CHANCE = 0.13
 
 # Rooms recently visited have lower encounter chance (cooldown tracking)
-ENCOUNTER_COOLDOWN = 3  # Must visit N other rooms before re-roll
+ENCOUNTER_COOLDOWN = 4  # Must visit N other rooms before re-roll
 
 # Chance multiplier by region danger level
 REGION_DANGER = {
@@ -963,7 +963,7 @@ OVERWORLD_LEVEL_SCALE = 0.08  # +8% stats per player level
 # and must be engaged before looting/progressing freely.
 
 # Probability that a wilderness room has a visible enemy on first visit
-VISIBLE_ENEMY_CHANCE = 0.25
+VISIBLE_ENEMY_CHANCE = 0.18
 
 
 class OverworldEncounterManager:

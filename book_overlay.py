@@ -1728,6 +1728,15 @@ class SkillTreeBookOverlay(BookOverlay):
                 ability = preview["ability"]
                 pygame.draw.line(surf, C_DIV, (frame.x + 4, y), (frame.right - 4, y)); y += 4
                 ability_name = ability.get("name", node["name"])
+                damage_tag = str(ability.get("damage_tag", "")).strip().lower()
+                damage_labels = {
+                    "physical": "Physical",
+                    "burn": "Fire",
+                    "frost": "Frost",
+                    "poison": "Poison",
+                    "bleed": "Bleed",
+                    "arcane": "Arcane",
+                }
                 ability_rows = [
                     ("Ability", ability_name),
                     ("Cooldown", f"{ability.get('cooldown', 0)} turns"),
@@ -1740,6 +1749,8 @@ class SkillTreeBookOverlay(BookOverlay):
                     mana_cost = None
                 if mana_cost is not None:
                     ability_rows.append(("Mana", f"{mana_cost} MP"))
+                if damage_tag and damage_tag in damage_labels:
+                    ability_rows.append(("Damage", damage_labels[damage_tag]))
                 if ability.get("combat"):
                     ability_rows.append(("Use", "Combat ability"))
                 for lbl2, val in ability_rows:

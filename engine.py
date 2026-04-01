@@ -207,6 +207,7 @@ try:
 	from combat_system import (
 		CombatState, ENEMY_DATABASE, BOSS_DATABASE, MINI_BOSS_DATABASE,
 		process_player_attack, process_player_defend, process_player_flee,
+		process_player_tactical,
 		process_ability_in_combat,
 		get_combat_status, generate_victory_result,
 		get_enemies_for_dungeon, get_boss_for_dungeon, get_mini_boss_for_dungeon,
@@ -698,6 +699,13 @@ class CommandHandler:
 			"attack": self._cmd_attack,
 			"defend": self._cmd_defend,
 			"flee": self._cmd_flee,
+			"analyze": self._cmd_analyze,
+			"reposition": self._cmd_reposition,
+			"interrupt": self._cmd_interrupt,
+			"charge": self._cmd_charge,
+			"guard": self._cmd_guard_break,
+			"guardbreak": self._cmd_guard_break,
+			"guard_break": self._cmd_guard_break,
 			"shop": self._cmd_shop,
 			"talk": self._cmd_talk,
 			"bank": self._cmd_bank,
@@ -765,6 +773,11 @@ class CommandHandler:
 			"attack": {"category": "Combat", "usage": "attack", "aliases": []},
 			"defend": {"category": "Combat", "usage": "defend", "aliases": []},
 			"flee": {"category": "Combat", "usage": "flee", "aliases": []},
+			"analyze": {"category": "Combat", "usage": "analyze", "aliases": []},
+			"reposition": {"category": "Combat", "usage": "reposition", "aliases": []},
+			"interrupt": {"category": "Combat", "usage": "interrupt", "aliases": []},
+			"charge": {"category": "Combat", "usage": "charge", "aliases": []},
+			"guard_break": {"category": "Combat", "usage": "guard break", "aliases": ["guardbreak", "guard"]},
 			"shop": {"category": "Economy", "usage": "shop <browse|buy|sell|talk|info>", "aliases": []},
 			"talk": {"category": "NPC", "usage": "talk to <name>", "aliases": []},
 			"bank": {"category": "Economy", "usage": "bank <help|balance|upgrade>", "aliases": []},
@@ -1073,6 +1086,23 @@ class CommandHandler:
 
 	def _cmd_flee(self, _args):
 		return self._combat_flee()
+
+	def _cmd_analyze(self, _args):
+		return self._combat_tactical("analyze")
+
+	def _cmd_reposition(self, _args):
+		return self._combat_tactical("reposition")
+
+	def _cmd_interrupt(self, _args):
+		return self._combat_tactical("interrupt")
+
+	def _cmd_charge(self, _args):
+		return self._combat_tactical("charge")
+
+	def _cmd_guard_break(self, args):
+		if args and args[0].lower() == "break":
+			return self._combat_tactical("guard_break")
+		return self._combat_tactical("guard_break")
 
 	def _cmd_shop(self, args):
 		if not args:
@@ -1389,13 +1419,14 @@ class CommandHandler:
 		
 		# Check if we're in combat — restrict available commands
 		if COMBAT_AVAILABLE and getattr(self.engine, 'pending_combat', None):
-			combat_cmds = {"attack", "defend", "flee", "ability", "abilities", "ab", "stats", "equipment", "help", "?", "commands", "save", "inventory", "inv", "i"}
+			combat_cmds = {"attack", "defend", "flee", "ability", "abilities", "ab", "stats", "equipment", "help", "?", "commands", "save", "inventory", "inv", "i", "analyze", "reposition", "interrupt", "charge", "guard", "guardbreak", "guard_break"}
 			test_verb = cmd.strip().split()[0].lower() if cmd.strip() else ""
 			if test_verb not in combat_cmds:
 				combat = self.engine.pending_combat
 				return (
 					f"You're in combat with {combat.enemy_name}!\n"
-					"Available commands: attack | defend | flee | ability <name>\n"
+					"Available commands: attack | defend | flee | analyze | reposition\n"
+					"                    guard break | interrupt | charge | ability <name>\n"
 				)
 
 		parts = cmd.split()
@@ -2188,6 +2219,52 @@ class CommandHandler:
 
 		return msg + get_combat_status(self.engine.player, combat)
 
+	def _combat_tactical(self, action_id):
+		"""Handle tactical combat commands that add strategic counterplay."""
+		if not COMBAT_AVAILABLE:
+			return "Combat system not available."
+		combat = getattr(self.engine, 'pending_combat', None)
+		if not combat:
+			return "You're not in combat."
+
+		success, result = process_player_tactical(self.engine.player, combat, action_id)
+		if not success:
+			return result
+
+		if combat.hp <= 0:
+			victory_msg = generate_victory_result(self.engine.player, combat)
+			ach_msg = self._track_combat_victory(combat)
+			xp_msg = ""
+			if PROGRESSION_AVAILABLE:
+				try:
+					xp_msg = award_xp(self.engine.player, combat.xp_reward, f"defeating {combat.enemy_name}")
+					level_msg = check_level_up(self.engine.player)
+					if level_msg:
+						xp_msg += "\n" + level_msg
+				except Exception:
+					pass
+			self.engine.pending_combat = None
+			self.engine._inventory_changed = True
+			if QUEST_AVAILABLE and self.engine.quest_manager:
+				self.engine.quest_manager.on_enemy_killed(
+					combat.enemy_name,
+					is_boss=getattr(combat, 'is_boss', False),
+					is_mini_boss=getattr(combat, 'is_mini_boss', False)
+				)
+				self.engine.quest_manager.on_item_changed()
+			return result + victory_msg + xp_msg + ach_msg
+
+		death_msg = self._check_player_death()
+		if death_msg:
+			self.engine.pending_combat = None
+			return result + death_msg
+
+		if combat.player_fled:
+			self.engine.pending_combat = None
+			return result
+
+		return result + get_combat_status(self.engine.player, combat)
+
 	def _start_combat_encounter(self, enemy_id=None, boss_dungeon=None, floor_num=None):
 		"""
 		Start a combat encounter. Called from room entry.
@@ -2546,6 +2623,15 @@ class CommandHandler:
 			name = ab.get("name", "Unknown")
 			cmd_name = name.lower().replace(" ", "_")
 			effect = ab.get("effect", "")
+			damage_tag = str(ab.get("damage_tag", "")).strip().lower()
+			damage_labels = {
+				"physical": "Physical",
+				"burn": "Fire",
+				"frost": "Frost",
+				"poison": "Poison",
+				"bleed": "Bleed",
+				"arcane": "Arcane",
+			}
 			is_combat = ab.get("combat", False)
 			usable_outside = effect in ("combat_heal", "buff_attack", "temp_defense", "heal")
 			base_cd = int(ab.get("cooldown", 0))
@@ -2566,6 +2652,8 @@ class CommandHandler:
 			mana_cost = ab.get("mana_cost", ab.get("mana", None))
 			if mana_cost is not None:
 				result += f"    Mana Cost: {mana_cost}\n"
+			if damage_tag and damage_tag in damage_labels:
+				result += f"    Damage Type: {damage_labels[damage_tag]}\n"
 			result += f"    Use: ability {cmd_name}\n\n"
 
 		result += "=" * 50 + "\n"
@@ -2659,6 +2747,25 @@ class CommandHandler:
 		"""Use an active ability. Handles both exploration and combat abilities."""
 		if not PROGRESSION_AVAILABLE:
 			return "Progression system not available."
+
+		combat = getattr(self.engine, 'pending_combat', None)
+		if combat and COMBAT_AVAILABLE and getattr(combat, "ability_followup_required", False):
+			abilities = get_active_abilities(self.engine.player)
+			search = ability_name.lower().replace("_", " ").strip()
+			matched = None
+			for ab in abilities:
+				ab_name = ab.get("name", "").lower()
+				ab_key = ab_name.replace(" ", "_")
+				if search in (ab_name, ab_key) or ab_name.startswith(search):
+					matched = ab
+					break
+			if matched:
+				effect = matched.get("effect", "")
+				if effect.startswith("combat_") or effect in ("guaranteed_flee", "buff_attack", "extra_gold", "temp_defense", "restore_mana"):
+					return (
+						"Ability chain blocked: use a non-ability action first (attack, defend, "
+						"analyze, reposition, interrupt, charge, or guard_break)."
+					)
 
 		success, msg, ability_data = use_ability(self.engine.player, ability_name)
 
@@ -6642,7 +6749,12 @@ Do you wish to enter? (yes/no)
 ║ ---------------------------------------------------------------║
 ║    attack               - Attack the enemy                     ║
 ║    defend               - Reduce incoming damage this turn     ║
-║    flee                  - Attempt to escape (can't flee boss) ║
+║    flee                 - Attempt to escape (can't flee boss)  ║
+║    analyze              - Reveal weakness + threat profile      ║
+║    reposition           - Improve evasion vs next enemy turns   ║
+║    guard break          - Break enemy defense and stagger       ║
+║    interrupt            - Prepare to cancel next enemy ability  ║
+║    charge               - Power up next basic attack            ║
 ║                                                                ║
 """
 		

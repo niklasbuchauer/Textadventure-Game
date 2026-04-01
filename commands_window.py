@@ -83,6 +83,11 @@ COMMANDS = [
     ("attack <target>",     "Combat",      "Attack an enemy with your equipped weapon",    "attack <target>",       "attack goblin"),
     ("defend",              "Combat",      "Take a defensive stance",                      "defend",                "defend"),
     ("flee",                "Combat",      "Attempt to flee combat",                        "flee",                  "flee"),
+    ("analyze",             "Combat",      "Analyze weakness, resistance, and threat",      "analyze",               "analyze"),
+    ("reposition",          "Combat",      "Improve evasion against upcoming enemy attacks", "reposition",            "reposition"),
+    ("guard break",         "Combat",      "Break enemy defense and stagger guarded enemies", "guard break",          "guard break"),
+    ("interrupt",           "Combat",      "Prepare to cancel the next enemy ability",      "interrupt",             "interrupt"),
+    ("charge",              "Combat",      "Charge power for a stronger next attack",       "charge",                "charge"),
     ("skill <name>",        "Combat",      "Use an active skill in combat",                "skill <name>",          "skill fireball"),
     # NPC
     ("talk to <name>",      "NPC",         "Start a conversation with an NPC",             "talk to <name>",        "talk to innkeeper"),
