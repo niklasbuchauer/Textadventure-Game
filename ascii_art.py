@@ -1434,7 +1434,7 @@ def draw_timer_bar(surface, px: int, py: int, pw: int,
         t   = (frac - 0.25) * 4         # 1→0 as frac goes 0.5→0.25
         col = (255, int(180 * t), 30)    # yellow → orange
     else:
-        col = (220, 50, 50)              # red
+        col = (184, 102, 86)             # muted urgent red
 
     fill_w = max(1, int(bw * frac))
     pygame.draw.rect(surface, col, (bx, by, fill_w, bar_h), border_radius=3)

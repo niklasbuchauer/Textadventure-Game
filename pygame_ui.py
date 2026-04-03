@@ -38,7 +38,7 @@ DEFAULT_FPS = 60
 
 # Tag -> hex colour (matches CONFIG_DEFAULTS in engine.py)
 TAG_COLORS = {
-    "combat":      "#E0826D",
+    "combat":      "#BE978A",
     "item":        "#8AC07A",
     "dialogue":    "#50C8A0",
     "status":      "#8B7D9A",
@@ -57,7 +57,7 @@ TAG_COLORS = {
 
 INLINE_COMBAT_TAG_COLORS = {
     "CRIT": "#F4D06F",
-    "DAMAGE": "#E08A7A",
+    "DAMAGE": "#C79A8C",
     "HEAVY": "#D97E5B",
     "WEAK": "#8AC07A",
     "RESIST": "#91A4C8",
@@ -66,7 +66,7 @@ INLINE_COMBAT_TAG_COLORS = {
     "STUN": "#B6A0E8",
     "POISON": "#8CCB84",
     "BURN": "#F0A15E",
-    "BLEED": "#D96E6E",
+    "BLEED": "#B8877D",
     "FREEZE": "#86D5E6",
     "HEAL": "#9DDCC0",
     "FAIL": "#E39B73",
@@ -75,6 +75,31 @@ INLINE_COMBAT_TAG_COLORS = {
     "EXECUTE": "#F0E1A0",
     "TRAVEL": "#89CFC2",
     "ARCANE": "#B89BE8",
+}
+
+PANEL_ICON_FALLBACKS = {
+    "⚔️": "[SWORDS]",
+    "⚔": "[SWORDS]",
+    "🛡️": "[SHIELD]",
+    "🛡": "[SHIELD]",
+    "🔰": "[CREST]",
+    "⛑️": "[HELM]",
+    "⛑": "[HELM]",
+    "🥾": "[BOOTS]",
+    "🧤": "[GLOVES]",
+    "💍": "[RING]",
+    "📿": "[CHARM]",
+    "✨": "[RARE]",
+    "💀": "[SKULL]",
+    "👑": "[CROWN]",
+    "🏆": "[TROPHY]",
+    "💎": "[GEM]",
+    "💰": "[GOLD]",
+    "🗡️": "[BLADE]",
+    "🗡": "[BLADE]",
+    "🌟": "[STAR]",
+    "📖": "[BOOK]",
+    "📚": "[ARCHIVE]",
 }
 
 # Nature-medieval forest palette
@@ -115,21 +140,22 @@ def escape_html(text):
     return s.replace("\n", "<br>")
 
 
+def normalize_panel_text_icons(text):
+    """Replace high-risk unicode symbols with ASCII-safe labels for text panels."""
+    normalized = str(text).replace("\uFE0F", "")
+    for icon, fallback in PANEL_ICON_FALLBACKS.items():
+        normalized = normalized.replace(icon, fallback)
+    return normalized
+
+
 def _style_inline_combat_tags(text):
-    """Highlight inline combat tags like [CRIT] and [DAMAGE]."""
-    pattern = re.compile(r"\[(CRIT|DAMAGE|HEAVY|WEAK|RESIST|BUFF|DEBUFF|STUN|POISON|BURN|BLEED|FREEZE|HEAL|FAIL|FLEE|COUNTER|EXECUTE|TRAVEL|ARCANE)\]")
-
-    def _replace(match):
-        tag = match.group(1).upper()
-        colour = INLINE_COMBAT_TAG_COLORS.get(tag, TAG_COLORS.get("default", "#D8D0A0"))
-        return f'<span style="color:{colour}; font-weight:700;">[{tag}]</span>'
-
-    return pattern.sub(_replace, text)
+    """Keep combat tags plain text to avoid aggressive color-heavy output."""
+    return text
 
 
 def _format_panel_message(text, colour, detail_colour):
     """Convert a panel message into HTML with inline combat emphasis."""
-    html_text = escape_html(text)
+    html_text = escape_html(normalize_panel_text_icons(text))
     html_text = _style_inline_combat_tags(html_text)
 
     lines = html_text.split("<br>")
@@ -324,6 +350,27 @@ class PygamePanelWidget:
 
     def apply_colors(self, colors: dict):
         self.colors.update(colors)
+        default_colour = self.colors.get("default", "#D8D0A0")
+        detail_colour = self.colors.get("detail", default_colour)
+        ts_col = self.colors.get("timestamp", "#9A8B6A")
+
+        rebuilt_messages = []
+        rebuilt_html_parts = []
+        for full_text, _old_colour, timestamp in self._messages:
+            body = full_text
+            if timestamp:
+                prefix = f"[{timestamp}] "
+                if body.startswith(prefix):
+                    body = body[len(prefix):]
+            ts_html = (f'<font color="{ts_col}">[{timestamp}] </font>'
+                       if timestamp else "")
+            frag = f'{ts_html}{_format_panel_message(body, default_colour, detail_colour)}<br><br>'
+            rebuilt_messages.append((full_text, default_colour, timestamp))
+            rebuilt_html_parts.append(frag)
+
+        self._messages = rebuilt_messages
+        self._html_parts = rebuilt_html_parts
+        self._full_rebuild()
 
     def apply_max_messages(self, max_messages: int):
         self._max_msgs = max(10, int(max_messages))
@@ -606,6 +653,10 @@ class PygameAdventureGUI:
         self._combat_visible  = False
         self._combat_player_lbl = None
         self._combat_enemy_lbl  = None
+        self._combat_player_hp_frac = None
+        self._combat_player_mp_frac = None
+        self._combat_enemy_hp_frac = None
+        self._combat_enemy_mp_frac = None
 
         # ── Build all widgets ────────────────────────────────────────────
         self._panels = {}
@@ -649,13 +700,15 @@ class PygameAdventureGUI:
         colors = dict(vcfg.get("colors", {}))
 
         if self.config["accessibility"]["high_contrast"]:
-            colors = {
-                "combat": "#FF4444", "item": "#44FF44",
-                "dialogue": "#44CCFF", "status": "#AAAAFF",
-                "warning": "#FFFF00", "system": "#FF44FF",
-                "command": "#FFFFFF", "default": "#FFFFFF",
-                "timestamp": "#D0D0D0",
-            }
+            colors["default"] = "#FFFFFF"
+            colors["timestamp"] = "#D0D0D0"
+
+        if "default" not in colors:
+            colors["default"] = "#D8D0A0"
+
+        neutral = colors.get("default", "#D8D0A0")
+        for key in ("combat", "item", "dialogue", "status", "warning", "system", "command", "detail"):
+            colors[key] = neutral
 
         if "timestamp" not in colors:
             colors["timestamp"] = "#9A8B6A"
@@ -824,18 +877,20 @@ class PygameAdventureGUI:
         )
         self._combat_panel.hide()
 
-        self._combat_player_lbl = UILabel(
+        self._combat_player_lbl = UITextBox(
+            html_text="",
             relative_rect=pygame.Rect(8, 1, W // 2 - 16, self._COMBAT_H - 2),
-            text="", manager=m,
+            manager=m,
             container=self._combat_panel,
-            object_id=ObjectID("#combat_player_label", "label"),
+            object_id=ObjectID("#combat_player_label", "text_box"),
         )
-        self._combat_enemy_lbl = UILabel(
+        self._combat_enemy_lbl = UITextBox(
+            html_text="",
             relative_rect=pygame.Rect(
                 W // 2, 1, W // 2 - 16, self._COMBAT_H - 2),
-            text="", manager=m,
+            manager=m,
             container=self._combat_panel,
-            object_id=ObjectID("#combat_enemy_label", "label"),
+            object_id=ObjectID("#combat_enemy_label", "text_box"),
         )
 
         # ── Multi-panel area ─────────────────────────────────────────────
@@ -864,12 +919,14 @@ class PygameAdventureGUI:
 
         colors = dict(vcfg["colors"])
         if self.config["accessibility"]["high_contrast"]:
-            colors = {
-                "combat": "#FF4444", "item": "#44FF44",
-                "dialogue": "#44CCFF", "status": "#AAAAFF",
-                "warning": "#FFFF00", "system": "#FF44FF",
-                "command": "#FFFFFF", "default": "#FFFFFF",
-            }
+            colors["default"] = "#FFFFFF"
+
+        if "default" not in colors:
+            colors["default"] = "#D8D0A0"
+
+        neutral = colors.get("default", "#D8D0A0")
+        for key in ("combat", "item", "dialogue", "status", "warning", "system", "command", "detail"):
+            colors[key] = neutral
 
         pr = self._panels_rect()
 
@@ -1251,6 +1308,8 @@ class PygameAdventureGUI:
                 f"Tab: {self._autocomplete_hint}", True, (150, 136, 104))
             surface.blit(hint, (r.x + 8, r.y - hint.get_height() - 2))
 
+        self._draw_combat_resource_bars(surface)
+
         if self._death_overlay:
             self._death_overlay.render(surface)
         if self._dungeon_entrance_overlay:
@@ -1418,12 +1477,75 @@ class PygameAdventureGUI:
     #  COMBAT STATUS BAR
     # ------------------------------------------------------------------
 
+    def _draw_combat_resource_bars(self, surface):
+        if not self._combat_visible or not self._combat_panel:
+            return
+        try:
+            pr = self._combat_panel.get_abs_rect()
+        except Exception:
+            return
+
+        if pr.w <= 20 or pr.h <= 10:
+            return
+
+        track_col = (46, 42, 34)
+        border_col = (72, 66, 54)
+        bar_h = 4
+        gap = 3
+        margin = 8
+        half_w = pr.w // 2
+        lane_w = max(20, half_w - margin * 2)
+        top = pr.y + pr.h - (bar_h * 2 + gap + 3)
+
+        def _clamp_frac(v):
+            if v is None:
+                return 0.0
+            return max(0.0, min(1.0, float(v)))
+
+        def _draw_pair(x, hp_frac, mp_frac, hp_col, mp_col):
+            hp_frac = _clamp_frac(hp_frac)
+            mp_frac = _clamp_frac(mp_frac)
+
+            hp_rect = pygame.Rect(x, top, lane_w, bar_h)
+            mp_rect = pygame.Rect(x, top + bar_h + gap, lane_w, bar_h)
+            pygame.draw.rect(surface, track_col, hp_rect, border_radius=2)
+            pygame.draw.rect(surface, track_col, mp_rect, border_radius=2)
+
+            hp_fill = max(1, int(lane_w * hp_frac)) if hp_frac > 0 else 0
+            mp_fill = max(1, int(lane_w * mp_frac)) if mp_frac > 0 else 0
+            if hp_fill:
+                pygame.draw.rect(surface, hp_col, pygame.Rect(x, top, hp_fill, bar_h), border_radius=2)
+            if mp_fill:
+                pygame.draw.rect(surface, mp_col, pygame.Rect(x, top + bar_h + gap, mp_fill, bar_h), border_radius=2)
+
+            pygame.draw.rect(surface, border_col, hp_rect, 1, border_radius=2)
+            pygame.draw.rect(surface, border_col, mp_rect, 1, border_radius=2)
+
+        _draw_pair(
+            pr.x + margin,
+            self._combat_player_hp_frac,
+            self._combat_player_mp_frac,
+            (129, 184, 114),
+            (102, 156, 211),
+        )
+        _draw_pair(
+            pr.x + half_w + margin // 2,
+            self._combat_enemy_hp_frac,
+            self._combat_enemy_mp_frac,
+            (193, 126, 104),
+            (157, 129, 205),
+        )
+
     def update_combat_status(self, player=None, enemy=None):
         if player is None and enemy is None:
             if self._combat_visible:
                 self._combat_panel.hide()
                 self._combat_visible = False
                 self._relayout_panels()
+            self._combat_player_hp_frac = None
+            self._combat_player_mp_frac = None
+            self._combat_enemy_hp_frac = None
+            self._combat_enemy_mp_frac = None
             return
 
         if not self._combat_visible:
@@ -1431,37 +1553,71 @@ class PygameAdventureGUI:
             self._combat_visible = True
             self._relayout_panels()
 
+        def _pick_value(entity, attr_keys, stat_keys, default=None):
+            for key in attr_keys:
+                val = getattr(entity, key, None)
+                if val is not None:
+                    return val
+            stats = getattr(entity, "stats", None)
+            if isinstance(stats, dict):
+                for key in stat_keys:
+                    if key in stats and stats[key] is not None:
+                        return stats[key]
+            return default
+
         if player:
-            hp  = getattr(player, "hp", None) or player.stats.get("hp", "?")
-            mhp = getattr(player, "max_hp", None) or player.stats.get("max_hp", "?")
-            mp  = getattr(player, "mp", None) or player.stats.get("mp", 0)
-            mmp = getattr(player, "max_mp", None) or player.stats.get("max_mp", 0)
+            hp  = _pick_value(player, ("hp", "health"), ("hp", "health"), "?")
+            mhp = _pick_value(player, ("max_hp", "health_max"), ("max_hp", "health_max"), "?")
+            mp  = _pick_value(player, ("mp", "mana"), ("mp", "mana"), 0)
+            mmp = _pick_value(player, ("max_mp", "max_mana"), ("max_mp", "max_mana"), 0)
             name = getattr(player, "name", "Player") or "Player"
-            bar_len = 12
             try:
-                filled = round(int(hp) / max(int(mhp), 1) * bar_len)
-                hp_bar = "\u2588" * filled + "\u2591" * (bar_len - filled)
+                self._combat_player_hp_frac = int(hp) / max(int(mhp), 1)
             except Exception:
-                hp_bar = ""
-            self._combat_player_lbl.set_text(
-                f"\u25b6 {name}  HP [{hp_bar}] {hp}/{mhp}  MP {mp}/{mmp}")
+                self._combat_player_hp_frac = None
+            try:
+                self._combat_player_mp_frac = int(mp) / max(int(mmp), 1)
+            except Exception:
+                self._combat_player_mp_frac = None
+
+            neutral = "#D8D0A0"
+            p_name = escape_html(name)
+            p_html = f'<font color="{neutral}">\u25b6 {p_name}  HP {hp}/{mhp}  MP {mp}/{mmp}</font>'
+            self._combat_player_lbl.set_text(p_html)
 
         if enemy:
-            ehp  = getattr(enemy, "hp", None)
-            emhp = getattr(enemy, "max_hp", None)
+            ehp  = _pick_value(enemy, ("hp", "health"), ("hp", "health"), None)
+            emhp = _pick_value(enemy, ("max_hp", "health_max"), ("max_hp", "health_max"), None)
+            emp  = _pick_value(enemy, ("mp", "mana"), ("mp", "mana"), None)
+            emmp = _pick_value(enemy, ("max_mp", "max_mana"), ("max_mp", "max_mana"), None)
             ename = getattr(enemy, "name", str(enemy)[:20])
             if ehp is not None and emhp:
-                bar_len = 12
                 try:
-                    filled = round(int(ehp) / max(int(emhp), 1) * bar_len)
-                    e_bar = "\u2588" * filled + "\u2591" * (bar_len - filled)
+                    self._combat_enemy_hp_frac = int(ehp) / max(int(emhp), 1)
                 except Exception:
-                    e_bar = ""
-                self._combat_enemy_lbl.set_text(
-                    f"{ename}  HP [{e_bar}] {ehp}/{emhp} \u25c0")
+                    self._combat_enemy_hp_frac = None
+                neutral = "#D8D0A0"
+                e_name = escape_html(ename)
+
+                if emp is not None and emmp:
+                    try:
+                        self._combat_enemy_mp_frac = int(emp) / max(int(emmp), 1)
+                    except Exception:
+                        self._combat_enemy_mp_frac = None
+                    e_html = f'<font color="{neutral}">{e_name}  HP {ehp}/{emhp}  MP {emp}/{emmp} \u25c0</font>'
+                else:
+                    self._combat_enemy_mp_frac = None
+                    e_html = f'<font color="{neutral}">{e_name}  HP {ehp}/{emhp} \u25c0</font>'
+                self._combat_enemy_lbl.set_text(e_html)
             else:
-                self._combat_enemy_lbl.set_text(f"Enemy: {ename} \u25c0")
+                self._combat_enemy_hp_frac = None
+                self._combat_enemy_mp_frac = None
+                neutral = "#D8D0A0"
+                e_name = escape_html(ename)
+                self._combat_enemy_lbl.set_text(f'<font color="{neutral}">Enemy: {e_name} \u25c0</font>')
         else:
+            self._combat_enemy_hp_frac = None
+            self._combat_enemy_mp_frac = None
             self._combat_enemy_lbl.set_text("")
 
     def _update_combat_status_from_engine(self):

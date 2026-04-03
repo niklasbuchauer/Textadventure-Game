@@ -1,7 +1,7 @@
 {
   "save_version": 5,
   "player": {
-    "current_room": "desert_ruins",
+    "current_room": "desert_dunes_west",
     "inventory": {
       "prayer_candle": 1,
       "iron_dagger": 7,
@@ -23,8 +23,9 @@
       "slag": 5,
       "spider_silk": 1,
       "raw_meat": 1,
-      "sandstone_chunk": 1,
-      "desert_rose": 1
+      "sandstone_chunk": 2,
+      "desert_rose": 1,
+      "soul_gem": 1
     },
     "state": {
       "unlocked_skills": [
@@ -105,9 +106,9 @@
         "w_tank_hp_boost"
       ],
       "cooldowns": {
-        "w_wm_power_strike": 3,
-        "w_tank_shield_bash": 4,
-        "w_arc_power_shot": 3
+        "w_wm_power_strike": 1,
+        "w_tank_shield_bash": 2,
+        "w_arc_power_shot": 1
       },
       "active_effects": {},
       "equipment": {
@@ -136,10 +137,10 @@
         "cartographer"
       ],
       "achievement_tracking": {
-        "kills": 5,
-        "total_gold": 38,
+        "kills": 7,
+        "total_gold": 65,
         "easter_eggs_found": 1,
-        "flawless_wins": 3
+        "flawless_wins": 4
       },
       "_synergy_bonuses": {
         "attack": 64,
@@ -626,7 +627,7 @@
       "artifact_slot": null,
       "faction_membership": "iron_brotherhood",
       "faction_xp": {
-        "iron_brotherhood": 12
+        "iron_brotherhood": 18
       },
       "faction_rank": {
         "iron_brotherhood": 0
@@ -634,7 +635,7 @@
       "pets": {
         "spirit_wolf": {
           "level": 8,
-          "xp": 66
+          "xp": 76
         },
         "ember_fox": {
           "level": 4,
@@ -657,12 +658,12 @@
       "pet_temporary_buffs": {}
     },
     "stats": {
-      "gold": 2195,
-      "health": 359,
+      "gold": 2221,
+      "health": 365,
       "health_max": 365,
       "level": 14,
-      "xp": 5915,
-      "xp_to_next": 885,
+      "xp": 5991,
+      "xp_to_next": 809,
       "skill_points": 0,
       "class": "warrior",
       "strength": 40,
@@ -671,7 +672,7 @@
       "perception": 36,
       "charisma": 5,
       "constitution": 32,
-      "mana": 75,
+      "mana": 87,
       "max_mana": 105,
       "mana_regen_bonus": 0.01,
       "attack": 70,
@@ -679,49 +680,50 @@
       "prestige_xp_multiplier": 1.0
     },
     "visited_rooms": [
-      "coastal_cliffs",
-      "canyon_entrance",
-      "forest_path",
-      "grand_harbor_road",
-      "desert_dunes_west",
-      "woodland_shrine",
-      "desert_cliffs",
-      "forest_pool",
-      "oasis_village",
-      "grand_harbor_square",
-      "dusty_crossroads",
-      "farmland_east",
-      "hidden_oasis",
-      "northern_road",
-      "highland_road",
-      "harbor_east_dock",
-      "forest_clearing",
-      "forest_swamp_border",
-      "grand_harbor_gate",
-      "village_south_road",
-      "deep_forest",
-      "village_east_end",
-      "reef_shallows",
-      "mossy_hollow",
-      "smugglers_cove",
-      "coastal_road_north",
-      "eastern_highlands",
-      "desert_ruins",
-      "village_square",
-      "player_home",
-      "village_west_end",
-      "dungeon_forest_entrance",
-      "harbor_south_pier",
-      "sunken_ruins",
-      "farmland_center",
-      "canyon_depths",
-      "desert_border",
       "desert_dunes_center",
-      "chapel",
-      "stormbreak_docks",
-      "farmland_west",
+      "forest_pool",
+      "grand_harbor_gate",
+      "desert_ruins",
       "sandy_beach",
-      "crossroads"
+      "sunken_ruins",
+      "mossy_hollow",
+      "harbor_east_dock",
+      "desert_border",
+      "village_west_end",
+      "scorpion_flats",
+      "grand_harbor_square",
+      "forest_swamp_border",
+      "hidden_oasis",
+      "oasis_village",
+      "village_south_road",
+      "farmland_east",
+      "canyon_entrance",
+      "harbor_south_pier",
+      "canyon_depths",
+      "highland_road",
+      "coastal_cliffs",
+      "forest_clearing",
+      "chapel",
+      "village_square",
+      "forest_path",
+      "stormbreak_docks",
+      "desert_dunes_west",
+      "eastern_highlands",
+      "dusty_crossroads",
+      "smugglers_cove",
+      "farmland_west",
+      "northern_road",
+      "crossroads",
+      "coastal_road_north",
+      "dungeon_forest_entrance",
+      "grand_harbor_road",
+      "player_home",
+      "deep_forest",
+      "farmland_center",
+      "desert_cliffs",
+      "reef_shallows",
+      "woodland_shrine",
+      "village_east_end"
     ],
     "unlocked_islands": [
       "stormbreak_island"
@@ -8069,10 +8071,10 @@
   },
   "overworld_encounters": {
     "recent_rooms": [
-      "canyon_depths",
-      "hidden_oasis",
       "desert_dunes_center",
-      "desert_ruins"
+      "desert_ruins",
+      "scorpion_flats",
+      "desert_dunes_west"
     ],
     "visible_enemies": {
       "sandy_beach": {
@@ -8171,43 +8173,43 @@
       }
     },
     "rooms_rolled": [
-      "mesa_base",
+      "desert_dunes_center",
+      "forest_pool",
+      "desert_ruins",
+      "sandy_beach",
+      "village_road",
+      "mossy_hollow",
+      "graveyard",
+      "desert_border",
+      "scorpion_flats",
+      "forest_swamp_border",
+      "hidden_oasis",
+      "mesa_top",
+      "farmland_east",
       "canyon_entrance",
+      "canyon_depths",
+      "highland_road",
       "coastal_cliffs",
+      "forest_clearing",
+      "mesa_base",
       "forest_path",
       "desert_dunes_west",
-      "woodland_shrine",
-      "desert_cliffs",
-      "forest_pool",
-      "dusty_crossroads",
-      "farmland_east",
-      "hidden_oasis",
-      "graveyard",
-      "northern_road",
-      "highland_road",
-      "graveyard_gates",
-      "forest_clearing",
-      "village_road",
-      "forest_swamp_border",
-      "deep_forest",
-      "reef_shallows",
-      "mossy_hollow",
-      "smugglers_cove",
-      "coastal_road_north",
-      "eastern_highlands",
-      "desert_ruins",
       "farmland",
-      "dungeon_forest_entrance",
-      "scorpion_flats",
-      "canyon_depths",
-      "farmland_center",
-      "desert_border",
-      "desert_dunes_center",
-      "mesa_top",
+      "eastern_highlands",
+      "dusty_crossroads",
+      "smugglers_cove",
       "farmland_west",
-      "sandy_beach",
+      "northern_road",
       "crossroads",
-      "meteor_crater"
+      "coastal_road_north",
+      "dungeon_forest_entrance",
+      "graveyard_gates",
+      "reef_shallows",
+      "deep_forest",
+      "farmland_center",
+      "desert_cliffs",
+      "meteor_crater",
+      "woodland_shrine"
     ]
   },
   "fishing": {

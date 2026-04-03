@@ -100,11 +100,11 @@
     },
     "#hotbar_combat_button": {
         "colours": {
-            "normal_bg": "#24130a",
-            "hovered_bg": "#3a2818",
-            "normal_text": "#e0826d",
-            "hovered_text": "#f0a080",
-            "normal_border": "#6a4a2a"
+            "normal_bg": "#16140f",
+            "hovered_bg": "#1e1c17",
+            "normal_text": "#d8d0a0",
+            "hovered_text": "#e8dbb0",
+            "normal_border": "#3e3a30"
         },
         "font": {
             "name": "Segoe UI Symbol",
@@ -282,7 +282,7 @@
     },
     "#combat_player_label": {
         "colours": {
-            "normal_text": "#8ac07a",
+            "normal_text": "#d8d0a0",
             "dark_bg": "#00000000",
             "normal_bg": "#00000000"
         },
@@ -294,7 +294,7 @@
     },
     "#combat_enemy_label": {
         "colours": {
-            "normal_text": "#e0826d",
+            "normal_text": "#d8d0a0",
             "dark_bg": "#00000000",
             "normal_bg": "#00000000"
         },
