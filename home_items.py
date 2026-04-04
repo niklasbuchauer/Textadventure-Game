@@ -3,8 +3,6 @@ Home item database for the pocket-dimension player home.
 Data-only module so gameplay systems can remain logic-focused.
 """
 
-from home_assets import SHEET_LAYOUTS
-
 HOME_ITEMS = {
     # Functional utilities
     "home_workbench": {
@@ -16,6 +14,7 @@ HOME_ITEMS = {
         "map_icon": "W",
         "map_color": "#9c6b3a",
         "use_action": "craft",
+        "allowed_rooms": ["workshop"],
     },
     "home_alchemy_table": {
         "name": "Home Alchemy Table",
@@ -26,6 +25,7 @@ HOME_ITEMS = {
         "map_icon": "A",
         "map_color": "#6b8f4e",
         "use_action": "alchemy",
+        "allowed_rooms": ["workshop"],
     },
     "home_forge": {
         "name": "Home Forge",
@@ -36,6 +36,7 @@ HOME_ITEMS = {
         "map_icon": "F",
         "map_color": "#7f5a3c",
         "use_action": "forge",
+        "allowed_rooms": ["workshop"],
     },
     "home_enchanting_table": {
         "name": "Home Enchanting Table",
@@ -46,6 +47,7 @@ HOME_ITEMS = {
         "map_icon": "E",
         "map_color": "#4f6ca8",
         "use_action": "enchant",
+        "allowed_rooms": ["workshop"],
     },
     "home_smelting_furnace": {
         "name": "Home Smelting Furnace",
@@ -56,6 +58,7 @@ HOME_ITEMS = {
         "map_icon": "S",
         "map_color": "#915a36",
         "use_action": "smelt",
+        "allowed_rooms": ["workshop"],
     },
     "personal_chest": {
         "name": "Personal Chest",
@@ -77,6 +80,7 @@ HOME_ITEMS = {
         "map_icon": "B",
         "map_color": "#8b6b93",
         "use_action": "rest",
+        "allowed_rooms": ["bedroom"],
     },
     "trophy_mount": {
         "name": "Trophy Mount",
@@ -86,6 +90,7 @@ HOME_ITEMS = {
         "map_icon": "T",
         "map_color": "#7b4a2a",
         "wall_only": True,
+        "allowed_rooms": ["trophy"],
     },
     "bookshelf": {
         "name": "Bookshelf",
@@ -105,6 +110,7 @@ HOME_ITEMS = {
         "map_icon": "R",
         "map_color": "#4a6b52",
         "use_action": "ritual",
+        "allowed_rooms": ["workshop"],
     },
 
     # Altars
@@ -252,6 +258,7 @@ HOME_ITEMS = {
         "source": "old_martha_quest",
         "map_icon": "g",
         "map_color": "#4f7a4f",
+        "allowed_rooms": ["garden"],
     },
     "arcane_orrery": {
         "name": "Arcane Orrery",
@@ -320,110 +327,54 @@ HOME_ITEMS = {
 }
 
 
-def _iter_sheet_tiles(sheet_name):
-    cols, rows = SHEET_LAYOUTS.get(sheet_name, (0, 0))
-    for y in range(rows):
-        for x in range(cols):
-            yield x, y
+def _normalized_room_ids(room_ids):
+    normalized = []
+    for room_id in room_ids or []:
+        text = str(room_id or "").strip().lower().replace(" ", "_")
+        if text:
+            normalized.append(text)
+    return list(dict.fromkeys(normalized))
 
 
-def _sprite_meta(sheet_name, x, y, w=1, h=1):
-    return {"sheet": sheet_name, "x": int(x), "y": int(y), "w": int(w), "h": int(h)}
+def _default_allowed_rooms(item_id, data):
+    existing = data.get("allowed_rooms")
+    if existing:
+        return _normalized_room_ids(existing)
+
+    use_action = str(data.get("use_action", "")).strip().lower()
+    category = str(data.get("category", "")).strip().lower()
+    source = str(data.get("source", "")).strip().lower()
+
+    if item_id == "garden_planter":
+        return ["garden"]
+    if item_id == "cozy_bed" or use_action == "rest":
+        return ["bedroom"]
+    if item_id == "trophy_mount" or source in {"boss_drop", "boss_blueprint"}:
+        return ["trophy"]
+    if item_id == "personal_chest" or use_action == "chest":
+        return ["storage"]
+    if item_id in {"home_workbench", "home_alchemy_table", "home_forge", "home_enchanting_table", "home_smelting_furnace", "caldron"}:
+        return ["workshop"]
+    if use_action in {"craft", "alchemy", "forge", "enchant", "smelt", "ritual"}:
+        return ["workshop"]
+    if use_action == "bookshelf":
+        return ["bedroom"]
+    if category == "altar":
+        return ["foyer"]
+    if category == "expansion":
+        return ["foyer"]
+    if category == "decoration":
+        return ["foyer"]
+
+    return ["foyer"]
 
 
-def _sheet_id(sheet_name):
-    base = sheet_name.replace("TopDownHouse_", "").replace(".png", "")
-    return base.lower()
-
-
-def _assign_and_generate_home_asset_items():
-    primary_sheet_order = [
-        "TopDownHouse_FurnitureState1.png",
-        "TopDownHouse_SmallItems.png",
-        "TopDownHouse_DoorsAndWindows.png",
-        "TopDownHouse_FloorsAndWalls.png",
-        "TopDownHouse_FloorsAndWalls_OpenDoors.png",
-    ]
-
-    all_coords = []
-    for sheet in primary_sheet_order:
-        for x, y in _iter_sheet_tiles(sheet):
-            all_coords.append((sheet, x, y))
-
-    # 1) Ensure all existing home items receive a sprite.
-    existing_ids = list(HOME_ITEMS.keys())
-    coord_idx = 0
-    for item_id in existing_ids:
-        data = HOME_ITEMS[item_id]
+def _apply_default_room_restrictions():
+    for item_id, data in HOME_ITEMS.items():
         if not isinstance(data, dict):
             continue
-        if isinstance(data.get("sprite"), dict):
-            continue
-        if coord_idx >= len(all_coords):
-            break
-
-        sheet, x, y = all_coords[coord_idx]
-        coord_idx += 1
-        data["sprite"] = _sprite_meta(sheet, x, y)
-
-        # Furniture state 2 is used as an alternate texture where available.
-        if sheet == "TopDownHouse_FurnitureState1.png":
-            data.setdefault("texture_variants", {})
-            data["texture_variants"]["state2"] = _sprite_meta("TopDownHouse_FurnitureState2.png", x, y)
-
-    # 2) Add every unused texture as a new placeable decoration item.
-    used = set()
-    for _item_id, data in HOME_ITEMS.items():
-        if not isinstance(data, dict):
-            continue
-        sprite = data.get("sprite")
-        if isinstance(sprite, dict):
-            used.add((sprite.get("sheet"), int(sprite.get("x", 0)), int(sprite.get("y", 0))))
-        tex_var = data.get("texture_variants", {})
-        if isinstance(tex_var, dict):
-            for _k, var in tex_var.items():
-                if isinstance(var, dict):
-                    used.add((var.get("sheet"), int(var.get("x", 0)), int(var.get("y", 0))))
-
-    generated = 0
-    for sheet_name in SHEET_LAYOUTS.keys():
-        sid = _sheet_id(sheet_name)
-        for x, y in _iter_sheet_tiles(sheet_name):
-            key = (sheet_name, x, y)
-            if key in used:
-                continue
-
-            item_id = f"home_asset_{sid}_{x}_{y}"
-            if item_id in HOME_ITEMS:
-                continue
-
-            HOME_ITEMS[item_id] = {
-                "name": f"{sid.replace('_', ' ').title()} Tile {x},{y}",
-                "category": "decoration",
-                "description": f"Decorative asset tile from {sheet_name} at ({x}, {y}).",
-                "source": "home_asset_pack",
-                "price": 15,
-                "map_icon": "*",
-                "map_color": "#a8a8a8",
-                "sprite": _sprite_meta(sheet_name, x, y),
-            }
-
-            # If this tile exists in both furniture states, expose the counterpart as texture variant.
-            if sheet_name == "TopDownHouse_FurnitureState1.png":
-                HOME_ITEMS[item_id]["texture_variants"] = {
-                    "state2": _sprite_meta("TopDownHouse_FurnitureState2.png", x, y)
-                }
-            elif sheet_name == "TopDownHouse_FurnitureState2.png":
-                HOME_ITEMS[item_id]["texture_variants"] = {
-                    "state1": _sprite_meta("TopDownHouse_FurnitureState1.png", x, y)
-                }
-
-            generated += 1
-
-    return generated
-
-
-GENERATED_HOME_ASSET_ITEMS = _assign_and_generate_home_asset_items()
+        data["allowed_rooms"] = _default_allowed_rooms(item_id, data)
+_apply_default_room_restrictions()
 
 
 def get_home_item(item_id):

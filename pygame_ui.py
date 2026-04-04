@@ -35,6 +35,7 @@ THEME_FILE  = os.path.join(BASE_DIR, "pygame_theme.json")
 MIN_WIDTH   = 1024
 MIN_HEIGHT  = 600
 DEFAULT_FPS = 60
+DRAG_FPS = 120
 
 # Tag -> hex colour (matches CONFIG_DEFAULTS in engine.py)
 TAG_COLORS = {
@@ -442,7 +443,15 @@ class GameApp:
         self.title_screen = TitleScreen(self)
 
         while self.running:
-            self.dt = self.clock.tick(DEFAULT_FPS) / 1000.0
+            target_fps = DEFAULT_FPS
+            if self.scene == "game" and self.gui:
+                try:
+                    editor = getattr(self.gui, "home_editor_win", None)
+                    if editor and hasattr(editor, "is_open") and editor.is_open() and hasattr(editor, "is_drag_active") and editor.is_drag_active():
+                        target_fps = DRAG_FPS
+                except Exception:
+                    target_fps = DEFAULT_FPS
+            self.dt = self.clock.tick(target_fps) / 1000.0
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -821,6 +830,8 @@ class PygameAdventureGUI:
             relative_rect=pygame.Rect(bx, btn_y, 106, btn_h),
             text="H Home Edit", manager=m,
             container=self.toolbar_panel, object_id=oid)
+        self.home_editor_btn.hide()
+        self.home_editor_btn.disable()
         bx += 110
 
         # Status label
@@ -1214,6 +1225,8 @@ class PygameAdventureGUI:
     # ------------------------------------------------------------------
 
     def update(self, dt):
+        self._refresh_home_editor_button_access()
+
         for pw in self._panels.values():
             pw.update()
 
@@ -2128,6 +2141,9 @@ class PygameAdventureGUI:
             self.append(f"[Commands] Could not open: {e}")
 
     def toggle_home_editor_window(self):
+        if not self._is_player_in_home():
+            self.append("[Home Editor] You must be inside your home to open the Home Editor.", "warning")
+            return
         try:
             if self.home_editor_win and self.home_editor_win.is_open():
                 self.home_editor_win.close()
@@ -2136,6 +2152,24 @@ class PygameAdventureGUI:
             self.home_editor_win = HomeEditorOverlay(self)
         except Exception as e:
             self.append(f"[Home Editor] Could not open: {e}", "warning")
+
+    def _is_player_in_home(self):
+        player = getattr(self.engine, "player", None)
+        if not player:
+            return False
+        return str(getattr(player, "current_room", "")).strip().lower() == "player_home"
+
+    def _refresh_home_editor_button_access(self):
+        can_use = self._is_player_in_home()
+        if can_use:
+            self.home_editor_btn.show()
+            self.home_editor_btn.enable()
+            return
+
+        self.home_editor_btn.hide()
+        self.home_editor_btn.disable()
+        if self.home_editor_win and self.home_editor_win.is_open():
+            self.home_editor_win.close()
 
     # ------------------------------------------------------------------
     #  ENGINE INIT

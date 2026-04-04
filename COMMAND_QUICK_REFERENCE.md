@@ -63,18 +63,45 @@
 
 - `party` = Open party/faction management window
 
+## Economy And Stations
+
+- `shop` = Show shop help and actions
+- `shop browse` = Browse current merchant inventory
+- `shop buy <item>` = Buy an item from merchant stock
+- `shop sell <item> <price>` = Offer an item to the shopkeeper
+- `bank` = Show bank actions
+- `deposit <amount|all>` = Deposit gold into your bank
+- `withdraw <amount|all>` = Withdraw gold from your bank
+- `balance` = Show bank balance
+- `upgrade bank` = Upgrade bank storage tier
+- `brew` / `alchemy` = Open alchemy station flow
+- `smelt` = Open smelting station flow
+- `enchant` = Open enchanting station flow
+- `ritual` = Open ritual station flow
+
 ## Home Commands
 
 - `buy home deed` = Purchase your first home deed
 - `home` = Travel to your home
 - `home edit` = Open the interactive home editor UI
 - `home use` = List usable placed home objects + `use <item_id>` commands
+- `home bonus` = Show active room utility bonus and remaining combat wins
 - `hearthstone` = Teleport home with Hearthstone
 - `leave` / `exit home` = Leave your home
 - `place <item> [at x y]` = Place a home item
 - `remove <item>` = Remove placed home item
 - `home inventory` = List placed home items
-- `home upgrades` = Show expansion unlock status
+- `home upgrades` = Show room unlock status
+- `home rooms` = List all home rooms and lock status
+- `home room <room_id>` = Switch to an unlocked room
+- `home unlock <room_id>` = Unlock a new room with gold
+- `home containers` = List containers in the current room
+- `home store <item> [qty]` = Store inventory item in a room container
+- `home take <item> [qty]` = Retrieve stored item from room container
+- `home spawn <room_id>` = Set your default home room on entry
+- `home garden` = Show garden plot status in Garden Room
+- `home plant <item> [qty]` = Plant seeds/crops in Garden Room plots
+- `home harvest` = Harvest all ready garden plots
 - `rename home <name>` = Rename your home
 
 ## Debug Home Commands

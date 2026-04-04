@@ -79,16 +79,6 @@ def get_tile_surface(meta):
     return surf
 
 
-def _hex_to_rgb(hex_color):
-    text = str(hex_color or "").strip()
-    if text.startswith("#") and len(text) == 7:
-        try:
-            return (int(text[1:3], 16), int(text[3:5], 16), int(text[5:7], 16))
-        except ValueError:
-            return None
-    return None
-
-
 def choose_sprite_meta(item_def, placed=None):
     if not isinstance(item_def, dict):
         return None
@@ -96,20 +86,6 @@ def choose_sprite_meta(item_def, placed=None):
     meta = item_def.get("sprite")
     if not isinstance(meta, dict):
         return None
-
-    placed = placed or {}
-
-    skin = placed.get("skin")
-    if skin:
-        skin_variants = item_def.get("skin_variants", {})
-        if isinstance(skin_variants, dict) and isinstance(skin_variants.get(skin), dict):
-            meta = skin_variants[skin]
-
-    texture = placed.get("texture")
-    if texture:
-        texture_variants = item_def.get("texture_variants", {})
-        if isinstance(texture_variants, dict) and isinstance(texture_variants.get(texture), dict):
-            meta = texture_variants[texture]
 
     return meta
 
@@ -121,12 +97,6 @@ def blit_home_item_sprite(target, item_def, placed, rect):
         return False
 
     scaled = pygame.transform.smoothscale(base, (max(1, rect.width), max(1, rect.height)))
-
-    tint_rgb = _hex_to_rgb((placed or {}).get("tint"))
-    if tint_rgb:
-        tint_layer = pygame.Surface(scaled.get_size(), pygame.SRCALPHA)
-        tint_layer.fill((tint_rgb[0], tint_rgb[1], tint_rgb[2], 255))
-        scaled.blit(tint_layer, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
 
     target.blit(scaled, rect.topleft)
     return True

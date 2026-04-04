@@ -255,22 +255,22 @@ DUNGEON_THEME_BY_ID = {
 
 DUNGEON_THEMED_LOOT = {
     "crystal": {
-        "low": ["torch", "empty_bottle", "old_boot", "rat_pelt", "cracked_skull"],
+        "low": ["torch", "empty_bottle", "old_boot", "rat_pelt", "cracked_skull", "wildflower_seed"],
         "medium": ["enchanted_candle", "worn_map", "silver_ring", "coin_pouch", "lockpick_set"],
         "high": ["rare_gemstone", "magic_amulet", "spell_scroll", "enchanted_ring", "platinum_bar"],
     },
     "iron": {
-        "low": ["rusty_dagger", "broken_chain", "bent_fork", "torch", "torn_cloth"],
+        "low": ["rusty_dagger", "broken_chain", "bent_fork", "torch", "torn_cloth", "wheat_seed"],
         "medium": ["iron_sword", "craftsman_hammer", "steel_dagger", "iron_key", "rope_coil"],
         "high": ["steel_longsword", "masterwork_shield", "gold_chalice", "ancient_tome", "royal_signet"],
     },
     "shadow": {
-        "low": ["torn_cloth", "cracked_skull", "empty_bottle", "broken_chain", "moldy_bread"],
+        "low": ["torn_cloth", "cracked_skull", "empty_bottle", "broken_chain", "moldy_bread", "mushroom_seed"],
         "medium": ["enchanted_candle", "ancient_coin", "lockpick_set", "worn_map", "silver_ring"],
         "high": ["ancient_tome", "enchanted_cloak_fragment", "magic_amulet", "spell_scroll", "rare_gemstone"],
     },
     "catacombs": {
-        "low": ["cracked_skull", "broken_chain", "old_boot", "moldy_bread", "torch"],
+        "low": ["cracked_skull", "broken_chain", "old_boot", "moldy_bread", "torch", "strange_herb_seed"],
         "medium": ["ancient_coin", "iron_key", "healing_salve", "coin_pouch", "worn_map"],
         "high": ["ancient_tome", "gold_chalice", "royal_signet", "healing_potion", "platinum_bar"],
     },

@@ -1236,12 +1236,16 @@ def calculate_crit(player):
     dex = player.stats.get("dexterity", 0)
     perc = player.stats.get("perception", 0)
     bonus = player.stats.get("crit_chance_bonus", 0)
+    home_bonus = {}
+    if hasattr(player, "state") and isinstance(player.state, dict):
+        home_bonus = player.state.get("active_home_room_bonuses", {}) or {}
+    home_crit_bonus = float(home_bonus.get("crit_chance_bonus", 0.0))
 
     artifact_fx, _artifact_id = get_artifact_combat_effects(player)
     crit_bonus = float(artifact_fx.get("crit_chance_bonus", 0.0))
     crit_mult_bonus = float(artifact_fx.get("crit_damage_bonus", 0.0))
 
-    crit_chance = min(0.60, 0.05 + dex * 0.02 + perc * 0.01 + bonus + crit_bonus)
+    crit_chance = min(0.60, 0.05 + dex * 0.02 + perc * 0.01 + bonus + crit_bonus + home_crit_bonus)
 
     if random.random() < crit_chance:
         return True, 1.8 + crit_mult_bonus
@@ -2778,6 +2782,8 @@ def generate_victory_result(player, combat):
     set_utility = player.state.get("active_set_utility_effects", {}) if hasattr(player, "state") else {}
     set_gold_mult = float(set_utility.get("combat_gold_mult", 1.0))
     gold_mult = active_effects.get("double_gold", 1)
+    home_bonus = player.state.get("active_home_room_bonuses", {}) if hasattr(player, "state") else {}
+    home_gold_mult = 1.0 + float(home_bonus.get("gold_mult", 0.0) or 0.0)
     if gold_mult > 1:
         gold = int(gold * gold_mult)
         del active_effects["double_gold"]
@@ -2790,6 +2796,12 @@ def generate_victory_result(player, combat):
         if bonus_gold > 0:
             gold += bonus_gold
             result += f"  ✨ Set bonus gold: +{bonus_gold}\n"
+
+    if gold > 0 and home_gold_mult > 1.0:
+        bonus_gold = int(max(0, gold * (home_gold_mult - 1.0)))
+        if bonus_gold > 0:
+            gold += bonus_gold
+            result += f"  🏡 Home bonus gold: +{bonus_gold}\n"
 
     if gold > 0:
         player.stats["gold"] = player.stats.get("gold", 0) + gold

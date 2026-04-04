@@ -563,6 +563,10 @@ FISHING_LOOT = [
 	("golden_fish", 40, 8),
 	("waterlogged_chest", 25, 5),
 	("seaweed", 2, 15),
+	("wildflower_seed", 16, 8),
+	("wheat_seed", 22, 6),
+	("mushroom_seed", 24, 5),
+	("strange_herb_seed", 20, 4),
 	("ancient_coin", 60, 2),
 ]
 

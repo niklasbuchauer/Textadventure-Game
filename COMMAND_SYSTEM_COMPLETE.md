@@ -311,3 +311,49 @@ Command visibility updated in:
 - Debug text menu in `debug_commands.py`
 - Pygame command reference in `commands_window.py`
 - Quick reference doc in `COMMAND_QUICK_REFERENCE.md`
+
+## Home Rooms And Storage Commands (April 2026)
+
+Added a utility-focused home command layer for the room rework foundation:
+
+- `home bonus` - Shows currently active timed home room utility bonus.
+- `home rooms` - Lists all home rooms and lock status.
+- `home room <room_id>` - Switches active home room when unlocked.
+- `home unlock <room_id>` - Unlocks a room using gold.
+- `home containers` - Shows room-local storage containers and contents.
+- `home store <item> [qty]` - Stores inventory items into current room container.
+- `home take <item> [qty]` - Retrieves items from current room container.
+- `home spawn <room_id>` - Sets default active home room when entering home.
+- `home garden` - Shows plot status for the garden room.
+- `home plant <item> [qty]` - Plants seeds/crops in garden plots.
+- `home harvest` - Harvests all ready crops in the garden.
+
+Supporting behavior updates:
+
+- `home upgrades` now reports room unlock progression instead of legacy expansions.
+- `home use` is now scoped to objects in the active home room.
+- Home data now uses schema v2 with a hard reset path from old schema versions.
+
+Command visibility updated in:
+
+- Player command handler in `engine.py`
+- Pygame command reference in `commands_window.py`
+- Quick reference doc in `COMMAND_QUICK_REFERENCE.md`
+
+## Command Preview Parity And Farming Sources (April 2026)
+
+Command visibility was expanded so implemented commands are discoverable in the pygame command reference and quick docs.
+
+Added preview/list coverage for:
+
+- Progression/meta commands (`abilities`, `ability`, `synergy`, `achievements`, `prestige`, `faction`, `pet`, `party`)
+- Equipment/cosmetic commands (`equip`, `unequip`, `equipment`, `artifact`, `transmog`, `cosmetics`)
+- Economy/station commands (`shop`, `bank`, `deposit`, `withdraw`, `balance`, `upgrade bank`, `brew`, `smelt`, `enchant`, `ritual`)
+- Home travel command (`hearthstone`)
+
+Garden economy availability was also expanded so seeds can be acquired through multiple gameplay loops:
+
+- Shop pools (primary source)
+- Fishing loot table (secondary source)
+- Dungeon themed loot (tertiary source)
+- Overworld encounter drops (tertiary source)

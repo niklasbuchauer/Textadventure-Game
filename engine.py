@@ -96,14 +96,26 @@ try:
 		HOME_FALLBACK_ROOM,
 		ensure_player_home_state,
 		is_home_room,
+		get_active_room_id,
 		place_item as place_home_item,
 		remove_item as remove_home_item,
 		list_placed_items as list_home_placed_items,
 		list_upgrades as list_home_upgrades,
+		list_rooms as list_home_rooms,
+		set_active_room as set_home_active_room,
+		unlock_room as unlock_home_room,
+		set_spawn_room as set_home_spawn_room,
+		list_containers as list_home_containers,
+		store_inventory_item as store_home_inventory_item,
+		retrieve_inventory_item as retrieve_home_inventory_item,
+		garden_status as home_garden_status,
+		plant_garden_crop as home_plant_crop,
+		harvest_garden as home_harvest_crop,
 		rename_home as rename_player_home,
 		build_home_description,
 		activate_altar as activate_home_altar,
 		get_unlocked_tiles,
+		HOME_ROOMS,
 	)
 	from home_items import get_home_item
 	HOME_AVAILABLE = True
@@ -798,6 +810,19 @@ class CommandHandler:
 			"board": {"category": "Travel", "usage": "board [destination]", "aliases": []},
 			"rooms": {"category": "Exploration", "usage": "rooms", "aliases": ["room_browser", "areas"]},
 			"bestiary": {"category": "Exploration", "usage": "bestiary", "aliases": ["monsters", "enemies"]},
+			"disarm": {"category": "Dungeon", "usage": "disarm | disarm trap", "aliases": []},
+			"craft": {"category": "Crafting", "usage": "craft", "aliases": ["altar"]},
+			"forge": {"category": "Crafting", "usage": "forge [recipe]", "aliases": []},
+			"experiment": {"category": "Crafting", "usage": "experiment", "aliases": []},
+			"use": {"category": "Inventory", "usage": "use <item>", "aliases": []},
+			"home": {"category": "Home", "usage": "home [subcommand]", "aliases": []},
+			"hearthstone": {"category": "Home", "usage": "hearthstone", "aliases": []},
+			"place": {"category": "Home", "usage": "place <item> [at x y]", "aliases": []},
+			"remove": {"category": "Home", "usage": "remove <item>", "aliases": []},
+			"rename home": {"category": "Home", "usage": "rename home <name>", "aliases": []},
+			"leave": {"category": "Movement", "usage": "leave", "aliases": []},
+			"sell": {"category": "Economy", "usage": "sell <item>", "aliases": []},
+			"buy home deed": {"category": "Home", "usage": "buy home deed", "aliases": []},
 		}
 
 	def _dispatch_registry_command(self, verb, args):
@@ -1311,6 +1336,7 @@ class CommandHandler:
 		category_order = [
 			"Movement",
 			"Exploration",
+			"Home",
 			"Inventory",
 			"System",
 			"Progression",
@@ -1320,6 +1346,7 @@ class CommandHandler:
 			"NPC",
 			"Gathering",
 			"Crafting",
+			"Dungeon",
 			"Travel",
 			"Debug",
 		]
@@ -1538,6 +1565,8 @@ class CommandHandler:
 				if sub in ("edit", "editor"):
 					if not self.engine.player.state.get("home_owned"):
 						return "You do not own a home yet. Buy a home deed first."
+					if not self._in_home():
+						return "You must be inside your home to use home edit."
 					gui = getattr(self.engine, "gui", None)
 					if gui and hasattr(gui, "toggle_home_editor_window"):
 						gui.toggle_home_editor_window()
@@ -1549,6 +1578,28 @@ class CommandHandler:
 					return self._home_inventory()
 				if sub == "upgrades":
 					return self._home_upgrades()
+				if sub in ("rooms", "room"):
+					if len(args) == 1 or sub == "rooms":
+						return self._home_rooms()
+					return self._home_switch_room(args[1:])
+				if sub == "unlock":
+					return self._home_unlock_room(args[1:])
+				if sub == "containers":
+					return self._home_containers()
+				if sub == "store":
+					return self._home_store(args[1:])
+				if sub == "take":
+					return self._home_take(args[1:])
+				if sub == "spawn":
+					return self._home_spawn(args[1:])
+				if sub == "garden":
+					return self._home_garden_status()
+				if sub == "plant":
+					return self._home_plant(args[1:])
+				if sub == "harvest":
+					return self._home_harvest()
+				if sub in ("bonus", "bonuses", "buff", "buffs"):
+					return self._home_bonus_status()
 			return self._go_home(via_hearthstone=False)
 		if verb == "hearthstone":
 			return self._go_home(via_hearthstone=True)
@@ -2027,6 +2078,55 @@ class CommandHandler:
 		except TypeError:
 			return room.describe()
 
+	def _get_active_home_room_bonus(self):
+		"""Return active timed home room bonus dict, if any."""
+		bonus = self.engine.player.state.get("active_home_room_bonuses", {})
+		if isinstance(bonus, dict):
+			return bonus
+		return {}
+
+	def _award_combat_xp(self, combat):
+		"""Award combat XP with temporary home room multiplier support."""
+		if not PROGRESSION_AVAILABLE:
+			return ""
+		try:
+			base_xp = int(getattr(combat, "xp_reward", 0) or 0)
+			if base_xp <= 0:
+				return ""
+			bonus = self._get_active_home_room_bonus()
+			xp_mult = 1.0 + float(bonus.get("xp_mult", 0.0) or 0.0)
+			if xp_mult < 1.0:
+				xp_mult = 1.0
+			xp_amount = max(0, int(round(base_xp * xp_mult)))
+			source = f"defeating {combat.enemy_name}"
+			if xp_amount > base_xp:
+				source += " (home bonus)"
+			xp_msg = award_xp(self.engine.player, xp_amount, source)
+			level_msg = check_level_up(self.engine.player)
+			if level_msg:
+				xp_msg += "\n" + level_msg
+			return xp_msg
+		except Exception:
+			return ""
+
+	def _consume_home_room_bonus_on_victory(self):
+		"""Consume one stack of timed home room bonuses after a combat win."""
+		bonus = self._get_active_home_room_bonus()
+		if not bonus:
+			return ""
+		wins_remaining = int(bonus.get("wins_remaining", 0) or 0)
+		if wins_remaining <= 0:
+			self.engine.player.state.pop("active_home_room_bonuses", None)
+			return ""
+		wins_remaining -= 1
+		if wins_remaining <= 0:
+			source = str(bonus.get("source", "Your home bonus")).strip() or "Your home bonus"
+			self.engine.player.state.pop("active_home_room_bonuses", None)
+			return f"\n  🏡 {source} has faded."
+		bonus["wins_remaining"] = wins_remaining
+		self.engine.player.state["active_home_room_bonuses"] = bonus
+		return ""
+
 	def _track_combat_victory(self, combat):
 		"""Track achievement events for a combat victory."""
 		if not ACHIEVEMENT_AVAILABLE:
@@ -2063,6 +2163,8 @@ class CommandHandler:
 			if gold > 0:
 				track_event(player, "total_gold", gold)
 
+			bonus_expire_msg = self._consume_home_room_bonus_on_victory()
+
 			# Faction progression from combat participation.
 			if FACTION_AVAILABLE:
 				extra = add_faction_xp(player, 8 if getattr(combat, 'is_boss', False) else 3, reason="combat victory")
@@ -2071,7 +2173,12 @@ class CommandHandler:
 
 			# Pet progression from combat participation.
 			if PET_AVAILABLE:
-				extra = gain_pet_xp(player, 12 if getattr(combat, 'is_boss', False) else 5, source="combat")
+				pet_xp = 12 if getattr(combat, 'is_boss', False) else 5
+				home_bonus = self._get_active_home_room_bonus()
+				pet_mult = float(home_bonus.get("pet_xp_mult", 1.0) or 1.0)
+				if pet_mult < 1.0:
+					pet_mult = 1.0
+				extra = gain_pet_xp(player, int(round(pet_xp * pet_mult)), source="combat")
 				if extra:
 					extra_msgs.append(extra)
 
@@ -2099,6 +2206,8 @@ class CommandHandler:
 					"(1 in 10,000 chance — you are extraordinary.)\n"
 				)
 
+			if bonus_expire_msg:
+				extra_msgs.append(bonus_expire_msg)
 			return self._check_and_show_achievements() + ("".join(extra_msgs) if extra_msgs else "")
 		except Exception:
 			return ""
@@ -2150,14 +2259,7 @@ class CommandHandler:
 			ach_msg = self._track_combat_victory(combat)
 			# Award XP through progression system
 			xp_msg = ""
-			if PROGRESSION_AVAILABLE:
-				try:
-					xp_msg = award_xp(self.engine.player, combat.xp_reward, f"defeating {combat.enemy_name}")
-					level_msg = check_level_up(self.engine.player)
-					if level_msg:
-						xp_msg += "\n" + level_msg
-				except Exception:
-					pass
+			xp_msg = self._award_combat_xp(combat)
 			self.engine.pending_combat = None
 			self.engine._inventory_changed = True
 			# Notify quest system of enemy kill
@@ -2235,14 +2337,7 @@ class CommandHandler:
 			victory_msg = generate_victory_result(self.engine.player, combat)
 			ach_msg = self._track_combat_victory(combat)
 			xp_msg = ""
-			if PROGRESSION_AVAILABLE:
-				try:
-					xp_msg = award_xp(self.engine.player, combat.xp_reward, f"defeating {combat.enemy_name}")
-					level_msg = check_level_up(self.engine.player)
-					if level_msg:
-						xp_msg += "\n" + level_msg
-				except Exception:
-					pass
+			xp_msg = self._award_combat_xp(combat)
 			self.engine.pending_combat = None
 			self.engine._inventory_changed = True
 			if QUEST_AVAILABLE and self.engine.quest_manager:
@@ -2784,14 +2879,7 @@ class CommandHandler:
 			if combat.hp <= 0:
 				victory_msg = generate_victory_result(self.engine.player, combat)
 				xp_msg = ""
-				if PROGRESSION_AVAILABLE:
-					try:
-						xp_msg = award_xp(self.engine.player, combat.xp_reward, f"defeating {combat.enemy_name}")
-						level_msg = check_level_up(self.engine.player)
-						if level_msg:
-							xp_msg += "\n" + level_msg
-					except Exception:
-						pass
+				xp_msg = self._award_combat_xp(combat)
 				self.engine.pending_combat = None
 				self.engine._inventory_changed = True
 				# Track achievements
@@ -4777,6 +4865,160 @@ Do you wish to enter? (yes/no)
 		home_data = self.engine.player.state.get("home_data", {})
 		return list_home_placed_items(home_data)
 
+	def _home_rooms(self):
+		if not HOME_AVAILABLE:
+			return "Home system is not available."
+		home_data = self.engine.player.state.get("home_data", {})
+		return list_home_rooms(home_data)
+
+	def _home_switch_room(self, args):
+		if not HOME_AVAILABLE:
+			return "Home system is not available."
+		if not self._in_home():
+			return "You can only switch home rooms while inside your home."
+		if not args:
+			home_data = self.engine.player.state.get("home_data", {})
+			active = get_active_room_id(home_data)
+			room_name = HOME_ROOMS.get(active, {}).get("name", active)
+			return f"Current home room: {room_name} ({active})"
+		target = "_".join(args).strip().lower().replace(" ", "_")
+		home_data = self.engine.player.state.get("home_data", {})
+		ok, msg = set_home_active_room(home_data, target)
+		if ok:
+			self.engine.refresh_home_room_description()
+			return self.engine.get_home_description_text()
+		return msg
+
+	def _home_unlock_room(self, args):
+		if not HOME_AVAILABLE:
+			return "Home system is not available."
+		if not self.engine.player.state.get("home_owned"):
+			return "You do not own a home yet. Buy a home deed first."
+		if not args:
+			return "Use: home unlock <room_id>"
+		target = "_".join(args).strip().lower().replace(" ", "_")
+		ok, msg = unlock_home_room(self.engine.player, target)
+		if ok:
+			self.engine.refresh_home_room_description()
+		return msg
+
+	def _home_containers(self):
+		if not HOME_AVAILABLE:
+			return "Home system is not available."
+		if not self._in_home():
+			return "You can only access home containers while inside your home."
+		home_data = self.engine.player.state.get("home_data", {})
+		return list_home_containers(home_data)
+
+	def _home_store(self, args):
+		if not HOME_AVAILABLE:
+			return "Home system is not available."
+		if not self._in_home():
+			return "You can only store items while inside your home."
+		if not args:
+			return "Use: home store <item_id> [quantity]"
+
+		qty = 1
+		if args and args[-1].isdigit():
+			qty = max(1, int(args[-1]))
+			args = args[:-1]
+		item_id = "_".join(args).strip().lower().replace(" ", "_")
+		ok, msg = store_home_inventory_item(self.engine.player, item_id, qty)
+		if ok:
+			self.engine._inventory_changed = True
+		return msg
+
+	def _home_take(self, args):
+		if not HOME_AVAILABLE:
+			return "Home system is not available."
+		if not self._in_home():
+			return "You can only retrieve items while inside your home."
+		if not args:
+			return "Use: home take <item_id> [quantity]"
+
+		qty = 1
+		if args and args[-1].isdigit():
+			qty = max(1, int(args[-1]))
+			args = args[:-1]
+		item_id = "_".join(args).strip().lower().replace(" ", "_")
+		ok, msg = retrieve_home_inventory_item(self.engine.player, item_id, qty)
+		if ok:
+			self.engine._inventory_changed = True
+		return msg
+
+	def _home_spawn(self, args):
+		if not HOME_AVAILABLE:
+			return "Home system is not available."
+		home_data = self.engine.player.state.get("home_data", {})
+		if not args:
+			room_id = home_data.get("spawn_room_id", "foyer")
+			room_name = HOME_ROOMS.get(room_id, {}).get("name", room_id)
+			return f"Current home spawn room: {room_name} ({room_id})\nUse: home spawn <room_id>"
+		target = "_".join(args).strip().lower().replace(" ", "_")
+		ok, msg = set_home_spawn_room(home_data, target)
+		if ok:
+			self.engine.refresh_home_room_description()
+		return msg
+
+	def _home_garden_status(self):
+		if not HOME_AVAILABLE:
+			return "Home system is not available."
+		if not self._in_home():
+			return "You can only manage the garden while inside your home."
+		home_data = self.engine.player.state.get("home_data", {})
+		return home_garden_status(home_data)
+
+	def _home_plant(self, args):
+		if not HOME_AVAILABLE:
+			return "Home system is not available."
+		if not self._in_home():
+			return "You can only plant while inside your home."
+		if not args:
+			return "Use: home plant <seed_or_crop> [qty]"
+
+		qty = 1
+		if args and args[-1].isdigit():
+			qty = max(1, int(args[-1]))
+			args = args[:-1]
+		seed_id = "_".join(args).strip().lower().replace(" ", "_")
+		ok, msg = home_plant_crop(self.engine.player, seed_id, qty)
+		if ok:
+			self.engine._inventory_changed = True
+		return msg
+
+	def _home_harvest(self):
+		if not HOME_AVAILABLE:
+			return "Home system is not available."
+		if not self._in_home():
+			return "You can only harvest while inside your home."
+		ok, msg = home_harvest_crop(self.engine.player)
+		if ok:
+			self.engine._inventory_changed = True
+		return msg
+
+	def _home_bonus_status(self):
+		if not HOME_AVAILABLE:
+			return "Home system is not available."
+		bonus = self.engine.player.state.get("active_home_room_bonuses", {})
+		if not isinstance(bonus, dict) or not bonus:
+			return "No active home room bonus. Use objects in your bedroom, workshop, trophy hall, or pet room to activate one."
+		source = str(bonus.get("source", "Home bonus")).strip() or "Home bonus"
+		wins = int(bonus.get("wins_remaining", 0) or 0)
+		lines = [f"Active home bonus: {source}", f"Combat wins remaining: {wins}"]
+		xp_mult = float(bonus.get("xp_mult", 0.0) or 0.0)
+		gold_mult = float(bonus.get("gold_mult", 0.0) or 0.0)
+		crit_bonus = float(bonus.get("crit_chance_bonus", 0.0) or 0.0)
+		pet_mult = float(bonus.get("pet_xp_mult", 1.0) or 1.0)
+		if xp_mult > 0:
+			lines.append(f"- XP bonus: +{int(round(xp_mult * 100))}%")
+		if gold_mult > 0:
+			lines.append(f"- Gold bonus: +{int(round(gold_mult * 100))}%")
+		if crit_bonus > 0:
+			lines.append(f"- Crit chance: +{int(round(crit_bonus * 100))}%")
+		if pet_mult > 1.0:
+			lines.append(f"- Pet XP: +{int(round((pet_mult - 1.0) * 100))}%")
+		return "\n".join(lines)
+
 	def _home_use_list(self):
 		if not HOME_AVAILABLE:
 			return "Home system is not available."
@@ -4786,6 +5028,7 @@ Do you wish to enter? (yes/no)
 			return "You can only use 'home use' while inside your home."
 
 		home_data = self.engine.player.state.get("home_data", {})
+		active_room = get_active_room_id(home_data)
 		placed_items = home_data.get("placed_items", [])
 		if not placed_items:
 			return "No objects are placed in your home yet."
@@ -4804,6 +5047,8 @@ Do you wish to enter? (yes/no)
 
 		usable = {}
 		for placed in placed_items:
+			if str(placed.get("room_id", "foyer")).strip().lower() != active_room:
+				continue
 			item_id = str(placed.get("item_id", "")).strip().lower()
 			if not item_id:
 				continue
@@ -4830,9 +5075,10 @@ Do you wish to enter? (yes/no)
 				entry["count"] += 1
 
 		if not usable:
-			return "No usable home objects are currently placed."
+			return "No usable home objects are currently placed in this room."
 
-		lines = ["Usable objects in your home:"]
+		room_name = HOME_ROOMS.get(active_room, {}).get("name", active_room)
+		lines = [f"Usable objects in {room_name}:"]
 		for item_id, data in sorted(usable.items(), key=lambda kv: kv[1]["name"].lower()):
 			count_suffix = f" x{data['count']}" if data["count"] > 1 else ""
 			cmd = f"use {item_id}"
@@ -6612,13 +6858,22 @@ Do you wish to enter? (yes/no)
 ║    home                 - Teleport to your pocket dimension    ║
 ║    home edit            - Open the interactive home editor     ║
 ║    home use             - List usable placed home objects      ║
+║    home bonus           - Show active room utility bonus       ║
 ║    hearthstone          - Travel home with your Hearthstone    ║
 ║    leave / exit home    - Return from home to village          ║
 ║    place <item>         - Place an item from inventory         ║
 ║    place <item> at x y  - Place an item at coordinates         ║
 ║    remove <item>        - Pick up a placed home item           ║
 ║    home inventory       - Show placed objects                  ║
-║    home upgrades        - Show unlocked expansions             ║
+║    home upgrades        - Show unlocked home rooms             ║
+║    home rooms           - List all home rooms and status       ║
+║    home room <id>       - Switch active home room              ║
+║    home unlock <id>     - Unlock a new home room               ║
+║    home containers      - Show room storage containers         ║
+║    home store/take      - Move items to/from room storage      ║
+║    home spawn <id>      - Set default room on home entry       ║
+║    home garden/plant    - Manage garden room plots             ║
+║    home harvest         - Harvest all ready crops              ║
 ║    rename home <name>   - Rename your home                     ║
 ║                                                                ║
 """
@@ -7437,6 +7692,10 @@ class GameEngine:
 			return "Home system is not available."
 		self._ensure_player_home_state()
 		self._ensure_home_room_registered()
+		home_data = self.player.state.get("home_data", {})
+		spawn_room = str(home_data.get("spawn_room_id") or "foyer").strip().lower()
+		if spawn_room in HOME_ROOMS:
+			home_data["active_room_id"] = spawn_room
 		self.player.state["home_return_room"] = HOME_FALLBACK_ROOM
 		self.player.current_room = HOME_ROOM_ID
 		self._update_map_on_move(HOME_ROOM_ID)
@@ -7483,7 +7742,10 @@ class GameEngine:
 		if not HOME_AVAILABLE or not self.player:
 			return False
 		home_data = self.player.state.get("home_data", {})
+		active_room = get_active_room_id(home_data)
 		for placed in home_data.get("placed_items", []):
+			if str(placed.get("room_id", "foyer")).strip().lower() != active_room:
+				continue
 			item_id = str(placed.get("item_id", "")).strip().lower()
 			if not item_id:
 				continue
@@ -7527,8 +7789,11 @@ class GameEngine:
 			return False, "Home system is not available."
 		self._ensure_player_home_state()
 		home_data = self.player.state.get("home_data", {})
+		active_room = get_active_room_id(home_data)
 		query = item_name.strip().lower().replace(" ", "_")
 		for placed in home_data.get("placed_items", []):
+			if str(placed.get("room_id", "foyer")).strip().lower() != active_room:
+				continue
 			item_id = placed.get("item_id")
 			if item_id != query and query not in item_id:
 				continue
@@ -7543,23 +7808,85 @@ class GameEngine:
 				stats["health"] = stats.get("health_max", stats.get("health", 100))
 				if "max_mana" in stats:
 					stats["mana"] = stats.get("max_mana", stats.get("mana", 0))
-				return True, "You rest in your bed and recover fully."
+				if active_room == "bedroom":
+					bonus = {
+						"source": "Bedroom Well Rested",
+						"wins_remaining": 4,
+						"xp_mult": 0.15,
+					}
+					if self.player.state.get("active_pet"):
+						bonus["crit_chance_bonus"] = 0.03
+						bonus["pet_xp_mult"] = 1.5
+						bonus["source"] = "Bedroom + Pet Bond"
+					self.player.state["active_home_room_bonuses"] = bonus
+					return True, "You rest in your bedroom and recover fully. Well Rested is active for the next 4 combat victories."
+				return True, "You rest and recover fully."
 			if action == "craft" and CRAFTING_AVAILABLE and self.crafting_system:
+				if active_room == "workshop":
+					self.player.state["active_home_room_bonuses"] = {
+						"source": "Workshop Focus",
+						"wins_remaining": 3,
+						"xp_mult": 0.08,
+						"gold_mult": 0.05,
+					}
 				return True, self._run_with_temp_home_station("forge", self.crafting_system.use_station)
 			if action == "alchemy" and ALCHEMY_AVAILABLE and self.alchemy_system:
+				if active_room == "workshop":
+					self.player.state["active_home_room_bonuses"] = {
+						"source": "Workshop Focus",
+						"wins_remaining": 3,
+						"xp_mult": 0.08,
+						"gold_mult": 0.05,
+					}
 				return True, self._run_with_temp_home_station("campfire", self.alchemy_system.show_brew_menu)
 			if action == "forge" and FORGING_AVAILABLE and self.forging_system:
+				if active_room == "workshop":
+					self.player.state["active_home_room_bonuses"] = {
+						"source": "Workshop Focus",
+						"wins_remaining": 3,
+						"xp_mult": 0.08,
+						"gold_mult": 0.05,
+					}
 				return True, self._run_with_temp_home_station("forge", self.forging_system.show_forge_menu)
 			if action == "enchant" and ENCHANTING_AVAILABLE and self.enchanting_system:
+				if active_room == "workshop":
+					self.player.state["active_home_room_bonuses"] = {
+						"source": "Workshop Focus",
+						"wins_remaining": 3,
+						"xp_mult": 0.08,
+						"gold_mult": 0.05,
+					}
 				return True, self._run_with_temp_home_station("forge", self.enchanting_system.show_enchanting_menu)
 			if action == "smelt" and SMELTING_AVAILABLE and self.smelting_system:
+				if active_room == "workshop":
+					self.player.state["active_home_room_bonuses"] = {
+						"source": "Workshop Focus",
+						"wins_remaining": 3,
+						"xp_mult": 0.08,
+						"gold_mult": 0.05,
+					}
 				return True, self._run_with_temp_home_station("forge", self.smelting_system.show_smelt_menu)
 			if action == "ritual" and RITUAL_AVAILABLE and self.ritual_system:
 				return True, self._run_with_temp_home_station("altar_crystal", self.ritual_system.show_ritual_menu)
 			if action == "chest":
-				return True, "Home chest storage UI is not wired yet."
+				return True, list_home_containers(home_data)
 			if action == "bookshelf":
 				return True, "You browse your bookshelf of notes and recipes."
+			if item_id == "trophy_mount" and active_room == "trophy":
+				self.player.state["active_home_room_bonuses"] = {
+					"source": "Trophy Hall Inspiration",
+					"wins_remaining": 5,
+					"gold_mult": 0.12,
+				}
+				return True, "You arrange your trophies. Trophy Hall Inspiration is active for the next 5 combat victories."
+			if active_room == "pet_room" and self.player.state.get("active_pet"):
+				self.player.state["active_home_room_bonuses"] = {
+					"source": "Pet Room Bond",
+					"wins_remaining": 3,
+					"crit_chance_bonus": 0.03,
+					"pet_xp_mult": 1.6,
+				}
+				return True, "Your companion energizes in the pet room. Pet Room Bond is active for 3 combat victories."
 			return True, f"You interact with {item_def.get('name', item_id.replace('_', ' '))}."
 		return False, "That object is not placed in your home."
 
@@ -7578,7 +7905,7 @@ class GameEngine:
 			except Exception:
 				pass
 
-	CURRENT_SAVE_VERSION = 5
+	CURRENT_SAVE_VERSION = 6
 
 	def _migrate_save(self, state, from_version):
 		"""Migrate old save formats to current version.
@@ -7727,7 +8054,57 @@ class GameEngine:
 			state["player"] = player
 			state.setdefault("home", p_state.get("home_data", {}))
 			state["save_version"] = 5
-			notes.append("v4→v5 added home dimension state")
+			notes.append("v4->v5 added home dimension state")
+
+		# ── v5 → v6 migration (remove generated home asset tiles) ──
+		if from_version < 6:
+			removed = 0
+
+			def prune_inventory_counts(counts):
+				nonlocal removed
+				if not isinstance(counts, dict):
+					return
+				for item_id in list(counts.keys()):
+					if str(item_id).startswith("home_asset_"):
+						counts.pop(item_id, None)
+						removed += 1
+
+			def prune_item_list(item_list):
+				nonlocal removed
+				if not isinstance(item_list, list):
+					return
+				kept = []
+				for entry in item_list:
+					item_id = None
+					if isinstance(entry, dict):
+						item_id = entry.get("item_id")
+					elif isinstance(entry, str):
+						item_id = entry
+					if str(item_id or "").startswith("home_asset_"):
+						removed += 1
+						continue
+					kept.append(entry)
+				item_list[:] = kept
+
+			def prune_home_data(home_data):
+				if not isinstance(home_data, dict):
+					return
+				prune_item_list(home_data.get("placed_items", []))
+				prune_item_list(home_data.get("stored_items", []))
+				prune_inventory_counts(home_data.get("chest_contents", {}))
+				prune_inventory_counts(home_data.get("vault_contents", {}))
+				for container in home_data.get("containers", []):
+					if isinstance(container, dict):
+						prune_inventory_counts(container.get("items", {}))
+
+			player = state.get("player", {})
+			prune_inventory_counts(player.get("inventory", {}))
+			prune_home_data(state.get("home", {}))
+			prune_home_data(player.get("state", {}).get("home_data", {}))
+
+			if removed:
+				notes.append(f"v5->v6 removed {removed} generated home asset items")
+			state["save_version"] = 6
 
 		return state, notes
 
@@ -7957,7 +8334,7 @@ class GameEngine:
 		# Build a save structure containing only runtime-modified state (player + room items)
 		self._ensure_player_home_state()
 		state = {
-			"save_version": 5,  # Save format version for migration
+			"save_version": 6,  # Save format version for migration
 			"player": self.player.to_dict(),  # inventory serialized as dict by Player.to_dict()
 			"rooms": {}
 		}
