@@ -430,6 +430,11 @@ class GameApp:
         self.clock   = pygame.time.Clock()
         self.running  = True
         self.dt       = 0.0
+        self._shutdown_pending = False
+        self._shutdown_finalized = False
+        self._shutdown_overlay = None
+        self._shutdown_force_timeout = 4.0
+        self._shutdown_elapsed = 0.0
 
         # Scene state
         self.scene = "title"       # "title" | "game"
@@ -451,12 +456,13 @@ class GameApp:
                         target_fps = DRAG_FPS
                 except Exception:
                     target_fps = DEFAULT_FPS
+            if self._shutdown_pending:
+                target_fps = max(target_fps, DEFAULT_FPS)
             self.dt = self.clock.tick(target_fps) / 1000.0
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self._on_quit()
-                    self.running = False
                     continue
 
                 # F11 toggles fullscreen
@@ -475,6 +481,8 @@ class GameApp:
                         self.surface = pygame.display.set_mode(
                             (self.width, self.height), pygame.RESIZABLE)
                     self.manager.set_window_resolution((self.width, self.height))
+                    if self._shutdown_overlay:
+                        self._shutdown_overlay.on_resize(self.width, self.height)
                     if self.scene == "title" and self.title_screen:
                         self.title_screen.on_resize(self.width, self.height)
                     elif self.scene == "game" and self.gui:
@@ -488,6 +496,8 @@ class GameApp:
                         (self.width, self.height), pygame.RESIZABLE)
                     self.manager.set_window_resolution(
                         (self.width, self.height))
+                    if self._shutdown_overlay:
+                        self._shutdown_overlay.on_resize(self.width, self.height)
                     if self.scene == "title" and self.title_screen:
                         self.title_screen.on_resize(self.width, self.height)
                     elif self.scene == "game" and self.gui:
@@ -507,10 +517,12 @@ class GameApp:
                             '_rune_overlay',
                         )
                     )
-                if not (_overlay_active and event.type in (pygame.KEYDOWN, pygame.KEYUP)):
+                if (not self._shutdown_pending) and not (_overlay_active and event.type in (pygame.KEYDOWN, pygame.KEYUP)):
                     self.manager.process_events(event)
 
                 # Route to active scene
+                if self._shutdown_pending:
+                    continue
                 if self.scene == "title" and self.title_screen:
                     self.title_screen.handle_event(event)
                 elif self.scene == "game" and self.gui:
@@ -518,10 +530,23 @@ class GameApp:
 
             # ── Update ────────────────────────────────────────────────────
             self.manager.update(self.dt)
-            if self.scene == "title" and self.title_screen:
-                self.title_screen.update(self.dt)
-            elif self.scene == "game" and self.gui:
-                self.gui.update(self.dt)
+            if self._shutdown_pending:
+                self._shutdown_elapsed += self.dt
+                if self._shutdown_overlay:
+                    self._shutdown_overlay.update(self.dt)
+                    if self._shutdown_overlay.should_start_save():
+                        self._finalize_shutdown()
+
+                if self._shutdown_elapsed >= self._shutdown_force_timeout:
+                    self._finalize_shutdown()
+
+                if self._shutdown_finalized and (self._shutdown_overlay is None or self._shutdown_overlay.done):
+                    self.running = False
+            else:
+                if self.scene == "title" and self.title_screen:
+                    self.title_screen.update(self.dt)
+                elif self.scene == "game" and self.gui:
+                    self.gui.update(self.dt)
 
             # ── Render ────────────────────────────────────────────────────
             self.surface.fill(DARK["bg"])
@@ -537,6 +562,9 @@ class GameApp:
                 self.title_screen.render_overlay(self.surface)
             elif self.scene == "game" and self.gui:
                 self.gui.render_overlay(self.surface, self.dt)
+
+            if self._shutdown_overlay:
+                self._shutdown_overlay.render(self.surface)
 
             pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
             pygame.display.flip()
@@ -557,8 +585,40 @@ class GameApp:
     # ── Quit ──────────────────────────────────────────────────────────────
 
     def _on_quit(self):
-        if self.gui:
-            self.gui.on_quit()
+        self.request_shutdown()
+
+    def request_shutdown(self):
+        if self._shutdown_pending:
+            return
+
+        self._shutdown_pending = True
+        self._shutdown_elapsed = 0.0
+        self._shutdown_finalized = False
+
+        try:
+            from outro_animation import QuitOutroOverlay
+            self._shutdown_overlay = QuitOutroOverlay(self.width, self.height, duration=1.5)
+        except Exception:
+            self._shutdown_overlay = None
+            self._finalize_shutdown()
+
+    def _finalize_shutdown(self):
+        if self._shutdown_finalized:
+            return
+
+        self._shutdown_finalized = True
+        save_error = None
+        if self._shutdown_overlay:
+            self._shutdown_overlay.mark_save_started()
+
+        try:
+            if self.gui:
+                self.gui.on_quit()
+        except Exception as e:
+            save_error = str(e)
+
+        if self._shutdown_overlay:
+            self._shutdown_overlay.mark_save_finished(error=save_error)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1465,8 +1525,8 @@ class PygameAdventureGUI:
 
         if getattr(self.engine, "should_quit", False):
             self.append("Exiting...")
-            self.on_quit()
-            self.app.running = False
+            self.engine.should_quit = False
+            self.app.request_shutdown()
 
     # ------------------------------------------------------------------
     #  SAVE / LOAD SHORTCUTS
