@@ -842,7 +842,7 @@ class PygameAdventureGUI:
         # Settings button (far right)
         self.settings_btn = UIButton(
             relative_rect=pygame.Rect(W - 44, btn_y, 36, btn_h),
-            text="◆", manager=m,
+            text="⚙", manager=m,
             container=self.toolbar_panel,
             object_id=ObjectID("#settings_button", "button"),
         )
