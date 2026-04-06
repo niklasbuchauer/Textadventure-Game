@@ -677,6 +677,9 @@ class PygameAdventureGUI:
         r"(?:for|takes|deals)\s+(\d+)\s+(?:poison\s+|bleed\s+|burn\s+|frost\s+|arcane\s+|physical\s+)?damage\b",
         re.IGNORECASE,
     )
+    _QUEST_COMPLETE_RE = re.compile(r"🏆\s*QUEST\s+COMPLETE:\s*([^\n\r]+)", re.IGNORECASE)
+    _EQUIP_RE = re.compile(r"EQUIPPED:\s*([^\n\r]+)", re.IGNORECASE)
+    _STATUS_EFFECT_RE = re.compile(r"(poison|bleed|burn|frost|arcane)\s+damage", re.IGNORECASE)
 
     def __init__(self, app: GameApp):
         self.app     = app
@@ -739,7 +742,9 @@ class PygameAdventureGUI:
         self._pending_xp_timer = 0.0
         self._pending_item_pops = []
         self._pending_combat_pops = []
+        self._pending_quest_pops = []  # Queued reward popups for quest completion
         self._crit_flash_t = 0.0
+        self._equip_flash_t = 0.0  # Equipment equip white flash effect
         self._combat_shake_t = 0.0
         self._combat_shake_strength = 0.0
         self._feedback_font_small = None
@@ -1592,6 +1597,33 @@ class PygameAdventureGUI:
             "exit": 0.30,
         })
 
+    def _queue_quest_fanfare(self, quest_name):
+        """Queue a multi-popup fanfare for quest completion.
+        Spawns stacked popups: quest title → rewards cascade down.
+        Each popup spawns with slight delay to create satisfying cascade."""
+        if not quest_name:
+            return
+        
+        # Queue main quest completion popup
+        self._pending_quest_pops.append({
+            "delay": 0.0,
+            "text": f"✨ {quest_name} ✨",
+            "color": (236, 206, 124),  # Golden UI color
+            "duration": 1.6,
+            "rise": 35,
+            "kind": "quest",
+        })
+        
+        # Spawn brief reward hint popup (spawns 0.3s later)
+        self._pending_quest_pops.append({
+            "delay": 0.30,
+            "text": "Rewards Collected",
+            "color": (200, 220, 100),  # Lime-green for rewards
+            "duration": 1.2,
+            "rise": 20,
+            "kind": "quest",
+        })
+
     def _trigger_feedback_from_text(self, text, msg_type):
         if not text:
             return
@@ -1625,6 +1657,45 @@ class PygameAdventureGUI:
             if ach_title:
                 self._queue_achievement_toast(ach_title)
 
+        # Quest completion fanfare
+        quest_match = self._QUEST_COMPLETE_RE.search(text_s)
+        if quest_match:
+            quest_title = quest_match.group(1).strip()
+            if quest_title:
+                self._queue_quest_fanfare(quest_title)
+
+        # Equipment equip flash effect
+        equip_match = self._EQUIP_RE.search(text_s)
+        if equip_match:
+            self._equip_flash_t = max(self._equip_flash_t, 0.25)
+
+        # Status effect feedback pop
+        status_matches = self._STATUS_EFFECT_RE.findall(upper)
+        for status_type in status_matches:
+            status_icon = {
+                "POISON": "☠️",
+                "BLEED": "🩸",
+                "BURN": "🔥",
+                "FROST": "❄️",
+                "ARCANE": "✨"
+            }.get(status_type, "⚡")
+            # Spawn status effect popup on the right side of screen
+            self._spawn_feedback_pop(
+                f"{status_icon} {status_type.capitalize()}",
+                (200, 100, 150) if status_type == "POISON" else
+                (180, 80, 80) if status_type == "BLEED" else
+                (220, 100, 50) if status_type == "BURN" else
+                (100, 180, 220) if status_type == "FROST" else
+                (200, 150, 220),  # ARCANE
+                x=self.width - 180,
+                y=60,
+                duration=1.1,
+                rise=20,
+                size="small",
+                kind="status",
+                align="right",
+            )
+
         if msg_type == "combat" and ("CRITICAL" in upper or "CRIT" in upper):
             self._crit_flash_t = max(self._crit_flash_t, 0.22)
 
@@ -1640,6 +1711,10 @@ class PygameAdventureGUI:
         # Critical hit screen flash timer
         if self._crit_flash_t > 0.0:
             self._crit_flash_t = max(0.0, self._crit_flash_t - dt)
+
+        # Equipment equip white flash timer
+        if self._equip_flash_t > 0.0:
+            self._equip_flash_t = max(0.0, self._equip_flash_t - dt)
 
         if self._combat_shake_t > 0.0:
             self._combat_shake_t = max(0.0, self._combat_shake_t - dt)
@@ -1679,15 +1754,31 @@ class PygameAdventureGUI:
                 )
             self._pending_combat_pops.clear()
 
-    def get_screen_shake_offset(self):
-        if self._combat_shake_t <= 0.0 or self._combat_shake_strength <= 0.0:
-            return (0, 0)
-        intensity = clamp01(self._combat_shake_t / 0.16)
-        magnitude = self._combat_shake_strength * (0.35 + 0.65 * intensity)
-        return (
-            int(random.uniform(-magnitude, magnitude)),
-            int(random.uniform(-magnitude * 0.6, magnitude * 0.6)),
-        )
+        # Process queued quest reward popups
+        if self._pending_quest_pops:
+            quest_center_x = self.width // 2
+            quest_center_y = self.height // 3
+            for idx, entry in enumerate(self._pending_quest_pops):
+                delay = entry.get("delay", 0.0)
+                if delay <= 0.0:
+                    # Spawn popup
+                    offset_y = idx * 35
+                    self._spawn_feedback_pop(
+                        entry["text"],
+                        entry["color"],
+                        x=quest_center_x,
+                        y=quest_center_y + offset_y,
+                        duration=entry.get("duration", 1.2),
+                        rise=entry.get("rise", 25),
+                        size="big",
+                        kind=entry.get("kind", "quest"),
+                        align="center",
+                    )
+                    self._pending_quest_pops.pop(idx)
+                    break
+                else:
+                    # Decrement delay
+                    entry["delay"] -= dt
 
         # Convert queued item pickups into animated fly-to-inventory pops.
         if self._pending_item_pops:
@@ -1740,6 +1831,16 @@ class PygameAdventureGUI:
                 self._active_achievement_toast = None
                 self._achievement_toast_gap_t = 0.08
 
+    def get_screen_shake_offset(self):
+        if self._combat_shake_t <= 0.0 or self._combat_shake_strength <= 0.0:
+            return (0, 0)
+        intensity = clamp01(self._combat_shake_t / 0.16)
+        magnitude = self._combat_shake_strength * (0.35 + 0.65 * intensity)
+        return (
+            int(random.uniform(-magnitude, magnitude)),
+            int(random.uniform(-magnitude * 0.6, magnitude * 0.6)),
+        )
+
     def _render_feedback_fx(self, surface):
         self._ensure_feedback_fonts()
 
@@ -1751,6 +1852,16 @@ class PygameAdventureGUI:
             if alpha > 0:
                 flash = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
                 flash.fill((248, 216, 172, alpha))
+                surface.blit(flash, (0, 0))
+
+        # Equipment equip flash: a brief white flash for item equip
+        if self._equip_flash_t > 0.0:
+            max_dur = 0.25
+            p = clamp01(self._equip_flash_t / max_dur)
+            alpha = int(85 * ease_in_out_sine(p))
+            if alpha > 0:
+                flash = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+                flash.fill((255, 255, 255, alpha))
                 surface.blit(flash, (0, 0))
 
         # Floating XP/feedback text
