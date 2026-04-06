@@ -26,6 +26,7 @@ import importlib
 import html as html_module
 import time
 import difflib
+from ui_animation import clamp01, ease_in_out_sine, ease_out_cubic
 
 # ---------------------------------------------------------------------------
 #  Constants
@@ -661,6 +662,9 @@ class PygameAdventureGUI:
         "place", "remove", "rename home", "save", "quit",
     ]
 
+    _XP_RE = re.compile(r"\+(\d+)\s+XP\b", re.IGNORECASE)
+    _ACH_UNLOCK_RE = re.compile(r"ACHIEVEMENT\s+UNLOCKED:\s*([^\n\r]+)", re.IGNORECASE)
+
     def __init__(self, app: GameApp):
         self.app     = app
         self.manager = app.manager
@@ -712,6 +716,17 @@ class PygameAdventureGUI:
         self._crafting_overlay = None
         self._rune_overlay    = None
         self._tooltip         = None
+
+        # ── Lightweight feedback effects ───────────────────────────────
+        self._feedback_pops = []
+        self._achievement_toast_queue = []
+        self._active_achievement_toast = None
+        self._achievement_toast_gap_t = 0.0
+        self._pending_xp_total = 0
+        self._pending_xp_timer = 0.0
+        self._crit_flash_t = 0.0
+        self._feedback_font_small = None
+        self._feedback_font_big = None
 
         # ── Hotbar ───────────────────────────────────────────────────────
         self._hotbar_buttons  = []    # (UIButton, ability_dict)
@@ -1359,6 +1374,8 @@ class PygameAdventureGUI:
         if _mw and _mw.is_open():
             _mw.tick()
 
+        self._update_feedback_fx(dt)
+
     # ------------------------------------------------------------------
     #  RENDER OVERLAYS (drawn after pygame_gui)
     # ------------------------------------------------------------------
@@ -1382,6 +1399,7 @@ class PygameAdventureGUI:
             surface.blit(hint, (r.x + 8, r.y - hint.get_height() - 2))
 
         self._draw_combat_resource_bars(surface)
+        self._render_feedback_fx(surface)
 
         if self._death_overlay:
             self._death_overlay.render(surface)
@@ -1461,6 +1479,225 @@ class PygameAdventureGUI:
             if main_p and main_p is not target:
                 main_p.insert_message(text, tag=msg_type,
                                       timestamp=ts, max_messages=max_msgs)
+
+        self._trigger_feedback_from_text(text, msg_type)
+
+    def _ensure_feedback_fonts(self):
+        if self._feedback_font_small is None:
+            self._feedback_font_small = pygame.font.SysFont("Georgia", 18, bold=True)
+        if self._feedback_font_big is None:
+            self._feedback_font_big = pygame.font.SysFont("Georgia", 22, bold=True)
+
+    def _spawn_feedback_pop(self, text, color=(241, 214, 129), *, x=None, y=None,
+                            duration=1.0, rise=46, size="large", kind="generic",
+                            align="center"):
+        cx = self.width // 2 if x is None else int(x)
+        cy = int(self.height * 0.70) if y is None else int(y)
+        self._feedback_pops.append({
+            "text": str(text),
+            "color": tuple(color),
+            "x": cx,
+            "y": cy,
+            "duration": max(0.1, float(duration)),
+            "rise": max(1.0, float(rise)),
+            "t": 0.0,
+            "size": size,
+            "kind": kind,
+            "align": align,
+        })
+
+    def _spawn_xp_pop(self, amount_text):
+        base_x = self.width - 16
+        base_y = self.height - 88
+        self._spawn_feedback_pop(
+            amount_text,
+            (236, 206, 124),
+            x=base_x,
+            y=base_y,
+            duration=0.95,
+            rise=34,
+            size="small",
+            kind="xp",
+            align="right",
+        )
+
+    def _queue_xp_pop(self, amount):
+        try:
+            amount = int(amount)
+        except Exception:
+            return
+        if amount <= 0:
+            return
+        self._pending_xp_total += amount
+        self._pending_xp_timer = 0.14
+
+    def _queue_achievement_toast(self, title):
+        if not title:
+            return
+        title = str(title).strip()
+        if not title:
+            return
+
+        # Coalesce duplicate unlock titles so burst events do not spam toasts.
+        active = self._active_achievement_toast
+        if active and active.get("title") == title:
+            active["count"] = int(active.get("count", 1)) + 1
+            active["hold"] = min(3.2, float(active.get("hold", 2.2)) + 0.25)
+            return
+
+        for queued in reversed(self._achievement_toast_queue):
+            if queued.get("title") == title:
+                queued["count"] = int(queued.get("count", 1)) + 1
+                return
+
+        self._achievement_toast_queue.append({
+            "title": title,
+            "count": 1,
+            "t": 0.0,
+            "enter": 0.30,
+            "hold": 2.20,
+            "exit": 0.30,
+        })
+
+    def _trigger_feedback_from_text(self, text, msg_type):
+        if not text:
+            return
+        text_s = str(text)
+        upper = text_s.upper()
+
+        # XP popups can appear multiple times in one response.
+        for amt in self._XP_RE.findall(text_s):
+            self._queue_xp_pop(amt)
+
+        for ach_title in self._ACH_UNLOCK_RE.findall(text_s):
+            ach_title = ach_title.strip(" :-")
+            if ach_title:
+                self._queue_achievement_toast(ach_title)
+
+        if msg_type == "combat" and ("CRITICAL" in upper or "CRIT" in upper):
+            self._crit_flash_t = max(self._crit_flash_t, 0.22)
+
+    def _update_feedback_fx(self, dt):
+        # Floating text popups
+        alive = []
+        for pop in self._feedback_pops:
+            pop["t"] += dt
+            if pop["t"] < pop["duration"]:
+                alive.append(pop)
+        self._feedback_pops = alive
+
+        # Critical hit screen flash timer
+        if self._crit_flash_t > 0.0:
+            self._crit_flash_t = max(0.0, self._crit_flash_t - dt)
+
+        # Merge rapid XP gains into a single popup.
+        if self._pending_xp_timer > 0.0:
+            self._pending_xp_timer = max(0.0, self._pending_xp_timer - dt)
+            if self._pending_xp_timer <= 0.0 and self._pending_xp_total > 0:
+                self._spawn_xp_pop(f"+{self._pending_xp_total} XP")
+                self._pending_xp_total = 0
+
+        # Achievement toast queue/active state machine
+        if self._achievement_toast_gap_t > 0.0:
+            self._achievement_toast_gap_t = max(0.0, self._achievement_toast_gap_t - dt)
+
+        if self._active_achievement_toast is None and self._achievement_toast_gap_t <= 0.0 and self._achievement_toast_queue:
+            self._active_achievement_toast = self._achievement_toast_queue.pop(0)
+        if self._active_achievement_toast is not None:
+            self._active_achievement_toast["t"] += dt
+            total = (
+                self._active_achievement_toast["enter"]
+                + self._active_achievement_toast["hold"]
+                + self._active_achievement_toast["exit"]
+            )
+            if self._active_achievement_toast["t"] >= total:
+                self._active_achievement_toast = None
+                self._achievement_toast_gap_t = 0.08
+
+    def _render_feedback_fx(self, surface):
+        self._ensure_feedback_fonts()
+
+        # Crit flash: a very short warm flash over the scene.
+        if self._crit_flash_t > 0.0:
+            max_dur = 0.22
+            p = clamp01(self._crit_flash_t / max_dur)
+            alpha = int(58 * ease_in_out_sine(p))
+            if alpha > 0:
+                flash = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+                flash.fill((248, 216, 172, alpha))
+                surface.blit(flash, (0, 0))
+
+        # Floating XP/feedback text
+        for pop in self._feedback_pops:
+            p = clamp01(pop["t"] / pop["duration"])
+            eased = ease_out_cubic(p)
+            y = int(pop["y"] - pop["rise"] * eased)
+            alpha = int(255 * (1.0 - p))
+            if alpha <= 0:
+                continue
+            font = self._feedback_font_small if pop.get("size") == "small" else self._feedback_font_big
+            text_surf = font.render(pop["text"], True, pop["color"])
+            text_surf = text_surf.convert_alpha()
+            text_surf.set_alpha(alpha)
+            shadow = font.render(pop["text"], True, (16, 12, 8))
+            shadow = shadow.convert_alpha()
+            shadow.set_alpha(min(180, alpha))
+            if pop.get("align") == "left":
+                x = int(pop["x"])
+            elif pop.get("align") == "right":
+                x = int(pop["x"] - text_surf.get_width())
+            else:
+                x = int(pop["x"] - text_surf.get_width() // 2)
+            surface.blit(shadow, (x + 2, y + 2))
+            surface.blit(text_surf, (x, y))
+
+        # Achievement toast (top-right)
+        toast = self._active_achievement_toast
+        if toast is None:
+            return
+
+        t = toast["t"]
+        enter = toast["enter"]
+        hold = toast["hold"]
+        exit_d = toast["exit"]
+        total = enter + hold + exit_d
+
+        if t < enter:
+            k = ease_out_cubic(clamp01(t / enter))
+            alpha_mult = k
+        elif t < enter + hold:
+            k = 1.0
+            alpha_mult = 1.0
+        else:
+            e = clamp01((t - enter - hold) / exit_d)
+            k = 1.0 - ease_in_out_sine(e)
+            alpha_mult = k
+
+        toast_w = 330
+        toast_h = 68
+        margin = 14
+        x_hidden = self.width + toast_w + 6
+        x_shown = self.width - toast_w - margin
+        x = int(x_hidden + (x_shown - x_hidden) * k)
+        y = margin + 10
+
+        panel = pygame.Surface((toast_w, toast_h), pygame.SRCALPHA)
+        base_a = int(220 * alpha_mult)
+        edge_a = int(190 * alpha_mult)
+        pygame.draw.rect(panel, (27, 24, 18, base_a), pygame.Rect(0, 0, toast_w, toast_h), border_radius=11)
+        pygame.draw.rect(panel, (194, 168, 108, edge_a), pygame.Rect(0, 0, toast_w, toast_h), 2, border_radius=11)
+
+        title_text = "Achievement Unlocked"
+        count = max(1, int(toast.get("count", 1)))
+        subtitle_text = toast["title"] if count == 1 else f"{toast['title']}  x{count}"
+        title_s = self._feedback_font_small.render(title_text, True, (216, 191, 124))
+        subtitle_s = self._feedback_font_big.render(subtitle_text, True, (232, 226, 205))
+        title_s.set_alpha(int(255 * alpha_mult))
+        subtitle_s.set_alpha(int(255 * alpha_mult))
+
+        panel.blit(title_s, (12, 8))
+        panel.blit(subtitle_s, (12, 30))
+        surface.blit(panel, (x, y))
 
     # ------------------------------------------------------------------
     #  COMMAND INPUT
