@@ -664,6 +664,7 @@ class PygameAdventureGUI:
 
     _XP_RE = re.compile(r"\+(\d+)\s+XP\b", re.IGNORECASE)
     _ACH_UNLOCK_RE = re.compile(r"ACHIEVEMENT\s+UNLOCKED:\s*([^\n\r]+)", re.IGNORECASE)
+    _COLLECT_RE = re.compile(r"collected\s+(?:(\d+)\s+)?`?([^`\n\r]+?)`?$", re.IGNORECASE)
 
     def __init__(self, app: GameApp):
         self.app     = app
@@ -724,6 +725,7 @@ class PygameAdventureGUI:
         self._achievement_toast_gap_t = 0.0
         self._pending_xp_total = 0
         self._pending_xp_timer = 0.0
+        self._pending_item_pops = []
         self._crit_flash_t = 0.0
         self._feedback_font_small = None
         self._feedback_font_big = None
@@ -1531,6 +1533,16 @@ class PygameAdventureGUI:
         self._pending_xp_total += amount
         self._pending_xp_timer = 0.14
 
+    def _queue_item_pop(self, item_text, count=1):
+        try:
+            count = max(1, int(count))
+        except Exception:
+            count = 1
+        label = str(item_text).strip()
+        if not label:
+            return
+        self._pending_item_pops.append({"label": label, "count": count})
+
     def _queue_achievement_toast(self, title):
         if not title:
             return
@@ -1569,6 +1581,13 @@ class PygameAdventureGUI:
         for amt in self._XP_RE.findall(text_s):
             self._queue_xp_pop(amt)
 
+        collect_match = self._COLLECT_RE.search(text_s)
+        if collect_match:
+            qty = collect_match.group(1) or 1
+            item = collect_match.group(2).strip()
+            if item:
+                self._queue_item_pop(item, qty)
+
         for ach_title in self._ACH_UNLOCK_RE.findall(text_s):
             ach_title = ach_title.strip(" :-")
             if ach_title:
@@ -1596,6 +1615,40 @@ class PygameAdventureGUI:
             if self._pending_xp_timer <= 0.0 and self._pending_xp_total > 0:
                 self._spawn_xp_pop(f"+{self._pending_xp_total} XP")
                 self._pending_xp_total = 0
+
+        # Convert queued item pickups into animated fly-to-inventory pops.
+        if self._pending_item_pops:
+            status_rect = None
+            try:
+                status_rect = self.status_label.get_abs_rect()
+            except Exception:
+                status_rect = None
+            if status_rect is None:
+                target_x = self.width - 220
+                target_y = 26
+            else:
+                target_x = max(180, status_rect.x + status_rect.width - 220)
+                target_y = max(26, status_rect.y + status_rect.height // 2)
+
+            existing_items = sum(1 for pop in self._feedback_pops if pop.get("kind") == "item" and pop.get("t", 0.0) < 0.9)
+            for idx, entry in enumerate(self._pending_item_pops):
+                label = entry.get("label", "item")
+                count = max(1, int(entry.get("count", 1)))
+                lane = min(existing_items + idx, 4)
+                start_x = self.width - 300
+                start_y = self.height - 138 - lane * 18
+                self._spawn_feedback_pop(
+                    f"+{count} {label}" if count > 1 else f"+{label}",
+                    (236, 206, 124),
+                    x=start_x,
+                    y=start_y,
+                    duration=1.35,
+                    rise=max(1.0, start_y - target_y),
+                    size="small",
+                    kind="item",
+                    align="right",
+                )
+            self._pending_item_pops.clear()
 
         # Achievement toast queue/active state machine
         if self._achievement_toast_gap_t > 0.0:
@@ -1632,7 +1685,14 @@ class PygameAdventureGUI:
             p = clamp01(pop["t"] / pop["duration"])
             eased = ease_out_cubic(p)
             y = int(pop["y"] - pop["rise"] * eased)
-            alpha = int(255 * (1.0 - p))
+            if pop.get("kind") == "item":
+                if p < 0.28:
+                    alpha = 255
+                else:
+                    fade_p = clamp01((p - 0.28) / 0.72)
+                    alpha = int(255 * ((1.0 - fade_p) ** 0.8))
+            else:
+                alpha = int(255 * (1.0 - p))
             if alpha <= 0:
                 continue
             font = self._feedback_font_small if pop.get("size") == "small" else self._feedback_font_big
@@ -1642,7 +1702,27 @@ class PygameAdventureGUI:
             shadow = font.render(pop["text"], True, (16, 12, 8))
             shadow = shadow.convert_alpha()
             shadow.set_alpha(min(180, alpha))
-            if pop.get("align") == "left":
+            if pop.get("kind") == "item":
+                item_target_x = self.width - 220
+                item_target_y = 26
+                box_pad_x = 12
+                box_pad_y = 8
+                box_w = min(self.width - 24, max(220, text_surf.get_width() + box_pad_x * 2))
+                box_h = text_surf.get_height() + box_pad_y * 2
+                x = int(pop["x"] + (item_target_x - pop["x"]) * eased)
+                y = int(pop["y"] + (item_target_y - pop["y"]) * eased)
+                x = max(12, min(x, self.width - box_w - 12))
+                y = max(12, min(y, self.height - box_h - 12))
+
+                panel = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
+                panel.fill((0, 0, 0, 0))
+                pygame.draw.rect(panel, (22, 30, 22, min(220, alpha)), pygame.Rect(0, 0, box_w, box_h), border_radius=10)
+                pygame.draw.rect(panel, (110, 178, 112, min(200, alpha)), pygame.Rect(0, 0, box_w, box_h), 1, border_radius=10)
+                panel.blit(shadow, (box_pad_x + 2, box_pad_y + 2))
+                panel.blit(text_surf, (box_pad_x, box_pad_y))
+                surface.blit(panel, (x, y))
+                continue
+            elif pop.get("align") == "left":
                 x = int(pop["x"])
             elif pop.get("align") == "right":
                 x = int(pop["x"] - text_surf.get_width())
