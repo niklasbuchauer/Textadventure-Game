@@ -19,6 +19,8 @@ from ui_animation import (
     UI_CONTENT_DUR,
     UI_OPEN_DUR,
     ease_in_out_cubic,
+    ease_in_out_sine,
+    ease_out_back,
     ease_out_cubic,
 )
 
@@ -145,24 +147,30 @@ class BookOverlay:
 
     def draw(self, surface: pygame.Surface):
         if not self._alive: return
-        sc = _ease_out(self._anim)
-        if sc < 0.02: return
+        if self._closing:
+            motion = ease_in_out_sine(self._anim)
+        else:
+            motion = min(1.0, ease_out_back(self._anim))
+        if motion < 0.02: return
         sw, sh = surface.get_size()
         BW = min(self._bw, sw - 40)
         BH = min(self._bh, sh - 40)
         bx = (sw - BW) // 2
         by = (sh - BH) // 2
+        oy = int((1.0 - motion) * 14)
+        fade = int(160 * motion)
         # backdrop
         bd = pygame.Surface((sw, sh), pygame.SRCALPHA)
-        bd.fill((0, 0, 0, int(160 * sc)))
+        bd.fill((0, 0, 0, fade))
         surface.blit(bd, (0, 0))
         # scale effect
-        if sc < 0.995:
-            sbw, sbh = max(2,int(BW*sc)), max(2,int(BH*sc))
+        scale = 0.90 + (0.10 * motion)
+        if scale < 0.995:
+            sbw, sbh = max(2, int(BW * scale)), max(2, int(BH * scale))
             bs = pygame.Surface((BW, BH), pygame.SRCALPHA)
             self._draw_book(bs, BW, BH, 0, 0)
             scaled = pygame.transform.smoothscale(bs, (sbw, sbh))
-            sx, sy = (sw-sbw)//2, (sh-sbh)//2
+            sx, sy = (sw - sbw) // 2, (sh - sbh) // 2 + oy
             surface.blit(scaled, (sx, sy))
             self._book_rect  = pygame.Rect(sx, sy, sbw, sbh)
             sf = sbw/BW
@@ -170,15 +178,16 @@ class BookOverlay:
             self._close_rect = pygame.Rect(int(sx+(BW-34)*sf), int(sy+6*sf),
                                            int(26*sf), int(26*sf))
         else:
-            self._draw_book(surface, BW, BH, bx, by)
-            self._book_rect  = pygame.Rect(bx, by, BW, BH)
+            by2 = by + oy
+            self._draw_book(surface, BW, BH, bx, by2)
+            self._book_rect  = pygame.Rect(bx, by2, BW, BH)
             self._scale_factor = 1.0  # Full scale when not animating
-            self._close_rect = pygame.Rect(bx+BW-34, by+6, 26, 26)
+            self._close_rect = pygame.Rect(bx+BW-34, by2+6, 26, 26)
         # dust
-        cx, cy = sw//2, by+20
+        cx, cy = sw//2, by + oy + 20
         for p in self._particles:
             lf = 1.0 - p[4]/p[5]
-            a  = int(185*lf*sc)
+            a  = int(185 * lf * motion)
             r  = max(1,int(p[6]))
             ps = pygame.Surface((r*2+2,r*2+2), pygame.SRCALPHA)
             pygame.draw.circle(ps, (200,172,118,a), (r+1,r+1), r)
@@ -893,6 +902,7 @@ class DebugOverlay(BookOverlay):
 
         # Ease-in/out progress for the fold sweep
         t    = _ease_io(self._flip_t)
+        curl = math.sin(t * math.pi)
         # fold_x: x position of the leading edge of the turning page
         # Forward (0→1): sweeps right→left; Backward (1→0): sweeps left→right
         if self._flip_dir > 0:
@@ -911,7 +921,7 @@ class DebugOverlay(BookOverlay):
         pg = pygame.Surface((page_w, bh), pygame.SRCALPHA)
         # pick: before midpoint show the page we're leaving, after show arriving
         col = C_PARCHMENT if (self._flip_dir > 0) == (self._flip_t < 0.5) else C_PARCHMENT_L
-        pg.fill((*col, int(230 * sc)))
+        pg.fill((*col, int(234 * sc)))
         # add subtle age spots so it looks like real parchment
         rng = random.Random(7777)
         for _ in range(35):
@@ -920,29 +930,99 @@ class DebugOverlay(BookOverlay):
             r2  = rng.randint(2, 4)
             a2  = rng.randint(5, 18)
             pygame.draw.circle(pg, (90, 60, 22, a2), (sx2, sy2), r2)
+
+        # Slight curvature: darker in the middle of the turn, brighter near edges.
+        band_count = max(6, min(18, max(1, page_w // 36)))
+        for i in range(band_count):
+            band_x = int(page_w * i / band_count)
+            band_w = max(1, int(page_w * (i + 1) / band_count) - band_x)
+            band_center = (i + 0.5) / band_count
+            edge_bias = 1.0 - abs(0.5 - band_center) * 2.0
+            if self._flip_dir > 0:
+                edge_bias = 1.0 - band_center
+            else:
+                edge_bias = band_center
+            shade_a = int((12 + 24 * (1.0 - curl)) * max(0.15, edge_bias))
+            if shade_a > 2:
+                shade = pygame.Surface((band_w, bh), pygame.SRCALPHA)
+                shade.fill((70, 48, 22, shade_a))
+                pg.blit(shade, (band_x, 0))
+
+        # Clip to a curled page shape instead of a flat rectangle.
+        curl_depth = max(10, min(30, int(12 + 12 * curl)))
+        mask = pygame.Surface((page_w, bh), pygame.SRCALPHA)
+        mask.fill((0, 0, 0, 0))
+        if self._flip_dir > 0:
+            pts = [
+                (0, 0),
+                (page_w - curl_depth, 0),
+                (page_w, bh // 2),
+                (page_w - curl_depth, bh),
+                (0, bh),
+            ]
+        else:
+            pts = [
+                (curl_depth, 0),
+                (page_w, 0),
+                (page_w, bh),
+                (curl_depth, bh),
+                (0, bh // 2),
+            ]
+        pygame.draw.polygon(mask, (255, 255, 255, 255), pts)
+        pg.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+
+        # Highlight the fold edge with a paper-crease shine.
+        crease_alpha = int(120 * sc * (0.35 + 0.65 * curl))
+        if crease_alpha > 2:
+            crease = pygame.Surface((curl_depth + 4, bh), pygame.SRCALPHA)
+            for i in range(curl_depth + 4):
+                alpha = int(crease_alpha * (1.0 - i / max(1, curl_depth + 3)))
+                if alpha > 0:
+                    x = i if self._flip_dir > 0 else (curl_depth + 3 - i)
+                    pygame.draw.line(crease, (255, 248, 224, alpha), (x, 0), (x, bh))
+            crease_x = page_w - curl_depth - 1 if self._flip_dir > 0 else 0
+            pg.blit(crease, (crease_x, 0), special_flags=pygame.BLEND_RGBA_ADD)
+
         surface.blit(pg, (page_x, by))
 
         # — fold highlight (bright strip at the crease edge)
-        crease_w = max(4, min(16, page_w))
+        crease_w = max(4, min(18, page_w))
         crease_x = fold_x if self._flip_dir > 0 else (fold_x - crease_w)
         for i in range(crease_w):
             ratio = i / crease_w if self._flip_dir > 0 else (1 - i / crease_w)
-            alpha = int(140 * (1 - ratio) * sc)
+            alpha = int(120 * (1 - ratio) * sc * (0.5 + 0.5 * curl))
             if alpha > 2:
                 pygame.draw.line(surface, (255, 248, 225, alpha),
                                  (crease_x + i, by), (crease_x + i, by + bh))
 
         # — drop shadow on the page behind the fold
-        shad_w = min(18, page_w)
+        shad_w = min(22, page_w)
         shad_x = (fold_x - shad_w) if self._flip_dir > 0 else fold_x
         for i in range(shad_w):
             ratio = i / shad_w if self._flip_dir > 0 else (1 - i / shad_w)
-            alpha = int(55 * ratio * sc)
+            alpha = int(70 * ratio * sc * (0.6 + 0.4 * curl))
             if alpha > 2:
                 x = shad_x + i
                 if bx <= x < bx + bw:
                     pygame.draw.line(surface, (0, 0, 0, alpha),
                                      (x, by), (x, by + bh))
+
+        # Tiny lift on the free edge so the turn feels less like a rectangle.
+        lift = int(6 * curl)
+        if lift > 0:
+            edge_alpha = int(40 * sc * curl)
+            if self._flip_dir > 0:
+                pygame.draw.polygon(surface, (255, 250, 230, edge_alpha), [
+                    (page_x + page_w - 4, by + bh // 2 - lift),
+                    (page_x + page_w + 4, by + bh // 2),
+                    (page_x + page_w - 4, by + bh // 2 + lift),
+                ])
+            else:
+                pygame.draw.polygon(surface, (255, 250, 230, edge_alpha), [
+                    (page_x + 4, by + bh // 2 - lift),
+                    (page_x - 4, by + bh // 2),
+                    (page_x + 4, by + bh // 2 + lift),
+                ])
 
     # ── action dispatch ───────────────────────────────────────────────────────
 

@@ -4,7 +4,7 @@ import pygame
 import random
 import time
 
-from ui_animation import UI_CLOSE_DUR, UI_OPEN_DUR, ease_out_cubic
+from ui_animation import UI_CLOSE_DUR, UI_OPEN_DUR, ease_in_out_sine, ease_out_back
 
 from home_items import HOME_ITEMS
 from home_system import (
@@ -747,17 +747,21 @@ class HomeEditorOverlay:
         if self._anim <= 0.0:
             return
 
-        eased = ease_out_cubic(self._anim)
+        if self._closing:
+            eased = ease_in_out_sine(self._anim)
+        else:
+            eased = min(1.0, ease_out_back(self._anim))
         w, h = surface.get_size()
         dim = pygame.Surface((w, h), pygame.SRCALPHA)
         dim.fill((*BG, int(170 * eased)))
         surface.blit(dim, (0, 0))
 
-        scale = 0.92 + (0.08 * eased)
+        scale = 0.90 + (0.10 * eased)
+        y_offset = int((1.0 - eased) * 14)
         bw = int(w * 0.92 * scale)
         bh = int(h * 0.88 * scale)
         bx = (w - bw) // 2
-        by = (h - bh) // 2
+        by = (h - bh) // 2 + y_offset
         self._book_rect = pygame.Rect(bx, by, bw, bh)
 
         shadow = pygame.Surface((bw + 28, bh + 28), pygame.SRCALPHA)

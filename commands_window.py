@@ -14,7 +14,13 @@ import pygame
 import math
 import random
 
-from ui_animation import UI_CLOSE_DUR, UI_CONTENT_DUR, UI_OPEN_DUR, ease_out_cubic
+from ui_animation import (
+    UI_CLOSE_DUR,
+    UI_CONTENT_DUR,
+    UI_OPEN_DUR,
+    ease_in_out_sine,
+    ease_out_back,
+)
 
 # ── Colour palette (mirrors journal_window.py) ────────────────────────────────
 C_PARCHMENT    = (238, 220, 178)
@@ -431,8 +437,11 @@ class CommandsOverlay:
     def draw(self, surface):
         if not self._alive:
             return
-        scale = ease_out_cubic(self._anim)
-        if scale < 0.02:
+        if self._closing:
+            motion = ease_in_out_sine(self._anim)
+        else:
+            motion = min(1.0, ease_out_back(self._anim))
+        if motion < 0.02:
             return
 
         sw, sh = surface.get_size()
@@ -440,20 +449,23 @@ class CommandsOverlay:
         BH = min(600, sh - 40)
 
         bg_s = pygame.Surface((sw, sh), pygame.SRCALPHA)
-        bg_s.fill((0, 0, 0, int(165 * scale)))
+        bg_s.fill((0, 0, 0, int(165 * motion)))
         surface.blit(bg_s, (0, 0))
+
+        scale = 0.90 + (0.10 * motion)
+        y_offset = int((1.0 - motion) * 14)
 
         if scale < 0.995:
             sbw = max(2, int(BW * scale))
             sbh = max(2, int(BH * scale))
             self._sf    = sbw / BW
             self._dst_x = (sw - sbw) // 2
-            self._dst_y = (sh - sbh) // 2
+            self._dst_y = (sh - sbh) // 2 + y_offset
         else:
             sbw = sbh = 0
             self._sf    = 1.0
             self._dst_x = (sw - BW) // 2
-            self._dst_y = (sh - BH) // 2
+            self._dst_y = (sh - BH) // 2 + y_offset
 
         book_surf = pygame.Surface((BW, BH), pygame.SRCALPHA)
         self._draw_book(book_surf, BW, BH)
@@ -628,17 +640,21 @@ class CommandsOverlay:
                 self._row_rects.append((abs_r, fi))
                 is_sel = (fi == self._sel_idx)
                 is_hov = abs_r.collidepoint(mx_s, my_s)
+                pulse = 0.90 + 0.10 * math.sin(pygame.time.get_ticks() * 0.008)
                 if is_sel:
                     hs = pygame.Surface((frame.width, row_h), pygame.SRCALPHA)
-                    hs.fill((*C_SELECT_BG, int(175 * cf)))
+                    hs.fill((*C_SELECT_BG, int(175 * cf * pulse)))
                     surf.blit(hs, (frame.x, y))
+                    pygame.draw.rect(surf, _blend(C_INK_MID, C_PARCHMENT, cf),
+                                     pygame.Rect(frame.x + 3, y + 2, 2, row_h - 4), border_radius=1)
                 elif is_hov:
                     hs = pygame.Surface((frame.width, row_h), pygame.SRCALPHA)
-                    hs.fill((*C_SELECT_BG, int(70 * cf)))
+                    hs.fill((*C_SELECT_BG, int(70 * cf * pulse)))
                     surf.blit(hs, (frame.x, y))
+                text_x = frame.x + 6 + (1 if is_hov else 0) + (1 if is_sel else 0)
                 surf.blit(self._f(10, bold=is_sel).render(label[:40], True,
                                                            ink if is_sel else mid),
-                          (frame.x + 6, y + 3))
+                          (text_x, y + 3))
             y += row_h
 
         # Scrollbar
