@@ -222,7 +222,23 @@ DEBUG_COMMANDS = [
     ("debug dungeon open",     "Debug / Dungeon","Force-open a dungeon at current location",      "debug dungeon open [room_id]",    "debug dungeon open"),
     ("debug dungeon close <id>","Debug / Dungeon","Force-close a specific dungeon",               "debug dungeon close <id>",        "debug dungeon close dungeon_1"),
     ("debug dungeon check",    "Debug / Dungeon","Check dungeon integrity / consistency",         "debug dungeon check",             "debug dungeon check"),
+    ("debug dungeon entrance", "Debug / Dungeon","Test dungeon entrance animation (5s)",          "debug dungeon entrance",          "debug dungeon entrance"),
     ("debug mode traps",       "Debug / Dungeon","Toggle free trap disarm mode",                  "debug mode traps",                "debug mode traps"),
+    # Debug / Quests
+    ("debug quest list",       "Debug / Quests", "List all quests with IDs and requirements",     "debug quest list",                "debug quest list"),
+    ("debug quest activate <id>", "Debug / Quests", "Activate a quest by ID (respects requirements)", "debug quest activate <id>",   "debug quest activate blacksmith_errand"),
+    ("debug quest complete <id>", "Debug / Quests", "Complete quest, trigger rewards & fanfare",  "debug quest complete <id>",       "debug quest complete blacksmith_errand"),
+    # Debug / Minigames
+    ("debug minigame",              "Debug / Minigames", "List all available minigame overlay IDs", "debug minigame",                  "debug minigame"),
+    ("debug minigame forge [id]",   "Debug / Minigames", "Launch forging rhythm minigame",          "debug minigame forge [id]",       "debug minigame forge"),
+    ("debug minigame brew [id]",    "Debug / Minigames", "Launch alchemy heat-gauge minigame",      "debug minigame brew [id]",        "debug minigame brew"),
+    ("debug minigame smelt [ore]",  "Debug / Minigames", "Launch smelting timing-bar minigame",     "debug minigame smelt [ore]",      "debug minigame smelt iron_ore"),
+    ("debug minigame ritual [id]",  "Debug / Minigames", "Launch ritual Simon Says memory puzzle",  "debug minigame ritual [id]",      "debug minigame ritual"),
+    ("debug minigame craft [id]",   "Debug / Minigames", "Launch crafting sparkle animation",       "debug minigame craft [id]",       "debug minigame craft"),
+    ("debug minigame cook [name]",  "Debug / Minigames", "Launch campfire cooking timing bar",      "debug minigame cook [name]",      "debug minigame cook stew"),
+    ("debug minigame rune [tier]",  "Debug / Minigames", "Launch rune inscription trace puzzle",    "debug minigame rune [tier]",      "debug minigame rune 1"),
+    ("debug minigame difficulty",   "Debug / Minigames", "Show current minigame difficulty setting","debug minigame difficulty",       "debug minigame difficulty"),
+    ("debug minigame difficulty <level>", "Debug / Minigames", "Set minigame difficulty level (easy|normal|hard)", "debug minigame difficulty <level>", "debug minigame difficulty hard"),
 ]
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

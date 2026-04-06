@@ -668,6 +668,24 @@ class PygameAdventureGUI:
         "use", "take", "drop", "examine", "inspect", "open chest",
         "home", "home use", "home inventory", "home upgrades", "home edit",
         "place", "remove", "rename home", "save", "quit",
+        # Debug commands
+        "debug", "debug reveal map", "debug hide map", "debug heal",
+        "debug gold", "debug level", "debug skill points", "debug stats",
+        "debug home free", "debug home items", "debug home reset",
+        "debug spawn enemy", "debug spawn item", "debug enemies",
+        "debug items list", "debug items all", "debug loot", "debug loot sim",
+        "debug set grant", "debug set clear", "debug set status",
+        "debug cosmetics list", "debug cosmetics unlock", "debug cosmetics lock",
+        "debug cosmetics apply", "debug cosmetics preview", "debug cosmetics randomize",
+        "debug cosmetics reset", "debug cosmetics status",
+        "debug teleport", "debug rooms",
+        "debug dungeon list", "debug dungeon open", "debug dungeon close",
+        "debug dungeon check", "debug dungeon entrance",
+        "debug mode traps",
+        "debug quest list", "debug quest activate", "debug quest complete",
+        "debug minigame", "debug minigame forge", "debug minigame brew",
+        "debug minigame smelt", "debug minigame ritual", "debug minigame craft",
+        "debug minigame cook", "debug minigame rune", "debug minigame difficulty",
     ]
 
     _XP_RE = re.compile(r"\+(\d+)\s+XP\b", re.IGNORECASE)
