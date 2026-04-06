@@ -567,6 +567,14 @@ class GameApp:
             if self._shutdown_overlay:
                 self._shutdown_overlay.render(self.surface)
 
+            if self.scene == "game" and self.gui and hasattr(self.gui, "get_screen_shake_offset"):
+                shake_x, shake_y = self.gui.get_screen_shake_offset()
+                if shake_x or shake_y:
+                    frame = self.surface.copy()
+                    self.surface.fill(DARK["bg"])
+                    draw_arcane_atmosphere(self.surface)
+                    self.surface.blit(frame, (shake_x, shake_y))
+
             pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
             pygame.display.flip()
 
@@ -665,6 +673,10 @@ class PygameAdventureGUI:
     _XP_RE = re.compile(r"\+(\d+)\s+XP\b", re.IGNORECASE)
     _ACH_UNLOCK_RE = re.compile(r"ACHIEVEMENT\s+UNLOCKED:\s*([^\n\r]+)", re.IGNORECASE)
     _COLLECT_RE = re.compile(r"collected\s+(?:(\d+)\s+)?`?([^`\n\r]+?)`?$", re.IGNORECASE)
+    _COMBAT_DAMAGE_RE = re.compile(
+        r"(?:for|takes|deals)\s+(\d+)\s+(?:poison\s+|bleed\s+|burn\s+|frost\s+|arcane\s+|physical\s+)?damage\b",
+        re.IGNORECASE,
+    )
 
     def __init__(self, app: GameApp):
         self.app     = app
@@ -726,7 +738,10 @@ class PygameAdventureGUI:
         self._pending_xp_total = 0
         self._pending_xp_timer = 0.0
         self._pending_item_pops = []
+        self._pending_combat_pops = []
         self._crit_flash_t = 0.0
+        self._combat_shake_t = 0.0
+        self._combat_shake_strength = 0.0
         self._feedback_font_small = None
         self._feedback_font_big = None
 
@@ -1543,6 +1558,12 @@ class PygameAdventureGUI:
             return
         self._pending_item_pops.append({"label": label, "count": count})
 
+    def _queue_combat_pop(self, text, *, crit=False):
+        label = str(text).strip()
+        if not label:
+            return
+        self._pending_combat_pops.append({"label": label, "crit": bool(crit)})
+
     def _queue_achievement_toast(self, title):
         if not title:
             return
@@ -1588,6 +1609,17 @@ class PygameAdventureGUI:
             if item:
                 self._queue_item_pop(item, qty)
 
+        if msg_type == "combat":
+            damage_matches = self._COMBAT_DAMAGE_RE.findall(text_s)
+            for dmg in damage_matches:
+                self._queue_combat_pop(f"-{dmg}", crit=("CRIT" in upper or "CRITICAL" in upper))
+            if damage_matches:
+                self._combat_shake_t = max(self._combat_shake_t, 0.16)
+                self._combat_shake_strength = max(self._combat_shake_strength, 7.0 if ("CRIT" in upper or "CRITICAL" in upper) else 4.0)
+            elif any(word in upper for word in ("HIT", "ATTACK", "HITS", "STRIKES", "DEALS", "DAMAGE")):
+                self._combat_shake_t = max(self._combat_shake_t, 0.10)
+                self._combat_shake_strength = max(self._combat_shake_strength, 3.0)
+
         for ach_title in self._ACH_UNLOCK_RE.findall(text_s):
             ach_title = ach_title.strip(" :-")
             if ach_title:
@@ -1609,12 +1641,53 @@ class PygameAdventureGUI:
         if self._crit_flash_t > 0.0:
             self._crit_flash_t = max(0.0, self._crit_flash_t - dt)
 
+        if self._combat_shake_t > 0.0:
+            self._combat_shake_t = max(0.0, self._combat_shake_t - dt)
+            if self._combat_shake_t <= 0.0:
+                self._combat_shake_strength = 0.0
+
         # Merge rapid XP gains into a single popup.
         if self._pending_xp_timer > 0.0:
             self._pending_xp_timer = max(0.0, self._pending_xp_timer - dt)
             if self._pending_xp_timer <= 0.0 and self._pending_xp_total > 0:
                 self._spawn_xp_pop(f"+{self._pending_xp_total} XP")
                 self._pending_xp_total = 0
+
+        if self._pending_combat_pops:
+            panel_rect = None
+            try:
+                panel_rect = self._combat_panel.get_abs_rect()
+            except Exception:
+                panel_rect = None
+            if panel_rect is None:
+                base_x = self.width - 140
+                base_y = max(24, self.height - 144)
+            else:
+                base_x = max(120, min(self.width - 120, panel_rect.right - 88))
+                base_y = max(24, panel_rect.top - 22)
+            for idx, entry in enumerate(self._pending_combat_pops):
+                self._spawn_feedback_pop(
+                    entry["label"],
+                    (236, 206, 124) if entry.get("crit") else (196, 144, 110),
+                    x=base_x,
+                    y=base_y - idx * 16,
+                    duration=0.9,
+                    rise=42,
+                    size="small",
+                    kind="combat",
+                    align="center",
+                )
+            self._pending_combat_pops.clear()
+
+    def get_screen_shake_offset(self):
+        if self._combat_shake_t <= 0.0 or self._combat_shake_strength <= 0.0:
+            return (0, 0)
+        intensity = clamp01(self._combat_shake_t / 0.16)
+        magnitude = self._combat_shake_strength * (0.35 + 0.65 * intensity)
+        return (
+            int(random.uniform(-magnitude, magnitude)),
+            int(random.uniform(-magnitude * 0.6, magnitude * 0.6)),
+        )
 
         # Convert queued item pickups into animated fly-to-inventory pops.
         if self._pending_item_pops:
@@ -1720,6 +1793,16 @@ class PygameAdventureGUI:
                 pygame.draw.rect(panel, (110, 178, 112, min(200, alpha)), pygame.Rect(0, 0, box_w, box_h), 1, border_radius=10)
                 panel.blit(shadow, (box_pad_x + 2, box_pad_y + 2))
                 panel.blit(text_surf, (box_pad_x, box_pad_y))
+                surface.blit(panel, (x, y))
+                continue
+            if pop.get("kind") == "combat":
+                x = int(pop["x"] - text_surf.get_width() // 2)
+                panel = pygame.Surface((text_surf.get_width() + 18, text_surf.get_height() + 12), pygame.SRCALPHA)
+                panel.fill((0, 0, 0, 0))
+                pygame.draw.rect(panel, (34, 18, 12, min(210, alpha)), panel.get_rect(), border_radius=8)
+                pygame.draw.rect(panel, (194, 168, 108, min(190, alpha)), panel.get_rect(), 1, border_radius=8)
+                panel.blit(shadow, (11, 8))
+                panel.blit(text_surf, (9, 6))
                 surface.blit(panel, (x, y))
                 continue
             elif pop.get("align") == "left":
