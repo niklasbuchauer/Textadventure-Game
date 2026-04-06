@@ -571,7 +571,7 @@ class GameApp:
                 shake_x, shake_y = self.gui.get_screen_shake_offset()
                 if shake_x or shake_y:
                     frame = self.surface.copy()
-                    self.surface.fill(DARK["bg"])
+                    self.surface.fill((0, 0, 0))
                     draw_arcane_atmosphere(self.surface)
                     self.surface.blit(frame, (shake_x, shake_y))
 
@@ -677,7 +677,7 @@ class PygameAdventureGUI:
         r"(?:for|takes|deals)\s+(\d+)\s+(?:poison\s+|bleed\s+|burn\s+|frost\s+|arcane\s+|physical\s+)?damage\b",
         re.IGNORECASE,
     )
-    _QUEST_COMPLETE_RE = re.compile(r"🏆\s*QUEST\s+COMPLETE:\s*([^\n\r]+)", re.IGNORECASE)
+    _QUEST_COMPLETE_RE = re.compile(r"QUEST\s+COMPLETE:\s*([^\n\r]+)", re.IGNORECASE)
     _EQUIP_RE = re.compile(r"EQUIPPED:\s*([^\n\r]+)", re.IGNORECASE)
     _STATUS_EFFECT_RE = re.compile(r"(poison|bleed|burn|frost|arcane)\s+damage", re.IGNORECASE)
 
@@ -743,6 +743,8 @@ class PygameAdventureGUI:
         self._pending_item_pops = []
         self._pending_combat_pops = []
         self._pending_quest_pops = []  # Queued reward popups for quest completion
+        self._quest_completion_data = None  # Active quest completion animation
+        self._confetti_particles = []  # Confetti particles for quest completion
         self._crit_flash_t = 0.0
         self._equip_flash_t = 0.0  # Equipment equip white flash effect
         self._combat_shake_t = 0.0
@@ -1598,31 +1600,45 @@ class PygameAdventureGUI:
         })
 
     def _queue_quest_fanfare(self, quest_name):
-        """Queue a multi-popup fanfare for quest completion.
-        Spawns stacked popups: quest title → rewards cascade down.
-        Each popup spawns with slight delay to create satisfying cascade."""
+        """Queue a premium quest completion animation with confetti and rewards."""
         if not quest_name:
             return
         
-        # Queue main quest completion popup
-        self._pending_quest_pops.append({
-            "delay": 0.0,
-            "text": f"✨ {quest_name} ✨",
-            "color": (236, 206, 124),  # Golden UI color
-            "duration": 1.6,
-            "rise": 35,
-            "kind": "quest",
-        })
+        # Start the quest completion animation
+        self._quest_completion_data = {
+            "quest_name": quest_name,
+            "t": 0.0,
+            "duration": 4.0,  # 4 second total animation
+            "scale": 1.0,
+        }
         
-        # Spawn brief reward hint popup (spawns 0.3s later)
-        self._pending_quest_pops.append({
-            "delay": 0.30,
-            "text": "Rewards Collected",
-            "color": (200, 220, 100),  # Lime-green for rewards
-            "duration": 1.2,
-            "rise": 20,
-            "kind": "quest",
-        })
+        # Spawn initial confetti burst
+        self._spawn_confetti_burst()
+
+    def _spawn_confetti_burst(self):
+        """Spawn confetti particles for quest completion celebration."""
+        import random
+        colors = [
+            (236, 206, 124),  # Gold
+            (100, 200, 255),  # Light blue
+            (200, 100, 255),  # Purple
+            (100, 255, 150),  # Green
+            (255, 180, 100),  # Orange
+        ]
+        
+        # Spawn 20-30 confetti pieces
+        for _ in range(random.randint(20, 30)):
+            self._confetti_particles.append({
+                "x": random.randint(0, self.width),
+                "y": -10,  # Start above screen
+                "vx": random.uniform(-3, 3),  # Horizontal velocity
+                "vy": random.uniform(1.5, 3.5),  # Vertical velocity (falling)
+                "rotation": random.uniform(0, 360),
+                "rotation_speed": random.uniform(-10, 10),
+                "color": random.choice(colors),
+                "size": random.randint(4, 8),
+                "life": 3.5,  # How long particle lasts
+            })
 
     def _trigger_feedback_from_text(self, text, msg_type):
         if not text:
@@ -1672,16 +1688,16 @@ class PygameAdventureGUI:
         # Status effect feedback pop
         status_matches = self._STATUS_EFFECT_RE.findall(upper)
         for status_type in status_matches:
-            status_icon = {
-                "POISON": "☠️",
-                "BLEED": "🩸",
-                "BURN": "🔥",
-                "FROST": "❄️",
-                "ARCANE": "✨"
-            }.get(status_type, "⚡")
+            status_label = {
+                "POISON": "[POISON]",
+                "BLEED": "[BLEED]",
+                "BURN": "[BURN]",
+                "FROST": "[FROST]",
+                "ARCANE": "[MAGIC]"
+            }.get(status_type, "[EFFECT]")
             # Spawn status effect popup on the right side of screen
             self._spawn_feedback_pop(
-                f"{status_icon} {status_type.capitalize()}",
+                status_label,
                 (200, 100, 150) if status_type == "POISON" else
                 (180, 80, 80) if status_type == "BLEED" else
                 (220, 100, 50) if status_type == "BURN" else
@@ -1711,6 +1727,24 @@ class PygameAdventureGUI:
         # Critical hit screen flash timer
         if self._crit_flash_t > 0.0:
             self._crit_flash_t = max(0.0, self._crit_flash_t - dt)
+
+        # Quest completion animation
+        if self._quest_completion_data is not None:
+            self._quest_completion_data["t"] += dt
+            if self._quest_completion_data["t"] >= self._quest_completion_data["duration"]:
+                self._quest_completion_data = None
+        
+        # Update confetti particles
+        alive_confetti = []
+        for particle in self._confetti_particles:
+            particle["life"] -= dt
+            particle["y"] += particle["vy"]
+            particle["x"] += particle["vx"]
+            particle["rotation"] += particle["rotation_speed"]
+            # Fade out in last second
+            if particle["life"] > 0:
+                alive_confetti.append(particle)
+        self._confetti_particles = alive_confetti
 
         # Equipment equip white flash timer
         if self._equip_flash_t > 0.0:
@@ -1863,6 +1897,75 @@ class PygameAdventureGUI:
                 flash = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
                 flash.fill((255, 255, 255, alpha))
                 surface.blit(flash, (0, 0))
+
+        # Render confetti particles
+        for particle in self._confetti_particles:
+            fade = clamp01(particle["life"] / 3.5)  # Fade out over lifetime
+            alpha = int(255 * fade)
+            if alpha <= 0:
+                continue
+            
+            # Draw simple square confetti
+            color_with_alpha = tuple(list(particle["color"]) + [alpha])
+            size = particle["size"]
+            x = int(particle["x"])
+            y = int(particle["y"])
+            
+            # Draw rotated rectangle (simple spinning confetti)
+            try:
+                # Create a small surface for the confetti piece
+                conf_surf = pygame.Surface((size * 2, size), pygame.SRCALPHA)
+                conf_surf.fill(color_with_alpha)
+                rotated = pygame.transform.rotate(conf_surf, particle["rotation"])
+                rect = rotated.get_rect(center=(x, y))
+                surface.blit(rotated, rect)
+            except Exception:
+                # Fallback: just draw a circle
+                pygame.draw.circle(surface, particle["color"], (x, y), size)
+
+        # Quest completion animation
+        if self._quest_completion_data is not None:
+            qc = self._quest_completion_data
+            p = clamp01(qc["t"] / qc["duration"])
+            
+            # Create glow effect
+            glow_alpha = int(120 * (1.0 - p))
+            if glow_alpha > 0:
+                glow_surf = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+                center_x, center_y = self.width // 2, self.height // 2
+                # Draw concentric glowing circles
+                for radius in range(200, 50, 20):
+                    alpha = int(glow_alpha * (1.0 - (radius - 50) / 150.0))
+                    pygame.draw.circle(glow_surf, (236, 206, 124, alpha), (center_x, center_y), radius)
+                surface.blit(glow_surf, (0, 0))
+            
+            # Draw quest name in large text
+            quest_font = pygame.font.SysFont("Georgia", 44, bold=True)
+            # Use decorative text without emoji
+            quest_display = f"< < {qc['quest_name']} > >"
+            quest_text = quest_font.render(quest_display, True, (236, 206, 124))
+            quest_text = quest_text.convert_alpha()
+            
+            # Add shadow for depth
+            shadow_text = quest_font.render(quest_display, True, (50, 40, 20))
+            shadow_text = shadow_text.convert_alpha()
+            shadow_text.set_alpha(100)
+            
+            quest_rect = quest_text.get_rect(center=(self.width // 2 + 3, self.height // 3 + 3))
+            surface.blit(shadow_text, quest_rect)
+            
+            quest_rect = quest_text.get_rect(center=(self.width // 2, self.height // 3))
+            surface.blit(quest_text, quest_rect)
+            
+            # Draw "QUEST COMPLETE" subtitle
+            if p < 0.6:
+                subtitle_alpha = int(255 * ease_out_cubic(clamp01(p / 0.3)))
+                subtitle_font = pygame.font.SysFont("Georgia", 20, italic=True)
+                subtitle = subtitle_font.render("QUEST COMPLETE", True, (200, 220, 100))
+                subtitle = subtitle.convert_alpha()
+                subtitle.set_alpha(subtitle_alpha)
+                subtitle_rect = subtitle.get_rect(center=(self.width // 2, self.height // 3 + 60))
+                surface.blit(subtitle, subtitle_rect)
 
         # Floating XP/feedback text
         for pop in self._feedback_pops:

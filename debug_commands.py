@@ -117,6 +117,21 @@ def handle_debug_commands(engine, args):
         if mode == "traps":
             return _debug_toggle_free_disarm(engine)
         return f"Unknown mode: {mode}\nUsage: debug mode traps"
+    elif subcommand == "quest":
+        if len(args) < 2:
+            return _debug_quest_usage()
+        action = args[1].lower()
+        if action == "list":
+            return _debug_quest_list(engine)
+        elif action == "activate":
+            if len(args) < 3:
+                return "Usage: debug quest activate <quest_id>"
+            return _debug_quest_activate(engine, args[2])
+        elif action == "complete":
+            if len(args) < 3:
+                return "Usage: debug quest complete <quest_id>"
+            return _debug_quest_complete(engine, args[2])
+        return _debug_quest_usage()
     elif subcommand == "minigame":
         if len(args) < 2:
             return _debug_minigame_list()
@@ -186,6 +201,11 @@ Skills & Stats:
 
 Debug Modes:
   debug mode traps              - Toggle free disarm (no items required)
+
+Quests:
+  debug quest list              - List all quests with IDs
+  debug quest activate <id>     - Activate a quest by ID
+  debug quest complete <id>     - Complete a quest by ID (triggers rewards & fanfare)
 
 Minigame Overlays (no prereqs, works anywhere):
   debug minigame                      - List all overlay IDs and types
@@ -2039,6 +2059,153 @@ Debug:
     debug home items              - Free one copy of every home item
     debug home reset              - Full home wipe/reset
 """.strip()
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  DEBUG QUEST COMMANDS
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _debug_quest_usage():
+    """Show quest debug command usage."""
+    return """
+Quest Debug Commands:
+  debug quest list              - List all quests with IDs
+  debug quest activate <id>     - Activate a quest by ID
+  debug quest complete <id>     - Complete a quest by ID (triggers rewards & fanfare)
+
+Example:
+  debug quest list
+  debug quest activate blacksmith_errand
+  debug quest complete blacksmith_errand
+""".strip()
+
+
+def _debug_quest_list(engine):
+    """List all quests with their IDs."""
+    try:
+        from quest_system import QUEST_DATABASE
+    except ImportError:
+        return "Quest system not available."
+    
+    if not QUEST_DATABASE:
+        return "No quests found in database."
+    
+    output = "\n" + "=" * 70 + "\n"
+    output += "  QUESTS DATABASE\n"
+    output += "=" * 70 + "\n\n"
+    
+    for quest_id, quest_def in sorted(QUEST_DATABASE.items()):
+        name = quest_def.get("name", "Unknown")
+        prereq = quest_def.get("prerequisite")
+        level_req = quest_def.get("level_req", 1)
+        
+        output += f"  {quest_id}\n"
+        output += f"    Name: {name}\n"
+        output += f"    Level Req: {level_req}"
+        if prereq:
+            output += f" | Prerequisite: {prereq}"
+        output += "\n\n"
+    
+    output += f"\nTotal quests: {len(QUEST_DATABASE)}\n"
+    return output
+
+
+def _debug_quest_activate(engine, quest_id):
+    """Activate a quest by ID."""
+    try:
+        from quest_system import QUEST_DATABASE
+    except ImportError:
+        return "Quest system not available."
+    
+    if quest_id not in QUEST_DATABASE:
+        return f"Quest '{quest_id}' not found in database."
+    
+    # Check if quest manager exists on engine
+    if not hasattr(engine, 'quest_manager') or engine.quest_manager is None:
+        return "Quest system not initialized on engine."
+    
+    quest_def = QUEST_DATABASE[quest_id]
+    
+    # Check level requirement
+    player_level = engine.player.stats.get("level", 1)
+    level_req = quest_def.get("level_req", 1)
+    if player_level < level_req:
+        return f"Quest requires level {level_req}, but you are level {player_level}."
+    
+    # Check prerequisite
+    prereq = quest_def.get("prerequisite")
+    if prereq:
+        completed_quests = engine.quest_manager.get_completed_quests()
+        completed_ids = [q.get("id") for q in completed_quests]
+        if prereq not in completed_ids:
+            return f"Quest '{quest_id}' requires completion of '{prereq}' first."
+    
+    # Accept the quest
+    result = engine.quest_manager.accept_quest(quest_id)
+    return result
+
+
+def _debug_quest_complete(engine, quest_id):
+    """Complete a quest by ID (forces completion and turn-in)."""
+    try:
+        from quest_system import QUEST_DATABASE
+    except ImportError:
+        return "Quest system not available."
+    
+    if quest_id not in QUEST_DATABASE:
+        return f"Quest '{quest_id}' not found in database."
+    
+    if not hasattr(engine, 'quest_manager') or engine.quest_manager is None:
+        return "Quest system not initialized on engine."
+    
+    qs = engine.quest_manager.quests.get(quest_id)
+    if not qs:
+        return f"Quest '{quest_id}' not in your journal. Activate it first with 'debug quest activate {quest_id}'."
+    
+    # Force mark as complete without checking objectives
+    qs.status = "turned_in"
+    
+    # Award rewards directly
+    quest_def = QUEST_DATABASE[quest_id]
+    rewards = quest_def.get("rewards", {})
+    
+    # Start with quest complete message (this triggers the animation)
+    result = "\nQUEST COMPLETE: " + quest_def['name'] + "\n\n"
+    
+    # Award XP
+    xp = rewards.get("xp", 0)
+    if xp:
+        try:
+            from progression_system import award_xp
+            xp_msg = award_xp(engine.player, xp, f"Quest: {quest_def['name']}")
+            if xp_msg:
+                result += f"{xp_msg}\n"
+        except Exception:
+            pass
+    
+    # Award gold
+    gold = rewards.get("gold", 0)
+    if gold:
+        engine.player.stats["gold"] = engine.player.stats.get("gold", 0) + gold
+        result += f"[GOLD] Received {gold} gold\n"
+    
+    # Award items
+    items = rewards.get("items", {})
+    for item_name, count in items.items():
+        engine.player.inventory[item_name] = engine.player.inventory.get(item_name, 0) + count
+        nice = item_name.replace("_", " ").title()
+        result += f"[ITEM] Received: {count}x {nice}\n"
+    
+    # Award skill points
+    sp = rewards.get("skill_points", 0)
+    if sp:
+        engine.player.stats["skill_points"] = engine.player.stats.get("skill_points", 0) + sp
+        result += f"[SKILL] Received {sp} Skill Point{'s' if sp > 1 else ''}\n"
+    
+    result += "\n"
+    engine._inventory_changed = True
+    
+    return result
 
 
 # ──────────────────────────────────────────────────────────────────────────────

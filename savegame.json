@@ -1,11 +1,11 @@
 {
   "save_version": 6,
   "player": {
-    "current_room": "mountain_peak",
+    "current_room": "mountain_foothills",
     "inventory": {
       "prayer_candle": 1,
       "iron_dagger": 7,
-      "healing_potion": 1,
+      "healing_potion": 3,
       "potent_healing_potion": 4,
       "refined_copper": 4,
       "copper_ingot": 4,
@@ -49,7 +49,10 @@
       "raw_diamond": 1,
       "cave_crystal": 1,
       "wolf_pelt": 1,
-      "solaris_blade": 1
+      "solaris_blade": 1,
+      "leather_scrap": 1,
+      "torch": 3,
+      "spyglass": 1
     },
     "state": {
       "unlocked_skills": [
@@ -175,10 +178,10 @@
         "elite_challenger"
       ],
       "achievement_tracking": {
-        "kills": 19,
-        "total_gold": 216,
+        "kills": 20,
+        "total_gold": 222,
         "easter_eggs_found": 1,
-        "flawless_wins": 9,
+        "flawless_wins": 10,
         "elite_dungeons_entered": 1
       },
       "_synergy_bonuses": {
@@ -337,7 +340,7 @@
       "artifact_slot": null,
       "faction_membership": "iron_brotherhood",
       "faction_xp": {
-        "iron_brotherhood": 54
+        "iron_brotherhood": 57
       },
       "faction_rank": {
         "iron_brotherhood": 0
@@ -345,7 +348,7 @@
       "pets": {
         "spirit_wolf": {
           "level": 9,
-          "xp": 20
+          "xp": 25
         },
         "ember_fox": {
           "level": 4,
@@ -368,13 +371,13 @@
       "pet_temporary_buffs": {}
     },
     "stats": {
-      "gold": 2285,
+      "gold": 2403,
       "health": 375,
       "health_max": 375,
       "level": 15,
-      "xp": 6827,
-      "xp_to_next": 973,
-      "skill_points": 3,
+      "xp": 7098,
+      "xp_to_next": 702,
+      "skill_points": 6,
       "class": "warrior",
       "strength": 40,
       "defense": 40,
@@ -390,78 +393,78 @@
       "prestige_xp_multiplier": 1.0
     },
     "visited_rooms": [
-      "fs_f2_frozen_throne",
-      "grand_harbor_square",
-      "deep_forest",
-      "canyon_depths",
-      "player_home",
-      "village_west_end",
-      "fs_f4_absolute_zero",
-      "oasis_village",
-      "desert_cliffs",
-      "fs_f4_frost_wyrm_nest",
-      "farmland_east",
-      "desert_dunes_center",
-      "sunken_ruins",
-      "scorpion_flats",
-      "dungeon_forest_entrance",
-      "harbor_south_pier",
-      "grand_harbor_road",
-      "desert_ruins",
-      "village_north_gate",
-      "fs_f3_frozen_waterfall",
-      "desert_dunes_west",
-      "fs_f3_cryogenic_lab",
-      "fs_f1_ice_shaft",
-      "coastal_road_north",
-      "smugglers_cove",
-      "frozen_approach",
-      "crossroads",
-      "hidden_oasis",
-      "grand_harbor_gate",
-      "stormbreak_docks",
-      "village_south_road",
-      "farmland_center",
-      "mountain_path",
-      "fs_f3_ice_elemental_den",
-      "fs_f3_glacial_heart",
-      "fs_f1_frozen_gate",
-      "high_pass",
-      "fs_f2_ice_prison",
-      "forest_swamp_border",
-      "woodland_shrine",
-      "fs_f2_blizzard_bridge",
-      "harbor_east_dock",
-      "forest_clearing",
-      "fs_f2_avalanche_hall",
       "fs_f1_crystal_corridor",
-      "dusty_crossroads",
-      "northern_road",
-      "forest_path",
-      "fs_f4_spire_altar",
-      "fs_f4_boss_chamber",
-      "village_east_end",
-      "fs_f1_frozen_library",
-      "eastern_highlands",
-      "village_square",
+      "fs_f2_frozen_throne",
+      "desert_ruins",
       "mossy_hollow",
-      "fs_f2_mirror_maze",
-      "highland_road",
-      "canyon_entrance",
-      "mountain_foothills",
+      "fs_f3_frozen_waterfall",
       "mountain_peak",
-      "frozen_lake",
-      "tundra_edge",
-      "fs_f1_frost_forge",
-      "desert_border",
-      "chapel",
+      "farmland_center",
+      "fs_f4_boss_chamber",
+      "fs_f2_mirror_maze",
+      "desert_dunes_west",
+      "harbor_east_dock",
+      "eastern_highlands",
+      "forest_path",
       "fs_f2_permafrost_pit",
-      "fs_f3_descent",
-      "forest_pool",
+      "fs_f1_frozen_gate",
+      "desert_dunes_center",
+      "highland_road",
+      "high_pass",
+      "woodland_shrine",
       "reef_shallows",
+      "fs_f1_ice_shaft",
+      "dusty_crossroads",
+      "village_east_end",
+      "grand_harbor_road",
+      "dungeon_forest_entrance",
+      "fs_f1_frozen_library",
+      "forest_clearing",
+      "sunken_ruins",
+      "forest_pool",
+      "chapel",
+      "smugglers_cove",
+      "fs_f4_spire_altar",
+      "fs_f1_frost_forge",
+      "grand_harbor_square",
+      "fs_f3_ice_elemental_den",
+      "fs_f2_ice_prison",
+      "canyon_depths",
+      "coastal_road_north",
+      "village_west_end",
+      "oasis_village",
+      "northern_road",
+      "hidden_oasis",
+      "village_square",
+      "tundra_edge",
+      "mountain_path",
+      "frozen_approach",
+      "fs_f3_cryogenic_lab",
+      "grand_harbor_gate",
+      "forest_swamp_border",
+      "fs_f2_avalanche_hall",
+      "canyon_entrance",
+      "fs_f3_glacial_heart",
+      "deep_forest",
+      "fs_f3_descent",
+      "scorpion_flats",
+      "crossroads",
+      "frozen_lake",
+      "village_south_road",
+      "fs_f4_frost_wyrm_nest",
       "coastal_cliffs",
+      "sandy_beach",
+      "harbor_south_pier",
+      "stormbreak_docks",
+      "player_home",
+      "mountain_foothills",
+      "desert_border",
+      "village_north_gate",
+      "fs_f2_blizzard_bridge",
+      "desert_cliffs",
       "farmland_west",
-      "sandy_beach"
+      "farmland_east",
+      "fs_f4_absolute_zero"
     ],
     "unlocked_islands": [
       "stormbreak_island"
@@ -7482,7 +7485,33 @@
     "vault_contents": {},
     "active_altars": {}
   },
-  "quests": {},
+  "quests": {
+    "herald_news": {
+      "quest_id": "herald_news",
+      "status": "turned_in",
+      "progress": {
+        "0": 1,
+        "1": 0,
+        "2": 0
+      }
+    },
+    "tavern_delivery": {
+      "quest_id": "tavern_delivery",
+      "status": "turned_in",
+      "progress": {
+        "0": 0
+      }
+    },
+    "hermit_explore": {
+      "quest_id": "hermit_explore",
+      "status": "turned_in",
+      "progress": {
+        "0": 0,
+        "1": 0,
+        "2": 1
+      }
+    }
+  },
   "npc_reputation": {
     "banker": {
       "npc_id": "banker",
@@ -7499,10 +7528,10 @@
   },
   "overworld_encounters": {
     "recent_rooms": [
-      "mountain_peak",
-      "frozen_approach",
-      "tundra_edge",
-      "frozen_lake"
+      "frozen_lake",
+      "high_pass",
+      "mountain_path",
+      "mountain_foothills"
     ],
     "visible_enemies": {
       "sandy_beach": {
@@ -7601,50 +7630,50 @@
       }
     },
     "rooms_rolled": [
-      "graveyard",
-      "deep_forest",
-      "mesa_base",
-      "canyon_depths",
-      "farmland",
-      "graveyard_gates",
-      "desert_cliffs",
-      "farmland_east",
-      "desert_dunes_center",
-      "scorpion_flats",
-      "dungeon_forest_entrance",
       "desert_ruins",
-      "mesa_top",
-      "desert_dunes_west",
-      "smugglers_cove",
-      "frozen_approach",
-      "crossroads",
-      "hidden_oasis",
-      "farmland_center",
-      "coastal_road_north",
-      "woodland_shrine",
-      "mountain_path",
-      "high_pass",
-      "forest_swamp_border",
-      "forest_clearing",
-      "meteor_crater",
-      "dusty_crossroads",
-      "northern_road",
-      "forest_path",
-      "eastern_highlands",
       "mossy_hollow",
-      "highland_road",
-      "canyon_entrance",
-      "mountain_foothills",
       "mountain_peak",
-      "frozen_lake",
-      "tundra_edge",
-      "desert_border",
-      "village_road",
-      "forest_pool",
+      "farmland_center",
+      "mesa_base",
+      "farmland",
+      "desert_dunes_west",
+      "eastern_highlands",
+      "forest_path",
+      "desert_dunes_center",
+      "mesa_top",
+      "highland_road",
+      "woodland_shrine",
       "reef_shallows",
+      "high_pass",
+      "dusty_crossroads",
+      "dungeon_forest_entrance",
+      "forest_clearing",
+      "forest_pool",
+      "smugglers_cove",
+      "canyon_depths",
+      "coastal_road_north",
+      "northern_road",
+      "hidden_oasis",
+      "village_road",
+      "tundra_edge",
+      "mountain_path",
+      "frozen_approach",
+      "forest_swamp_border",
+      "canyon_entrance",
+      "deep_forest",
+      "scorpion_flats",
+      "crossroads",
+      "frozen_lake",
       "coastal_cliffs",
+      "sandy_beach",
+      "graveyard_gates",
+      "desert_border",
+      "mountain_foothills",
+      "meteor_crater",
+      "graveyard",
+      "desert_cliffs",
       "farmland_west",
-      "sandy_beach"
+      "farmland_east"
     ]
   },
   "fishing": {
@@ -7675,9 +7704,9 @@
   },
   "dungeon_scheduler": {
     "debug_force_open": [
-      "sunken_catacombs",
+      "crystal_caverns",
       "iron_halls",
-      "crystal_caverns"
+      "sunken_catacombs"
     ]
   }
 }
