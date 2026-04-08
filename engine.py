@@ -199,7 +199,7 @@ except Exception as e:
 	print(f"[INIT] ⚠ Faction system DISABLED: {e}")
 
 try:
-	from pet_system import PETS, adopt_pet, activate_pet, feed_active_pet, get_pet_status_text, get_pet_inspect_text, gain_pet_xp
+	from pet_system import PETS, adopt_pet, activate_pet, feed_active_pet, get_pet_status_text, get_pet_inspect_text, gain_pet_xp, use_pet_ability, get_pet_ability_preview_lines, get_pet_bonus_preview, MAX_PET_LEVEL
 	PET_AVAILABLE = True
 except Exception as e:
 	PET_AVAILABLE = False
@@ -1778,6 +1778,26 @@ class CommandHandler:
 			val = stats.get(stat_name, 0)
 			result += f"  {stat_name.capitalize():14s} {val}\n"
 
+		if PET_AVAILABLE:
+			pets = self.engine.player.state.get("pets", {})
+			active_pet = self.engine.player.state.get("active_pet")
+			if active_pet and active_pet in pets:
+				pdata = pets.get(active_pet, {})
+				plevel = int(pdata.get("level", 1))
+				pxp = int(pdata.get("xp", 0))
+				pet_name = PETS.get(active_pet, {}).get("name", active_pet.replace("_", " ").title())
+				bonus_preview = get_pet_bonus_preview(active_pet, plevel)
+				result += "\n  --- Companion ---\n"
+				if plevel < MAX_PET_LEVEL:
+					xp_next = 20 + (plevel * 12)
+					result += f"  Active:   {pet_name} (Lvl {plevel}, XP {pxp}/{xp_next})\n"
+				else:
+					result += f"  Active:   {pet_name} (Lvl {plevel}, MAX)\n"
+				result += f"  Bonus:    {bonus_preview}\n"
+			elif pets:
+				result += "\n  --- Companion ---\n"
+				result += "  Active:   None (use 'pet activate <id>')\n"
+
 		# Show active effects
 		active_effects = self.engine.player.state.get("active_effects", {})
 		if active_effects:
@@ -2025,29 +2045,24 @@ class CommandHandler:
 			if success:
 				self.engine._inventory_changed = True
 			return msg
-		if sub == "use":
-			# If no ability provided, show ability preview for active pet
+		if sub in ("abilities", "roadmap"):
+			active = self.engine.player.state.get("active_pet")
+			if not active:
+				return "No active pet. Adopt and activate one first."
+			pet_level = int(self.engine.player.state.get("pets", {}).get(active, {}).get("level", 1))
+			lines = get_pet_ability_preview_lines(active, pet_level)
+			if not lines:
+				return "Your active pet has no ability roadmap yet."
+			return "Abilities:\n" + "\n".join(lines)
+		if sub in ("use", "ability"):
 			if len(args) < 2:
-				try:
-					from pet_system import get_pet_ability_preview_lines, _ensure_pet_state
-				except Exception:
-					return "Pet system not available."
-				_ensure_pet_state(self.engine.player)
-				active = self.engine.player.state.get("active_pet")
-				if not active:
-					return "No active pet. Adopt and activate one first."
-				lines = get_pet_ability_preview_lines(active, int(self.engine.player.state.get("pets", {}).get(active, {}).get("level", 1)))
-				return "Abilities:\n" + "\n".join(lines)
-			try:
-				from pet_system import use_pet_ability
-			except Exception:
-				return "Pet ability system not available."
+				return "Usage: pet ability <ability_name_or_id>"
 			success, msg = use_pet_ability(self.engine.player, " ".join(args[1:]))
 			if success:
 				# Some pet abilities may change stats/inventory
 				self.engine._inventory_changed = True
 			return msg
-		return "Usage: pet [status|inspect <id>|adopt <id>|activate <id>|feed|window]"
+		return "Usage: pet [status|inspect <id>|adopt <id>|activate <id>|feed|ability <id>|abilities|window]"
 
 	# ========== COMBAT COMMANDS ==========
 

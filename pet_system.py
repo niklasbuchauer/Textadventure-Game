@@ -140,6 +140,24 @@ def _cleanup_pet_temp_effects(player):
         tb.pop(bid, None)
 
 
+def _apply_or_refresh_temp_buff(player, buff_id, stat, value, duration_seconds, now_ts):
+    """Apply a temporary buff, replacing any previous instance cleanly."""
+    tb = player.state.setdefault("pet_temporary_buffs", {})
+    existing = tb.get(buff_id)
+    if existing:
+        old_stat = existing.get("stat")
+        old_val = int(existing.get("value", 0))
+        if old_stat:
+            player.stats[old_stat] = int(player.stats.get(old_stat, 0)) - old_val
+
+    player.stats[stat] = int(player.stats.get(stat, 0)) + int(value)
+    tb[buff_id] = {
+        "stat": stat,
+        "value": int(value),
+        "expires_at": float(now_ts) + int(duration_seconds),
+    }
+
+
 def _apply_active_bonus(player):
     active_pet = player.state.get("active_pet")
     pets = player.state.get("pets", {})
@@ -232,6 +250,9 @@ def gain_pet_xp(player, amount, source="adventure"):
         level += 1
         leveled += 1
 
+    if level >= MAX_PET_LEVEL:
+        xp = 0
+
     pdata["level"] = level
     pdata["xp"] = xp
 
@@ -314,7 +335,7 @@ def get_pet_status_text(player):
             result += f"    Active buffs: {', '.join(tb_lines)}\n"
         result += "\n"
 
-    result += "\n  Commands: pet adopt <id>, pet activate <id>, pet feed, pet inspect <id>\n"
+    result += "\n  Commands: pet adopt <id>, pet activate <id>, pet feed, pet inspect <id>, pet ability <id>, pet abilities\n"
     result += "=" * 58 + "\n"
     return result
 
@@ -421,9 +442,7 @@ def use_pet_ability(player, ability_query):
         # small flat crit chance boost applied as temporary buff
         dur = int(match.get("duration", 45))
         val = 5
-        player.stats["crit_chance"] = int(player.stats.get("crit_chance", 0)) + val
-        tb = player.state.setdefault("pet_temporary_buffs", {})
-        tb[ab_id] = {"stat": "crit_chance", "value": val, "expires_at": now + dur}
+        _apply_or_refresh_temp_buff(player, ab_id, "crit_chance", val, dur, now)
         xp_text = gain_pet_xp(player, 5, source="pet_ability")
         cooldowns[ab_id] = now + int(match.get("cooldown", 90))
         return True, f"{PETS.get(pid, {}).get('name')} used {match.get('name')}! +{val} crit chance for {dur}s." + xp_text
@@ -440,9 +459,7 @@ def use_pet_ability(player, ability_query):
         # small flat defense boost as temporary buff
         dur = int(match.get("duration", 60))
         val = 2
-        player.stats["defense"] = int(player.stats.get("defense", 0)) + val
-        tb = player.state.setdefault("pet_temporary_buffs", {})
-        tb[ab_id] = {"stat": "defense", "value": val, "expires_at": now + dur}
+        _apply_or_refresh_temp_buff(player, ab_id, "defense", val, dur, now)
         xp_text = gain_pet_xp(player, 5, source="pet_ability")
         cooldowns[ab_id] = now + int(match.get("cooldown", 60))
         return True, f"{PETS.get(pid, {}).get('name')} used {match.get('name')}! +{val} defense for {dur}s." + xp_text
