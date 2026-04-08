@@ -150,7 +150,7 @@ COMMANDS = [
     ("prestige status",     "Skills",      "Show ascension status and bonuses",            "prestige status",       "prestige status"),
     ("prestige",            "Skills",      "Start ascension flow",                         "prestige",              "prestige"),
     ("faction",             "Skills",      "Show faction status and progression",          "faction",               "faction"),
-    ("pet",                 "Skills",      "Show companion status",                        "pet",                   "pet"),
+    ("pet",                 "Skills",      "Show companion status (adopt/ability/bandage)", "pet",                   "pet"),
     ("party",               "Skills",      "Open party/faction management window",         "party",                 "party"),
     # Equipment and appearance
     ("equip <item>",        "Inventory",   "Equip a weapon or armor piece",                "equip <item>",          "equip iron_sword"),

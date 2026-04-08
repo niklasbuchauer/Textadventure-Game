@@ -199,7 +199,7 @@ except Exception as e:
 	print(f"[INIT] ⚠ Faction system DISABLED: {e}")
 
 try:
-	from pet_system import PETS, adopt_pet, activate_pet, feed_active_pet, get_pet_status_text, get_pet_inspect_text, gain_pet_xp, use_pet_ability, get_pet_ability_preview_lines, get_pet_bonus_preview, MAX_PET_LEVEL
+	from pet_system import PETS, adopt_pet, activate_pet, feed_active_pet, bandage_active_pet, apply_pet_combat_aftermath, advance_pet_recovery, get_pet_status_text, get_pet_inspect_text, gain_pet_xp, use_pet_ability, get_pet_ability_preview_lines, get_pet_bonus_preview, MAX_PET_LEVEL
 	PET_AVAILABLE = True
 except Exception as e:
 	PET_AVAILABLE = False
@@ -2045,6 +2045,11 @@ class CommandHandler:
 			if success:
 				self.engine._inventory_changed = True
 			return msg
+		if sub in ("bandage", "heal"):
+			success, msg = bandage_active_pet(self.engine.player)
+			if success:
+				self.engine._inventory_changed = True
+			return msg
 		if sub in ("abilities", "roadmap"):
 			active = self.engine.player.state.get("active_pet")
 			if not active:
@@ -2062,7 +2067,7 @@ class CommandHandler:
 				# Some pet abilities may change stats/inventory
 				self.engine._inventory_changed = True
 			return msg
-		return "Usage: pet [status|inspect <id>|adopt <id>|activate <id>|feed|ability <id>|abilities|window]"
+		return "Usage: pet [status|inspect <id>|adopt <id>|activate <id>|feed|bandage|ability <id>|abilities|window]"
 
 	# ========== COMBAT COMMANDS ==========
 
@@ -2196,6 +2201,9 @@ class CommandHandler:
 				extra = gain_pet_xp(player, int(round(pet_xp * pet_mult)), source="combat")
 				if extra:
 					extra_msgs.append(extra)
+				recovery_msg = advance_pet_recovery(player, wins=1)
+				if recovery_msg:
+					extra_msgs.append(recovery_msg)
 
 			# Artifact drop hooks for boss / mini-boss clears.
 			if ARTIFACT_AVAILABLE:
@@ -2269,6 +2277,7 @@ class CommandHandler:
 
 		# Check if enemy is dead
 		if combat.hp <= 0:
+			pet_aftermath_msg = apply_pet_combat_aftermath(self.engine.player, combat) if PET_AVAILABLE else ""
 			victory_msg = generate_victory_result(self.engine.player, combat)
 			# Track achievements
 			ach_msg = self._track_combat_victory(combat)
@@ -2285,11 +2294,13 @@ class CommandHandler:
 					is_mini_boss=getattr(combat, 'is_mini_boss', False)
 				)
 				self.engine.quest_manager.on_item_changed()
-			return result + victory_msg + xp_msg + ach_msg
+			return result + victory_msg + xp_msg + ach_msg + pet_aftermath_msg
 
 		# Check if player died
 		death_msg = self._check_player_death()
 		if death_msg:
+			if PET_AVAILABLE:
+				result += apply_pet_combat_aftermath(self.engine.player, combat)
 			self.engine.pending_combat = None
 			return result + death_msg
 
@@ -2309,6 +2320,8 @@ class CommandHandler:
 		# Check if player died
 		death_msg = self._check_player_death()
 		if death_msg:
+			if PET_AVAILABLE:
+				result += apply_pet_combat_aftermath(self.engine.player, combat)
 			self.engine.pending_combat = None
 			return result + death_msg
 
@@ -2325,12 +2338,16 @@ class CommandHandler:
 		success, msg = process_player_flee(self.engine.player, combat)
 
 		if success:
+			if PET_AVAILABLE:
+				msg += apply_pet_combat_aftermath(self.engine.player, combat)
 			self.engine.pending_combat = None
 			return msg
 
 		# Check if player died from the failed flee hit
 		death_msg = self._check_player_death()
 		if death_msg:
+			if PET_AVAILABLE:
+				msg += apply_pet_combat_aftermath(self.engine.player, combat)
 			self.engine.pending_combat = None
 			return msg + death_msg
 
@@ -2349,6 +2366,7 @@ class CommandHandler:
 			return result
 
 		if combat.hp <= 0:
+			pet_aftermath_msg = apply_pet_combat_aftermath(self.engine.player, combat) if PET_AVAILABLE else ""
 			victory_msg = generate_victory_result(self.engine.player, combat)
 			ach_msg = self._track_combat_victory(combat)
 			xp_msg = ""
@@ -2362,14 +2380,18 @@ class CommandHandler:
 					is_mini_boss=getattr(combat, 'is_mini_boss', False)
 				)
 				self.engine.quest_manager.on_item_changed()
-			return result + victory_msg + xp_msg + ach_msg
+			return result + victory_msg + xp_msg + ach_msg + pet_aftermath_msg
 
 		death_msg = self._check_player_death()
 		if death_msg:
+			if PET_AVAILABLE:
+				result += apply_pet_combat_aftermath(self.engine.player, combat)
 			self.engine.pending_combat = None
 			return result + death_msg
 
 		if combat.player_fled:
+			if PET_AVAILABLE:
+				result += apply_pet_combat_aftermath(self.engine.player, combat)
 			self.engine.pending_combat = None
 			return result
 
@@ -2892,6 +2914,7 @@ class CommandHandler:
 
 			# Check if enemy died
 			if combat.hp <= 0:
+				pet_aftermath_msg = apply_pet_combat_aftermath(self.engine.player, combat) if PET_AVAILABLE else ""
 				victory_msg = generate_victory_result(self.engine.player, combat)
 				xp_msg = ""
 				xp_msg = self._award_combat_xp(combat)
@@ -2907,16 +2930,20 @@ class CommandHandler:
 						is_mini_boss=getattr(combat, 'is_mini_boss', False)
 					)
 					self.engine.quest_manager.on_item_changed()
-				return result + victory_msg + xp_msg + ach_msg
+				return result + victory_msg + xp_msg + ach_msg + pet_aftermath_msg
 
 			# Check if player died
 			death_msg = self._check_player_death()
 			if death_msg:
+				if PET_AVAILABLE:
+					result += apply_pet_combat_aftermath(self.engine.player, combat)
 				self.engine.pending_combat = None
 				return result + death_msg
 
 			# Check if player fled (smoke bomb / guaranteed_flee)
 			if combat.player_fled:
+				if PET_AVAILABLE:
+					result += apply_pet_combat_aftermath(self.engine.player, combat)
 				self.engine.pending_combat = None
 				return result
 
@@ -2928,11 +2955,15 @@ class CommandHandler:
 			result = msg + "\n" + combat_result
 
 			if combat.player_fled:
+				if PET_AVAILABLE:
+					result += apply_pet_combat_aftermath(self.engine.player, combat)
 				self.engine.pending_combat = None
 				return result
 
 			death_msg = self._check_player_death()
 			if death_msg:
+				if PET_AVAILABLE:
+					result += apply_pet_combat_aftermath(self.engine.player, combat)
 				self.engine.pending_combat = None
 				return result + death_msg
 

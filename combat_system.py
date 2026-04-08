@@ -1094,6 +1094,8 @@ class CombatState:
         self.enemy_intent = ""
         self.enemy_intent_tags = []
         self.ability_followup_required = False
+        self.pet_combatant = None
+        self.pet_knocked = False
 
     def _roll_enemy_affinities(self):
         """Pick one vulnerability and one resistance to create tactical variety."""
@@ -1151,6 +1153,8 @@ class CombatState:
             "enemy_intent": getattr(self, "enemy_intent", ""),
             "enemy_intent_tags": list(getattr(self, "enemy_intent_tags", [])),
             "ability_followup_required": bool(getattr(self, "ability_followup_required", False)),
+            "pet_combatant": dict(getattr(self, "pet_combatant", {}) or {}),
+            "pet_knocked": bool(getattr(self, "pet_knocked", False)),
         }
 
     @classmethod
@@ -1196,6 +1200,8 @@ class CombatState:
         cs.enemy_intent = data.get("enemy_intent", "")
         cs.enemy_intent_tags = list(data.get("enemy_intent_tags", []))
         cs.ability_followup_required = bool(data.get("ability_followup_required", False))
+        cs.pet_combatant = dict(data.get("pet_combatant", {}) or {}) if data.get("pet_combatant") else None
+        cs.pet_knocked = bool(data.get("pet_knocked", False))
         return cs
 
 
@@ -1920,6 +1926,128 @@ def _enemy_turn(player, combat):
     return result
 
 
+def _pet_turn(player, combat):
+    """Hybrid pet turn: auto basic support strike after enemy action."""
+    try:
+        from pet_system import get_pet_combat_action
+    except Exception:
+        return ""
+
+    if combat.hp <= 0:
+        return ""
+    if player.stats.get("health", 0) <= 0:
+        return ""
+
+    action = get_pet_combat_action(player)
+    if not action:
+        return ""
+
+    if getattr(combat, "pet_knocked", False):
+        return ""
+
+    pet_state = getattr(combat, "pet_combatant", None)
+    if not pet_state or pet_state.get("pet_id") != action.get("pet_id"):
+        pet_state = {
+            "pet_id": action.get("pet_id"),
+            "pet_name": action.get("pet_name"),
+            "tier": action.get("tier", "common"),
+            "level": int(action.get("level", 1)),
+            "hp": int(action.get("max_hp", 20)),
+            "max_hp": int(action.get("max_hp", 20)),
+            "defense": int(action.get("defense", 0)),
+            "dodge": float(action.get("dodge", 0.0)),
+        }
+        combat.pet_combatant = pet_state
+        combat.pet_knocked = False
+
+    base_dmg = int(action.get("damage", 0))
+    if base_dmg <= 0:
+        return ""
+
+    damage = max(1, int(base_dmg - (combat.defense * 0.12)))
+    combat.hp -= damage
+    pet_name = str(action.get("pet_name", "Companion"))
+    note = _format_combat_line(
+        f"{pet_name} joins the fight for {damage} damage.",
+        "Auto companion strike.",
+        tags=["PET", "DAMAGE"],
+    )
+
+    bonus_stat = str(action.get("bonus_stat", "")).lower()
+    if bonus_stat == "max_mana" and player.stats.get("max_mana", 0) > 0:
+        regen = max(1, int(player.stats.get("max_mana", 0) * 0.03))
+        old_mana = int(player.stats.get("mana", 0))
+        player.stats["mana"] = min(int(player.stats.get("max_mana", 0)), old_mana + regen)
+    elif bonus_stat == "constitution":
+        hp_max = int(player.stats.get("health_max", 100))
+        hp = int(player.stats.get("health", 0))
+        if hp < hp_max:
+            player.stats["health"] = min(hp_max, hp + 1)
+
+    if combat.hp <= 0:
+        combat.hp = 0
+    return note
+
+
+def _enemy_pressure_pet(player, combat):
+    pet_state = getattr(combat, "pet_combatant", None)
+    if not pet_state:
+        return ""
+    if getattr(combat, "pet_knocked", False):
+        return ""
+    if pet_state.get("hp", 0) <= 0:
+        combat.pet_knocked = True
+        return ""
+
+    eid = str(getattr(combat, "enemy_id", "") or "").lower()
+    pressure_chance = 0.27
+    if getattr(combat, "is_boss", False):
+        pressure_chance += 0.13
+    if any(k in eid for k in ("wolf", "hound", "panther", "beast", "fang", "claw", "spider")):
+        pressure_chance += 0.14
+    if any(k in eid for k in ("mage", "sorcer", "wizard", "cultist", "spirit", "wraith")):
+        pressure_chance -= 0.08
+    pressure_chance = max(0.12, min(0.65, pressure_chance))
+
+    # Weighted pressure so pet survivability matters but doesn't dominate combat.
+    if random.random() > pressure_chance:
+        return ""
+
+    if random.random() < float(pet_state.get("dodge", 0.0)):
+        return _format_combat_line(
+            f"{pet_state.get('pet_name', 'Your companion')} dodges a retaliatory swipe.",
+            None,
+            tags=["PET", "DODGE"],
+        )
+
+    incoming = max(1, int(calculate_enemy_damage(player, combat) * 0.45))
+    incoming = max(1, incoming - int(pet_state.get("defense", 0) * 0.35))
+    pet_state["hp"] = max(0, int(pet_state.get("hp", 0)) - incoming)
+    combat.pet_combatant = pet_state
+
+    if pet_state["hp"] <= 0:
+        combat.pet_knocked = True
+        return _format_combat_line(
+            f"{pet_state.get('pet_name', 'Your companion')} is knocked out!",
+            "It can no longer act in this fight.",
+            tags=["PET", "DEBUFF"],
+        )
+
+    return _format_combat_line(
+        f"{pet_state.get('pet_name', 'Your companion')} takes {incoming} damage.",
+        f"HP {pet_state.get('hp')}/{pet_state.get('max_hp')}",
+        tags=["PET", "DAMAGE"],
+    )
+
+
+def _enemy_and_pet_turn(player, combat):
+    result = _enemy_turn(player, combat)
+    result += _enemy_pressure_pet(player, combat)
+    if combat.hp > 0:
+        result += _pet_turn(player, combat)
+    return result
+
+
 def process_player_attack(player, combat):
     """
     Process the player's basic attack action.
@@ -1946,7 +2074,7 @@ def process_player_attack(player, combat):
         combat.attack_streak = 0
         result += _format_combat_line("You are stunned and cannot attack this turn.", None, tags=["STUN"])
         # Enemy still attacks
-        enemy_result = _enemy_turn(player, combat)
+        enemy_result = _enemy_and_pet_turn(player, combat)
         result += enemy_result
         return result + "\n"
 
@@ -1996,7 +2124,7 @@ def process_player_attack(player, combat):
         return result + "\n"
 
     # Enemy turn
-    enemy_result = _enemy_turn(player, combat)
+    enemy_result = _enemy_and_pet_turn(player, combat)
     result += enemy_result
 
     return result + "\n"
@@ -2031,7 +2159,7 @@ def process_player_defend(player, combat):
     if player_stunned:
         result += _format_combat_line("You are stunned and cannot defend properly.", None, tags=["STUN"])
         combat.player_defending = False
-        enemy_result = _enemy_turn(player, combat)
+        enemy_result = _enemy_and_pet_turn(player, combat)
         result += enemy_result
         return result + "\n"
 
@@ -2039,7 +2167,7 @@ def process_player_defend(player, combat):
 
     # Enemy turn (will deal halved damage due to player_defending)
     hp_before = player.stats.get("health", 100)
-    enemy_result = _enemy_turn(player, combat)
+    enemy_result = _enemy_and_pet_turn(player, combat)
     result += enemy_result
     hp_after = player.stats.get("health", 100)
 
@@ -2155,7 +2283,7 @@ def process_player_tactical(player, combat, action_id):
 
     if player_stunned:
         result += _format_combat_line("You are stunned and cannot execute tactics.", None, tags=["STUN"])
-        result += _enemy_turn(player, combat)
+        result += _enemy_and_pet_turn(player, combat)
         return True, result + "\n"
 
     cost = int(action.get("cost", 0))
@@ -2221,7 +2349,7 @@ def process_player_tactical(player, combat, action_id):
         combat.hp = 0
         return True, result + "\n"
 
-    result += _enemy_turn(player, combat)
+    result += _enemy_and_pet_turn(player, combat)
     return True, result + "\n"
 
 
@@ -2250,7 +2378,7 @@ def process_ability_in_combat(player, combat, ability_data):
 
     if player_stunned:
         result += _format_combat_line("You are stunned and cannot use abilities.", None, tags=["STUN"])
-        enemy_result = _enemy_turn(player, combat)
+        enemy_result = _enemy_and_pet_turn(player, combat)
         result += enemy_result
         return result + "\n"
 
@@ -2568,7 +2696,7 @@ def process_ability_in_combat(player, combat, ability_data):
         return result + "\n"
 
     # Enemy turn
-    enemy_result = _enemy_turn(player, combat)
+    enemy_result = _enemy_and_pet_turn(player, combat)
     result += enemy_result
 
     return result + "\n"
@@ -2648,6 +2776,17 @@ def get_combat_status(player, combat):
         mfilled = int(mpct * 15)
         mbar = "█" * mfilled + "░" * (15 - mfilled)
         result += f"  MP: [{mbar}] {pmana}/{pmana_max}\n"
+
+    pet_state = getattr(combat, "pet_combatant", None)
+    if pet_state:
+        php2 = max(0, int(pet_state.get("hp", 0)))
+        pmax2 = max(1, int(pet_state.get("max_hp", 1)))
+        ppct2 = max(0.0, min(1.0, float(php2) / float(pmax2)))
+        pfill2 = int(ppct2 * 12)
+        pbar2 = "█" * pfill2 + "░" * (12 - pfill2)
+        status = "KO" if getattr(combat, "pet_knocked", False) else "Active"
+        result += f"  Companion: {pet_state.get('pet_name', 'Companion')} [{status}]\n"
+        result += f"  Pet HP: [{pbar2}] {php2}/{pmax2}\n"
 
     # Show player status effects with detail
     player_statuses = []

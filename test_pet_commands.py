@@ -22,6 +22,10 @@ def test_pet_ability_command_aliases():
     assert isinstance(ability_msg, str)
     assert len(ability_msg.strip()) > 0
 
+    bandage_msg = engine.process_command("pet bandage")
+    assert isinstance(bandage_msg, str)
+    assert len(bandage_msg.strip()) > 0
+
 
 if __name__ == "__main__":
     test_pet_ability_command_aliases()

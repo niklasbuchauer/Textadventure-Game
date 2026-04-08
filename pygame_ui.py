@@ -774,6 +774,8 @@ class PygameAdventureGUI:
         self._hotbar_buttons  = []    # (UIButton, ability_dict)
         self._hotbar_visible  = False
         self._hotbar_label    = None
+        self._pet_hotbar_buttons = []  # (UIButton, pet_ability_dict)
+        self._pet_hotbar_visible = False
 
         # ── Combat status ────────────────────────────────────────────────
         self._combat_visible  = False
@@ -1284,6 +1286,12 @@ class PygameAdventureGUI:
                         if cmd:
                             self._hotbar_use(cmd)
                         return
+                for btn, ab in self._pet_hotbar_buttons:
+                    if ui == btn:
+                        cmd = ab.get("id") or ab.get("name", "").lower().replace(" ", "_")
+                        if cmd:
+                            self._pet_hotbar_use(cmd)
+                        return
 
         # ── Text entry finished (Enter key) ──────────────────────────────
         if event.type == pygame_gui.UI_TEXT_ENTRY_FINISHED:
@@ -1312,6 +1320,14 @@ class PygameAdventureGUI:
             elif event.key in range(pygame.K_1, pygame.K_9):
                 slot = event.key - pygame.K_1 + 1
                 self._hotbar_key(slot)
+            elif event.key in (pygame.K_9, pygame.K_0, pygame.K_MINUS, pygame.K_EQUALS):
+                pet_slot_map = {
+                    pygame.K_9: 1,
+                    pygame.K_0: 2,
+                    pygame.K_MINUS: 3,
+                    pygame.K_EQUALS: 4,
+                }
+                self._pet_hotbar_key(pet_slot_map[event.key])
 
         # ── Window close events ──────────────────────────────────────────
         if event.type == pygame_gui.UI_WINDOW_CLOSE:
@@ -2288,6 +2304,15 @@ class PygameAdventureGUI:
             neutral = "#D8D0A0"
             p_name = escape_html(name)
             p_html = f'<font color="{neutral}">\u25b6 {p_name}  HP {hp}/{mhp}  MP {mp}/{mmp}</font>'
+
+            combat_obj = getattr(self.engine, "pending_combat", None) if self.engine else None
+            pet_state = getattr(combat_obj, "pet_combatant", None)
+            if pet_state:
+                pet_name = escape_html(str(pet_state.get("pet_name", "Companion")))
+                pet_hp = int(pet_state.get("hp", 0))
+                pet_max = max(1, int(pet_state.get("max_hp", 1)))
+                pet_status = "KO" if bool(getattr(combat_obj, "pet_knocked", False)) else "Ready"
+                p_html += f'<br><font color="#9fd9b8">Pet: {pet_name} [{pet_status}] {pet_hp}/{pet_max}</font>'
             self._combat_player_lbl.set_text(p_html)
 
         if enemy:
@@ -2295,7 +2320,7 @@ class PygameAdventureGUI:
             emhp = _pick_value(enemy, ("max_hp", "health_max"), ("max_hp", "health_max"), None)
             emp  = _pick_value(enemy, ("mp", "mana"), ("mp", "mana"), None)
             emmp = _pick_value(enemy, ("max_mp", "max_mana"), ("max_mp", "max_mana"), None)
-            ename = getattr(enemy, "name", str(enemy)[:20])
+            ename = getattr(enemy, "name", None) or getattr(enemy, "enemy_name", str(enemy)[:20])
             if ehp is not None and emhp:
                 try:
                     self._combat_enemy_hp_frac = int(ehp) / max(int(emhp), 1)
@@ -2337,6 +2362,8 @@ class PygameAdventureGUI:
             ep.hp     = pending.get("hp", "?")
             ep.max_hp = pending.get("max_hp", ep.hp)
             self.update_combat_status(self.engine.player, ep)
+        elif pending:
+            self.update_combat_status(self.engine.player, pending)
         else:
             self.update_combat_status()
 
@@ -2367,6 +2394,9 @@ class PygameAdventureGUI:
         for btn, _ in self._hotbar_buttons:
             btn.kill()
         self._hotbar_buttons.clear()
+        for btn, _ in self._pet_hotbar_buttons:
+            btn.kill()
+        self._pet_hotbar_buttons.clear()
 
         try:
             from engine import PROGRESSION_AVAILABLE
@@ -2380,16 +2410,18 @@ class PygameAdventureGUI:
 
         if not self.engine or not self.engine.player:
             self._hotbar_visible = False
+            self._pet_hotbar_visible = False
             return
 
         abilities = get_active_abilities(self.engine.player)
         if not abilities:
             self._hotbar_visible = False
-            return
+        else:
+            self._hotbar_visible = True
 
-        self._hotbar_visible = True
         cooldowns = self.engine.player.state.get("cooldowns", {})
         in_combat = getattr(self.engine, "pending_combat", None) is not None
+        hotbar_w = self.hotbar_panel.get_relative_rect().w
 
         bx = 90
         for idx, ab in enumerate(abilities):
@@ -2426,6 +2458,53 @@ class PygameAdventureGUI:
             self._hotbar_buttons.append((btn, ab))
             bx += len(txt) * 9 + 20
 
+        # Pet buttons: right aligned, separated from normal ability buttons.
+        try:
+            from pet_system import get_active_pet_hotbar_abilities
+            pet_abilities = get_active_pet_hotbar_abilities(self.engine.player, max_abilities=4)
+        except Exception:
+            pet_abilities = []
+
+        if not pet_abilities:
+            self._pet_hotbar_visible = False
+            return
+
+        self._pet_hotbar_visible = True
+        pet_cooldowns = self.engine.player.state.get("pet_ability_cooldowns", {})
+        px = hotbar_w - 10
+        spacer = 34
+        px -= spacer
+        for offset, ab in enumerate(reversed(pet_abilities)):
+            ab_id = (ab.get("id") or ab.get("name", "")).lower().replace(" ", "_")
+            cd_until = float(pet_cooldowns.get(ab_id, 0))
+            cd = int(max(0, cd_until - time.time())) if cd_until else 0
+            slot = len(pet_abilities) - offset
+            short_name = str(ab.get("name", "?")).strip()
+            txt = f"[P{slot}] {short_name}"
+            if cd > 0:
+                txt += f" ({cd}s)"
+
+            if cd > 0:
+                oid = ObjectID("#pet_hotbar_dimmed_button", "button")
+            elif in_combat:
+                oid = ObjectID("#pet_hotbar_combat_button", "button")
+            else:
+                oid = ObjectID("#pet_hotbar_button", "button")
+
+            width = len(txt) * 8 + 16
+            px -= width
+            btn = UIButton(
+                relative_rect=pygame.Rect(px, 2, width, 26),
+                text=txt,
+                manager=self.manager,
+                container=self.hotbar_panel,
+                object_id=oid,
+            )
+            if cd > 0:
+                btn.disable()
+            self._pet_hotbar_buttons.append((btn, ab))
+            px -= 10
+
     def _hotbar_use(self, ability_cmd_name):
         if not self.engine:
             return
@@ -2456,6 +2535,15 @@ class PygameAdventureGUI:
         self._refresh_hotbar()
         self.refresh_inventory_display()
 
+    def _pet_hotbar_use(self, ability_id):
+        if not self.engine:
+            return
+        resp = self.engine.process_command(f"pet ability {ability_id}")
+        if resp:
+            self.append(resp)
+        self._refresh_hotbar()
+        self.refresh_inventory_display()
+
     def _hotbar_key(self, slot):
         if not self._hotbar_visible or not self._hotbar_buttons:
             return
@@ -2466,6 +2554,17 @@ class PygameAdventureGUI:
                 cmd = ab.get("name", "").lower().replace(" ", "_")
                 if cmd:
                     self._hotbar_use(cmd)
+
+    def _pet_hotbar_key(self, slot):
+        if not self._pet_hotbar_visible or not self._pet_hotbar_buttons:
+            return
+        idx = slot - 1
+        if 0 <= idx < len(self._pet_hotbar_buttons):
+            btn, ab = self._pet_hotbar_buttons[idx]
+            if btn.is_enabled:
+                cmd = (ab.get("id") or ab.get("name", "")).lower().replace(" ", "_")
+                if cmd:
+                    self._pet_hotbar_use(cmd)
 
     # ------------------------------------------------------------------
     #  INVENTORY WINDOW

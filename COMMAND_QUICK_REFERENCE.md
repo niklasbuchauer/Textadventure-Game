@@ -55,6 +55,7 @@
 - `pet adopt <id>` = Adopt a companion
 - `pet activate <id>` = Set active companion
 - `pet feed` = Feed active companion (cost + cooldown)
+- `pet bandage` = Recover injured active companion (cost scales with injury severity)
 - `pet ability <ability_name_or_id>` = Use active pet ability
 - `pet abilities` = Show active pet ability roadmap
 - `pet window` = Open party/faction management window

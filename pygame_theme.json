@@ -132,6 +132,58 @@
             "shadow_width": "0"
         }
     },
+    "#pet_hotbar_button": {
+        "colours": {
+            "normal_bg": "#14201a",
+            "hovered_bg": "#1b2b23",
+            "selected_bg": "#224034",
+            "normal_text": "#c9f0d8",
+            "hovered_text": "#dcffe9",
+            "normal_border": "#3d6a53"
+        },
+        "font": {
+            "name": "Segoe UI Symbol",
+            "size": "13"
+        },
+        "misc": {
+            "border_width": "1",
+            "shadow_width": "0"
+        }
+    },
+    "#pet_hotbar_combat_button": {
+        "colours": {
+            "normal_bg": "#173025",
+            "hovered_bg": "#214236",
+            "normal_text": "#d4ffe4",
+            "hovered_text": "#e9fff2",
+            "normal_border": "#4f8e6f"
+        },
+        "font": {
+            "name": "Segoe UI Symbol",
+            "size": "13"
+        },
+        "misc": {
+            "border_width": "1",
+            "shadow_width": "0"
+        }
+    },
+    "#pet_hotbar_dimmed_button": {
+        "colours": {
+            "normal_bg": "#0d1411",
+            "hovered_bg": "#141d18",
+            "normal_text": "#6f8d7b",
+            "hovered_text": "#89ad98",
+            "normal_border": "#2b3f35"
+        },
+        "font": {
+            "name": "Segoe UI Symbol",
+            "size": "13"
+        },
+        "misc": {
+            "border_width": "1",
+            "shadow_width": "0"
+        }
+    },
     "#panel_title": {
         "colours": {
             "normal_text": "#8ac07a",
