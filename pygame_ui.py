@@ -776,6 +776,7 @@ class PygameAdventureGUI:
         self._hotbar_label    = None
         self._pet_hotbar_buttons = []  # (UIButton, pet_ability_dict)
         self._pet_hotbar_visible = False
+        self._hotbar_cooldown_refresh_elapsed = 0.0
 
         # ── Combat status ────────────────────────────────────────────────
         self._combat_visible  = False
@@ -1369,6 +1370,13 @@ class PygameAdventureGUI:
         if self._command_helper_elapsed >= 0.25:
             self._command_helper_elapsed = 0.0
             self._refresh_command_helper()
+
+        # Keep hotbar cooldown labels visually counting down in real time.
+        self._hotbar_cooldown_refresh_elapsed += dt
+        if self._hotbar_cooldown_refresh_elapsed >= 0.25:
+            self._hotbar_cooldown_refresh_elapsed = 0.0
+            if self._has_active_hotbar_cooldowns():
+                self._refresh_hotbar()
 
         # Update death overlay
         if self._death_overlay:
@@ -2389,6 +2397,34 @@ class PygameAdventureGUI:
     #  HOTBAR
     # ------------------------------------------------------------------
 
+    def _has_active_hotbar_cooldowns(self):
+        if not self.engine or not self.engine.player:
+            return False
+
+        now = time.time()
+        cooldowns = self.engine.player.state.get("cooldowns", {})
+        for val in cooldowns.values():
+            try:
+                v = float(val)
+            except Exception:
+                continue
+            if v <= 0:
+                continue
+            if v > 1_000_000_000 and v > now:
+                return True
+            if v <= 1_000_000_000:
+                return True
+
+        pet_cooldowns = self.engine.player.state.get("pet_ability_cooldowns", {})
+        for val in pet_cooldowns.values():
+            try:
+                if float(val) > now:
+                    return True
+            except Exception:
+                continue
+
+        return False
+
     def _refresh_hotbar(self):
         # Kill old buttons
         for btn, _ in self._hotbar_buttons:
@@ -2423,9 +2459,17 @@ class PygameAdventureGUI:
         in_combat = getattr(self.engine, "pending_combat", None) is not None
         hotbar_w = self.hotbar_panel.get_relative_rect().w
 
+        try:
+            from skill_tree import get_ability_cooldown_remaining
+        except Exception:
+            get_ability_cooldown_remaining = None
+
         bx = 90
         for idx, ab in enumerate(abilities):
-            cd = cooldowns.get(ab["skill_id"], 0)
+            if get_ability_cooldown_remaining:
+                cd = get_ability_cooldown_remaining(self.engine.player, ab["skill_id"])
+            else:
+                cd = int(max(0, cooldowns.get(ab["skill_id"], 0)))
             name = ab.get("name", "?")
             effect = ab.get("effect", "")
             is_combat = ab.get("combat", False)
@@ -2433,7 +2477,7 @@ class PygameAdventureGUI:
                 "combat_heal", "buff_attack", "temp_defense", "heal")
             slot = idx + 1
 
-            txt = (f"[{slot}] {name} ({cd}T)" if cd > 0
+            txt = (f"[{slot}] {name} ({cd}s)" if cd > 0
                    else f"[{slot}] {name}")
 
             # Pick object ID for styling
@@ -2477,7 +2521,7 @@ class PygameAdventureGUI:
         for offset, ab in enumerate(reversed(pet_abilities)):
             ab_id = (ab.get("id") or ab.get("name", "")).lower().replace(" ", "_")
             cd_until = float(pet_cooldowns.get(ab_id, 0))
-            cd = int(max(0, cd_until - time.time())) if cd_until else 0
+            cd = int(math.ceil(max(0.0, cd_until - time.time()))) if cd_until else 0
             slot = len(pet_abilities) - offset
             short_name = str(ab.get("name", "?")).strip()
             txt = f"[P{slot}] {short_name}"

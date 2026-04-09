@@ -14,6 +14,7 @@ layout supporting pan/zoom.
 
 import math
 import random
+import time
 
 from skill_tree_data import (
     WARRIOR_TREE, ROGUE_TREE, MAGE_TREE,
@@ -431,7 +432,7 @@ def unlock_skill(player, skill_id):
     if node["type"] == "active":
         ability = node.get("ability", {})
         result += f"\n  New ability: {ability.get('name', node['name'])}\n"
-        result += f"  Cooldown: {ability.get('cooldown', 0)} turns\n"
+        result += f"  Cooldown: {ability.get('cooldown', 0)}s\n"
         if ability.get("combat"):
             result += "  Usable in combat!\n"
         cmd_name = ability.get('name', '').lower().replace(' ', '_')
@@ -492,6 +493,46 @@ def get_active_abilities(player):
     return abilities
 
 
+def get_ability_cooldown_remaining(player, skill_id, now=None):
+    """Return remaining cooldown in seconds for an ability.
+
+    Supports legacy integer countdown values by promoting them to
+    timestamp-based cooldowns on first read.
+    """
+    if now is None:
+        now = time.time()
+
+    cooldowns = player.state.setdefault("cooldowns", {})
+    raw = cooldowns.get(skill_id, 0)
+    try:
+        raw_val = float(raw)
+    except Exception:
+        raw_val = 0.0
+
+    if raw_val <= 0:
+        if skill_id in cooldowns:
+            del cooldowns[skill_id]
+        return 0
+
+    # Timestamp cooldowns (seconds since epoch)
+    if raw_val > 1_000_000_000:
+        remaining = int(math.ceil(raw_val - now))
+        if remaining <= 0:
+            if skill_id in cooldowns:
+                del cooldowns[skill_id]
+            return 0
+        return remaining
+
+    # Legacy countdown values are treated as seconds and upgraded.
+    remaining = int(math.ceil(raw_val))
+    if remaining <= 0:
+        if skill_id in cooldowns:
+            del cooldowns[skill_id]
+        return 0
+    cooldowns[skill_id] = now + remaining
+    return remaining
+
+
 def use_ability(player, ability_name):
     abilities = get_active_abilities(player)
     if not abilities:
@@ -510,11 +551,10 @@ def use_ability(player, ability_name):
         names = [a["name"] for a in abilities]
         return False, f"Unknown ability. Your abilities: {', '.join(names)}", None
 
-    cooldowns = player.state.get("cooldowns", {})
     cd_key = found["skill_id"]
-    remaining = cooldowns.get(cd_key, 0)
+    remaining = get_ability_cooldown_remaining(player, cd_key)
     if remaining > 0:
-        return False, f"{found['name']} is on cooldown ({remaining} turns remaining).", None
+        return False, f"{found['name']} is on cooldown ({remaining}s remaining).", None
 
     mana_cost = found.get("mana_cost", 0)
     current_mana = player.stats.get("mana", 0)
@@ -541,7 +581,7 @@ def use_ability(player, ability_name):
 
     total_cdr = max(0.0, min(60.0, cdr + cdr_bonus))
     adjusted_cd = max(1, int(math.ceil(base_cd * (1.0 - total_cdr / 100.0))))
-    player.state["cooldowns"][cd_key] = adjusted_cd
+    player.state["cooldowns"][cd_key] = time.time() + adjusted_cd
 
     combat_effects = (
         "combat_damage", "combat_crit_attack", "combat_stun",
@@ -607,13 +647,10 @@ def _apply_ability_effect(player, effect, duration, value):
 def tick_effects(player):
     messages = []
     cooldowns = player.state.get("cooldowns", {})
-    expired_cds = []
+    now = time.time()
     for key in list(cooldowns.keys()):
-        cooldowns[key] -= 1
-        if cooldowns[key] <= 0:
-            expired_cds.append(key)
-    for key in expired_cds:
-        del cooldowns[key]
+        if get_ability_cooldown_remaining(player, key, now=now) <= 0 and key in cooldowns:
+            del cooldowns[key]
 
     active = player.state.get("active_effects", {})
     expired = []
@@ -1422,8 +1459,8 @@ class SkillTreeWindow:
             info = f"[UNLOCKED] {node['name']}  \u2014  {node['description']}"
             if node["type"] == "active":
                 ab = node.get("ability", {})
-                cd = self.player.state.get("cooldowns", {}).get(best_id, 0)
-                info += f"\nCooldown: {'Ready!' if cd == 0 else f'{cd} turns'}"
+                cd = get_ability_cooldown_remaining(self.player, best_id)
+                info += f"\nCooldown: {'Ready!' if cd == 0 else f'{cd}s'}"
                 if ab.get("combat"):
                     info += "  |  Combat ability"
             self._set_detail(info, (102, 187, 106))

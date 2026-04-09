@@ -2879,14 +2879,13 @@ def get_combat_status(player, combat):
         result += " | ability <name>"
         # Show ready abilities with hotbar numbers
         try:
-            from skill_tree import get_active_abilities
+            from skill_tree import get_active_abilities, get_ability_cooldown_remaining
             abilities = get_active_abilities(player)
-            cooldowns = player.state.get("cooldowns", {})
             ready = []
             for i, ab in enumerate(abilities):
-                cd = cooldowns.get(ab["skill_id"], 0)
+                cd = get_ability_cooldown_remaining(player, ab["skill_id"])
                 if cd > 0 and feel_profile.get("detailed_hotbar", True):
-                    ready.append(f"[{i+1}] {ab['name']} ({cd}T cd)")
+                    ready.append(f"[{i+1}] {ab['name']} ({cd}s cd)")
                 else:
                     ready.append(f"[{i+1}] {ab['name']} ✦")
             if ready:

@@ -3,6 +3,7 @@ Companion / pet system.
 """
 
 import time
+import math as _math
 
 PETS = {
     "spirit_wolf": {
@@ -680,7 +681,7 @@ def get_pet_status_text(player):
             until = float(cds.get(ab_id, 0))
             if until > 0:
                 import time as _time
-                rem = int(max(0, until - _time.time()))
+                rem = int(_math.ceil(max(0.0, until - _time.time())))
                 active_lines.append(f"{ab.get('name')}: {rem}s")
         if active_lines:
             result += f"    Cooldowns: {', '.join(active_lines)}\n"
@@ -1073,7 +1074,7 @@ def use_pet_ability(player, ability_query):
     now = _time.time()
     cd_until = float(cooldowns.get(ab_id, 0))
     if now < cd_until:
-        remaining = int(cd_until - now)
+        remaining = int(_math.ceil(cd_until - now))
         return False, f"Ability '{match.get('name')}' is on cooldown for {remaining}s."
 
     # cleanup expired temporary buffs before applying new effects

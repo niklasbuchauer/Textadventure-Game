@@ -146,6 +146,7 @@ try:
 		SkillTreeWindow, get_tree_for_class, get_unlocked_skills,
 		get_available_skills, get_active_abilities, unlock_skill,
 		use_ability, tick_effects, has_active_effect,
+		get_ability_cooldown_remaining,
 		is_skill_unlocked, get_node_by_id,
 		get_synergy_bonuses, get_branch_counts, apply_synergy_bonuses,
 		_apply_ability_effect
@@ -2750,8 +2751,8 @@ class CommandHandler:
 			result += f"  Cooldown Reduction: {total_cdr:.0f}%\n\n"
 
 		for ab in abilities:
-			cd_remaining = cooldowns.get(ab["skill_id"], 0)
-			status = "READY" if cd_remaining == 0 else f"COOLDOWN: {cd_remaining} moves"
+			cd_remaining = get_ability_cooldown_remaining(self.engine.player, ab["skill_id"])
+			status = "READY" if cd_remaining == 0 else f"COOLDOWN: {cd_remaining}s"
 			name = ab.get("name", "Unknown")
 			cmd_name = name.lower().replace(" ", "_")
 			effect = ab.get("effect", "")
@@ -2777,7 +2778,7 @@ class CommandHandler:
 				context = "Anytime"
 
 			result += f"  {name} [{status}] [{context}]\n"
-			result += f"    Cooldown: {base_cd} moves"
+			result += f"    Cooldown: {base_cd}s"
 			if adj_cd and adj_cd != base_cd:
 				result += f" (adjusted: {adj_cd})"
 			result += "\n"
