@@ -742,6 +742,7 @@ class PygameAdventureGUI:
         self._death_overlay    = None
         self._travel_overlay  = None
         self._dungeon_entrance_overlay = None
+        self._easter_egg_overlay = None
         self._fishing_overlay = None
         self._forging_overlay = None
         self._alchemy_overlay = None
@@ -1226,6 +1227,11 @@ class PygameAdventureGUI:
             self._dungeon_entrance_overlay.handle_event(event)
             return
 
+        # ── Easter egg room overlay (modal) ─────────────────────────────
+        if self._easter_egg_overlay and self._easter_egg_overlay.is_open():
+            if self._easter_egg_overlay.handle_event(event):
+                return
+
         # ── Overlay input intercepts ─
         for _ov in (self._fishing_overlay, self._forging_overlay,
                     self._alchemy_overlay, self._smelting_overlay,
@@ -1394,6 +1400,12 @@ class PygameAdventureGUI:
             if self._dungeon_entrance_overlay.is_done():
                 self._dungeon_entrance_overlay = None
 
+        # Update easter egg overlay
+        if self._easter_egg_overlay:
+            self._easter_egg_overlay.update(dt)
+            if not self._easter_egg_overlay.is_open():
+                self._easter_egg_overlay = None
+
         # Update travel overlay
         if self._travel_overlay:
             self._travel_overlay.update(dt)
@@ -1490,6 +1502,8 @@ class PygameAdventureGUI:
                      self.bestiary_win, self.rooms_win, self.party_faction_win):
             if _bov and hasattr(_bov,'is_open') and _bov.is_open() and hasattr(_bov,'draw'):
                 _bov.draw(surface)
+        if self._easter_egg_overlay and self._easter_egg_overlay.is_open():
+            self._easter_egg_overlay.draw(surface)
 
     # ------------------------------------------------------------------
     #  MESSAGE ROUTING
@@ -2122,6 +2136,18 @@ class PygameAdventureGUI:
     #  COMMAND INPUT
     # ------------------------------------------------------------------
 
+    def _open_pending_easter_egg_overlay(self):
+        payload = getattr(self.engine, "pending_easter_egg_room", None) if self.engine else None
+        if not payload:
+            return
+        try:
+            from easter_egg_overlay import EasterEggRoomOverlay
+            self._easter_egg_overlay = EasterEggRoomOverlay(self, payload)
+        except Exception as e:
+            self.append(f"Could not open easter egg room window: {e}", "warning")
+        finally:
+            self.engine.pending_easter_egg_room = None
+
     def on_enter(self):
         cmd = self.entry.get_text().strip()
         self.entry.set_text("")
@@ -2160,6 +2186,9 @@ class PygameAdventureGUI:
         if resp == "__OPEN_PARTY_FACTION__":
             self._open_party_faction_window()
             return
+
+        # Engine sets this payload when entering a secret/easter-egg room.
+        self._open_pending_easter_egg_overlay()
 
         if resp:
             if "\U0001F480 YOU HAVE FALLEN! \U0001F480" in resp:

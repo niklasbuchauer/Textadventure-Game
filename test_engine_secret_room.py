@@ -6,6 +6,7 @@ sys.path.insert(0, 'C:\\Users\\nikbu\\Documents\\Coding\\Unitopia style game')
 
 from engine import CommandHandler, GameEngine, Room
 from dungeon_instance import DungeonInstance
+from easter_egg_data import get_easter_egg_room_payload
 
 def test_engine_methods():
     """Test that engine methods exist and work with discovered secrets."""
@@ -85,10 +86,108 @@ def test_engine_methods():
         return False
     
     return True
+
+
+def test_non_boss_secret_route_payload():
+    """Regression: non-boss hidden rooms should still route through _enter_secret_room."""
+    print("\n--- Testing Non-Boss Secret Route ---")
+
+    engine = GameEngine()
+    engine.load_game(interactive=False)
+    handler = CommandHandler(engine)
+
+    start_room = Room({
+        "name": "Chapel",
+        "description": "Quiet and old.",
+        "exits": {"secret": {"target": "underground_archive", "type": "secret"}},
+    })
+    start_room.is_boss_room = False
+    start_room.secret_discovered = True
+    secret_room = Room({
+        "name": "Underground Archive",
+        "description": "A hidden archive chamber.",
+        "exits": {"back": "chapel"},
+    })
+    engine.rooms["chapel"] = start_room
+    engine.rooms["underground_archive"] = secret_room
+    engine.player.current_room = "chapel"
+
+    result = handler._go("secret")
+    payload = getattr(engine, "pending_easter_egg_room", None)
+
+    if engine.player.current_room == "underground_archive":
+        print("✓ Player moved to secret room")
+    else:
+        print(f"✗ Player did not move to secret room: {engine.player.current_room}")
+        return False
+
+    if isinstance(payload, dict) and payload.get("room_id") == "underground_archive":
+        print("✓ Easter egg payload prepared")
+    else:
+        print(f"✗ Missing/incorrect easter egg payload: {payload}")
+        return False
+
+    layout = payload.get("layout") if isinstance(payload, dict) else None
+    hotspots = layout.get("hotspots") if isinstance(layout, dict) else None
+    if isinstance(layout, dict) and isinstance(hotspots, list) and hotspots:
+        print("✓ Layout and hotspot metadata present")
+    else:
+        print(f"✗ Missing layout/hotspot metadata: {layout}")
+        return False
+
+    interactions = payload.get("interactions") if isinstance(payload, dict) else None
+    if isinstance(interactions, list) and interactions and all("action_id" in i for i in interactions):
+        print("✓ Interactions expose stable action IDs")
+    else:
+        print(f"✗ Missing action IDs in interactions: {interactions}")
+        return False
+
+    if "SECRET ROOM" in (result or "") and "_" not in (result or ""):
+        print("✓ Fallback text returned without ascii wall")
+    else:
+        print(f"✗ Unexpected fallback text: {result}")
+        return False
+
+    return True
+
+
+def test_easter_egg_content_depth():
+    """Regression: easter egg rooms should ship with rich hotspot content."""
+    print("\n--- Testing Easter Egg Content Depth ---")
+
+    lab = get_easter_egg_room_payload("hidden_alchemy_lab", "Hidden Alchemy Lab", "A practical workshop")
+    lab_layout = lab.get("layout", {})
+    lab_hotspots = lab_layout.get("hotspots", []) if isinstance(lab_layout, dict) else []
+    lab_interactions = lab.get("interactions", [])
+
+    if len(lab_hotspots) >= 5 and len(lab_interactions) >= 5:
+        print("✓ Hidden Alchemy Lab has dense hotspot content")
+    else:
+        print(f"✗ Hidden Alchemy Lab content too shallow: hotspots={len(lab_hotspots)}, interactions={len(lab_interactions)}")
+        return False
+
+    if all(isinstance(x.get("text", ""), str) and len(x.get("text", "").strip()) > 120 for x in lab_interactions if x.get("type") == "note"):
+        print("✓ Hidden Alchemy Lab notes are long-form")
+    else:
+        print("✗ Hidden Alchemy Lab notes are still too short")
+        return False
+
+    archive = get_easter_egg_room_payload("underground_archive", "Underground Archive", "Archive")
+    if len(archive.get("interactions", [])) >= 5:
+        print("✓ Archive room includes expanded interaction set")
+    else:
+        print("✗ Archive room interaction count too low")
+        return False
+
+    return True
+
+
 if __name__ == "__main__":
     print("\nRunning Engine Method Tests\n")
     
     success = test_engine_methods()
+    success = test_non_boss_secret_route_payload() and success
+    success = test_easter_egg_content_depth() and success
     
     print("\n" + "=" * 70)
     if success:

@@ -22,6 +22,21 @@ def handle_debug_commands(engine, args):
         if len(args) > 1:
             return _debug_teleport(engine, args[1])
         return "Usage: debug teleport <room_id>"
+    elif subcommand in ("easter", "easteregg", "egg"):
+        if len(args) < 2:
+            return _debug_easter_usage()
+        action = args[1].lower()
+        if action == "list":
+            return _debug_easter_list(engine)
+        if action == "go":
+            if len(args) < 3:
+                return "Usage: debug easter go <room_id>"
+            return _debug_easter_go(engine, args[2])
+        if action == "cycle":
+            return _debug_easter_cycle(engine)
+        if action == "reset":
+            return _debug_easter_reset(engine)
+        return _debug_easter_usage()
     elif subcommand == "heal":
         return _debug_heal(engine)
     elif subcommand == "rooms":
@@ -152,6 +167,10 @@ World & Navigation:
   debug hide map                - Hide unvisited rooms
   debug teleport <id>           - Teleport to a room
   debug rooms [page]            - List rooms (paginated)
+    debug easter list             - List all easter egg test rooms
+    debug easter go <room_id>     - Jump directly into an easter egg room
+    debug easter cycle            - Open next easter egg room each run
+    debug easter reset            - Reset easter egg cycle index
 
 Combat & Enemies:
   debug enemies                 - List all enemies with IDs
@@ -232,6 +251,9 @@ Examples:
     debug cosmetics randomize weapon
     debug cosmetics apply weapon slayer_crimson
   debug teleport mountain_peak
+    debug easter list
+    debug easter cycle
+    debug easter go void_sanctuary
   debug dungeon open dungeon_forest_entrance
     debug home free
     debug home items
@@ -845,6 +867,92 @@ def _debug_teleport(engine, room_id):
         room_name = room.get('name', room_id) if isinstance(room, dict) else room_id
     
     return f"✓ Teleported to {room_name}!"
+
+
+def _get_easter_room_ids():
+    """Return all easter egg room IDs known to the data model."""
+    try:
+        from easter_egg_data import EASTER_EGG_ROOM_DATA
+        return [rid for rid in sorted(EASTER_EGG_ROOM_DATA.keys()) if rid != "default"]
+    except Exception:
+        # Fallback mirrors the currently implemented easter egg room IDs.
+        return [
+            "clocktower_interior",
+            "developers_corner",
+            "forgotten_shrine_puzzle",
+            "hidden_alchemy_lab",
+            "pirate_vault",
+            "underground_archive",
+            "void_sanctuary",
+        ]
+
+
+def _debug_easter_usage():
+    return (
+        "Usage: debug easter list\n"
+        "       debug easter go <room_id>\n"
+        "       debug easter cycle\n"
+        "       debug easter reset"
+    )
+
+
+def _debug_easter_list(engine):
+    room_ids = _get_easter_room_ids()
+    if not room_ids:
+        return "No easter egg rooms are registered."
+
+    lines = ["", "EASTER EGG TEST ROOMS", "-" * 42]
+    for rid in room_ids:
+        room = engine.get_room_data(rid)
+        name = "(missing room)"
+        if isinstance(room, dict):
+            name = room.get("name", rid)
+        elif room is not None:
+            name = getattr(room, "name", rid)
+        lines.append(f"  {rid:24s} - {name}")
+
+    lines.append("\nUse: debug easter go <room_id> or debug easter cycle")
+    return "\n".join(lines)
+
+
+def _debug_easter_go(engine, room_id):
+    room_id = str(room_id or "").strip().lower()
+    if not room_id:
+        return "Usage: debug easter go <room_id>"
+
+    room = engine.get_room_data(room_id)
+    if not room:
+        return f"Unknown easter egg room: {room_id}"
+
+    cmd = getattr(engine, "cmd", None)
+    if not cmd or not hasattr(cmd, "_enter_secret_room"):
+        return "Secret room handler is not available."
+
+    result = cmd._enter_secret_room(room_id)
+    return (
+        f"[DEBUG] Entered easter egg room: {room_id}\n"
+        f"{result}"
+    )
+
+
+def _debug_easter_cycle(engine):
+    room_ids = _get_easter_room_ids()
+    if not room_ids:
+        return "No easter egg rooms are registered."
+
+    st = engine.player.state if getattr(engine, "player", None) else {}
+    idx = int(st.get("debug_easter_cycle_index", 0)) if isinstance(st, dict) else 0
+    room_id = room_ids[idx % len(room_ids)]
+    if isinstance(st, dict):
+        st["debug_easter_cycle_index"] = (idx + 1) % len(room_ids)
+    return _debug_easter_go(engine, room_id)
+
+
+def _debug_easter_reset(engine):
+    if not getattr(engine, "player", None):
+        return "No player found"
+    engine.player.state.pop("debug_easter_cycle_index", None)
+    return "[DEBUG] Easter egg cycle index reset to the first room."
 
 
 def _debug_heal(engine):
@@ -2055,6 +2163,9 @@ General:
 Debug:
   debug <command>               - Access debug menu
   debug commands                - Show all debug commands
+    debug easter list             - List easter egg rooms to test
+    debug easter cycle            - Open next easter egg room
+    debug easter go <room_id>     - Open a specific easter egg room
     debug home free               - Free home ownership
     debug home items              - Free one copy of every home item
     debug home reset              - Full home wipe/reset

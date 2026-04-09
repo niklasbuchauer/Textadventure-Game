@@ -77,6 +77,27 @@ try:
 except ImportError:
 	DEBUG_AVAILABLE = False
 
+# Easter egg room content model (UI + fallback text)
+try:
+	from easter_egg_data import get_easter_egg_room_payload, get_easter_egg_fallback_text
+	EASTER_EGG_DATA_AVAILABLE = True
+except Exception:
+	EASTER_EGG_DATA_AVAILABLE = False
+
+	def get_easter_egg_room_payload(room_id, room_name=None, room_desc=None):
+		return {
+			"room_id": room_id,
+			"title": room_name or "Secret Chamber",
+			"description": room_desc or "A hidden chamber.",
+			"lore": "You enter a hidden place.",
+			"interactions": [],
+		}
+
+	def get_easter_egg_fallback_text(payload):
+		title = str(payload.get("title", "Secret Chamber"))
+		desc = str(payload.get("description", "A hidden chamber."))
+		return f"You step into {title}.\n\n{desc}\n\nType 'go back' to return."
+
 # =====================================================================
 # ITEM EFFECTS SYSTEM INITIALIZATION
 # =====================================================================
@@ -3232,6 +3253,18 @@ class CommandHandler:
 					return "You don't see a secret exit here. Perhaps you should examine the walls more carefully."
 				if secret_room_id:
 					return self._enter_secret_room(secret_room_id)
+
+			# Non-boss hidden rooms use regular secret exits once discovered.
+			exit_data = exits.get("secret")
+			if isinstance(exit_data, dict):
+				secret_target = exit_data.get("target")
+			elif isinstance(exit_data, str):
+				secret_target = exit_data
+			else:
+				secret_target = None
+			if secret_target:
+				return self._enter_secret_room(secret_target)
+			return "You don't see a secret exit here."
 		
 		# Check for exact exit match (handles both old string format and new dict format)
 		target_room_id = None
@@ -6273,7 +6306,7 @@ Do you wish to enter? (yes/no)
 				+ xp_msg)
 
 	def _enter_secret_room(self, secret_room_id):
-		"""Enter and display the secret chamber — unique art + flavour per room."""
+		"""Enter a secret chamber and prepare interactive easter egg UI payload."""
 		self.engine.player.current_room = secret_room_id
 
 		room = self.engine.get_room_data(secret_room_id)
@@ -6289,193 +6322,16 @@ Do you wish to enter? (yes/no)
 			room_name = getattr(room, "name", "Secret Chamber")
 			room_desc = getattr(room, "description", "A hidden chamber.")
 
-		# ── Per-room flavour art & text ─────────────────────────────────────────
-		if secret_room_id == "underground_archive":
-			art = r"""
-    ___________________________________________
-   |  UNDERGROUND  A R C H I V E              |
-   |___________________________________________|
-   |  [shelf]  [shelf]  [shelf]  [shelf]       |
-   |   ||||     ||||     ||||     ||||         |
-   |   ||||     ||||     ||||     ||||         |
-   |   ''''     ''''     ''''     ''''         |
-   |         ___________                       |
-   |        |  __ __ __  |                     |
-   |        | |  ||  || | < reading desk       |
-   |        |_|__|__|__|_|                     |
-   |___________________________________________|
-"""
-			flavour = (
-				"Dust motes drift in the light of glowing runes.\n"
-				"Row upon row of ancient tomes line the stone shelves.\n"
-				"Scholars from lost eras left their wisdom here."
-			)
+		# Keep existing easter egg achievement behavior.
+		if secret_room_id == "developers_corner" and ACHIEVEMENT_AVAILABLE:
+			try:
+				track_event(self.engine.player, "easter_eggs_found")
+			except Exception:
+				pass
 
-		elif secret_room_id == "pirate_vault":
-			art = r"""
-           _________________________
-          /  P I R A T E  V A U L T  \
-         /___________________________\
-        |  [chest] [chest]  [chest]   |
-        |   _____   _____    _____    |
-        |  |$$$$$| |@@@@@|  |#####|  |
-        |  |_____| |_____|  |_____|  |
-        |                            |
-        |  ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~   |
-        |   (water channels)         |
-        |____________________________|
-"""
-			flavour = (
-				"Salt and old wood fill the air.\n"
-				"Sea-weathered chests are stacked against the walls,\n"
-				"and gold coin glints from every corner."
-			)
-
-		elif secret_room_id == "forgotten_shrine_puzzle":
-			art = r"""
-              .  *  .  *  .  *  .
-            *   FORGOTTEN SHRINE   *
-             .  *  .  *  .  *  .
-                     [*]
-                   /     \
-                  |  ~~~  |
-                  | altar |
-                  |  ~~~  |
-                   \_____/
-               *           *
-                  (peace)
-"""
-			flavour = (
-				"The air is impossibly still.\n"
-				"The altar glows softly — you answered its ancient riddles correctly.\n"
-				"A forgotten deity smiles on those who solved its mysteries."
-			)
-
-		elif secret_room_id == "hidden_alchemy_lab":
-			art = r"""
-    ____________________________________________
-   |   H I D D E N   A L C H E M Y   L A B    |
-   |____________________________________________|
-   |  (=)  (=)  (=)      [furnace]             |
-   |   |    |    |        |||||||              |
-   | [beakers & vials]   [  fire ]             |
-   |                                           |
-   |  ~glowing reagents~  ~bubbling flasks~    |
-   |   *   *   *   *   *   *   *   *   *   *  |
-   |____________________________________________|
-"""
-			flavour = (
-				"Heat and the smell of exotic reagents hit you immediately.\n"
-				"Dozens of experiments bubble away unattended.\n"
-				"An alchemist worked here — and might still."
-			)
-
-		elif secret_room_id == "void_sanctuary":
-			art = r"""
-         . · * · . · * · . · * · . · * · .
-                  V O I D
-            S A N C T U A R Y
-         · * · . · * · . · * · . · * · . ·
-
-                   ( ( ( ) ) )
-                  (  NOTHING  )
-                   ( ( ( ) ) )
-
-         . · * · . · * · . · * · . · * · .
-"""
-			flavour = (
-				"The pocket dimension muffles all sound.\n"
-				"Void energy crystallises on every surface.\n"
-				"Time moves differently here — slowly, peacefully."
-			)
-
-		elif secret_room_id == "clocktower_interior":
-			art = r"""
-            __________________________
-           |  C L O C K T O W E R    |
-           |  I N T E R I O R        |
-           |__________________________|
-           |     /\        /\         |
-           |    /  \__/\__/  \        |
-           |   | @@  gear  @@ |       |
-           |   |  \__/  \__/  |       |
-           |   |   TICK TOCK  |       |
-           |   |______________|       |
-           |     |          |         |
-           |   [pendulum swings]      |
-           |__________________________|
-"""
-			flavour = (
-				"The interior of the tower roars with the sound of ticking.\n"
-				"Enormous brass gears interlock above your head.\n"
-				"Clockwork treasure gleams between the mechanisms."
-			)
-
-		elif secret_room_id == "developers_corner":
-			art = r"""
-      _____________________________________________
-     |  D E V E L O P E R ' S   C O R N E R       |
-     |_____________________________________________|
-     |                                             |
-     |   [monitor]   [keyboard]   [coffee cup]     |
-     |    ______      ________     ___             |
-     |   |______|    |________|   |___|            |
-     |   | TODO |    // code //   ~steam~          |
-     |   |______|    |________|                    |
-     |                                             |
-     |   * You found me. I wasn't hiding. *        |
-     |   * (I was definitely hiding)      *        |
-     |_____________________________________________|
-"""
-			flavour = (
-				"A small, impossibly cosy room.\n"
-				"Someone left notes everywhere — design docs, to-do lists, coffee rings.\n"
-				"A strange figure glances up from their work and smiles."
-			)
-			# Track the easter egg
-			if ACHIEVEMENT_AVAILABLE:
-				try:
-					track_event(self.engine.player, "easter_eggs_found")
-				except Exception:
-					pass
-
-		else:
-			# Fallback for dungeon boss secret rooms
-			art = r"""
-               ___.-------.___
-           _.-'     /   \     '-._
-         .'   /   /  |  \  \   '.
-        /   /   / /| |\ \   \   \
-       /   /_/ | | \_\   \   \
-      |   |  .' \  | |  / '.  |   |
-      |   | /    `.|.|.'    \ |   |
-      |   |/  .-.  |||  .-.  \|   |
-      |    \ |   | ||| |   | /    |
-      |     \\ '-' ||| '-'  //    |
-      |.     `\   |||   /'     .|
-      |  '-.   `. ||| .'   .-'  |
-      |     '-. ;--'-'--; .-'   |
-      |        '| VAULT |'      |
-      |         |_______|        |
-      \                          /
-       `-._______________________.-'
-"""
-			flavour = (
-				"Ancient runes glow on the walls.\n"
-				"This secret has been hidden for centuries.\n"
-				"You are among the few who have found it."
-			)
-
-		return (
-			"\n\n" + "=" * 72 + "\n"
-			"  ** SECRET ROOM DISCOVERED: " + room_name.upper() + " **\n"
-			+ "=" * 72 + "\n"
-			+ art + "\n"
-			+ flavour + "\n\n"
-			+ room_desc + "\n\n"
-			"Type 'look' to see the full room contents.\n"
-			"Type 'go back' to return."
-		)
+		payload = get_easter_egg_room_payload(secret_room_id, room_name=room_name, room_desc=room_desc)
+		self.engine.pending_easter_egg_room = payload
+		return get_easter_egg_fallback_text(payload)
 
 	def _sell(self, item_name):
 		"""Sell an item for its standard worth value."""
@@ -7321,6 +7177,8 @@ class GameEngine:
 		self.pending_boat_travel = None
 		# Track pending travel animation (set by _execute_boat_travel, consumed by AdventureGUI)
 		self.pending_travel_animation = None
+		# Track pending easter egg room overlay payload (consumed by pygame UI)
+		self.pending_easter_egg_room = None
 		
 		# Debug overrides for dungeons
 		self.debug_force_open_dungeons = set()  # Stores dungeon_ids that are force-opened

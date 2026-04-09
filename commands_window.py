@@ -217,6 +217,10 @@ DEBUG_COMMANDS = [
     # Debug / World
     ("debug teleport <room>",  "Debug / World",  "Teleport to any room by ID",                    "debug teleport <room_id>",        "debug teleport port_haven"),
     ("debug rooms [page]",     "Debug / World",  "List all rooms (with pagination)",              "debug rooms [page]",              "debug rooms 2"),
+    ("debug easter list",      "Debug / World",  "List easter egg rooms for UI testing",          "debug easter list",               "debug easter list"),
+    ("debug easter go <id>",   "Debug / World",  "Open a specific easter egg room",               "debug easter go <room_id>",       "debug easter go void_sanctuary"),
+    ("debug easter cycle",     "Debug / World",  "Open next easter egg room each command",        "debug easter cycle",              "debug easter cycle"),
+    ("debug easter reset",     "Debug / World",  "Reset easter egg cycle back to first",          "debug easter reset",              "debug easter reset"),
     # Debug / Dungeon
     ("debug dungeon list",     "Debug / Dungeon","List all active dungeons",                      "debug dungeon list",              "debug dungeon list"),
     ("debug dungeon open",     "Debug / Dungeon","Force-open a dungeon at current location",      "debug dungeon open [room_id]",    "debug dungeon open"),
