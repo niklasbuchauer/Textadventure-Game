@@ -19,6 +19,7 @@
 
 ### Help Commands
 - `help` = Show comprehensive command list
+- `help <command>` = Show detailed usage, aliases, examples, and subcommands for one command
 - `commands` = Same as help
 - `?` = Same as help
 - `loot boss` = Show boss loot table previews
@@ -110,6 +111,16 @@
 - `debug home free` = Instantly grant home ownership
 - `debug home items` = Add one copy of every home item
 - `debug home reset` = Full home wipe (ownership/layout/upgrades/bonuses)
+
+## Debug Tutorial Commands
+
+- `debug tutorial` = Show current tutorial state
+- `debug tutorial status` = Show current tutorial step/completion details
+- `debug tutorial start` = Initialize tutorial state at step 0
+- `debug tutorial step` = Mark current step complete and advance to next
+- `debug tutorial skip` = Advance to next step without completing current
+- `debug tutorial complete` = Mark tutorial flow as complete
+- `debug tutorial reset` = Remove tutorial state from save data
 
 ## Debug Loot And Set Test Commands
 

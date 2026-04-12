@@ -107,6 +107,8 @@ def handle_debug_commands(engine, args):
         if action == "reset":
             return _debug_home_reset(engine)
         return _debug_home_usage()
+    elif subcommand in ("restart", "resetgame"):
+        return _debug_restart_game(engine)
     elif subcommand == "dungeon":
         if len(args) < 2:
             return "Usage: debug dungeon open [room_id] | debug dungeon close <dungeon_id> | debug dungeon list | debug dungeon check | debug dungeon entrance"
@@ -151,6 +153,23 @@ def handle_debug_commands(engine, args):
         if len(args) < 2:
             return _debug_minigame_list()
         return _debug_minigame(engine, args[1:])
+    elif subcommand == "tutorial":
+        if len(args) < 2:
+            return _debug_tutorial_status(engine)
+        action = args[1].lower()
+        if action == "status":
+            return _debug_tutorial_status(engine)
+        if action == "start":
+            return _debug_tutorial_start(engine)
+        if action == "step":
+            return _debug_tutorial_step(engine)
+        if action == "skip":
+            return _debug_tutorial_skip(engine)
+        if action == "complete":
+            return _debug_tutorial_complete(engine)
+        if action == "reset":
+            return _debug_tutorial_reset(engine)
+        return _debug_tutorial_usage()
     else:
         return f"Unknown debug command: {subcommand}\n{_show_debug_menu()}"
 
@@ -221,6 +240,9 @@ Skills & Stats:
 Debug Modes:
   debug mode traps              - Toggle free disarm (no items required)
 
+Run Reset:
+    debug restart                 - Fully restart the current run from scratch
+
 Quests:
   debug quest list              - List all quests with IDs
   debug quest activate <id>     - Activate a quest by ID
@@ -237,6 +259,17 @@ Minigame Overlays (no prereqs, works anywhere):
   debug minigame rune  [tier]         - Rune inscription trace (tier 1/2/3)
   debug minigame difficulty           - Show current difficulty setting
   debug minigame difficulty [level]   - Set difficulty: easy | normal | hard
+
+Tutorial:
+    debug tutorial                - Show tutorial state (same as status)
+    debug tutorial status         - Show tutorial state and progress
+    debug tutorial start          - Initialize tutorial state at step 0
+    debug tutorial step           - Mark current step complete and advance
+    debug tutorial skip           - Advance step without marking complete
+    debug tutorial complete       - Mark tutorial flow as complete
+    debug tutorial reset          - Remove tutorial_state from save
+
+    debug restart                 - Fully restart the current run from scratch
 
 ───────────────────────────────────────────────────────────────────────────────
 Examples:
@@ -1186,6 +1219,15 @@ def _debug_home_reset(engine):
         except Exception:
             pass
     return "Home fully reset. Ownership removed and home state restored to fresh defaults."
+
+
+def _debug_restart_game(engine):
+    if not hasattr(engine, "restart_game"):
+        return "Restart is not available on this engine."
+    try:
+        return engine.restart_game()
+    except Exception as exc:
+        return f"Failed to restart game: {exc}"
 
 
 def _debug_list_items(engine):
@@ -2169,7 +2211,254 @@ Debug:
     debug home free               - Free home ownership
     debug home items              - Free one copy of every home item
     debug home reset              - Full home wipe/reset
+    debug tutorial                - Show tutorial state
+    debug tutorial start          - Initialize tutorial state
+    debug tutorial step           - Complete and advance one step
+    debug tutorial skip           - Skip forward one step
+    debug tutorial complete       - Mark tutorial as complete
+    debug tutorial reset          - Remove tutorial state
 """.strip()
+
+
+def _debug_tutorial_usage():
+    return (
+        "Usage: debug tutorial [status|start|step|skip|complete|reset]\n"
+        "  status   - Show tutorial route/chapter status\n"
+        "  start    - Start tutorial from the beginning\n"
+        "  step     - Mark current route step complete and advance\n"
+        "  skip     - Skip route step or skip current tutorial chapter\n"
+        "  complete - Mark full tutorial as complete\n"
+        "  reset    - Remove tutorial_state and clear tutorial quest entries"
+    )
+
+
+def _debug_tutorial_status(engine):
+    player = getattr(engine, "player", None)
+    if not player:
+        return "No player found"
+    state = getattr(player, "state", None)
+    if not isinstance(state, dict):
+        return "Player state not available"
+
+    try:
+        import tutorial_system
+    except Exception:
+        return "Tutorial system not available."
+
+    tutorial_state = tutorial_system.ensure_tutorial_state(player)
+    if tutorial_state is None:
+        return "Tutorial state could not be loaded."
+
+    step_count = max(1, int(getattr(tutorial_system, "TUTORIAL_STEP_COUNT", 1) or 1))
+    current_step = int(tutorial_state.get("current_step", 0) or 0)
+    current_step = max(0, min(current_step, step_count - 1))
+
+    active_quest = str(tutorial_state.get("active_tutorial_quest") or "").strip().lower()
+    quest_chain = list(getattr(tutorial_system, "TUTORIAL_QUEST_CHAIN", []))
+    quest_names = getattr(tutorial_system, "TUTORIAL_QUEST_NAMES", {})
+
+    chapter_name = "none"
+    chapter_progress = "0/0"
+    if active_quest in quest_chain:
+        chapter_idx = quest_chain.index(active_quest)
+        chapter_name = quest_names.get(active_quest, active_quest)
+        chapter_progress = f"{chapter_idx + 1}/{len(quest_chain)}"
+
+    lines = [
+        "Tutorial Debug State:",
+        f"  Started: {bool(tutorial_state.get('started', False))}",
+        f"  Skipped: {bool(tutorial_state.get('skipped', False))}",
+        f"  Complete: {bool(tutorial_state.get('is_complete', False))}",
+        f"  Route Step: {current_step + 1}/{step_count}",
+        f"  Active Chapter: {chapter_name}",
+        f"  Chapter Progress: {chapter_progress}",
+        "",
+        "Current tutorial status:",
+        tutorial_system.get_tutorial_status(engine),
+    ]
+    return "\n".join(lines)
+
+
+def _debug_tutorial_start(engine):
+    player = getattr(engine, "player", None)
+    if not player:
+        return "No player found"
+    state = getattr(player, "state", None)
+    if not isinstance(state, dict):
+        return "Player state not available"
+
+    try:
+        import tutorial_system
+    except Exception:
+        return "Tutorial system not available."
+
+    return tutorial_system.start_tutorial(engine)
+
+
+def _debug_tutorial_step(engine):
+    player = getattr(engine, "player", None)
+    if not player:
+        return "No player found"
+    state = getattr(player, "state", None)
+    if not isinstance(state, dict):
+        return "Player state not available"
+
+    try:
+        import tutorial_system
+    except Exception:
+        return "Tutorial system not available."
+
+    tutorial_state = tutorial_system.ensure_tutorial_state(player)
+    if tutorial_state is None or not tutorial_state.get("started") or tutorial_state.get("skipped"):
+        return "Tutorial not started. Use 'debug tutorial start'."
+    if bool(tutorial_state.get("is_complete", False)):
+        return "Tutorial already complete. Use 'debug tutorial reset' to restart."
+
+    max_step = max(0, int(getattr(tutorial_system, "TUTORIAL_STEP_COUNT", 1) or 1) - 1)
+    current_step = int(tutorial_state.get("current_step", 0) or 0)
+    current_step = max(0, min(current_step, max_step))
+
+    completed_steps = tutorial_state.get("completed_steps", [])
+    if not isinstance(completed_steps, list):
+        completed_steps = []
+    if current_step not in completed_steps:
+        completed_steps.append(current_step)
+
+    tutorial_state["completed_steps"] = completed_steps
+    if current_step < max_step:
+        tutorial_state["current_step"] = current_step + 1
+        return f"Step {current_step} completed. Advanced to step {current_step + 1}."
+
+    return (
+        f"Step {current_step} completed. You are already at the route finale; "
+        "use 'debug tutorial skip' to advance to the next chapter."
+    )
+
+
+def _debug_tutorial_skip(engine):
+    player = getattr(engine, "player", None)
+    if not player:
+        return "No player found"
+    state = getattr(player, "state", None)
+    if not isinstance(state, dict):
+        return "Player state not available"
+
+    try:
+        import tutorial_system
+    except Exception:
+        return "Tutorial system not available."
+
+    tutorial_state = tutorial_system.ensure_tutorial_state(player)
+    if tutorial_state is None or not tutorial_state.get("started") or tutorial_state.get("skipped"):
+        return "Tutorial not started. Use 'debug tutorial start'."
+    if bool(tutorial_state.get("is_complete", False)):
+        return "Tutorial already complete. Use 'debug tutorial reset' to restart."
+
+    max_step = max(0, int(getattr(tutorial_system, "TUTORIAL_STEP_COUNT", 1) or 1) - 1)
+    current_step = int(tutorial_state.get("current_step", 0) or 0)
+    current_step = max(0, min(current_step, max_step))
+
+    if current_step < max_step:
+        tutorial_state["current_step"] = current_step + 1
+        return f"Skipped step {current_step}. Advanced to step {current_step + 1}."
+
+    quest_chain = list(getattr(tutorial_system, "TUTORIAL_QUEST_CHAIN", []))
+    if not quest_chain:
+        return "Tutorial chapter data is unavailable."
+
+    active_quest = str(tutorial_state.get("active_tutorial_quest") or "").strip().lower()
+    completed_quests = tutorial_state.get("completed_tutorial_quests", [])
+    if not isinstance(completed_quests, list):
+        completed_quests = []
+
+    if active_quest not in quest_chain:
+        for quest_id in quest_chain:
+            if quest_id not in completed_quests:
+                active_quest = quest_id
+                tutorial_state["active_tutorial_quest"] = quest_id
+                break
+
+    if active_quest not in quest_chain:
+        return tutorial_system.complete_tutorial(engine)
+
+    if active_quest not in completed_quests:
+        completed_quests.append(active_quest)
+    tutorial_state["completed_tutorial_quests"] = completed_quests
+
+    quest_manager = getattr(engine, "quest_manager", None)
+    if quest_manager and isinstance(getattr(quest_manager, "quests", None), dict):
+        quest_obj = quest_manager.quests.get(active_quest)
+        if quest_obj is None:
+            try:
+                import quest_system
+                quest_obj = quest_system.QuestState(active_quest)
+                quest_manager.quests[active_quest] = quest_obj
+            except Exception:
+                quest_obj = SimpleNamespace(status="turned_in")
+                quest_manager.quests[active_quest] = quest_obj
+        if isinstance(quest_obj, dict):
+            quest_obj["status"] = "turned_in"
+        else:
+            quest_obj.status = "turned_in"
+
+    current_index = quest_chain.index(active_quest)
+    next_index = current_index + 1
+    if next_index >= len(quest_chain):
+        return tutorial_system.complete_tutorial(engine)
+
+    next_quest = quest_chain[next_index]
+    tutorial_state["active_tutorial_quest"] = next_quest
+    tutorial_state["quest_stage"] = next_index
+    quest_name = getattr(tutorial_system, "TUTORIAL_QUEST_NAMES", {}).get(next_quest, next_quest)
+    return (
+        f"Skipped tutorial chapter '{active_quest}'. "
+        f"Advanced to next chapter: {quest_name}."
+    )
+
+
+def _debug_tutorial_complete(engine):
+    player = getattr(engine, "player", None)
+    if not player:
+        return "No player found"
+    state = getattr(player, "state", None)
+    if not isinstance(state, dict):
+        return "Player state not available"
+
+    try:
+        import tutorial_system
+    except Exception:
+        return "Tutorial system not available."
+
+    tutorial_system.ensure_tutorial_state(player)
+    return tutorial_system.complete_tutorial(engine)
+
+
+def _debug_tutorial_reset(engine):
+    player = getattr(engine, "player", None)
+    if not player:
+        return "No player found"
+    state = getattr(player, "state", None)
+    if not isinstance(state, dict):
+        return "Player state not available"
+
+    try:
+        import tutorial_system
+        tutorial_quests = list(getattr(tutorial_system, "TUTORIAL_QUEST_CHAIN", []))
+    except Exception:
+        tutorial_quests = []
+
+    removed_quests = 0
+    quest_manager = getattr(engine, "quest_manager", None)
+    if quest_manager and isinstance(getattr(quest_manager, "quests", None), dict):
+        for quest_id in tutorial_quests:
+            if quest_id in quest_manager.quests:
+                quest_manager.quests.pop(quest_id, None)
+                removed_quests += 1
+
+    if "tutorial_state" in state:
+        del state["tutorial_state"]
+        return f"Tutorial state removed. Cleared {removed_quests} tutorial quest entries."
+    return f"Tutorial state already clear. Cleared {removed_quests} tutorial quest entries."
 
 
 # ──────────────────────────────────────────────────────────────────────────────

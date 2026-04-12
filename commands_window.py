@@ -57,6 +57,7 @@ CAT_COLORS = {
     "Debug / Spawn": (150,  50,  40),
     "Debug / World": (45,  100, 130),
     "Debug / Dungeon":(120, 60, 100),
+    "Debug / Tutorial":(130, 85,  45),
 }
 
 # ── Command tables ────────────────────────────────────────────────────────────
@@ -175,6 +176,7 @@ COMMANDS = [
     ("hearthstone",         "Home",        "Teleport to home using your Hearthstone",      "hearthstone",           "hearthstone"),
     # System
     ("help / commands",     "System",      "Show this commands reference overlay",         "help",                  "commands"),
+    ("tutorial",            "System",      "Start, inspect, or skip the guided tutorial",  "tutorial start",        "tutorial status"),
     ("loot <boss|miniboss|name>", "System", "Preview elite loot tables",                   "loot <target>",         "loot crystal titan"),
     ("journal",             "System",      "Open your journal / quest log",                "journal",               "journal"),
     ("stats",               "System",      "View your character statistics",               "stats",                 "stats"),
@@ -243,6 +245,14 @@ DEBUG_COMMANDS = [
     ("debug minigame rune [tier]",  "Debug / Minigames", "Launch rune inscription trace puzzle",    "debug minigame rune [tier]",      "debug minigame rune 1"),
     ("debug minigame difficulty",   "Debug / Minigames", "Show current minigame difficulty setting","debug minigame difficulty",       "debug minigame difficulty"),
     ("debug minigame difficulty <level>", "Debug / Minigames", "Set minigame difficulty level (easy|normal|hard)", "debug minigame difficulty <level>", "debug minigame difficulty hard"),
+    # Debug / Tutorial
+    ("debug tutorial",          "Debug / Tutorial", "Show tutorial progress state",                  "debug tutorial",                  "debug tutorial"),
+    ("debug tutorial status",   "Debug / Tutorial", "Show current tutorial step/completion data",   "debug tutorial status",           "debug tutorial status"),
+    ("debug tutorial start",    "Debug / Tutorial", "Initialize tutorial state at step 0",          "debug tutorial start",            "debug tutorial start"),
+    ("debug tutorial step",     "Debug / Tutorial", "Mark current tutorial step complete and advance", "debug tutorial step",           "debug tutorial step"),
+    ("debug tutorial skip",     "Debug / Tutorial", "Advance tutorial step without completing it",   "debug tutorial skip",             "debug tutorial skip"),
+    ("debug tutorial complete", "Debug / Tutorial", "Mark tutorial as complete",                     "debug tutorial complete",         "debug tutorial complete"),
+    ("debug tutorial reset",    "Debug / Tutorial", "Remove tutorial_state from player save data",   "debug tutorial reset",            "debug tutorial reset"),
 ]
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

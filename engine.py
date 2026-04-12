@@ -2,6 +2,8 @@ import json
 import os
 import sys
 
+import tutorial_system
+
 
 # =====================================================================
 # SHOP SYSTEM INITIALIZATION
@@ -676,6 +678,7 @@ class CommandHandler:
 			"help": self._cmd_help,
 			"commands": self._cmd_help,
 			"?": self._cmd_help,
+			"tutorial": self._cmd_tutorial,
 			"loot": self._cmd_loot,
 			"recipes": self._cmd_recipes,
 			"crafting": self._cmd_recipes,
@@ -772,38 +775,175 @@ class CommandHandler:
 	def _build_command_metadata(self):
 		"""Canonical command metadata used for docs/help synchronization."""
 		return {
-			"go": {"category": "Movement", "usage": "go <direction>", "aliases": ["walk", "move", "n", "s", "e", "w", "u", "d"]},
-			"enter": {"category": "Movement", "usage": "enter", "aliases": []},
-			"look": {"category": "Exploration", "usage": "look", "aliases": ["l"]},
-			"collect": {"category": "Inventory", "usage": "collect <item>", "aliases": ["take", "get", "pickup", "pick"]},
-			"drop": {"category": "Inventory", "usage": "drop <item>", "aliases": []},
-			"inventory": {"category": "Inventory", "usage": "inventory", "aliases": ["inv", "i"]},
-			"save": {"category": "System", "usage": "save", "aliases": []},
+			"go": {
+				"category": "Movement",
+				"usage": "go <direction>",
+				"aliases": ["walk", "move", "n", "s", "e", "w", "u", "d"],
+				"description": "Move between connected rooms and floors.",
+				"examples": ["go north", "n", "go down"],
+			},
+			"enter": {
+				"category": "Movement",
+				"usage": "enter",
+				"aliases": [],
+				"description": "Enter a building, dungeon, or interactable entrance.",
+				"examples": ["enter"],
+			},
+			"look": {
+				"category": "Exploration",
+				"usage": "look",
+				"aliases": ["l"],
+				"description": "Describe your current room and visible interactables.",
+				"examples": ["look", "l"],
+			},
+			"collect": {
+				"category": "Inventory",
+				"usage": "collect <item>",
+				"aliases": ["take", "get", "pickup", "pick"],
+				"description": "Pick up an item in the current room.",
+				"examples": ["take potion", "collect iron ore"],
+			},
+			"drop": {
+				"category": "Inventory",
+				"usage": "drop <item>",
+				"aliases": [],
+				"description": "Drop an item from inventory into the room.",
+				"examples": ["drop old sword"],
+			},
+			"inventory": {
+				"category": "Inventory",
+				"usage": "inventory",
+				"aliases": ["inv", "i"],
+				"description": "Show your carried items and gold.",
+				"examples": ["inventory", "i"],
+			},
+			"save": {
+				"category": "System",
+				"usage": "save",
+				"aliases": [],
+				"description": "Save your current game state.",
+				"examples": ["save"],
+			},
 			"load": {"category": "System", "usage": "load", "aliases": []},
-			"help": {"category": "System", "usage": "help", "aliases": ["commands", "?"]},
-			"loot": {"category": "System", "usage": "loot [boss|miniboss|name]", "aliases": []},
-			"recipes": {"category": "Crafting", "usage": "recipes", "aliases": ["crafting"]},
-			"examine": {"category": "Exploration", "usage": "examine <target>", "aliases": ["inspect", "x"]},
-			"search": {"category": "Exploration", "usage": "search", "aliases": []},
-			"open": {"category": "Exploration", "usage": "open map | open chest", "aliases": []},
-			"close": {"category": "Exploration", "usage": "close map", "aliases": []},
-			"journal": {"category": "System", "usage": "journal", "aliases": ["quests", "quest", "j"]},
-			"exit": {"category": "System", "usage": "exit", "aliases": ["quit"]},
+			"help": {
+				"category": "System",
+				"usage": "help [command]",
+				"aliases": ["commands", "?"],
+				"description": "Show full command list or detailed help for one command.",
+				"examples": ["help", "help shop", "help home"],
+			},
+			"tutorial": {
+				"category": "System",
+				"usage": "tutorial [start|status|skip]",
+				"aliases": [],
+				"description": "Run or inspect the guided new-player tutorial.",
+				"subcommands": ["tutorial start", "tutorial status", "tutorial skip"],
+				"examples": ["tutorial start", "tutorial status", "tutorial skip"],
+			},
+			"loot": {
+				"category": "System",
+				"usage": "loot [boss|miniboss|name]",
+				"aliases": [],
+				"description": "Preview elite loot tables and set drops.",
+				"examples": ["loot boss", "loot miniboss", "loot crystal titan"],
+			},
+			"recipes": {
+				"category": "System",
+				"usage": "recipes",
+				"aliases": ["crafting"],
+				"description": "List all known crafting recipes.",
+				"examples": ["recipes", "crafting"],
+			},
+			"examine": {
+				"category": "Exploration",
+				"usage": "examine <target>",
+				"aliases": ["inspect", "x"],
+				"description": "Inspect objects for clues, secrets, or interactions.",
+				"examples": ["inspect wall", "examine chest", "inspect trap"],
+			},
+			"search": {
+				"category": "Exploration",
+				"usage": "search",
+				"aliases": [],
+				"description": "Scan the room for hidden loot, traps, or details.",
+				"examples": ["search"],
+			},
+			"open": {
+				"category": "Exploration",
+				"usage": "open map | open chest",
+				"aliases": [],
+				"description": "Open a map window or nearby interactable object.",
+				"examples": ["open map", "open chest"],
+			},
+			"close": {
+				"category": "Exploration",
+				"usage": "close map",
+				"aliases": [],
+				"description": "Close open overlay windows like the live map.",
+				"examples": ["close map"],
+			},
+			"journal": {
+				"category": "System",
+				"usage": "journal",
+				"aliases": ["quests", "quest", "j"],
+				"description": "Open your active and completed quest journal.",
+				"examples": ["journal", "quests"],
+			},
+			"exit": {
+				"category": "System",
+				"usage": "exit",
+				"aliases": ["quit"],
+				"description": "Save and exit the game.",
+				"examples": ["exit", "quit"],
+			},
 			"stats": {"category": "Progression", "usage": "stats", "aliases": ["level", "class"]},
 			"skills": {"category": "Progression", "usage": "skills", "aliases": ["skilltree", "skill"]},
-			"ability": {"category": "Progression", "usage": "ability <name>", "aliases": ["abilities", "ab"]},
+			"ability": {
+				"category": "Progression",
+				"usage": "ability <name>",
+				"aliases": ["abilities", "ab"],
+				"description": "Use or inspect class abilities.",
+				"examples": ["abilities", "ability power strike"],
+			},
 			"synergy": {"category": "Progression", "usage": "synergy", "aliases": ["synergies"]},
 			"achievements": {"category": "Progression", "usage": "achievements", "aliases": ["achieve", "ach"]},
 			"prestige": {"category": "Progression", "usage": "prestige", "aliases": ["ascend", "ascension"]},
-			"faction": {"category": "Progression", "usage": "faction", "aliases": ["factions", "guild", "guilds"]},
-			"pet": {"category": "Progression", "usage": "pet", "aliases": ["pets", "companion", "companions"]},
+			"faction": {
+				"category": "Progression",
+				"usage": "faction [subcommand]",
+				"aliases": ["factions", "guild", "guilds"],
+				"description": "View faction progress and manage membership.",
+				"subcommands": ["faction ranks [id]", "faction join <id>", "faction leave", "faction window"],
+				"examples": ["faction", "faction join iron_legion", "faction ranks"],
+			},
+			"pet": {
+				"category": "Progression",
+				"usage": "pet [subcommand]",
+				"aliases": ["pets", "companion", "companions"],
+				"description": "Manage companions and active pet abilities.",
+				"subcommands": ["pet inspect <id>", "pet adopt <id>", "pet activate <id>", "pet feed", "pet bandage", "pet abilities", "pet ability <name_or_id>", "pet window"],
+				"examples": ["pet", "pet activate wolf", "pet ability 1"],
+			},
 			"party": {"category": "Progression", "usage": "party", "aliases": ["team", "squad"]},
-			"equip": {"category": "Equipment", "usage": "equip <item>", "aliases": []},
+			"equip": {
+				"category": "Equipment",
+				"usage": "equip <item>",
+				"aliases": [],
+				"description": "Equip gear from inventory.",
+				"examples": ["equip iron sword"],
+			},
 			"unequip": {"category": "Equipment", "usage": "unequip <slot_or_item>", "aliases": []},
 			"equipment": {"category": "Equipment", "usage": "equipment", "aliases": []},
 			"transmog": {"category": "Equipment", "usage": "transmog <slot_or_item> <skin|clear>", "aliases": ["skin"]},
 			"cosmetics": {"category": "Equipment", "usage": "cosmetics", "aliases": ["cosmetic"]},
-			"artifact": {"category": "Equipment", "usage": "artifact", "aliases": ["artifacts", "relic", "relics"]},
+			"artifact": {
+				"category": "Equipment",
+				"usage": "artifact [subcommand]",
+				"aliases": ["artifacts", "relic", "relics"],
+				"description": "View and manage equipped artifacts.",
+				"subcommands": ["artifact equip <id>", "artifact unequip", "artifact status"],
+				"examples": ["artifact", "artifact equip ember core"],
+			},
 			"attack": {"category": "Combat", "usage": "attack", "aliases": []},
 			"defend": {"category": "Combat", "usage": "defend", "aliases": []},
 			"flee": {"category": "Combat", "usage": "flee", "aliases": []},
@@ -812,9 +952,23 @@ class CommandHandler:
 			"interrupt": {"category": "Combat", "usage": "interrupt", "aliases": []},
 			"charge": {"category": "Combat", "usage": "charge", "aliases": []},
 			"guard_break": {"category": "Combat", "usage": "guard break", "aliases": ["guardbreak", "guard"]},
-			"shop": {"category": "Economy", "usage": "shop <browse|buy|sell|talk|info>", "aliases": []},
+			"shop": {
+				"category": "Economy",
+				"usage": "shop <subcommand>",
+				"aliases": [],
+				"description": "Browse, buy, sell, and negotiate with merchants.",
+				"subcommands": ["shop browse", "shop buy <item>", "shop sell <item> <price>", "shop talk", "shop info"],
+				"examples": ["shop browse", "shop buy health potion"],
+			},
 			"talk": {"category": "NPC", "usage": "talk to <name>", "aliases": []},
-			"bank": {"category": "Economy", "usage": "bank <help|balance|upgrade>", "aliases": []},
+			"bank": {
+				"category": "Economy",
+				"usage": "bank [subcommand]",
+				"aliases": [],
+				"description": "Manage stored gold and vault upgrades.",
+				"subcommands": ["bank", "balance", "deposit <amount|all>", "withdraw <amount|all>", "upgrade bank"],
+				"examples": ["deposit all", "withdraw 500", "upgrade bank"],
+			},
 			"deposit": {"category": "Economy", "usage": "deposit <amount|all>", "aliases": []},
 			"withdraw": {"category": "Economy", "usage": "withdraw <amount|all>", "aliases": []},
 			"balance": {"category": "Economy", "usage": "balance", "aliases": []},
@@ -827,23 +981,73 @@ class CommandHandler:
 			"smelt": {"category": "Crafting", "usage": "smelt [recipe]", "aliases": []},
 			"ritual": {"category": "Crafting", "usage": "ritual [name]", "aliases": []},
 			"enchant": {"category": "Crafting", "usage": "enchant", "aliases": []},
-			"fight": {"category": "Combat", "usage": "fight", "aliases": []},
-			"debug": {"category": "Debug", "usage": "debug <subcommand>", "aliases": []},
+			"fight": {
+				"category": "Exploration",
+				"usage": "fight",
+				"aliases": [],
+				"description": "Engage a visible enemy in the current room.",
+				"examples": ["fight"],
+			},
+			"debug": {
+				"category": "Debug",
+				"usage": "debug <subcommand>",
+				"aliases": [],
+				"description": "Developer tools for testing progression, loot, cosmetics, and tutorial flow.",
+				"subcommands": ["debug commands", "debug loot ...", "debug set ...", "debug cosmetics ...", "debug home ...", "debug tutorial ..."],
+				"examples": ["debug commands", "debug tutorial status", "debug tutorial start", "debug set grant dragon", "debug cosmetics list"],
+			},
 			"board": {"category": "Travel", "usage": "board [destination]", "aliases": []},
-			"rooms": {"category": "Exploration", "usage": "rooms", "aliases": ["room_browser", "areas"]},
-			"bestiary": {"category": "Exploration", "usage": "bestiary", "aliases": ["monsters", "enemies"]},
+			"rooms": {
+				"category": "Exploration",
+				"usage": "rooms",
+				"aliases": ["room_browser", "areas"],
+				"description": "Open the room browser window.",
+				"examples": ["rooms", "areas"],
+			},
+			"bestiary": {
+				"category": "Exploration",
+				"usage": "bestiary",
+				"aliases": ["monsters", "enemies"],
+				"description": "Open enemy encyclopedia and stats.",
+				"examples": ["bestiary", "monsters"],
+			},
 			"disarm": {"category": "Dungeon", "usage": "disarm | disarm trap", "aliases": []},
 			"craft": {"category": "Crafting", "usage": "craft", "aliases": ["altar"]},
 			"forge": {"category": "Crafting", "usage": "forge [recipe]", "aliases": []},
 			"experiment": {"category": "Crafting", "usage": "experiment", "aliases": []},
-			"use": {"category": "Inventory", "usage": "use <item>", "aliases": []},
-			"home": {"category": "Home", "usage": "home [subcommand]", "aliases": []},
+			"use": {
+				"category": "Inventory",
+				"usage": "use <item>",
+				"aliases": [],
+				"description": "Consume or activate an inventory item.",
+				"examples": ["use health potion"],
+			},
+			"home": {
+				"category": "Home",
+				"usage": "home [subcommand]",
+				"aliases": [],
+				"description": "Travel to and manage your customizable home.",
+				"subcommands": ["home", "home edit", "home inventory", "home upgrades", "home rooms", "home room <id>", "home unlock <id>", "home containers", "home store <item> [qty]", "home take <item> [qty]", "home spawn <id>", "home garden", "home plant <item> [qty]", "home harvest", "home bonus"],
+				"examples": ["home edit", "home room garden", "home store ore 10"],
+			},
 			"hearthstone": {"category": "Home", "usage": "hearthstone", "aliases": []},
 			"place": {"category": "Home", "usage": "place <item> [at x y]", "aliases": []},
 			"remove": {"category": "Home", "usage": "remove <item>", "aliases": []},
 			"rename home": {"category": "Home", "usage": "rename home <name>", "aliases": []},
-			"leave": {"category": "Movement", "usage": "leave", "aliases": []},
-			"sell": {"category": "Economy", "usage": "sell <item>", "aliases": []},
+			"leave": {
+				"category": "Movement",
+				"usage": "leave",
+				"aliases": [],
+				"description": "Leave the current interior or special location.",
+				"examples": ["leave"],
+			},
+			"sell": {
+				"category": "Inventory",
+				"usage": "sell <item>",
+				"aliases": [],
+				"description": "Sell an item at base value.",
+				"examples": ["sell rusty dagger"],
+			},
 			"buy home deed": {"category": "Home", "usage": "buy home deed", "aliases": []},
 		}
 
@@ -855,6 +1059,9 @@ class CommandHandler:
 		if response is None:
 			return False, None
 		return True, response
+
+	def _apply_tutorial_progress(self, cmd, verb, args, response):
+		return tutorial_system.process_player_command(self.engine, cmd, verb, args, response)
 
 	def _cmd_go(self, args):
 		if not args:
@@ -890,7 +1097,13 @@ class CommandHandler:
 		return self.engine.load_game(interactive=False)
 
 	def _cmd_help(self, _args):
+		args = _args or []
+		if args:
+			return self._show_command_details(" ".join(args))
 		return self._show_commands()
+
+	def _cmd_tutorial(self, args):
+		return tutorial_system.handle_tutorial_command(self.engine, args)
 
 	def _cmd_loot(self, args):
 		if not COMBAT_AVAILABLE:
@@ -1376,19 +1589,78 @@ class CommandHandler:
 		for command, meta in self.command_metadata.items():
 			category = meta.get("category", "Other")
 			usage = meta.get("usage", command)
-			by_category.setdefault(category, []).append(usage)
+			description = meta.get("description", "")
+			aliases = meta.get("aliases", [])
+			alias_preview = ""
+			if aliases:
+				alias_preview = f" (aliases: {', '.join(aliases[:2])}"
+				if len(aliases) > 2:
+					alias_preview += ", ..."
+				alias_preview += ")"
+			label = usage
+			if description:
+				label = f"{usage}: {description}"
+			if alias_preview:
+				label += alias_preview
+			by_category.setdefault(category, []).append(label)
 
 		lines = []
 		for category in category_order:
-			usages = by_category.get(category)
-			if not usages:
+			entries = by_category.get(category)
+			if not entries:
 				continue
-			unique = sorted(set(usages))
+			unique = sorted(set(entries))
 			preview = ", ".join(unique[:5])
 			if len(unique) > 5:
 				preview += ", ..."
 			lines.append(f"- {category}: {preview}")
 		return lines
+
+	def _resolve_command_metadata(self, cmd_query):
+		"""Resolve command metadata by exact command key or alias."""
+		query = (cmd_query or "").strip().lower()
+		if not query:
+			return None, None
+
+		if query in self.command_metadata:
+			return query, self.command_metadata[query]
+
+		for command, meta in self.command_metadata.items():
+			aliases = [a.lower() for a in meta.get("aliases", [])]
+			if query in aliases:
+				return command, meta
+
+		return None, None
+
+	def _show_command_details(self, cmd_query):
+		"""Show detailed help for a specific command from canonical metadata."""
+		command, meta = self._resolve_command_metadata(cmd_query)
+		if not meta:
+			return (
+				f"Unknown command: '{cmd_query}'.\n"
+				"Use 'help' to see all commands."
+			)
+
+		usage = meta.get("usage", command)
+		description = meta.get("description") or "No description available yet."
+		category = meta.get("category", "Other")
+		aliases = meta.get("aliases", [])
+		examples = meta.get("examples", [])
+		subcommands = meta.get("subcommands", [])
+
+		lines = [f"\nCOMMAND HELP: {command}", f"Category: {category}", f"Usage: {usage}", f"What it does: {description}"]
+		if aliases:
+			lines.append(f"Aliases: {', '.join(aliases)}")
+		if subcommands:
+			lines.append("Subcommands:")
+			for sub in subcommands:
+				lines.append(f"  - {sub}")
+		if examples:
+			lines.append("Examples:")
+			for ex in examples:
+				lines.append(f"  - {ex}")
+
+		return "\n".join(lines)
 
 	def handle(self, raw):
 		cmd = (raw or "").strip()
@@ -1417,7 +1689,8 @@ class CommandHandler:
 		
 		# Check if we're waiting for quest accept/decline
 		if QUEST_AVAILABLE and getattr(self.engine, 'pending_quest_action', None) is not None:
-			return self._handle_quest_accept(cmd)
+			result = self._handle_quest_accept(cmd)
+			return self._apply_tutorial_progress(cmd, cmd.strip().lower(), [], result)
 
 		# Check if we're waiting for ascension confirmation
 		if getattr(self.engine, 'pending_prestige_confirm', False):
@@ -1437,7 +1710,8 @@ class CommandHandler:
 		# Check if we're in an NPC dialogue
 		if self.engine.pending_dialogue is not None:
 			if NPC_AVAILABLE and self.engine.npc_manager:
-				return self.engine.npc_manager.handle_dialogue_choice(cmd)
+				result = self.engine.npc_manager.handle_dialogue_choice(cmd)
+				return self._apply_tutorial_progress(cmd, cmd.strip().lower(), [], result)
 			else:
 				self.engine.pending_dialogue = None
 		
@@ -1509,7 +1783,7 @@ class CommandHandler:
 			ok, msg = self._check_conditions(effect.get("conditions", {}))
 			if not ok:
 				return msg
-			return self._perform_global_command(effect)
+			return self._apply_tutorial_progress(cmd, verb, args, self._perform_global_command(effect))
 
 		# check for room-specific action (exact command match)
 		room = self.engine.get_room_data(self.engine.player.current_room)
@@ -1520,11 +1794,11 @@ class CommandHandler:
 			ok, msg = self._check_conditions(effect.get("conditions", {}))
 			if not ok:
 				return msg
-			return self._perform_action(effect, room, cmd)
+			return self._apply_tutorial_progress(cmd, verb, args, self._perform_action(effect, room, cmd))
 
 		handled, registry_response = self._dispatch_registry_command(verb, args)
 		if handled:
-			return registry_response
+			return self._apply_tutorial_progress(cmd, verb, args, registry_response)
 
 		# fallback to built-in verbs
 		if verb in ("go", "walk", "move"):
@@ -1533,28 +1807,28 @@ class CommandHandler:
 			direction = args[0].lower()
 			# Special case: "go enter" still works for compatibility
 			if direction == "enter":
-				return self.handle_enter_command()
-			return self._go(direction)
+				return self._apply_tutorial_progress(cmd, verb, args, self.handle_enter_command())
+			return self._apply_tutorial_progress(cmd, verb, args, self._go(direction))
 		
 		# NEW: Standalone ENTER command
 		if verb == "enter":
-			return self.handle_enter_command()
+			return self._apply_tutorial_progress(cmd, verb, args, self.handle_enter_command())
 		
 		if verb in ("look", "l"):
-			return self._look()
+			return self._apply_tutorial_progress(cmd, verb, args, self._look())
 		# Support new collect command and keep old aliases
 		if verb in ("collect", "take", "get", "pickup", "pick"):
 			if not args:
 				return "Pick up what?"
-			return self._collect(" ".join(args))
+			return self._apply_tutorial_progress(cmd, verb, args, self._collect(" ".join(args)))
 		if verb == "drop":
 			if not args:
 				return "Drop what?"
-			return self._drop(" ".join(args))
+			return self._apply_tutorial_progress(cmd, verb, args, self._drop(" ".join(args)))
 		if verb in ("inventory", "inv", "i"):
-			return self._inventory()
+			return self._apply_tutorial_progress(cmd, verb, args, self._inventory())
 		if verb == "save":
-			return self.engine.save_game()
+			return self._apply_tutorial_progress(cmd, verb, args, self.engine.save_game())
 		if verb == "load":
 			return self.engine.load_game(interactive=False)
 		if verb == "disarm":
@@ -1713,6 +1987,9 @@ class CommandHandler:
 		room = self.engine.get_room_data(self.engine.player.current_room)
 		if room:
 			result += self._describe_room(room)
+
+		if not self.engine.player.state.get("tutorial_state", {}).get("skipped") and not self.engine.player.state.get("tutorial_state", {}).get("is_complete"):
+			result += "\n" + tutorial_system.start_tutorial(self.engine)
 
 		return result
 
@@ -6694,6 +6971,31 @@ Do you wish to enter? (yes/no)
 			return "Map closed."
 		return "Map is not open."
 
+	def _format_help_row(self, left_text, right_text=""):
+		"""Format one row inside the boxed help output."""
+		left = (left_text or "").strip()
+		right = (right_text or "").strip()
+		if right:
+			body = f"  {left:<22} - {right}"
+		else:
+			body = f"  {left}"
+		if len(body) > 62:
+			body = body[:62]
+		return f"║ {body:<62}║\n"
+
+	def _render_metadata_help_section(self, title, commands):
+		"""Render a boxed help section from canonical metadata."""
+		lines = f"║  [{title.upper()}]"
+		lines = lines + " " * max(0, 62 - len(f"  [{title.upper()}]")) + "║\n"
+		lines += "║ ---------------------------------------------------------------║\n"
+		for command in commands:
+			meta = self.command_metadata.get(command, {})
+			usage = meta.get("usage", command)
+			desc = meta.get("description", "")
+			lines += self._format_help_row(usage, desc)
+		lines += "║                                                                ║\n"
+		return lines
+
 	def _show_commands(self):
 		"""Display comprehensive command list with context awareness."""
 		current_room = self.engine.get_room_data(self.engine.player.current_room)
@@ -6724,37 +7026,18 @@ Do you wish to enter? (yes/no)
 ║                     AVAILABLE COMMANDS                         ║
 ╠════════════════════════════════════════════════════════════════╣
 ║                                                                ║
-║  [MOVEMENT]                                                    ║
-║ ---------------------------------------------------------------║
-║    go <direction>       - Move (north, south, east, west)      ║
-║    n / s / e / w        - Quick movement shortcuts             ║
-║    go up / u            - Climb stairs to previous floor       ║
-║    go down / d          - Descend stairs to next floor         ║
-║    enter                - Enter building/dungeon               ║
-║    leave / exit         - Leave current location               ║
-║                                                                ║
-║  [EXPLORATION]                                                 ║
-║ ---------------------------------------------------------------║
-║    look / l             - Look around current room             ║
-║    examine <target>     - Examine something closely            ║
-║    inspect <target>     - Same as examine (inspect wall!)      ║
-║    search               - Search for hidden items/traps        ║
-║    fight                - Engage a visible enemy in the room   ║
-║    open map             - Open live map window                 ║
-║    close map            - Close map window                     ║
-║    rooms / areas        - Browse all game areas                ║
-║    bestiary / monsters  - Browse all enemies                   ║
-║    party                - Open party/faction management window ║
-║                                                                ║
-║  [INVENTORY]                                                   ║
-║ ---------------------------------------------------------------║
-║    inventory / inv / i  - View your inventory                  ║
-║    take <item>          - Pick up an item                      ║
-║    drop <item>          - Drop an item from inventory          ║
-║    sell <item>          - Sell item for standard value         ║
-║    use <item>           - Use an item (potion, torch, etc.)    ║
-║                                                                ║
 """
+		result += self._render_metadata_help_section(
+			"Movement", ["go", "enter", "leave"]
+		)
+		result += self._render_metadata_help_section(
+			"Exploration", ["look", "examine", "search", "fight", "open", "close", "rooms", "bestiary"]
+		)
+		result += self._format_help_row("party", "Open party/faction management window")
+		result += "║                                                                ║\n"
+		result += self._render_metadata_help_section(
+			"Inventory", ["inventory", "collect", "drop", "sell", "use"]
+		)
 		if HOME_AVAILABLE and self.engine.player and self.engine.player.state.get("home_owned"):
 			result += """║  [HOME]                                                        ║
 ║ ---------------------------------------------------------------║
@@ -6850,16 +7133,9 @@ Do you wish to enter? (yes/no)
 ║                                                                ║
 """
 		
-		result += """║  [SYSTEM]                                                      ║
-║ ---------------------------------------------------------------║
-║    help / commands / ?  - Show this command list               ║
-║    loot [boss|miniboss|name] - Show elite loot table previews  ║
-║    recipes / crafting   - View all known crafting recipes      ║
-║    journal / quests / j - View quest journal                   ║
-║    save                 - Save your game                       ║
-║    quit / exit          - Save and exit game                   ║
-║                                                                ║
-"""
+		result += self._render_metadata_help_section(
+			"System", ["help", "loot", "recipes", "journal", "save", "exit"]
+		)
 		
 		# Progression commands
 		if PROGRESSION_AVAILABLE:
@@ -8220,14 +8496,31 @@ class GameEngine:
 			pass  # Map will be created when 'open map' command is used
 		out = []
 		out.append("Starting new game...")
+		tutorial_nudge = (
+			"Optional: type 'tutorial start' for a guided onboarding, "
+			"'tutorial skip' to keep exploring, or 'tutorial status' later."
+		)
 		# Trigger class selection if progression system is available
 		if PROGRESSION_AVAILABLE:
 			self.pending_class_selection = True
 			out.append("")
 			out.append(get_class_selection_text())
+			out.append("")
+			out.append(tutorial_nudge)
 		else:
 			out.append(self.rooms[self.player.current_room].describe(feel_intensity=self.get_game_feel_intensity()))
+			out.append("")
+			out.append(tutorial_nudge)
+			out.append("")
+			out.append(tutorial_system.start_tutorial(self))
 		return "\n".join(out)
+
+	def restart_game(self):
+		"""Fully restart the current run and rebuild runtime systems from the world file."""
+		world_file = self.world_file
+		gui = self.gui
+		self.__init__(world_file, gui)
+		return self.new_game()
 
 	def save_game(self, path=SAVE_FILE):
 		"""Persist runtime game state to path.

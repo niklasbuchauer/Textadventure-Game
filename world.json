@@ -1,6 +1,32 @@
 {
-  "start_room": "village_square",
+  "start_room": "tutorial_spawn",
   "rooms": {
+    "tutorial_spawn": {
+      "id": "tutorial_spawn",
+      "name": "Tutorial Path",
+      "description": "A quiet grassy path just outside Havenbrook's main square. A wooden sign points north toward town, and a few starter supplies have been left here for new adventurers.",
+      "location_type": "settlement",
+      "coordinates": [
+        0,
+        -1
+      ],
+      "items": {
+        "torch": {
+          "quantity": 1,
+          "value": 5
+        },
+        "faded_map": {
+          "quantity": 1,
+          "value": 20
+        }
+      },
+      "exits": {
+        "north": {
+          "target": "village_square",
+          "type": "direction"
+        }
+      }
+    },
     "village_square": {
       "id": "village_square",
       "name": "Havenbrook Village Square",
@@ -12,6 +38,7 @@
       ],
       "items": {},
       "npcs": [
+        "tutorial_guide",
         "town_crier",
         "merchant"
       ],

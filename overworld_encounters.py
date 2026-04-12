@@ -55,6 +55,15 @@ OVERWORLD_ENEMIES = {
 		"abilities": ["slash", "dodge"],
 		"regions": ["forest", "road"],
 	},
+	"training_dummy": {
+		"name": "Training Dummy",
+		"description": "A reinforced straw dummy mounted on a swinging post for combat drills.",
+		"hp": 18, "attack": 3, "defense": 1,
+		"xp_reward": 6, "gold_reward": (0, 0),
+		"loot": [],
+		"abilities": ["sway"],
+		"regions": ["road"],
+	},
 
 	# ── Mountain Region ──
 	"mountain_goat": {

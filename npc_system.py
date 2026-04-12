@@ -598,6 +598,42 @@ NPC_DATABASE = {
 		},
 	},
 
+	"tutorial_guide": {
+		"id": "tutorial_guide",
+		"name": "Elder Rowan",
+		"title": "Village Guide",
+		"location": "village_square",
+		"greeting": "An older guide in a travel-worn cloak stands beside the fountain, watching the square with a patient smile.\n\n\"You made it to Havenbrook. I'm Rowan. If you're new here, I'll walk you through the first steps and help you settle in.\"",
+		"dialogue": {
+			"root": {
+				"text": None,
+				"options": [
+					{"label": "Teach me the basics.", "next": "basics"},
+					{"label": "Where should I go first?", "next": "route"},
+					{"label": "Goodbye.", "next": "farewell"},
+				],
+			},
+			"basics": {
+				"text": "\"Start by looking around, checking your inventory, and keeping an eye on the help command. That will carry you much farther than rushing ahead.\"",
+				"options": [
+					{"label": "Where should I go first?", "next": "route"},
+					{"label": "Thanks.", "next": "root"},
+				],
+			},
+			"route": {
+				"text": "\"I have a short route for new arrivals: visit the shop to learn trading, then the blacksmith to see how crafting works. After that, come back here and we'll make sure you're ready to travel further.\"",
+				"options": [
+					{"label": "I'll start the route.", "next": "root"},
+					{"label": "Thanks.", "next": "root"},
+				],
+			},
+			"farewell": {
+				"text": "\"Take your time. A steady step beats a rushed one.\"",
+				"options": [],
+			},
+		},
+	},
+
 	"merchant": {
 		"id": "merchant",
 		"name": "Silvia",

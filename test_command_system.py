@@ -61,6 +61,16 @@ def test_commands():
     else:
         print("  [FAIL] Help command not working properly")
     print()
+
+    # Test 2b: Detailed command help
+    print("[TEST 3B] Testing detailed help lookup...")
+    response = engine.process_command("help shop")
+    if response and "COMMAND HELP: shop" in response and "Subcommands:" in response:
+        print("  'help shop' -> Detailed command help displayed")
+        print("  [PASS] Detailed help working")
+    else:
+        print("  [FAIL] Detailed help lookup not working")
+    print()
     
     # Test 3: Commands alias
     print("[TEST 4] Testing 'commands' alias...")
@@ -122,6 +132,7 @@ def test_commands():
     print("="*70)
     print("✓ Command aliases (n/s/e/w) implemented")
     print("✓ Comprehensive help system implemented")
+    print("✓ Detailed per-command help implemented")
     print("✓ Inspect wall command working")
     print("✓ Examine/inspect aliasing working")
     print("✓ Multiple inspection targets supported")

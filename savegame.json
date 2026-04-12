@@ -1,142 +1,45 @@
 {
   "save_version": 6,
   "player": {
-    "current_room": "hidden_alchemy_lab",
+    "current_room": "village_square",
     "inventory": {
-      "prayer_candle": 1,
-      "iron_dagger": 7,
-      "healing_potion": 1,
-      "potent_healing_potion": 4,
-      "refined_copper": 4,
-      "copper_ingot": 4,
-      "void_cloak": 2,
-      "alchemist_key": 1,
-      "potent_mana_potion": 5,
-      "slag": 5,
-      "spider_silk": 3,
-      "raw_meat": 1,
-      "sandstone_chunk": 2,
-      "desert_rose": 1,
-      "soul_gem": 1,
-      "altar_of_knowledge": 1,
-      "altar_of_souls": 1,
-      "arcane_orrery": 1,
-      "battle_map": 1,
-      "bookshelf": 1,
-      "caldron": 1,
-      "cozy_bed": 1,
-      "crystal_chandelier": 1,
-      "healer_shrine": 1,
-      "home_alchemy_table": 1,
-      "home_enchanting_table": 1,
-      "home_forge": 1,
-      "home_smelting_furnace": 1,
-      "home_workbench": 1,
-      "iron_sconce": 1,
-      "mounted_skull": 1,
-      "old_painting_forest": 1,
-      "old_painting_seascape": 1,
-      "personal_chest": 1,
-      "study_annex": 1,
-      "training_chamber": 1,
-      "trophy_mount": 1,
-      "vault_room": 1,
-      "wolf_pelt_rug": 1,
-      "dungeon_banner": 1,
-      "grand_altar": 1,
-      "enchanted_mirror": 1,
-      "stone_chunk": 1,
-      "raw_diamond": 1,
-      "cave_crystal": 1,
-      "wolf_pelt": 1,
-      "solaris_blade": 1,
-      "leather_scrap": 1,
-      "torch": 3
+      "torch": 1
     },
     "state": {
+      "home_owned": false,
+      "home_name": "Pocket Dimension",
+      "home_return_room": "village_square",
+      "home_data": {
+        "version": 2,
+        "grid_width": 8,
+        "grid_height": 6,
+        "active_room_id": "foyer",
+        "spawn_room_id": "foyer",
+        "unlocked_rooms": [
+          "foyer"
+        ],
+        "placed_items": [],
+        "stored_items": [],
+        "containers": [
+          {
+            "container_id": "foyer_cache",
+            "room_id": "foyer",
+            "name": "Foyer Cache",
+            "capacity": 20,
+            "items": {}
+          }
+        ],
+        "garden_state": {
+          "plots": []
+        },
+        "unlocked_expansions": [],
+        "chest_contents": {},
+        "vault_contents": {},
+        "active_altars": {}
+      },
+      "active_home_bonuses": {},
       "unlocked_skills": [
-        "w_origin",
-        "w_arc_instinct",
-        "w_arc_wind_read",
-        "w_wm_edge",
-        "w_cmd_tactics",
-        "w_cmd_strategy",
-        "w_cmd_tactician",
-        "w_cmd_mana_reserve",
-        "w_wm_keen",
-        "w_wm_vorpal",
-        "w_wm_grip",
-        "w_tank_brace",
-        "w_tank_grit",
-        "w_tank_stonewall",
-        "w_tank_mountain",
-        "w_ber_wild_heart",
-        "w_ber_rage_tap",
-        "w_ber_enrage",
-        "w_glad_endurance",
-        "w_glad_footwork",
-        "w_glad_dodge",
-        "w_glad_counter",
-        "w_glad_dirty",
-        "w_glad_low_blow",
-        "w_glad_stamina",
-        "w_glad_trip",
-        "w_glad_endure",
-        "w_glad_combo",
-        "w_glad_survivor",
-        "w_glad_undying_champ",
-        "w_tank_stalwart",
-        "w_tank_shield_up",
-        "w_tank_stand_ground",
-        "w_tank_shield_wall",
-        "w_tank_bulwark",
-        "w_tank_sentinel",
-        "w_tank_immovable",
-        "w_tank_guardian",
-        "w_tank_divine",
-        "w_arc_fletching",
-        "w_arc_heavy_arrow",
-        "w_arc_power_shot",
-        "w_arc_piercing",
-        "w_arc_quick_draw",
-        "w_arc_rapid_fire",
-        "w_arc_barrage",
-        "w_arc_multishot",
-        "w_wm_power_strike",
-        "w_glad_showman",
-        "w_wm_study",
-        "w_glad_crowd_fav",
-        "w_wm_analyze",
-        "w_wm_exploit",
-        "w_wm_mastery",
-        "w_glad_fame",
-        "w_ber_reckless",
-        "w_ber_wild_strikes",
-        "w_ber_whirlwind",
-        "w_ber_hurricane",
-        "w_ber_adrenaline",
-        "w_ber_rush",
-        "w_ber_thick_hide",
-        "w_ber_pain_resist",
-        "w_ber_undying_rage",
-        "w_ber_rage_armor",
-        "w_wm_stance",
-        "w_wm_parry",
-        "w_wm_riposte",
-        "w_wm_perfect_parry",
-        "w_wm_power_grip",
-        "w_wm_crush",
-        "w_glad_might",
-        "w_tank_shield_bash",
-        "w_tank_resilient",
-        "w_tank_hp_boost",
-        "w_wm_balance",
-        "w_wm_form",
-        "w_wm_dual",
-        "w_wm_twin_blade",
-        "w_wm_annihilate",
-        "w_cmd_discipline",
-        "w_cmd_formation"
+        "w_origin"
       ],
       "cooldowns": {},
       "active_effects": {},
@@ -149,351 +52,86 @@
         "gloves": null,
         "accessory": null
       },
-      "cleared_rooms": [
-        "fs_f1_ice_shaft",
-        "fs_f2_blizzard_bridge",
-        "fs_f4_absolute_zero",
-        "fs_f4_frost_wyrm_nest",
-        "fs_f3_ice_elemental_den",
-        "fs_f3_cryogenic_lab",
-        "fs_f1_crystal_corridor",
-        "fs_f1_frost_forge"
-      ],
-      "achievements": [
-        "first_skill",
-        "explorer",
-        "level_5",
-        "level_10",
-        "level_20",
-        "level_30",
-        "first_blood",
-        "skilled",
-        "mastery",
-        "branch_initiate",
-        "branch_master",
-        "flawless_victory",
-        "cartographer",
-        "warrior_proven",
-        "elite_challenger"
-      ],
-      "achievement_tracking": {
-        "kills": 20,
-        "total_gold": 222,
-        "easter_eggs_found": 4,
-        "flawless_wins": 10,
-        "elite_dungeons_entered": 1
-      },
-      "_synergy_bonuses": {
-        "attack": 67,
-        "defense": 44,
-        "health_max_bonus": 180,
-        "crit_chance_bonus": 0.38999999999999996
-      },
-      "_synergy_descriptions": [
-        "Berserker Master (13 nodes)",
-        "Tank Master (16 nodes)",
-        "Archer Expert (10 nodes)",
-        "Commander Adept (6 nodes)",
-        "Weaponmaster Master (20 nodes)",
-        "Gladiator Master (16 nodes)"
-      ],
-      "death_gold_lost_total": 559,
-      "debug_infinite_mana": false,
-      "forged_quality": {
-        "iron_dagger": "flawless"
-      },
-      "temp_buffs": [
-        {
-          "stat": "perception",
-          "amount": 3,
-          "turns_left": 10
-        },
-        {
-          "stat": "perception",
-          "amount": 3,
-          "turns_left": 5
-        },
-        {
-          "stat": "perception",
-          "amount": 3,
-          "turns_left": 10
-        },
-        {
-          "stat": "perception",
-          "amount": 3,
-          "turns_left": 5
-        },
-        {
-          "stat": "perception",
-          "amount": 3,
-          "turns_left": 5
-        }
-      ],
-      "home_owned": true,
-      "home_name": "Pocket Dimension",
-      "home_return_room": "village_square",
-      "home_data": {
-        "version": 2,
-        "grid_width": 8,
-        "grid_height": 6,
-        "active_room_id": "garden",
-        "spawn_room_id": "garden",
-        "unlocked_rooms": [
-          "foyer",
-          "garden"
+      "cleared_rooms": [],
+      "tutorial_state": {
+        "started": true,
+        "skipped": false,
+        "is_complete": true,
+        "reward_claimed": false,
+        "current_step": 4,
+        "completed_steps": [
+          0,
+          1,
+          2
         ],
-        "placed_items": [
-          {
-            "item_id": "garden_planter",
-            "x": 3,
-            "y": 5,
-            "room_id": "garden",
-            "active": true,
-            "stored": false
-          },
-          {
-            "item_id": "altar_of_fortune",
-            "x": 3,
-            "y": 3,
-            "room_id": "foyer",
-            "active": true,
-            "stored": false
-          },
-          {
-            "item_id": "altar_of_warding",
-            "x": 4,
-            "y": 4,
-            "room_id": "foyer",
-            "active": true,
-            "stored": false
-          },
-          {
-            "item_id": "altar_of_shadows",
-            "x": 3,
-            "y": 4,
-            "room_id": "foyer",
-            "active": true,
-            "stored": false
-          },
-          {
-            "item_id": "altar_of_strength",
-            "x": 4,
-            "y": 3,
-            "room_id": "foyer",
-            "active": true,
-            "stored": false
-          }
-        ],
-        "stored_items": [],
-        "containers": [
-          {
-            "container_id": "foyer_cache",
-            "room_id": "foyer",
-            "name": "Foyer Cache",
-            "capacity": 20,
-            "items": {}
-          },
-          {
-            "container_id": "garden_crate",
-            "room_id": "garden",
-            "name": "Garden Crate",
-            "capacity": 35,
-            "items": {}
-          }
-        ],
-        "garden_state": {
-          "plots": []
+        "progress_flags": {
+          "picked_item": true,
+          "checked_inventory": true,
+          "talked_to_guide": true,
+          "selected_quest_option": false,
+          "accepted_quest": false
         },
-        "unlocked_expansions": [],
-        "chest_contents": {},
-        "vault_contents": {},
-        "active_altars": {}
-      },
-      "active_home_bonuses": {
-        "xp_multiplier": 0.25
-      },
-      "achievement_rewards_granted": [
-        "elite_challenger",
-        "warrior_proven",
-        "cartographer",
-        "flawless_victory"
-      ],
-      "game_feel_intensity": "normal",
-      "equipment_appearance": {
-        "weapon": null,
-        "armor": null,
-        "shield": null,
-        "helm": null,
-        "boots": null,
-        "gloves": null,
-        "accessory": null
-      },
-      "unlocked_cosmetics": [
-        "veteran_polish"
-      ],
-      "prestige_level": 0,
-      "ascension_tokens": 0,
-      "prestige_bonuses": {},
-      "prestige_runs": 0,
-      "prestige_history": [],
-      "artifact_slot": null,
-      "faction_membership": "iron_brotherhood",
-      "faction_xp": {
-        "iron_brotherhood": 57
-      },
-      "faction_rank": {
-        "iron_brotherhood": 0
-      },
-      "pets": {
-        "spirit_wolf": {
-          "level": 9,
-          "xp": 35,
-          "tier": "common"
+        "active_tutorial_quest": "welcome_to_havenbrook",
+        "completed_tutorial_quests": [],
+        "quest_command_flags": {
+          "opened_journal": true
         },
-        "ember_fox": {
-          "level": 4,
-          "xp": 30,
-          "tier": "common"
-        },
-        "stone_turtle": {
-          "level": 1,
-          "xp": 0,
-          "tier": "common"
-        },
-        "arcane_wisp": {
-          "level": 1,
-          "xp": 0,
-          "tier": "rare"
-        }
+        "quest_stage": 0
       },
-      "active_pet": "spirit_wolf",
-      "active_pet_bonus_applied": {
-        "perception": 2
-      },
-      "pet_last_feed_at": 1774048283.129722,
-      "pet_temporary_buffs": {
-        "pack_howl": {
-          "stat": "crit_chance",
-          "value": 5,
-          "expires_at": 1775752081.3670592
-        }
-      },
-      "pet_ability_cooldowns": {
-        "pack_howl": 1775752126.3670592
-      },
+      "pets": {},
+      "active_pet": null,
+      "active_pet_bonus_applied": {},
+      "pet_last_feed_at": 0.0,
+      "pet_ability_cooldowns": {},
+      "pet_temporary_buffs": {},
       "pet_bond": {},
       "pet_injured": {},
-      "debug_easter_cycle_index": 4
+      "game_feel_intensity": "normal",
+      "achievements": [
+        "first_skill"
+      ],
+      "achievement_tracking": {},
+      "achievement_rewards_granted": [
+        "first_skill"
+      ],
+      "npc_memory": {
+        "tutorial_guide": {
+          "talk_count": 1,
+          "last_room": "village_square"
+        }
+      }
     },
     "stats": {
-      "gold": 2333,
-      "health": 375,
-      "health_max": 375,
-      "level": 15,
-      "xp": 6928,
-      "xp_to_next": 872,
-      "skill_points": 4,
+      "gold": 0,
+      "health": 100,
+      "health_max": 100,
+      "level": 1,
+      "xp": 53,
+      "xp_to_next": 97,
+      "skill_points": 0,
       "class": "warrior",
-      "strength": 40,
-      "defense": 40,
-      "dexterity": 28,
-      "perception": 38,
-      "charisma": 5,
-      "constitution": 32,
-      "mana": 86,
-      "max_mana": 110,
-      "mana_regen_bonus": 0.01,
-      "attack": 73,
-      "crit_chance_bonus": 0.6599999999999999,
-      "prestige_xp_multiplier": 1.0,
-      "crit_chance": 5
+      "strength": 4,
+      "defense": 3,
+      "dexterity": 1,
+      "perception": 1,
+      "charisma": 0,
+      "constitution": 3,
+      "mana": 80,
+      "max_mana": 80,
+      "mana_regen_bonus": 0.0
     },
     "visited_rooms": [
-      "desert_border",
-      "eastern_highlands",
-      "woodland_shrine",
-      "desert_ruins",
-      "fs_f2_ice_prison",
-      "pirate_vault",
       "village_square",
-      "mossy_hollow",
-      "reef_shallows",
-      "hidden_alchemy_lab",
-      "fs_f4_spire_altar",
-      "desert_dunes_west",
-      "harbor_south_pier",
-      "fs_f2_permafrost_pit",
-      "forest_pool",
-      "dusty_crossroads",
-      "northern_road",
-      "forest_path",
-      "village_north_gate",
-      "forgotten_shrine_puzzle",
-      "smugglers_cove",
-      "farmland_west",
-      "grand_harbor_road",
-      "deep_forest",
-      "fs_f2_blizzard_bridge",
-      "grand_harbor_square",
-      "hidden_oasis",
-      "high_pass",
-      "chapel",
-      "fs_f3_descent",
-      "underground_archive",
-      "fs_f4_frost_wyrm_nest",
-      "fs_f1_frost_forge",
-      "farmland_east",
-      "village_south_road",
-      "developers_corner",
-      "coastal_road_north",
-      "clocktower_interior",
-      "highland_road",
-      "fs_f2_mirror_maze",
-      "frozen_lake",
-      "mountain_peak",
-      "village_east_end",
-      "grand_harbor_gate",
-      "fs_f2_avalanche_hall",
-      "fs_f1_crystal_corridor",
-      "mountain_foothills",
-      "player_home",
-      "frozen_approach",
-      "village_west_end",
-      "fs_f2_frozen_throne",
-      "scorpion_flats",
-      "void_sanctuary",
-      "crossroads",
-      "fs_f1_frozen_library",
-      "forest_swamp_border",
-      "coastal_cliffs",
-      "sandy_beach",
-      "fs_f1_frozen_gate",
-      "harbor_east_dock",
-      "mountain_path",
-      "stormbreak_docks",
-      "fs_f3_frozen_waterfall",
-      "desert_dunes_center",
-      "fs_f1_ice_shaft",
-      "farmland_center",
-      "fs_f3_cryogenic_lab",
-      "oasis_village",
-      "forest_clearing",
-      "dungeon_forest_entrance",
-      "fs_f4_absolute_zero",
-      "fs_f3_glacial_heart",
-      "canyon_entrance",
-      "fs_f3_ice_elemental_den",
-      "desert_cliffs",
-      "canyon_depths",
-      "tundra_edge",
-      "sunken_ruins",
-      "fs_f4_boss_chamber"
+      "tutorial_spawn"
     ],
-    "unlocked_islands": [
-      "stormbreak_island"
-    ]
+    "unlocked_islands": []
   },
   "rooms": {
+    "tutorial_spawn": {
+      "items": {
+        "faded_map": 1
+      }
+    },
     "village_square": {
       "items": {}
     },
@@ -514,7 +152,9 @@
       "items": {}
     },
     "chapel": {
-      "items": {}
+      "items": {
+        "prayer_candle": 1
+      }
     },
     "village_clocktower": {
       "items": {
@@ -868,9 +508,7 @@
       }
     },
     "desert_border": {
-      "items": {
-        "snake_scale": 1
-      }
+      "items": {}
     },
     "desert_cliffs": {
       "items": {
@@ -7408,81 +7046,18 @@
     "raw_meat": 8,
     "leather_scrap": 6,
     "iron_ore": 15,
-    "copper_ore": 10,
-    "frost_shard": 45,
-    "prismatic_crystal": 80,
-    "wind_essence": 60,
-    "frozen_tome": 100,
-    "ancient_scroll": 40,
-    "frostforged_ingot": 120,
-    "glacial_dust": 30,
-    "mirror_shard": 55,
-    "royal_ice_gem": 150,
-    "captive_soul_gem": 200,
-    "ancient_amber": 180,
-    "glacial_core_fragment": 250,
-    "elemental_core": 200,
-    "frozen_tear": 120,
-    "waterfall_sapphire": 300,
-    "cryogenic_formula": 350,
-    "void_ice": 500,
-    "wyrm_egg": 750,
-    "frozen_treasure_hoard": 400,
-    "eternal_frost_essence": 1000,
-    "sovereign_crown": 2000
+    "copper_ore": 10
   },
   "home": {
     "version": 2,
     "grid_width": 8,
     "grid_height": 6,
-    "active_room_id": "garden",
-    "spawn_room_id": "garden",
+    "active_room_id": "foyer",
+    "spawn_room_id": "foyer",
     "unlocked_rooms": [
-      "foyer",
-      "garden"
+      "foyer"
     ],
-    "placed_items": [
-      {
-        "item_id": "garden_planter",
-        "x": 3,
-        "y": 5,
-        "room_id": "garden",
-        "active": true,
-        "stored": false
-      },
-      {
-        "item_id": "altar_of_fortune",
-        "x": 3,
-        "y": 3,
-        "room_id": "foyer",
-        "active": true,
-        "stored": false
-      },
-      {
-        "item_id": "altar_of_warding",
-        "x": 4,
-        "y": 4,
-        "room_id": "foyer",
-        "active": true,
-        "stored": false
-      },
-      {
-        "item_id": "altar_of_shadows",
-        "x": 3,
-        "y": 4,
-        "room_id": "foyer",
-        "active": true,
-        "stored": false
-      },
-      {
-        "item_id": "altar_of_strength",
-        "x": 4,
-        "y": 3,
-        "room_id": "foyer",
-        "active": true,
-        "stored": false
-      }
-    ],
+    "placed_items": [],
     "stored_items": [],
     "containers": [
       {
@@ -7490,13 +7065,6 @@
         "room_id": "foyer",
         "name": "Foyer Cache",
         "capacity": 20,
-        "items": {}
-      },
-      {
-        "container_id": "garden_crate",
-        "room_id": "garden",
-        "name": "Garden Crate",
-        "capacity": 35,
         "items": {}
       }
     ],
@@ -7509,179 +7077,33 @@
     "active_altars": {}
   },
   "quests": {
-    "herald_news": {
-      "quest_id": "herald_news",
-      "status": "turned_in",
+    "welcome_to_havenbrook": {
+      "quest_id": "welcome_to_havenbrook",
+      "status": "active",
       "progress": {
         "0": 1,
         "1": 0,
-        "2": 0
+        "2": 0,
+        "3": 0
       }
     }
   },
   "npc_reputation": {
-    "banker": {
-      "npc_id": "banker",
+    "tutorial_guide": {
+      "npc_id": "tutorial_guide",
       "affinity": 2,
       "visit_count": 1,
       "gifts_given": {},
       "total_gifts": 0,
       "favors_completed": [],
-      "dialogue_seen": [
-        "how_it_works"
-      ],
+      "dialogue_seen": [],
       "rep_rewards_claimed": []
     }
   },
   "overworld_encounters": {
-    "recent_rooms": [
-      "frozen_lake",
-      "high_pass",
-      "mountain_path",
-      "mountain_foothills"
-    ],
-    "visible_enemies": {
-      "sandy_beach": {
-        "enemy_id": "pirate_raider",
-        "enemy_data": {
-          "name": "Pirate Raider",
-          "description": "A grizzled seafarer with a cutlass and murderous intent.",
-          "hp": 26,
-          "attack": 8,
-          "defense": 2,
-          "xp_reward": 18,
-          "gold_reward": [
-            20,
-            45
-          ],
-          "loot": [
-            [
-              "health_potion",
-              0.2
-            ],
-            [
-              "gold_coin",
-              0.5
-            ],
-            [
-              "cutlass",
-              0.08
-            ]
-          ],
-          "abilities": [
-            "slash",
-            "pistol_shot"
-          ],
-          "id": "pirate_raider"
-        }
-      },
-      "forest_swamp_border": {
-        "enemy_id": "forest_spider",
-        "enemy_data": {
-          "name": "Forest Spider",
-          "description": "A large spider with bristly legs and dripping fangs.",
-          "hp": 31,
-          "attack": 13,
-          "defense": 1,
-          "xp_reward": 19,
-          "gold_reward": [
-            1,
-            7
-          ],
-          "loot": [
-            [
-              "spider_silk",
-              0.35
-            ],
-            [
-              "venom_sac",
-              0.15
-            ]
-          ],
-          "abilities": [
-            "bite",
-            "web"
-          ],
-          "id": "forest_spider"
-        }
-      },
-      "desert_dunes_center": {
-        "enemy_id": "sand_viper",
-        "enemy_data": {
-          "name": "Sand Viper",
-          "description": "A venomous snake perfectly camouflaged in the sand.",
-          "hp": 32,
-          "attack": 18,
-          "defense": 2,
-          "xp_reward": 24,
-          "gold_reward": [
-            2,
-            8
-          ],
-          "loot": [
-            [
-              "venom_sac",
-              0.4
-            ],
-            [
-              "snake_scale",
-              0.25
-            ]
-          ],
-          "abilities": [
-            "bite",
-            "poison_strike"
-          ],
-          "id": "sand_viper"
-        }
-      }
-    },
-    "rooms_rolled": [
-      "desert_border",
-      "eastern_highlands",
-      "woodland_shrine",
-      "deep_forest",
-      "mountain_peak",
-      "frozen_lake",
-      "desert_ruins",
-      "mountain_path",
-      "mossy_hollow",
-      "graveyard",
-      "desert_dunes_center",
-      "mesa_base",
-      "reef_shallows",
-      "hidden_oasis",
-      "mountain_foothills",
-      "frozen_approach",
-      "high_pass",
-      "farmland_center",
-      "meteor_crater",
-      "scorpion_flats",
-      "desert_dunes_west",
-      "forest_pool",
-      "village_road",
-      "dusty_crossroads",
-      "forest_clearing",
-      "dungeon_forest_entrance",
-      "northern_road",
-      "canyon_entrance",
-      "graveyard_gates",
-      "farmland",
-      "forest_path",
-      "crossroads",
-      "farmland_east",
-      "canyon_depths",
-      "desert_cliffs",
-      "tundra_edge",
-      "forest_swamp_border",
-      "mesa_top",
-      "coastal_road_north",
-      "coastal_cliffs",
-      "highland_road",
-      "smugglers_cove",
-      "farmland_west",
-      "sandy_beach"
-    ]
+    "recent_rooms": [],
+    "visible_enemies": {},
+    "rooms_rolled": []
   },
   "fishing": {
     "fish_caught_count": 0,
@@ -7691,29 +7113,55 @@
   "shop": {
     "shop_id": "village_shop",
     "inventory": {
-      "healing_salve": {
+      "rope_coil": {
         "quantity": 3,
-        "value": 35,
+        "value": 20,
         "rarity": "common"
       },
-      "iron_key": {
+      "lockpick_set": {
         "quantity": 2,
-        "value": 25,
+        "value": 50,
         "rarity": "common"
+      },
+      "coin_pouch": {
+        "quantity": 1,
+        "value": 20,
+        "rarity": "common"
+      },
+      "craftsman_hammer": {
+        "quantity": 1,
+        "value": 38,
+        "rarity": "common"
+      },
+      "torch": {
+        "quantity": 2,
+        "value": 3,
+        "rarity": "common"
+      },
+      "leather_armor_piece": {
+        "quantity": 1,
+        "value": 25,
+        "rarity": "uncommon"
+      },
+      "silver_ring": {
+        "quantity": 1,
+        "value": 40,
+        "rarity": "uncommon"
       },
       "worn_map": {
-        "quantity": 3,
+        "quantity": 2,
         "value": 45,
         "rarity": "uncommon"
+      },
+      "healing_potion": {
+        "quantity": 3,
+        "value": 85,
+        "rarity": "rare"
       }
     },
-    "last_rotation_hour": 16
+    "last_rotation_hour": 20
   },
   "dungeon_scheduler": {
-    "debug_force_open": [
-      "sunken_catacombs",
-      "iron_halls",
-      "crystal_caverns"
-    ]
+    "debug_force_open": []
   }
 }

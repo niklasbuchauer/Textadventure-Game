@@ -42,6 +42,208 @@ except ImportError:
 # =====================================================================
 
 QUEST_DATABASE = {
+	# ── Tutorial Campaign: Multi-Quest Onboarding ─────────────────────
+	"welcome_to_havenbrook": {
+		"id": "welcome_to_havenbrook",
+		"name": "Welcome to Havenbrook",
+		"giver": "tutorial_guide",
+		"turn_in": "tutorial_guide",
+		"description": (
+			"Follow Rowan into Havenbrook, visit the town's key services, and return with your first report."
+		),
+		"objectives": [
+			{
+				"type": "visit",
+				"room": "village_square",
+				"description": "Reach Havenbrook Village Square",
+			},
+			{
+				"type": "talk",
+				"npc": "tutorial_guide",
+				"description": "Meet the tutorial guide",
+			},
+			{
+				"type": "visit",
+				"room": "village_shop",
+				"description": "Visit the village shop",
+			},
+			{
+				"type": "visit",
+				"room": "village_blacksmith",
+				"description": "Visit the blacksmith",
+			},
+		],
+		"rewards": {"xp": 25, "gold": 0, "items": {}},
+		"prerequisite": None,
+		"chain_next": "tutorial_trade_routes",
+		"level_req": 1,
+		"tutorial_only": True,
+	},
+
+	"tutorial_trade_routes": {
+		"id": "tutorial_trade_routes",
+		"name": "Trade Routes",
+		"giver": "merchant",
+		"turn_in": "merchant",
+		"description": (
+			"Silvia will teach you shop fundamentals. Accept the task, use shop commands, then report back."
+		),
+		"objectives": [
+			{
+				"type": "talk",
+				"npc": "merchant",
+				"description": "Speak with Silvia the merchant",
+			},
+			{
+				"type": "visit",
+				"room": "village_shop",
+				"description": "Step inside the village shop",
+			},
+		],
+		"rewards": {"xp": 30, "gold": 15, "items": {}},
+		"prerequisite": "welcome_to_havenbrook",
+		"chain_next": "tutorial_bank_basics",
+		"level_req": 1,
+		"tutorial_only": True,
+	},
+
+	"tutorial_bank_basics": {
+		"id": "tutorial_bank_basics",
+		"name": "Bank Basics",
+		"giver": "banker",
+		"turn_in": "banker",
+		"description": (
+			"Learn how to check balance and move gold safely with the Bank of Estoria."
+		),
+		"objectives": [
+			{
+				"type": "visit",
+				"room": "bank_of_estoria",
+				"description": "Visit the Bank of Estoria",
+			},
+			{
+				"type": "talk",
+				"npc": "banker",
+				"description": "Speak with the banker",
+			},
+		],
+		"rewards": {"xp": 35, "gold": 10, "items": {}},
+		"prerequisite": "tutorial_trade_routes",
+		"chain_next": "tutorial_combat_drill",
+		"level_req": 1,
+		"tutorial_only": True,
+	},
+
+	"tutorial_combat_drill": {
+		"id": "tutorial_combat_drill",
+		"name": "Combat Drill",
+		"giver": "patron",
+		"turn_in": "patron",
+		"description": (
+			"Run a safe combat drill at the training grounds and prove you can fight with intent."
+		),
+		"objectives": [
+			{
+				"type": "visit",
+				"room": "village_training_grounds",
+				"description": "Reach the training grounds",
+			},
+			{
+				"type": "kill",
+				"target": "Training Dummy",
+				"count": 1,
+				"description": "Defeat the training dummy",
+			},
+		],
+		"rewards": {"xp": 40, "gold": 20, "items": {}},
+		"prerequisite": "tutorial_bank_basics",
+		"chain_next": "tutorial_recovery_check",
+		"level_req": 1,
+		"tutorial_only": True,
+		"spawn_visible_enemy": {
+			"room": "village_training_grounds",
+			"enemy_id": "training_dummy",
+		},
+	},
+
+	"tutorial_recovery_check": {
+		"id": "tutorial_recovery_check",
+		"name": "Recovery Check",
+		"giver": "priest",
+		"turn_in": "priest",
+		"description": (
+			"Father Aldric asks you to review your active objectives and return with your notes."
+		),
+		"objectives": [
+			{
+				"type": "visit",
+				"room": "chapel",
+				"description": "Visit the chapel",
+			},
+			{
+				"type": "talk",
+				"npc": "priest",
+				"description": "Speak with Father Aldric",
+			},
+		],
+		"rewards": {"xp": 30, "gold": 10, "items": {"prayer_candle": 1}},
+		"prerequisite": "tutorial_combat_drill",
+		"chain_next": "tutorial_crafting_kickoff",
+		"level_req": 1,
+		"tutorial_only": True,
+	},
+
+	"tutorial_crafting_kickoff": {
+		"id": "tutorial_crafting_kickoff",
+		"name": "Forgemaster's Starter",
+		"giver": "blacksmith",
+		"turn_in": "blacksmith",
+		"description": (
+			"Tormund wants proof you can use the forge and gather a basic ingot."
+		),
+		"objectives": [
+			{
+				"type": "visit",
+				"room": "village_blacksmith",
+				"description": "Return to Tormund's forge",
+			},
+			{
+				"type": "collect",
+				"item": "iron_ingot",
+				"count": 1,
+				"description": "Obtain 1 iron ingot",
+			},
+		],
+		"rewards": {"xp": 40, "gold": 20, "items": {"iron_dagger": 1}},
+		"prerequisite": "tutorial_recovery_check",
+		"chain_next": "tutorial_graduation",
+		"level_req": 1,
+		"tutorial_only": True,
+	},
+
+	"tutorial_graduation": {
+		"id": "tutorial_graduation",
+		"name": "Graduation Checklist",
+		"giver": "tutorial_guide",
+		"turn_in": "tutorial_guide",
+		"description": (
+			"Return to Rowan and demonstrate that you can inspect progression and save your game."
+		),
+		"objectives": [
+			{
+				"type": "talk",
+				"npc": "tutorial_guide",
+				"description": "Report back to Elder Rowan",
+			},
+		],
+		"rewards": {"xp": 60, "gold": 35, "items": {"health_potion": 2}},
+		"prerequisite": "tutorial_crafting_kickoff",
+		"chain_next": None,
+		"level_req": 1,
+		"tutorial_only": True,
+		"tutorial_final": True,
+	},
+
 	# ── Chain 1: Blacksmith's Needs (Tormund) ──────────────────────────
 	"blacksmith_errand": {
 		"id": "blacksmith_errand",
@@ -546,6 +748,7 @@ class QuestManager:
 
 		# Check if any objectives are already satisfied
 		self._check_all_objectives(quest_id)
+		spawn_notice = self._spawn_visible_enemy_for_quest(qdef)
 
 		result = "\n" + "═" * 55 + "\n"
 		result += f"  📜 QUEST ACCEPTED: {qdef['name']}\n"
@@ -561,6 +764,8 @@ class QuestManager:
 				result += f"    {mark} {obj['description']} ({progress}/{count})\n"
 			else:
 				result += f"    {mark} {obj['description']}\n"
+		if spawn_notice:
+			result += f"\n  {spawn_notice}\n"
 		result += "\n  Type 'journal' to track your quests.\n"
 		return result
 
@@ -572,6 +777,15 @@ class QuestManager:
 			return "Quest not found."
 		if qs.status != QuestState.STATUS_COMPLETE:
 			return f"\"{qdef['name']}\" is not ready to turn in yet."
+
+		if qdef.get("tutorial_only"):
+			try:
+				import tutorial_system
+				unmet = tutorial_system.get_unmet_tutorial_requirements(self.engine, quest_id)
+				if unmet:
+					return tutorial_system.format_tutorial_requirement_reminder(self.engine, quest_id, unmet)
+			except Exception:
+				pass
 		feel = self._get_game_feel_intensity()
 
 		qs.status = QuestState.STATUS_TURNED_IN
@@ -625,7 +839,8 @@ class QuestManager:
 		# Track achievements for quest completion
 		try:
 			from achievement_system import track_event, check_achievements, format_achievement_unlock
-			track_event(self.engine.player, "quests_completed")
+			if not qdef.get("tutorial_only"):
+				track_event(self.engine.player, "quests_completed")
 			if gold_reward:
 				track_event(self.engine.player, "total_gold", gold_reward)
 			newly_unlocked = check_achievements(self.engine.player)
@@ -633,6 +848,13 @@ class QuestManager:
 				result += format_achievement_unlock(ach_id, ach_data)
 		except Exception:
 			pass
+
+		if qdef.get("tutorial_only"):
+			try:
+				import tutorial_system
+				result += tutorial_system.on_tutorial_quest_turned_in(self.engine, quest_id)
+			except Exception:
+				pass
 
 		# Check if chain_next should be offered
 		chain_next = qdef.get("chain_next")
@@ -904,6 +1126,51 @@ class QuestManager:
 		return ""
 
 	# ── Internal helpers ─────────────────────────────────────────────
+
+	def _spawn_visible_enemy_for_quest(self, qdef):
+		"""Spawn a visible enemy in a specific room for scripted quest beats."""
+		spawn_cfg = qdef.get("spawn_visible_enemy") if isinstance(qdef, dict) else None
+		if not isinstance(spawn_cfg, dict):
+			return ""
+
+		room_id = str(spawn_cfg.get("room") or "").strip()
+		enemy_id = str(spawn_cfg.get("enemy_id") or "").strip()
+		if not room_id or not enemy_id:
+			return ""
+
+		encounter_manager = getattr(self.engine, "encounter_manager", None)
+		if not encounter_manager:
+			return ""
+
+		player = getattr(self.engine, "player", None)
+		level = 1
+		if player and isinstance(getattr(player, "stats", None), dict):
+			level = int(player.stats.get("level", 1) or 1)
+
+		enemy_data = None
+		try:
+			enemy_data = encounter_manager.scale_enemy(enemy_id, level)
+		except Exception:
+			enemy_data = None
+		if not enemy_data:
+			return ""
+
+		visible = getattr(encounter_manager, "visible_enemies", None)
+		if not isinstance(visible, dict):
+			return ""
+
+		visible[room_id] = {
+			"enemy_id": enemy_id,
+			"enemy_data": enemy_data,
+		}
+		rooms_rolled = getattr(encounter_manager, "rooms_rolled", None)
+		if isinstance(rooms_rolled, set):
+			rooms_rolled.add(room_id)
+
+		enemy_name = enemy_data.get("name", enemy_id.replace("_", " ").title())
+		if room_id == "village_training_grounds":
+			return f"Training target deployed: {enemy_name}. Head to the Training Grounds and type 'fight'."
+		return f"A quest target has appeared in {room_id}: {enemy_name}."
 
 	def _check_all_objectives(self, quest_id):
 		"""Re-check all objectives for a quest (useful for collect/visit on accept)."""

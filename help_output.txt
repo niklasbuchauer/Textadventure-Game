@@ -31,6 +31,7 @@
 ║                                                                ║║  [SYSTEM]                                                      ║
 ║ ---------------------------------------------------------------║
 ║    help / commands / ?  - Show this command list               ║
+║    help <command>       - Show details for one command         ║
 ║    recipes / crafting   - View all known crafting recipes      ║
 ║    save                 - Save your game                       ║
 ║    quit / exit          - Save and exit game                   ║
