@@ -187,6 +187,19 @@ def _is_quest_accept_verb(verb):
 	return (verb or "").lower() in ("yes", "y", "accept", "1")
 
 
+def _is_tutorial_welcome_offer_response(response):
+	text = str(response or "").strip().lower()
+	if not text:
+		return False
+	if "welcome to havenbrook" not in text:
+		return False
+	if "quest offer" in text or "offers you a quest" in text:
+		return True
+	if "quest" in text and "accept" in text and "yes/no" in text:
+		return True
+	return False
+
+
 def _tutorial_quest_status(engine, quest_id):
 	quest_manager = getattr(engine, "quest_manager", None)
 	if not quest_manager:
@@ -379,7 +392,7 @@ def _step_prompt(engine, step_index, state=None):
 		return "Leave the spawn for town. Type: go north (or n)."
 	if step_index == 3:
 		return (
-			"Type: talk tutorial_guide. In Rowan's dialogue, type: 4 to choose [Quest], "
+			"Type: talk tutorial_guide. In Rowan's dialogue, choose the [Quest] option number, "
 			"then type: yes."
 		)
 	if step_index == 4:
@@ -399,7 +412,7 @@ def _step_success(step_index):
 	if step_index == 1:
 		return "Good. Picking up supplies and checking inventory is the first habit of a prepared adventurer. Next, type: go north (or n)."
 	if step_index == 2:
-		return "Good. Movement opens the world and leads you into the town's main path. Next, type: talk tutorial_guide, then option 4, then yes."
+		return "Good. Movement opens the world and leads you into the town's main path. Next, type: talk tutorial_guide, choose the [Quest] option number, then yes."
 	if step_index == 3:
 		return "Good. Talking to NPCs is how you get quests and learn what matters in town. Next, type: help (or commands)."
 	if step_index == 4:
@@ -754,17 +767,18 @@ def process_player_command(engine, cmd, verb, args, response):
 			flags["talked_to_guide"] = True
 
 		response_text = str(response)
-		if (verb or "").isdigit() and "quest offer" in response_text.lower():
+		if (verb or "").isdigit() and _is_tutorial_welcome_offer_response(response_text):
 			flags["selected_quest_option"] = True
-		if "quest offer" in response_text.lower() and "welcome to havenbrook" in response_text.lower():
+		if _is_tutorial_welcome_offer_response(response_text):
 			flags["selected_quest_option"] = True
 
 		if (
 			flags["talked_to_guide"]
-			and flags["selected_quest_option"]
 			and _is_quest_accept_verb(verb)
 			and _tutorial_quest_accepted(engine, TUTORIAL_QUEST_ID)
 		):
+			# Accepting the tutorial quest confirms the offer flow even if offer text format varied.
+			flags["selected_quest_option"] = True
 			flags["accepted_quest"] = True
 			_mark_step_complete(state, step_index)
 			success = _step_success(step_index)

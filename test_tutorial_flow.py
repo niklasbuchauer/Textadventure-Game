@@ -101,6 +101,18 @@ def _feed_command(engine, text):
     return tutorial_system.process_player_command(engine, text, verb, args, "ok")
 
 
+def _advance_to_step_three(engine):
+    tutorial_system.start_tutorial(engine)
+    tutorial_system.process_player_command(engine, "look", "look", [], "You look around.")
+    tutorial_system.process_player_command(engine, "take torch", "take", ["torch"], "You take the torch.")
+    tutorial_system.process_player_command(engine, "inventory", "inventory", [], "Inventory opened.")
+    tutorial_system.process_player_command(engine, "go north", "go", ["north"], "You head north.")
+
+    state = tutorial_system.ensure_tutorial_state(engine.player)
+    assert state["current_step"] == 3
+    return state
+
+
 def test_tutorial_starts_at_spawn_and_advances_through_route():
     engine = MockEngine()
 
@@ -153,6 +165,52 @@ def test_tutorial_empty_response_returns_current_prompt():
     assert isinstance(response, str)
     assert response.strip() != ""
     assert "Type: look (or l)." in response
+
+
+def test_step_three_advances_with_normal_quest_offer_text():
+    engine = MockEngine()
+    state = _advance_to_step_three(engine)
+
+    tutorial_system.process_player_command(
+        engine,
+        "talk tutorial_guide",
+        "talk",
+        ["tutorial_guide"],
+        "You start a conversation.",
+    )
+
+    offer_response = engine.quest_manager.handle_quest_dialogue("offer", "welcome_to_havenbrook")
+    tutorial_system.process_player_command(engine, "4", "4", [], offer_response)
+
+    accept_result = engine.quest_manager.accept_quest("welcome_to_havenbrook")
+    response = tutorial_system.process_player_command(engine, "yes", "yes", [], accept_result)
+
+    assert state["current_step"] == 4
+    assert state["progress_flags"]["selected_quest_option"] is True
+    assert "Type: help (or commands)" in response
+
+
+def test_step_three_acceptance_fallback_advances_without_offer_marker():
+    engine = MockEngine()
+    state = _advance_to_step_three(engine)
+
+    tutorial_system.process_player_command(
+        engine,
+        "talk tutorial_guide",
+        "talk",
+        ["tutorial_guide"],
+        "You start a conversation.",
+    )
+
+    state["progress_flags"]["selected_quest_option"] = False
+
+    accept_result = engine.quest_manager.accept_quest("welcome_to_havenbrook")
+    response = tutorial_system.process_player_command(engine, "yes", "yes", [], accept_result)
+
+    assert state["current_step"] == 4
+    assert state["progress_flags"]["selected_quest_option"] is True
+    assert state["progress_flags"]["accepted_quest"] is True
+    assert "Type: help (or commands)" in response
 
 
 def test_first_tutorial_turn_in_advances_chain_without_finishing():
@@ -237,6 +295,8 @@ if __name__ == "__main__":
         test_tutorial_starts_at_spawn_and_advances_through_route,
         test_tutorial_skip_prevents_progression_and_replay_resets,
         test_tutorial_empty_response_returns_current_prompt,
+        test_step_three_advances_with_normal_quest_offer_text,
+        test_step_three_acceptance_fallback_advances_without_offer_marker,
         test_first_tutorial_turn_in_advances_chain_without_finishing,
         test_tutorial_final_turn_in_completes_tutorial,
     ]

@@ -56,9 +56,9 @@
       "tutorial_state": {
         "started": true,
         "skipped": false,
-        "is_complete": true,
+        "is_complete": false,
         "reward_claimed": false,
-        "current_step": 4,
+        "current_step": 3,
         "completed_steps": [
           0,
           1,
@@ -7113,19 +7113,9 @@
   "shop": {
     "shop_id": "village_shop",
     "inventory": {
-      "rope_coil": {
-        "quantity": 3,
-        "value": 20,
-        "rarity": "common"
-      },
-      "lockpick_set": {
+      "quality_torch": {
         "quantity": 2,
-        "value": 50,
-        "rarity": "common"
-      },
-      "coin_pouch": {
-        "quantity": 1,
-        "value": 20,
+        "value": 15,
         "rarity": "common"
       },
       "craftsman_hammer": {
@@ -7133,33 +7123,23 @@
         "value": 38,
         "rarity": "common"
       },
-      "torch": {
-        "quantity": 2,
-        "value": 3,
+      "iron_key": {
+        "quantity": 3,
+        "value": 25,
         "rarity": "common"
       },
-      "leather_armor_piece": {
+      "enchanted_candle": {
         "quantity": 1,
-        "value": 25,
+        "value": 55,
         "rarity": "uncommon"
       },
-      "silver_ring": {
+      "major_mana_potion": {
         "quantity": 1,
-        "value": 40,
-        "rarity": "uncommon"
-      },
-      "worn_map": {
-        "quantity": 2,
-        "value": 45,
-        "rarity": "uncommon"
-      },
-      "healing_potion": {
-        "quantity": 3,
-        "value": 85,
+        "value": 140,
         "rarity": "rare"
       }
     },
-    "last_rotation_hour": 20
+    "last_rotation_hour": 19
   },
   "dungeon_scheduler": {
     "debug_force_open": []
