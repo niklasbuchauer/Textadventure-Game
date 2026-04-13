@@ -307,6 +307,27 @@ def get_unmet_tutorial_requirements(engine, quest_id):
 	return _get_unmet_requirements(state, quest_id)
 
 
+def _format_requirement_block(unmet, heading):
+	if not unmet:
+		return ""
+	lines = [str(heading)]
+	for key in unmet:
+		lines.append(f"  - {TUTORIAL_REQUIREMENT_HINTS.get(key, key)}")
+	return "\n".join(lines)
+
+
+def _format_lesson_block(title, where_to_start, steps, turn_in):
+	lines = [
+		f"Lesson: {title}",
+		f"Where to start: {where_to_start}",
+		"What to do:",
+	]
+	for idx, step in enumerate(steps, start=1):
+		lines.append(f"  {idx}. {step}")
+	lines.append(f"Turn in: {turn_in}")
+	return "\n".join(lines)
+
+
 def format_tutorial_requirement_reminder(engine, quest_id, unmet=None):
 	player = getattr(engine, "player", None)
 	state = ensure_tutorial_state(player)
@@ -317,13 +338,14 @@ def format_tutorial_requirement_reminder(engine, quest_id, unmet=None):
 	if not unmet:
 		return ""
 	quest_name = TUTORIAL_QUEST_NAMES.get(quest_id, quest_id)
-	lines = [
-		f"\"{quest_name}\" is almost done, but finish these tutorial command checks first:",
-	]
-	for key in unmet:
-		lines.append(f"  - {TUTORIAL_REQUIREMENT_HINTS.get(key, key)}")
-	lines.append("Then return to the same NPC and choose [Turn in].")
-	return "\n".join(lines)
+	requirement_block = _format_requirement_block(
+		unmet,
+		f"Before turning in \"{quest_name}\", complete these commands:",
+	)
+	return _join_messages(
+		requirement_block,
+		"Then return to the same NPC and choose [Turn in].",
+	)
 
 
 def _quest_stage_prompt(engine, state):
@@ -332,50 +354,104 @@ def _quest_stage_prompt(engine, state):
 		return "Tutorial route complete. Check journal and continue your adventure."
 
 	if quest_id == "welcome_to_havenbrook":
-		base = (
-			"Finish your first quest. If you are inside the forge, type: outside. "
-			"Then type: talk tutorial_guide, choose option 4 ([Turn in]), and confirm."
+		base = _format_lesson_block(
+			"Welcome to Havenbrook",
+			"Village square (Elder Rowan).",
+			[
+				"If you are inside the forge, type: outside.",
+				"Type: talk tutorial_guide.",
+				"Choose [Turn in] and confirm the hand-in.",
+			],
+			"Talk to tutorial_guide and choose [Turn in].",
 		)
 	elif quest_id == "tutorial_trade_routes":
-		base = (
-			"Next lesson: trading. Type: talk merchant, choose the [Quest] option number, then type yes. "
-			"Use: shop browse and shop buy <item> <price> (or shop sell <item> <price>). "
-			"Return to merchant and choose [Turn in]."
+		base = _format_lesson_block(
+			"Trade Routes",
+			"Village square (Silvia the merchant).",
+			[
+				"Type: talk merchant.",
+				"Choose [Quest], then type: yes.",
+				"Type: go shop (or shop).",
+				"Type: shop browse.",
+				"Type: shop buy <item> <price> (or shop sell <item> <price>).",
+			],
+			"Talk to merchant and choose [Turn in].",
 		)
 	elif quest_id == "tutorial_bank_basics":
-		base = (
-			"Next lesson: banking. Type: go bank, talk banker, choose [Quest], then yes. "
-			"Use: balance, deposit 1, and withdraw 1. Then turn in to banker."
+		base = _format_lesson_block(
+			"Bank Basics",
+			"Bank of Estoria (the banker).",
+			[
+				"Type: go bank.",
+				"Type: talk banker.",
+				"Choose [Quest], then type: yes.",
+				"Type: balance.",
+				"Type: deposit 1.",
+				"Type: withdraw 1.",
+			],
+			"Talk to banker and choose [Turn in].",
 		)
 	elif quest_id == "tutorial_combat_drill":
-		base = (
-			"Next lesson: combat. Type: go tavern, talk patron, choose [Quest], then yes. "
-			"Then type: outside, north, east, fight. In battle, use attack and defend. "
-			"Return to patron and choose [Turn in]."
+		base = _format_lesson_block(
+			"Combat Drill",
+			"Village tavern (the patron).",
+			[
+				"Type: go tavern.",
+				"Type: talk patron.",
+				"Choose [Quest], then type: yes.",
+				"Type: outside, then north, then east.",
+				"Type: fight.",
+				"During battle, type: attack and defend.",
+			],
+			"Talk to patron and choose [Turn in].",
 		)
 	elif quest_id == "tutorial_recovery_check":
-		base = (
-			"Next lesson: recovery and tracking. Type: go east, chapel, talk priest, choose [Quest], then yes. "
-			"Open your quest log with journal, then turn in to priest."
+		base = _format_lesson_block(
+			"Recovery Check",
+			"Chapel (Father Aldric).",
+			[
+				"Type: go east, then chapel.",
+				"Type: talk priest.",
+				"Choose [Quest], then type: yes.",
+				"Open your quest log with journal (or quests).",
+			],
+			"Talk to priest and choose [Turn in].",
 		)
 	elif quest_id == "tutorial_crafting_kickoff":
-		base = (
-			"Next lesson: crafting basics. Type: go blacksmith, talk blacksmith, choose [Quest], then yes. "
-			"Use smelt once and make sure you have an iron_ingot, then choose [Turn in]. "
-			"If you need to leave the forge, type: outside."
+		base = _format_lesson_block(
+			"Forgemaster's Starter",
+			"Village blacksmith (Tormund).",
+			[
+				"Type: go blacksmith.",
+				"Type: talk blacksmith.",
+				"Choose [Quest], then type: yes.",
+				"Type: smelt.",
+				"Make sure you have an iron_ingot in your inventory.",
+			],
+			"Talk to blacksmith and choose [Turn in].",
 		)
 	else:
-		base = (
-			"Final lesson. Return to Elder Rowan: type talk tutorial_guide, choose [Quest], then yes. "
-			"Run stats, skills, and save, then choose [Turn in] to finish the full tutorial."
+		base = _format_lesson_block(
+			"Graduation Checklist",
+			"Village square (Elder Rowan).",
+			[
+				"Type: talk tutorial_guide.",
+				"Choose [Quest], then type: yes.",
+				"Type: stats.",
+				"Type: skills.",
+				"Type: save.",
+			],
+			"Talk to tutorial_guide and choose [Turn in].",
 		)
 
 	unmet = _get_unmet_requirements(state, quest_id)
 	if not unmet:
 		return base
 
-	hints = [TUTORIAL_REQUIREMENT_HINTS.get(key, key) for key in unmet]
-	return f"{base} Missing command checks: {'; '.join(hints)}"
+	return _join_messages(
+		base,
+		_format_requirement_block(unmet, "Before turn-in, complete these commands:"),
+	)
 
 
 def _step_prompt(engine, step_index, state=None):
@@ -571,11 +647,11 @@ def on_tutorial_quest_turned_in(engine, quest_id):
 	if not next_quest:
 		return ""
 
+	completed_name = TUTORIAL_QUEST_NAMES.get(quest_id, quest_id)
 	next_name = TUTORIAL_QUEST_NAMES.get(next_quest, next_quest)
-	giver = TUTORIAL_QUEST_GIVERS.get(next_quest, "the next quest giver")
 	return _join_messages(
-		f"Tutorial chapter complete. Next lesson unlocked: {next_name}.",
-		f"Talk to {giver} to accept it.",
+		f"Tutorial chapter complete: {completed_name}.",
+		f"Next lesson unlocked: {next_name}.",
 		_step_prompt(engine, 7, state),
 	)
 
@@ -707,8 +783,9 @@ def get_tutorial_status(engine):
 		lines.append(f"  Active tutorial quest: {quest_name}")
 		unmet = _get_unmet_requirements(state, active_quest)
 		if unmet:
-			hints = ", ".join(TUTORIAL_REQUIREMENT_HINTS.get(key, key) for key in unmet)
-			lines.append(f"  Missing command checks: {hints}")
+			lines.append("  Before turn-in, complete these commands:")
+			for key in unmet:
+				lines.append(f"    - {TUTORIAL_REQUIREMENT_HINTS.get(key, key)}")
 
 	lines.append("  Tip: type tutorial status any time to see this again.")
 	return "\n".join(lines)

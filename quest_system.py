@@ -858,7 +858,7 @@ class QuestManager:
 
 		# Check if chain_next should be offered
 		chain_next = qdef.get("chain_next")
-		if chain_next and chain_next in QUEST_DATABASE:
+		if chain_next and chain_next in QUEST_DATABASE and not qdef.get("tutorial_only"):
 			next_def = QUEST_DATABASE[chain_next]
 			level = self.engine.player.stats.get("level", 1)
 			if level >= next_def.get("level_req", 1):

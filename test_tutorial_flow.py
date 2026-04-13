@@ -136,7 +136,7 @@ def test_tutorial_starts_at_spawn_and_advances_through_route():
     assert "Shops are where you can stock up" in route_outputs[8]
     assert "The blacksmith is where your equipment path begins" in route_outputs[9]
     assert "Current step: 8/8" in status
-    assert "Finish your first quest" in status
+    assert "Lesson: Welcome to Havenbrook" in status
 
 
 def test_tutorial_skip_prevents_progression_and_replay_resets():
@@ -224,8 +224,30 @@ def test_first_tutorial_turn_in_advances_chain_without_finishing():
 
     assert "QUEST COMPLETE: Welcome to Havenbrook" in turn_in_result
     assert "Next lesson unlocked: Trade Routes" in turn_in_result
+    assert "Lesson: Trade Routes" in turn_in_result
+    assert "Before turn-in, complete these commands:" in turn_in_result
+    assert "New quest available from" not in turn_in_result
     assert state["is_complete"] is False
     assert state["active_tutorial_quest"] == "tutorial_trade_routes"
+
+
+def test_tutorial_turn_in_requirement_reminder_is_player_friendly():
+    engine = MockEngine()
+    tutorial_system.start_tutorial(engine)
+    _advance_route_tutorial(engine)
+
+    _satisfy_objectives(engine, "welcome_to_havenbrook")
+    engine.quest_manager.turn_in_quest("welcome_to_havenbrook")
+
+    engine.quest_manager.accept_quest("tutorial_trade_routes")
+    _satisfy_objectives(engine, "tutorial_trade_routes")
+    reminder = engine.quest_manager.turn_in_quest("tutorial_trade_routes")
+
+    assert "Before turning in \"Trade Routes\", complete these commands:" in reminder
+    assert "tutorial command checks" not in reminder.lower()
+    assert "Type: shop browse" in reminder
+    assert "Type: shop buy torch 10 (or shop sell torch 1)" in reminder
+    assert "Then return to the same NPC and choose [Turn in]." in reminder
 
 
 def test_tutorial_final_turn_in_completes_tutorial():
@@ -298,6 +320,7 @@ if __name__ == "__main__":
         test_step_three_advances_with_normal_quest_offer_text,
         test_step_three_acceptance_fallback_advances_without_offer_marker,
         test_first_tutorial_turn_in_advances_chain_without_finishing,
+        test_tutorial_turn_in_requirement_reminder_is_player_friendly,
         test_tutorial_final_turn_in_completes_tutorial,
     ]
     for test_fn in tests:
