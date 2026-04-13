@@ -1094,6 +1094,8 @@ class CombatState:
         self.enemy_intent = ""
         self.enemy_intent_tags = []
         self.ability_followup_required = False
+        self.flee_cooldown_turns = 0
+        self.flee_fail_streak = 0
         self.pet_combatant = None
         self.pet_knocked = False
 
@@ -1153,6 +1155,8 @@ class CombatState:
             "enemy_intent": getattr(self, "enemy_intent", ""),
             "enemy_intent_tags": list(getattr(self, "enemy_intent_tags", [])),
             "ability_followup_required": bool(getattr(self, "ability_followup_required", False)),
+            "flee_cooldown_turns": int(getattr(self, "flee_cooldown_turns", 0)),
+            "flee_fail_streak": int(getattr(self, "flee_fail_streak", 0)),
             "pet_combatant": dict(getattr(self, "pet_combatant", {}) or {}),
             "pet_knocked": bool(getattr(self, "pet_knocked", False)),
         }
@@ -1200,6 +1204,8 @@ class CombatState:
         cs.enemy_intent = data.get("enemy_intent", "")
         cs.enemy_intent_tags = list(data.get("enemy_intent_tags", []))
         cs.ability_followup_required = bool(data.get("ability_followup_required", False))
+        cs.flee_cooldown_turns = int(data.get("flee_cooldown_turns", 0) or 0)
+        cs.flee_fail_streak = int(data.get("flee_fail_streak", 0) or 0)
         cs.pet_combatant = dict(data.get("pet_combatant", {}) or {}) if data.get("pet_combatant") else None
         cs.pet_knocked = bool(data.get("pet_knocked", False))
         return cs
@@ -1215,6 +1221,7 @@ def _advance_tactical_state(combat):
     for key in list(cooldowns.keys()):
         cooldowns[key] = max(0, int(cooldowns.get(key, 0)) - 1)
     combat.tactical_cooldowns = cooldowns
+    combat.flee_cooldown_turns = max(0, int(getattr(combat, "flee_cooldown_turns", 0)) - 1)
 
 
 def _mitigate_enemy_damage(player, combat, dmg):
@@ -2057,6 +2064,7 @@ def process_player_attack(player, combat):
     combat.player_defending = False
     _advance_tactical_state(combat)
     combat.ability_followup_required = False
+    combat.flee_fail_streak = 0
 
     result = ""
 
@@ -2143,6 +2151,7 @@ def process_player_defend(player, combat):
     combat.attack_streak = 0
     _advance_tactical_state(combat)
     combat.ability_followup_required = False
+    combat.flee_fail_streak = 0
 
     result = ""
 
@@ -2236,23 +2245,45 @@ def process_player_flee(player, combat):
             + "\n"
         )
 
+    cooldown_turns = int(getattr(combat, "flee_cooldown_turns", 0))
+    if cooldown_turns > 0:
+        enemy_dmg = int(max(1, calculate_enemy_damage(player, combat) * 1.25))
+        player.stats["health"] = player.stats.get("health", 100) - enemy_dmg
+        combat.flee_fail_streak = int(getattr(combat, "flee_fail_streak", 0)) + 1
+        return False, (
+            _format_combat_line(
+                "You scramble for an opening, but you're still off-balance.",
+                f"Wait {cooldown_turns} more turn(s) before trying to flee again. The {combat.enemy_name} punishes you for {enemy_dmg} damage.",
+                tags=["FAIL", "DEBUFF"],
+            )
+            + "\n"
+        )
+
     dex = player.stats.get("dexterity", 0)
     flee_chance = min(0.85, 0.40 + dex * 0.05)
+    streak = int(getattr(combat, "flee_fail_streak", 0))
+    flee_chance = max(0.08, flee_chance - min(0.45, streak * 0.12))
 
     if combat.is_mini_boss:
         flee_chance *= 0.6  # Much harder to flee mini-bosses
 
     if random.random() < flee_chance:
         combat.player_fled = True
+        combat.flee_cooldown_turns = 0
+        combat.flee_fail_streak = 0
         return True, _format_combat_line("You successfully flee from combat.", None, tags=["FLEE"]) + "\n"
     else:
-        enemy_dmg = calculate_enemy_damage(player, combat)
+        fail_streak = int(getattr(combat, "flee_fail_streak", 0)) + 1
+        combat.flee_fail_streak = fail_streak
+        combat.flee_cooldown_turns = 2
+        enemy_mult = 1.0 + 0.20 * min(3, fail_streak)
+        enemy_dmg = int(max(1, calculate_enemy_damage(player, combat) * enemy_mult))
         player.stats["health"] = player.stats.get("health", 100) - enemy_dmg
         return False, (
             _format_combat_line(
                 "You fail to escape.",
-                f"The {combat.enemy_name} strikes you for {enemy_dmg} damage.",
-                tags=["FAIL"]
+                f"The {combat.enemy_name} strikes you for {enemy_dmg} damage. Your footing is broken, so flee is on cooldown for 2 turns.",
+                tags=["FAIL", "DEBUFF"],
             )
             + "\n"
         )
@@ -2269,6 +2300,7 @@ def process_player_tactical(player, combat, action_id):
     combat.attack_streak = 0
     _advance_tactical_state(combat)
     combat.ability_followup_required = False
+    combat.flee_fail_streak = 0
 
     result = ""
 
@@ -2364,6 +2396,7 @@ def process_ability_in_combat(player, combat, ability_data):
     combat.attack_streak = 0
     _advance_tactical_state(combat)
     combat.ability_followup_required = True
+    combat.flee_fail_streak = 0
 
     result = ""
 

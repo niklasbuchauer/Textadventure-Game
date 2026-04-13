@@ -1,5 +1,7 @@
 """Tests for the player-facing tutorial flow."""
 
+import combat_system
+import overworld_encounters
 import quest_system
 import tutorial_system
 
@@ -99,6 +101,29 @@ def _feed_command(engine, text):
     verb = parts[0].lower() if parts else ""
     args = [p.lower() for p in parts[1:]]
     return tutorial_system.process_player_command(engine, text, verb, args, "ok")
+
+
+def _advance_to_combat_drill(engine):
+    tutorial_system.start_tutorial(engine)
+    _advance_route_tutorial(engine)
+
+    _satisfy_objectives(engine, "welcome_to_havenbrook")
+    engine.quest_manager.turn_in_quest("welcome_to_havenbrook")
+
+    engine.quest_manager.accept_quest("tutorial_trade_routes")
+    _feed_command(engine, "shop browse")
+    _feed_command(engine, "shop buy torch 10")
+    _satisfy_objectives(engine, "tutorial_trade_routes")
+    engine.quest_manager.turn_in_quest("tutorial_trade_routes")
+
+    engine.quest_manager.accept_quest("tutorial_bank_basics")
+    _feed_command(engine, "balance")
+    _feed_command(engine, "deposit 1")
+    _feed_command(engine, "withdraw 1")
+    _satisfy_objectives(engine, "tutorial_bank_basics")
+    engine.quest_manager.turn_in_quest("tutorial_bank_basics")
+
+    return engine.quest_manager.accept_quest("tutorial_combat_drill")
 
 
 def _advance_to_step_three(engine):
@@ -252,34 +277,18 @@ def test_tutorial_turn_in_requirement_reminder_is_player_friendly():
 
 def test_tutorial_final_turn_in_completes_tutorial():
     engine = MockEngine()
-    tutorial_system.start_tutorial(engine)
-    _advance_route_tutorial(engine)
-
-    # First quest from the route
-    _satisfy_objectives(engine, "welcome_to_havenbrook")
-    engine.quest_manager.turn_in_quest("welcome_to_havenbrook")
-
-    # Trade routes
-    engine.quest_manager.accept_quest("tutorial_trade_routes")
-    _feed_command(engine, "shop browse")
-    _feed_command(engine, "shop buy torch 10")
-    _satisfy_objectives(engine, "tutorial_trade_routes")
-    engine.quest_manager.turn_in_quest("tutorial_trade_routes")
-
-    # Bank basics
-    engine.quest_manager.accept_quest("tutorial_bank_basics")
-    _feed_command(engine, "balance")
-    _feed_command(engine, "deposit 1")
-    _feed_command(engine, "withdraw 1")
-    _satisfy_objectives(engine, "tutorial_bank_basics")
-    engine.quest_manager.turn_in_quest("tutorial_bank_basics")
+    combat_accept = _advance_to_combat_drill(engine)
 
     # Combat drill
-    combat_accept = engine.quest_manager.accept_quest("tutorial_combat_drill")
     assert "Training target deployed" in combat_accept
     _feed_command(engine, "fight")
     _feed_command(engine, "attack")
     _feed_command(engine, "defend")
+    _feed_command(engine, "analyze")
+    _feed_command(engine, "reposition")
+    _feed_command(engine, "interrupt")
+    _feed_command(engine, "charge")
+    _feed_command(engine, "guard break")
     _satisfy_objectives(engine, "tutorial_combat_drill")
     engine.quest_manager.turn_in_quest("tutorial_combat_drill")
 
@@ -312,6 +321,126 @@ def test_tutorial_final_turn_in_completes_tutorial():
     assert engine.player.stats["gold"] >= tutorial_system.REWARD_GOLD
 
 
+def test_combat_drill_turn_in_requires_all_tactical_commands():
+    engine = MockEngine()
+    combat_accept = _advance_to_combat_drill(engine)
+
+    assert "Training target deployed" in combat_accept
+    _feed_command(engine, "fight")
+    _feed_command(engine, "attack")
+    _feed_command(engine, "defend")
+    _satisfy_objectives(engine, "tutorial_combat_drill")
+
+    reminder = engine.quest_manager.turn_in_quest("tutorial_combat_drill")
+
+    assert "Before turning in \"Combat Drill\", complete these commands:" in reminder
+    assert "Type: analyze" in reminder
+    assert "Type: reposition" in reminder
+    assert "Type: interrupt" in reminder
+    assert "Type: charge" in reminder
+    assert "Type: guard break" in reminder
+
+
+def test_journal_text_shows_tutorial_tracker_when_active():
+    engine = MockEngine()
+    tutorial_system.start_tutorial(engine)
+
+    journal_text = engine.quest_manager.get_journal_text()
+
+    assert "TUTORIAL TRACKER" in journal_text
+    assert "Lesson:" in journal_text
+    assert "Step:" in journal_text
+
+
+def test_persistent_dummy_can_be_reengaged():
+    class EncounterPlayer:
+        def __init__(self):
+            self.stats = {"level": 1}
+
+    class EncounterEngine:
+        def __init__(self):
+            self.player = EncounterPlayer()
+            self.rooms = {
+                "village_training_grounds": MockRoom("Training Grounds"),
+            }
+            self.fixed_dungeon_room_ids = set()
+
+    engine = EncounterEngine()
+    manager = overworld_encounters.OverworldEncounterManager(engine)
+    manager.visible_enemies["village_training_grounds"] = {
+        "enemy_id": "training_dummy",
+        "enemy_data": {
+            "id": "training_dummy",
+            "name": "Training Dummy",
+            "description": "A practice target.",
+            "hp": 18,
+            "attack": 3,
+            "defense": 1,
+            "xp_reward": 6,
+            "gold_reward": (0, 0),
+            "loot": [],
+            "abilities": ["sway"],
+        },
+        "persistent": True,
+        "reset_on_engage": True,
+    }
+
+    first = manager.engage_visible_enemy("village_training_grounds")
+    second = manager.engage_visible_enemy("village_training_grounds")
+
+    assert first is not None
+    assert second is not None
+    assert first["hp"] == second["hp"]
+    assert "village_training_grounds" in manager.visible_enemies
+
+
+def test_flee_spam_has_cooldown_penalty():
+    class CombatPlayer:
+        def __init__(self):
+            self.stats = {
+                "health": 120,
+                "health_max": 120,
+                "defense": 3,
+                "dexterity": 0,
+                "level": 1,
+            }
+            self.state = {}
+
+    player = CombatPlayer()
+    combat = combat_system.CombatState(
+        {
+            "id": "training_dummy",
+            "name": "Training Dummy",
+            "description": "A practice target.",
+            "hp": 18,
+            "attack": 4,
+            "defense": 1,
+            "xp_reward": 6,
+            "gold_reward": (0, 0),
+            "loot": [],
+            "abilities": [],
+        }
+    )
+
+    original_roll = combat_system.random.random
+    combat_system.random.random = lambda: 0.99  # Force flee failure.
+    try:
+        start_hp = player.stats["health"]
+        success_one, msg_one = combat_system.process_player_flee(player, combat)
+        hp_after_one = player.stats["health"]
+        success_two, msg_two = combat_system.process_player_flee(player, combat)
+        hp_after_two = player.stats["health"]
+    finally:
+        combat_system.random.random = original_roll
+
+    assert success_one is False
+    assert success_two is False
+    assert "cooldown for 2 turns" in msg_one
+    assert "Wait" in msg_two and "trying to flee again" in msg_two
+    assert hp_after_one < start_hp
+    assert hp_after_two < hp_after_one
+
+
 if __name__ == "__main__":
     tests = [
         test_tutorial_starts_at_spawn_and_advances_through_route,
@@ -321,6 +450,10 @@ if __name__ == "__main__":
         test_step_three_acceptance_fallback_advances_without_offer_marker,
         test_first_tutorial_turn_in_advances_chain_without_finishing,
         test_tutorial_turn_in_requirement_reminder_is_player_friendly,
+        test_combat_drill_turn_in_requires_all_tactical_commands,
+        test_journal_text_shows_tutorial_tracker_when_active,
+        test_persistent_dummy_can_be_reengaged,
+        test_flee_spam_has_cooldown_penalty,
         test_tutorial_final_turn_in_completes_tutorial,
     ]
     for test_fn in tests:

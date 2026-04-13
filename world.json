@@ -37545,10 +37545,10 @@
         "banker"
       ],
       "exits": {
-        "back": {
+        "outside": {
           "target": "village_square",
           "type": "named",
-          "display": "Village Square"
+          "display": "Outside"
         },
         "south": {
           "target": "village_square",

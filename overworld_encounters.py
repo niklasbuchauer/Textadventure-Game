@@ -1227,8 +1227,16 @@ class OverworldEncounterManager:
 		"""Start combat with a visible enemy. Returns enemy_data or None."""
 		if room_id not in self.visible_enemies:
 			return None
-		enemy_info = self.visible_enemies.pop(room_id)
-		return enemy_info["enemy_data"]
+		enemy_info = self.visible_enemies[room_id]
+		enemy_data = enemy_info.get("enemy_data")
+		if not enemy_data:
+			return None
+
+		if not bool(enemy_info.get("persistent", False)):
+			self.visible_enemies.pop(room_id, None)
+
+		# Return a shallow copy to keep persistent source data pristine between re-engages.
+		return dict(enemy_data)
 
 	# ─── Persistence ───
 
@@ -1243,6 +1251,8 @@ class OverworldEncounterManager:
 						k: v for k, v in info["enemy_data"].items()
 						if k != "regions"  # don't save region tags
 					},
+					"persistent": bool(info.get("persistent", False)),
+					"reset_on_engage": bool(info.get("reset_on_engage", info.get("persistent", False))),
 				}
 				for room_id, info in self.visible_enemies.items()
 			},
@@ -1260,4 +1270,6 @@ class OverworldEncounterManager:
 			self.visible_enemies[room_id] = {
 				"enemy_id": info.get("enemy_id", "unknown"),
 				"enemy_data": info.get("enemy_data", {}),
+				"persistent": bool(info.get("persistent", False)),
+				"reset_on_engage": bool(info.get("reset_on_engage", info.get("persistent", False))),
 			}

@@ -885,7 +885,7 @@ class PygameAdventureGUI:
     _TOOLBAR_H = 40
     _HOTBAR_H  = 32
     _INPUT_H   = 34
-    _COMBAT_H  = 28
+    _COMBAT_H  = 40
     _MARGIN    = 4
 
     def _build_ui(self):
@@ -1011,7 +1011,7 @@ class PygameAdventureGUI:
 
         self._combat_player_lbl = UITextBox(
             html_text="",
-            relative_rect=pygame.Rect(8, 1, W // 2 - 16, self._COMBAT_H - 2),
+            relative_rect=pygame.Rect(8, 1, W // 2 - 16, self._COMBAT_H - 12),
             manager=m,
             container=self._combat_panel,
             object_id=ObjectID("#combat_player_label", "text_box"),
@@ -1019,7 +1019,7 @@ class PygameAdventureGUI:
         self._combat_enemy_lbl = UITextBox(
             html_text="",
             relative_rect=pygame.Rect(
-                W // 2, 1, W // 2 - 16, self._COMBAT_H - 2),
+                W // 2, 1, W // 2 - 16, self._COMBAT_H - 12),
             manager=m,
             container=self._combat_panel,
             object_id=ObjectID("#combat_enemy_label", "text_box"),
@@ -1210,9 +1210,9 @@ class PygameAdventureGUI:
         csy = h - IH - MG - self._COMBAT_H - 2
         self._combat_panel.set_relative_position((0, csy))
         self._combat_panel.set_dimensions((w, self._COMBAT_H))
-        self._combat_player_lbl.set_dimensions((w // 2 - 16, self._COMBAT_H - 2))
+        self._combat_player_lbl.set_dimensions((w // 2 - 16, self._COMBAT_H - 12))
         self._combat_enemy_lbl.set_relative_position((w // 2, 1))
-        self._combat_enemy_lbl.set_dimensions((w // 2 - 16, self._COMBAT_H - 2))
+        self._combat_enemy_lbl.set_dimensions((w // 2 - 16, self._COMBAT_H - 12))
 
         # Panels
         self._relayout_panels()
@@ -2248,12 +2248,12 @@ class PygameAdventureGUI:
 
         track_col = (46, 42, 34)
         border_col = (72, 66, 54)
-        bar_h = 4
+        bar_h = 5
         gap = 3
-        margin = 8
+        margin = 10
         half_w = pr.w // 2
         lane_w = max(20, half_w - margin * 2)
-        top = pr.y + pr.h - (bar_h * 2 + gap + 3)
+        top = pr.y + pr.h - (bar_h * 2 + gap + 5)
 
         def _clamp_frac(v):
             if v is None:

@@ -163,6 +163,8 @@ QUEST_DATABASE = {
 		"spawn_visible_enemy": {
 			"room": "village_training_grounds",
 			"enemy_id": "training_dummy",
+			"persistent": True,
+			"reset_on_engage": True,
 		},
 	},
 
@@ -988,6 +990,68 @@ class QuestManager:
 						)
 		return "\n".join(notifications)
 
+	def _get_tutorial_journal_snapshot(self):
+		"""Return a compact tutorial status snapshot for journal rendering."""
+		try:
+			import tutorial_system
+		except Exception:
+			return None
+
+		player = getattr(self.engine, "player", None)
+		state = tutorial_system.ensure_tutorial_state(player)
+		if state is None or not tutorial_system.tutorial_is_active(state):
+			return None
+
+		total_steps = int(getattr(tutorial_system, "TUTORIAL_STEP_COUNT", 8) or 8)
+		if total_steps <= 0:
+			total_steps = 8
+		current_step = int(state.get("current_step", 0) or 0)
+		current_step = max(0, min(total_steps - 1, current_step))
+
+		active_qid = str(state.get("active_tutorial_quest") or "").strip().lower()
+		if active_qid:
+			lesson_name = tutorial_system.TUTORIAL_QUEST_NAMES.get(
+				active_qid,
+				active_qid.replace("_", " ").title(),
+			)
+		else:
+			lesson_name = "Getting Started"
+
+		next_prompt = str(tutorial_system._step_prompt(self.engine, current_step, state) or "")
+		next_lines = []
+		for raw in next_prompt.splitlines():
+			line = str(raw).strip()
+			if not line:
+				continue
+			lower = line.lower()
+			if lower.startswith("lesson:"):
+				continue
+			if lower.startswith("what to do:"):
+				continue
+			if len(line) > 2 and line[0].isdigit() and line[1] == ".":
+				line = line[2:].strip()
+			next_lines.append(line)
+			if len(next_lines) >= 4:
+				break
+
+		unmet = []
+		if active_qid:
+			try:
+				unmet = tutorial_system.get_unmet_tutorial_requirements(self.engine, active_qid)
+			except Exception:
+				unmet = []
+
+		hints = [tutorial_system.TUTORIAL_REQUIREMENT_HINTS.get(k, k) for k in unmet[:3]]
+		extra_unmet = max(0, len(unmet) - len(hints))
+
+		return {
+			"step_label": f"{current_step + 1}/{total_steps}",
+			"lesson": lesson_name,
+			"next_lines": next_lines,
+			"unmet_hints": hints,
+			"extra_unmet": extra_unmet,
+		}
+
 	# ── Journal display ──────────────────────────────────────────────
 
 	def get_journal_text(self):
@@ -995,12 +1059,27 @@ class QuestManager:
 		active = self.get_active_quests()
 		completed = self.get_completed_quests()
 		feel = self._get_game_feel_intensity()
+		tutorial_snapshot = self._get_tutorial_journal_snapshot()
 
 		if feel == "low":
-			if not active and not completed:
+			if not active and not completed and not tutorial_snapshot:
 				return "\nQUEST JOURNAL\n- No quests yet. Talk to NPCs to find work.\n"
 
 			lines = ["\nQUEST JOURNAL", f"- Active: {len(active)}", f"- Completed: {len(completed)}"]
+			if tutorial_snapshot:
+				lines.append("\nTUTORIAL TRACKER")
+				lines.append(f"- Step: {tutorial_snapshot['step_label']}")
+				lines.append(f"- Lesson: {tutorial_snapshot['lesson']}")
+				if tutorial_snapshot["next_lines"]:
+					lines.append("- Next:")
+					for line in tutorial_snapshot["next_lines"]:
+						lines.append(f"  - {line}")
+				if tutorial_snapshot["unmet_hints"]:
+					lines.append("- Before turn-in:")
+					for hint in tutorial_snapshot["unmet_hints"]:
+						lines.append(f"  - {hint}")
+					if tutorial_snapshot["extra_unmet"] > 0:
+						lines.append(f"  - ... and {tutorial_snapshot['extra_unmet']} more.")
 			if active:
 				lines.append("\nACTIVE")
 				for qdef, qs in active:
@@ -1024,16 +1103,56 @@ class QuestManager:
 		result += "║" + "QUEST JOURNAL".center(58) + "║\n"
 		result += "╠" + "═" * 58 + "╣\n"
 
-		if not active and not completed:
+		if not active and not completed and not tutorial_snapshot:
 			result += "║" + "  No quests yet. Talk to NPCs to find work!".ljust(58) + "║\n"
 			result += "╚" + "═" * 58 + "╝\n"
 			return result
+
+		def _wrap_words(text, width=58):
+			words = str(text).split()
+			if not words:
+				return [""]
+			wrapped = []
+			current = ""
+			for word in words:
+				candidate = (current + " " + word).strip()
+				if len(candidate) <= width:
+					current = candidate
+				else:
+					if current:
+						wrapped.append(current)
+					current = word
+			if current:
+				wrapped.append(current)
+			return wrapped
+
+		def _append_wrapped(line):
+			nonlocal result
+			for segment in _wrap_words(line, 58):
+				result += "║" + segment.ljust(58) + "║\n"
 
 		if feel == "high":
 			ready_count = sum(1 for _, qs in active if qs.status == QuestState.STATUS_COMPLETE)
 			result += "║" + f"  Active: {len(active)}  |  Completed: {len(completed)}  |  Ready: {ready_count}".ljust(58) + "║\n"
 			result += "║" + "  Your journal pages crackle with urgency and unfinished vows.".ljust(58) + "║\n"
 			result += "╠" + "═" * 58 + "╣\n"
+
+		if tutorial_snapshot:
+			result += "║" + "  TUTORIAL TRACKER".ljust(58) + "║\n"
+			result += "║" + ("  " + "─" * 50).ljust(58) + "║\n"
+			_append_wrapped(f"  Step: {tutorial_snapshot['step_label']}")
+			_append_wrapped(f"  Lesson: {tutorial_snapshot['lesson']}")
+			if tutorial_snapshot["next_lines"]:
+				_append_wrapped("  Next:")
+				for line in tutorial_snapshot["next_lines"]:
+					_append_wrapped(f"    • {line}")
+			if tutorial_snapshot["unmet_hints"]:
+				_append_wrapped("  Before turn-in:")
+				for hint in tutorial_snapshot["unmet_hints"]:
+					_append_wrapped(f"    ☐ {hint}")
+				if tutorial_snapshot["extra_unmet"] > 0:
+					_append_wrapped(f"    ... and {tutorial_snapshot['extra_unmet']} more.")
+			result += "║" + " ".ljust(58) + "║\n"
 
 		# Active quests
 		if active:
@@ -1162,6 +1281,8 @@ class QuestManager:
 		visible[room_id] = {
 			"enemy_id": enemy_id,
 			"enemy_data": enemy_data,
+			"persistent": bool(spawn_cfg.get("persistent", False)),
+			"reset_on_engage": bool(spawn_cfg.get("reset_on_engage", spawn_cfg.get("persistent", False))),
 		}
 		rooms_rolled = getattr(encounter_manager, "rooms_rolled", None)
 		if isinstance(rooms_rolled, set):

@@ -662,6 +662,8 @@ class CommandHandler:
 			"walk": self._cmd_go,
 			"move": self._cmd_go,
 			"enter": self._cmd_enter,
+			"outside": self._cmd_outside,
+			"out": self._cmd_outside,
 			"look": self._cmd_look,
 			"l": self._cmd_look,
 			"collect": self._cmd_collect,
@@ -788,6 +790,13 @@ class CommandHandler:
 				"aliases": [],
 				"description": "Enter a building, dungeon, or interactable entrance.",
 				"examples": ["enter"],
+			},
+			"outside": {
+				"category": "Movement",
+				"usage": "outside",
+				"aliases": ["out"],
+				"description": "Leave an interior by taking the outside exit when available.",
+				"examples": ["outside", "go outside"],
 			},
 			"look": {
 				"category": "Exploration",
@@ -1073,6 +1082,9 @@ class CommandHandler:
 
 	def _cmd_enter(self, _args):
 		return self.handle_enter_command()
+
+	def _cmd_outside(self, _args):
+		return self._go("outside")
 
 	def _cmd_look(self, _args):
 		return self._look()
@@ -7028,7 +7040,7 @@ Do you wish to enter? (yes/no)
 ║                                                                ║
 """
 		result += self._render_metadata_help_section(
-			"Movement", ["go", "enter", "leave"]
+			"Movement", ["go", "enter", "outside", "leave"]
 		)
 		result += self._render_metadata_help_section(
 			"Exploration", ["look", "examine", "search", "fight", "open", "close", "rooms", "bestiary"]

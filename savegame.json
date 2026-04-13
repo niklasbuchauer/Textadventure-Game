@@ -1,7 +1,7 @@
 {
   "save_version": 6,
   "player": {
-    "current_room": "village_training_grounds",
+    "current_room": "tutorial_spawn",
     "inventory": {},
     "state": {
       "home_owned": false,
@@ -56,40 +56,19 @@
         "skipped": false,
         "is_complete": false,
         "reward_claimed": false,
-        "current_step": 7,
-        "completed_steps": [
-          0,
-          1,
-          2,
-          3,
-          4,
-          5,
-          6
-        ],
+        "current_step": 0,
+        "completed_steps": [],
         "progress_flags": {
-          "picked_item": true,
-          "checked_inventory": true,
-          "talked_to_guide": true,
-          "selected_quest_option": true,
-          "accepted_quest": true
+          "picked_item": false,
+          "checked_inventory": false,
+          "talked_to_guide": false,
+          "selected_quest_option": false,
+          "accepted_quest": false
         },
-        "active_tutorial_quest": "tutorial_combat_drill",
-        "completed_tutorial_quests": [
-          "welcome_to_havenbrook",
-          "tutorial_trade_routes",
-          "tutorial_bank_basics"
-        ],
-        "quest_command_flags": {
-          "used_shop_browse": true,
-          "used_shop_buy_or_sell": true,
-          "used_balance": true,
-          "used_deposit": true,
-          "used_withdraw": true,
-          "used_fight": true,
-          "used_attack": true,
-          "used_defend": true
-        },
-        "quest_stage": 3
+        "active_tutorial_quest": "welcome_to_havenbrook",
+        "completed_tutorial_quests": [],
+        "quest_command_flags": {},
+        "quest_stage": 0
       },
       "pets": {},
       "active_pet": null,
@@ -99,45 +78,16 @@
       "pet_temporary_buffs": {},
       "pet_bond": {},
       "pet_injured": {},
-      "game_feel_intensity": "normal",
-      "achievements": [
-        "first_skill"
-      ],
-      "achievement_tracking": {
-        "total_gold": 25
-      },
-      "achievement_rewards_granted": [
-        "first_skill"
-      ],
-      "npc_memory": {
-        "tutorial_guide": {
-          "talk_count": 3,
-          "last_room": "village_square"
-        },
-        "merchant": {
-          "talk_count": 2,
-          "last_room": "village_square"
-        },
-        "banker": {
-          "talk_count": 2,
-          "last_room": "bank_of_estoria"
-        },
-        "patron": {
-          "talk_count": 2,
-          "last_room": "village_tavern"
-        }
-      },
-      "bank_gold": 0,
-      "artifact_slot": null
+      "game_feel_intensity": "normal"
     },
     "stats": {
-      "gold": 26,
-      "health": 101,
-      "health_max": 105,
-      "level": 2,
-      "xp": 161,
-      "xp_to_next": 89,
-      "skill_points": 3,
+      "gold": 0,
+      "health": 100,
+      "health_max": 100,
+      "level": 1,
+      "xp": 0,
+      "xp_to_next": 100,
+      "skill_points": 0,
       "class": "warrior",
       "strength": 4,
       "defense": 3,
@@ -145,25 +95,19 @@
       "perception": 1,
       "charisma": 0,
       "constitution": 3,
-      "mana": 85,
-      "max_mana": 85,
+      "mana": 80,
+      "max_mana": 80,
       "mana_regen_bonus": 0.0
     },
     "visited_rooms": [
-      "village_north_gate",
-      "village_square",
-      "village_training_grounds",
-      "bank_of_estoria",
-      "village_blacksmith",
-      "village_shop",
-      "tutorial_spawn",
-      "village_tavern"
+      "tutorial_spawn"
     ],
     "unlocked_islands": []
   },
   "rooms": {
     "tutorial_spawn": {
       "items": {
+        "torch": 1,
         "faded_map": 1
       }
     },
@@ -7111,90 +7055,12 @@
     "vault_contents": {},
     "active_altars": {}
   },
-  "quests": {
-    "welcome_to_havenbrook": {
-      "quest_id": "welcome_to_havenbrook",
-      "status": "turned_in",
-      "progress": {
-        "0": 1,
-        "1": 1,
-        "2": 1,
-        "3": 1
-      }
-    },
-    "tutorial_trade_routes": {
-      "quest_id": "tutorial_trade_routes",
-      "status": "turned_in",
-      "progress": {
-        "0": 1,
-        "1": 1
-      }
-    },
-    "tutorial_bank_basics": {
-      "quest_id": "tutorial_bank_basics",
-      "status": "turned_in",
-      "progress": {
-        "0": 1,
-        "1": 1
-      }
-    },
-    "tutorial_combat_drill": {
-      "quest_id": "tutorial_combat_drill",
-      "status": "active",
-      "progress": {
-        "0": 1,
-        "1": 0
-      }
-    }
-  },
-  "npc_reputation": {
-    "tutorial_guide": {
-      "npc_id": "tutorial_guide",
-      "affinity": 2,
-      "visit_count": 3,
-      "gifts_given": {},
-      "total_gifts": 0,
-      "favors_completed": [],
-      "dialogue_seen": [],
-      "rep_rewards_claimed": []
-    },
-    "merchant": {
-      "npc_id": "merchant",
-      "affinity": 2,
-      "visit_count": 2,
-      "gifts_given": {},
-      "total_gifts": 0,
-      "favors_completed": [],
-      "dialogue_seen": [],
-      "rep_rewards_claimed": []
-    },
-    "banker": {
-      "npc_id": "banker",
-      "affinity": 2,
-      "visit_count": 2,
-      "gifts_given": {},
-      "total_gifts": 0,
-      "favors_completed": [],
-      "dialogue_seen": [],
-      "rep_rewards_claimed": []
-    },
-    "patron": {
-      "npc_id": "patron",
-      "affinity": 2,
-      "visit_count": 2,
-      "gifts_given": {},
-      "total_gifts": 0,
-      "favors_completed": [],
-      "dialogue_seen": [],
-      "rep_rewards_claimed": []
-    }
-  },
+  "quests": {},
+  "npc_reputation": {},
   "overworld_encounters": {
     "recent_rooms": [],
     "visible_enemies": {},
-    "rooms_rolled": [
-      "village_training_grounds"
-    ]
+    "rooms_rolled": []
   },
   "fishing": {
     "fish_caught_count": 0,
@@ -7204,9 +7070,14 @@
   "shop": {
     "shop_id": "village_shop",
     "inventory": {
-      "rope_coil": {
+      "quality_torch": {
         "quantity": 2,
-        "value": 20,
+        "value": 15,
+        "rarity": "common"
+      },
+      "lockpick_set": {
+        "quantity": 1,
+        "value": 50,
         "rarity": "common"
       },
       "coin_pouch": {
@@ -7214,28 +7085,23 @@
         "value": 20,
         "rarity": "common"
       },
-      "craftsman_hammer": {
-        "quantity": 3,
-        "value": 38,
-        "rarity": "common"
-      },
-      "healing_salve": {
+      "steel_dagger": {
         "quantity": 1,
         "value": 35,
-        "rarity": "common"
+        "rarity": "uncommon"
       },
-      "torch": {
-        "quantity": 3,
-        "value": 3,
-        "rarity": "common"
+      "silver_ring": {
+        "quantity": 2,
+        "value": 40,
+        "rarity": "uncommon"
       },
-      "mana_potion": {
+      "healing_potion": {
         "quantity": 3,
-        "value": 75,
+        "value": 85,
         "rarity": "rare"
       }
     },
-    "last_rotation_hour": 21
+    "last_rotation_hour": 22
   },
   "dungeon_scheduler": {
     "debug_force_open": []

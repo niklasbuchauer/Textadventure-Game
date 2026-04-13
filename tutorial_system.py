@@ -41,7 +41,16 @@ TUTORIAL_QUEST_REQUIREMENTS = {
 	"welcome_to_havenbrook": [],
 	"tutorial_trade_routes": ["used_shop_browse", "used_shop_buy_or_sell"],
 	"tutorial_bank_basics": ["used_balance", "used_deposit", "used_withdraw"],
-	"tutorial_combat_drill": ["used_fight", "used_attack", "used_defend"],
+	"tutorial_combat_drill": [
+		"used_fight",
+		"used_attack",
+		"used_defend",
+		"used_analyze",
+		"used_reposition",
+		"used_interrupt",
+		"used_charge",
+		"used_guard_break",
+	],
 	"tutorial_recovery_check": ["opened_journal"],
 	"tutorial_crafting_kickoff": ["used_smelt"],
 	"tutorial_graduation": ["used_stats", "used_skills", "used_save"],
@@ -56,6 +65,11 @@ TUTORIAL_REQUIREMENT_HINTS = {
 	"used_fight": "Type: fight",
 	"used_attack": "Type: attack",
 	"used_defend": "Type: defend",
+	"used_analyze": "Type: analyze",
+	"used_reposition": "Type: reposition",
+	"used_interrupt": "Type: interrupt",
+	"used_charge": "Type: charge",
+	"used_guard_break": "Type: guard break",
 	"opened_journal": "Type: journal",
 	"used_smelt": "Type: smelt",
 	"used_stats": "Type: stats",
@@ -402,6 +416,7 @@ def _quest_stage_prompt(engine, state):
 				"Type: outside, then north, then east.",
 				"Type: fight.",
 				"During battle, type: attack and defend.",
+				"Use every tactic once: analyze, reposition, interrupt, charge, and guard break.",
 			],
 			"Talk to patron and choose [Turn in].",
 		)
@@ -592,6 +607,17 @@ def _track_tutorial_command_flags(state, verb, args, _response):
 		flags["used_attack"] = True
 	if verb == "defend":
 		flags["used_defend"] = True
+	if verb == "analyze":
+		flags["used_analyze"] = True
+	if verb == "reposition":
+		flags["used_reposition"] = True
+	if verb == "interrupt":
+		flags["used_interrupt"] = True
+	if verb == "charge":
+		flags["used_charge"] = True
+	if verb in ("guard", "guardbreak", "guard_break"):
+		if not args or first == "break":
+			flags["used_guard_break"] = True
 
 	if verb in ("journal", "j", "quests", "quest"):
 		flags["opened_journal"] = True

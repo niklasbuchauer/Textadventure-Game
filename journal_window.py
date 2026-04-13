@@ -62,6 +62,30 @@ def _wrap_text(text: str, font: pygame.font.Font, max_w: int) -> list:
         lines.append(cur)
     return lines or [text]
 
+def _fit_text(text: str, font: pygame.font.Font, max_w: int) -> str:
+    """Fit text into max_w pixels by truncating with ellipsis when needed."""
+    if max_w <= 0:
+        return ""
+    text = str(text or "")
+    if font.size(text)[0] <= max_w:
+        return text
+
+    ellipsis = "..."
+    if font.size(ellipsis)[0] > max_w:
+        return ""
+
+    lo, hi = 0, len(text)
+    best = ""
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        cand = text[:mid].rstrip() + ellipsis
+        if font.size(cand)[0] <= max_w:
+            best = cand
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return best or ellipsis
+
 def _font_pick(size: int, bold: bool = False) -> pygame.font.Font:
     """Load the best available serif/antiqua font."""
     for name in ("Palatino Linotype", "Book Antiqua", "Georgia",
@@ -101,7 +125,10 @@ class JournalWindow:
         # Data
         self._active:    list = []
         self._completed: list = []
+        self._tutorial_lines: list = []
         self._sel_idx:   int  = 0
+        self._list_start: int = 0
+        self._visible_rows: int = 1
 
         # Click-region cache (absolute screen coords)
         self._book_rect:       pygame.Rect = pygame.Rect(0, 0, 0, 0)
@@ -144,8 +171,53 @@ class JournalWindow:
         except Exception:
             self._active    = []
             self._completed = []
+        self._tutorial_lines = self._build_tutorial_lines()
         self._sel_idx = max(0, min(self._sel_idx, len(self._active) - 1))
+        self._sync_list_window()
         self._cfade   = 0.0   # re-fade content after refresh
+
+    def _build_tutorial_lines(self):
+        """Build concise tutorial guidance lines for the left page panel."""
+        try:
+            import tutorial_system
+            player = getattr(self.gui.engine, "player", None)
+            state = tutorial_system.ensure_tutorial_state(player)
+            if state is None or not tutorial_system.tutorial_is_active(state):
+                return []
+
+            total_steps = int(getattr(tutorial_system, "TUTORIAL_STEP_COUNT", 8) or 8)
+            if total_steps <= 0:
+                total_steps = 8
+            current_step = int(state.get("current_step", 0) or 0)
+            current_step = max(0, min(total_steps - 1, current_step))
+
+            active_qid = str(state.get("active_tutorial_quest") or "").strip().lower()
+            lesson = tutorial_system.TUTORIAL_QUEST_NAMES.get(
+                active_qid,
+                active_qid.replace("_", " ").title() if active_qid else "Getting Started",
+            )
+
+            lines = [
+                f"Step {current_step + 1}/{total_steps}",
+                f"Lesson: {lesson}",
+            ]
+
+            prompt = str(tutorial_system._step_prompt(self.gui.engine, current_step, state) or "")
+            for raw in prompt.splitlines():
+                line = str(raw).strip()
+                if not line:
+                    continue
+                lower = line.lower()
+                if lower.startswith(("lesson:", "where to start:", "what to do:")):
+                    continue
+                if len(line) > 2 and line[0].isdigit() and line[1] == ".":
+                    line = line[2:].strip()
+                lines.append(line)
+                if len(lines) >= 5:
+                    break
+            return lines
+        except Exception:
+            return []
 
     # ── Update ─────────────────────────────────────────────────────────────────
 
@@ -234,6 +306,22 @@ class JournalWindow:
         if new != self._sel_idx:
             self._start_turn(1 if delta > 0 else -1)
             self._sel_idx = new
+            self._sync_list_window()
+
+    def _sync_list_window(self):
+        n = len(self._active)
+        if n <= 0:
+            self._list_start = 0
+            return
+
+        visible = max(1, int(self._visible_rows))
+        max_start = max(0, n - visible)
+        self._list_start = max(0, min(self._list_start, max_start))
+
+        if self._sel_idx < self._list_start:
+            self._list_start = self._sel_idx
+        elif self._sel_idx >= self._list_start + visible:
+            self._list_start = self._sel_idx - visible + 1
 
     def _start_turn(self, direction: int):
         self._turn_dir = direction
@@ -436,14 +524,56 @@ class JournalWindow:
         self._quest_rows = []
         y = frame.y + 36
 
+        if self._tutorial_lines:
+            block_h = 22 + len(self._tutorial_lines) * 14
+            trect = pygame.Rect(frame.x + 2, y, frame.width - 4, block_h)
+            ts = pygame.Surface((trect.width, trect.height), pygame.SRCALPHA)
+            ts.fill((*C_SELECT_BG, int(70 * cf)))
+            surf.blit(ts, trect.topleft)
+            pygame.draw.rect(surf, div, trect, 1, border_radius=4)
+
+            hdr = self._f(12, bold=True).render("Tutorial Objective", True, head)
+            surf.blit(hdr, (trect.x + 6, trect.y + 4))
+
+            ly = trect.y + 20
+            for line in self._tutorial_lines:
+                wrapped = _wrap_text(line, self._f(10), trect.width - 12)
+                for seg in wrapped[:2]:
+                    seg_s = self._f(10).render(seg, True, ink)
+                    surf.blit(seg_s, (trect.x + 6, ly))
+                    ly += 12
+                    if ly > trect.bottom - 6:
+                        break
+                if ly > trect.bottom - 6:
+                    break
+
+            y += block_h + 8
+
         if not self._active:
             es = self._f(12).render("No active quests.", True, mid)
             surf.blit(es, (frame.x + 8, y + 6))
         else:
+            row_h = 30
+            list_top = y
+            list_bottom = frame.bottom - 24
+            available_h = max(1, list_bottom - list_top)
+            self._visible_rows = max(1, available_h // row_h)
+            self._sync_list_window()
+
+            start = self._list_start
+            end = min(len(self._active), start + self._visible_rows)
+            needs_scroll = len(self._active) > self._visible_rows
+
+            scroll_w = 6
+            scroll_gap = 5
+            row_width = frame.width - (scroll_w + scroll_gap + 2 if needs_scroll else 0)
+            row_width = max(80, row_width)
+
             mx, my = pygame.mouse.get_pos()
-            for i, (qdef, qs) in enumerate(self._active):
-                row_h  = 40
-                qrect  = pygame.Rect(frame.x, y, frame.width, row_h)
+            for draw_i, i in enumerate(range(start, end)):
+                qdef, qs = self._active[i]
+                row_y = list_top + draw_i * row_h
+                qrect  = pygame.Rect(frame.x, row_y, row_width, row_h)
                 # Absolute screen rect for hit-testing
                 abs_r  = qrect.move(ox, oy) if (ox, oy) != (0, 0) else qrect
                 self._quest_rows.append((abs_r, i))
@@ -452,13 +582,13 @@ class JournalWindow:
                 is_hov = abs_r.collidepoint(mx, my)
 
                 if is_sel:
-                    hs = pygame.Surface((frame.width, row_h), pygame.SRCALPHA)
+                    hs = pygame.Surface((qrect.width, row_h), pygame.SRCALPHA)
                     hs.fill((*C_SELECT_BG, int(175 * cf)))
-                    surf.blit(hs, (frame.x, y))
+                    surf.blit(hs, (frame.x, row_y))
                 elif is_hov:
-                    hs = pygame.Surface((frame.width, row_h), pygame.SRCALPHA)
+                    hs = pygame.Surface((qrect.width, row_h), pygame.SRCALPHA)
                     hs.fill((*C_SELECT_BG, int(80 * cf)))
-                    surf.blit(hs, (frame.x, y))
+                    surf.blit(hs, (frame.x, row_y))
 
                 # Status dot
                 try:
@@ -467,44 +597,49 @@ class JournalWindow:
                 except Exception:
                     ready = False
                 dot_col = done if ready else head
-                pygame.draw.circle(surf, dot_col, (frame.x + 11, y + 10), 4)
+                pygame.draw.circle(surf, dot_col, (frame.x + 11, row_y + row_h // 2), 4)
                 if ready:
                     pygame.draw.circle(surf, _blend(C_PARCHMENT, C_DONE, 0.5),
-                                       (frame.x + 11, y + 10), 2)
+                                       (frame.x + 11, row_y + row_h // 2), 2)
 
                 # Quest name
-                ns = self._f(13, bold=is_sel).render(
-                    qdef["name"][:30], True, ink if is_sel else mid)
-                surf.blit(ns, (frame.x + 22, y + 2))
+                name_font = self._f(12, bold=is_sel)
+                raw_name = str(qdef.get("name", "Unnamed Quest"))
+                ready_font = self._f(10, bold=True)
+                ready_text = ready_font.render("Ready", True, done) if ready else None
+                reserved_right = ready_text.get_width() + 12 if ready_text else 0
+                name_max_w = max(30, qrect.width - 44 - reserved_right)
+                quest_name = _fit_text(raw_name, name_font, name_max_w)
+                ns = name_font.render(quest_name, True, ink if is_sel else mid)
+                surf.blit(ns, (frame.x + 22, row_y + (row_h - ns.get_height()) // 2))
 
-                # Sub-text: progress
-                try:
-                    from quest_system import QuestState
-                    if qs.status == QuestState.STATUS_COMPLETE:
-                        sub = "Ready to turn in"
-                        sc  = done
-                    else:
-                        done_n = sum(1 for k, obj in enumerate(qdef["objectives"])
-                                     if qs.progress.get(k, 0) >= obj.get("count", 1))
-                        tot   = len(qdef["objectives"])
-                        sub   = f"{done_n}/{tot} objectives"
-                        sc    = light
-                except Exception:
-                    sub = ""
-                    sc  = light
-                if sub:
-                    ss = self._f(10).render(sub, True, sc)
-                    surf.blit(ss, (frame.x + 23, y + 20))
+                if ready_text is not None:
+                    rx = qrect.right - ready_text.get_width() - 6
+                    ry = row_y + (row_h - ready_text.get_height()) // 2
+                    surf.blit(ready_text, (rx, ry))
 
                 # Row divider
                 if i < len(self._active) - 1:
                     pygame.draw.line(surf, div,
-                                     (frame.x + 4, y + row_h - 1),
-                                     (frame.x + frame.width - 4, y + row_h - 1), 1)
+                                     (frame.x + 4, row_y + row_h - 1),
+                                     (qrect.right - 2, row_y + row_h - 1), 1)
 
-                y += row_h
-                if y > frame.bottom - 24:
-                    break
+            if needs_scroll:
+                track_h = max(20, list_bottom - list_top)
+                track_rect = pygame.Rect(frame.right - scroll_w - 1, list_top, scroll_w, track_h)
+                track_col = _blend((152, 126, 86), C_PARCHMENT, cf)
+                thumb_col = _blend((112, 84, 44), C_PARCHMENT, cf)
+                pygame.draw.rect(surf, track_col, track_rect, border_radius=3)
+                pygame.draw.rect(surf, div, track_rect, width=1, border_radius=3)
+
+                max_start = max(1, len(self._active) - self._visible_rows)
+                thumb_h = max(18, int(track_h * (self._visible_rows / len(self._active))))
+                thumb_h = min(track_h, thumb_h)
+                travel = max(0, track_h - thumb_h)
+                thumb_t = self._list_start / max_start
+                thumb_y = track_rect.y + int(travel * thumb_t)
+                thumb_rect = pygame.Rect(track_rect.x, thumb_y, track_rect.width, thumb_h)
+                pygame.draw.rect(surf, thumb_col, thumb_rect, border_radius=3)
 
         # ── Footer: completed count ────────────────────────────────────────────
         fc_s = self._f(11).render(
@@ -556,7 +691,9 @@ class JournalWindow:
         qdef, qs   = self._active[idx]
 
         # Title
-        ts = self._f(16, bold=True).render(qdef["name"][:34], True, head)
+        title_font = self._f(16, bold=True)
+        title = _fit_text(qdef.get("name", "Quest"), title_font, frame.width - 12)
+        ts = title_font.render(title, True, head)
         surf.blit(ts, (frame.x + 6, frame.y + 5))
         x1, x2 = frame.x + 4, frame.x + frame.width - 4
         pygame.draw.line(surf, div, (x1, frame.y + 27), (x2, frame.y + 27), 1)
