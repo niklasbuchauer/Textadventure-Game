@@ -1,7 +1,7 @@
 {
   "save_version": 6,
   "player": {
-    "current_room": "village_training_grounds",
+    "current_room": "stables",
     "inventory": {},
     "state": {
       "home_owned": false,
@@ -129,7 +129,7 @@
       "active_effects": {
         "attack_boost": {
           "value": 4,
-          "duration": 3
+          "duration": 2
         }
       },
       "equipment": {
@@ -216,7 +216,9 @@
         "skilled",
         "branch_initiate",
         "mastery",
-        "level_5"
+        "level_5",
+        "branch_master",
+        "level_10"
       ],
       "achievement_tracking": {
         "kills": 1,
@@ -224,13 +226,15 @@
         "total_gold": 2
       },
       "achievement_rewards_granted": [
-        "first_blood",
-        "skilled",
-        "branch_initiate",
         "level_5",
+        "branch_master",
         "flawless_victory",
         "first_skill",
-        "mastery"
+        "level_10",
+        "branch_initiate",
+        "first_blood",
+        "mastery",
+        "skilled"
       ]
     },
     "stats": {
@@ -238,8 +242,8 @@
       "health": 480,
       "health_max": 480,
       "level": 19,
-      "xp": 12000,
-      "xp_to_next": 1800,
+      "xp": 13253,
+      "xp_to_next": 1797,
       "skill_points": 0,
       "class": "warrior",
       "strength": 40,
@@ -252,16 +256,17 @@
       "max_mana": 195,
       "mana_regen_bonus": 0.0,
       "prestige_xp_multiplier": 1.0,
-      "attack": 81,
+      "attack": 84,
       "crit_chance_bonus": 0.6500000000000001
     },
     "visited_rooms": [
       "village_east_end",
-      "tutorial_spawn",
-      "village_square",
-      "farmland_west",
       "village_north_gate",
-      "village_training_grounds"
+      "tutorial_spawn",
+      "farmland_west",
+      "village_square",
+      "village_training_grounds",
+      "stables"
     ],
     "unlocked_islands": []
   },

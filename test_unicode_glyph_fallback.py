@@ -40,6 +40,27 @@ def test_configure_panel_glyph_fallback_marks_ready():
     assert pui._PANEL_FALLBACK_READY is True
 
 
+def test_panel_format_preserves_spacing_for_box_layout():
+    message = "╔══╗\n║  LIST  ║\n╚══╝"
+    html = pui._format_panel_message(message, "#ffffff", "#cccccc")
+
+    assert "&nbsp;&nbsp;" in html
+    assert "╔══╗" in html
+    assert "<br>" in html
+
+
+def test_panel_format_keeps_normal_text_without_nbsp():
+    message = "normal text with two spaces: a  b"
+    html = pui._format_panel_message(message, "#ffffff", "#cccccc")
+
+    assert "&nbsp;" not in html
+
+
+def test_box_layout_detector_recognizes_ascii_fallback_boxes():
+    ascii_box = "+====+\n| item |\n+====+"
+    assert pui._is_box_layout_message(ascii_box) is True
+
+
 if __name__ == "__main__":
     pygame.init()
     pygame.font.init()
@@ -47,6 +68,9 @@ if __name__ == "__main__":
         test_load_font_renders_box_chars,
         test_panel_fallback_replaces_only_unsupported_glyphs,
         test_configure_panel_glyph_fallback_marks_ready,
+        test_panel_format_preserves_spacing_for_box_layout,
+        test_panel_format_keeps_normal_text_without_nbsp,
+        test_box_layout_detector_recognizes_ascii_fallback_boxes,
     ]
     for test_fn in tests:
         test_fn()

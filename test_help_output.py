@@ -22,6 +22,22 @@ print(f"Contains '[MOVEMENT]': {('[MOVEMENT]' in response)}")
 print(f"Contains '[EXPLORATION]': {('[EXPLORATION]' in response)}")
 print(f"Contains 'AVAILABLE COMMANDS': {('AVAILABLE COMMANDS' in response)}")
 
+box_lines = [
+    ln for ln in response.splitlines()
+    if ln.startswith(("╔", "╠", "╚", "║"))
+]
+box_widths = sorted(set(len(ln) for ln in box_lines))
+print(f"Box line widths: {box_widths}")
+assert len(box_widths) == 1, f"Expected one box width, found {box_widths}"
+
+synthetic = (
+    "╔════════╗\n"
+    "║  sample command           - this description should wrap and keep tail_token_visible for regression coverage.║\n"
+    "╚════════╝\n"
+)
+normalized = engine.cmd._normalize_boxed_help_output(synthetic)
+assert "tail_token_visible" in normalized, "Expected wrapped boxed content to keep full tail text"
+
 print("\nTesting debug menu entries:")
 debug_menu = handle_debug_commands(engine, [])
 print(f"Contains 'debug home free': {('debug home free' in debug_menu)}")

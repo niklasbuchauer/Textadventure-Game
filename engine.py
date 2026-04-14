@@ -6985,28 +6985,151 @@ Do you wish to enter? (yes/no)
 
 	def _format_help_row(self, left_text, right_text=""):
 		"""Format one row inside the boxed help output."""
+		inner_width = 78
+		left_width = 24
 		left = (left_text or "").strip()
 		right = (right_text or "").strip()
-		if right:
-			body = f"  {left:<22} - {right}"
-		else:
-			body = f"  {left}"
-		if len(body) > 62:
-			body = body[:62]
-		return f"║ {body:<62}║\n"
+
+		if not right:
+			wrapped_left = self._wrap_help_words(left, max(8, inner_width - 2))
+			return "".join(f"║{'  ' + part:<{inner_width}}║\n" for part in wrapped_left)
+
+		desc_width = max(8, inner_width - (2 + left_width + 3))
+		wrapped_desc = self._wrap_help_words(right, desc_width)
+		rows = []
+
+		first = f"  {left:<{left_width}} - {wrapped_desc[0]}"
+		rows.append(f"║{first:<{inner_width}}║\n")
+
+		for part in wrapped_desc[1:]:
+			cont = f"  {'':<{left_width}}   {part}"
+			rows.append(f"║{cont:<{inner_width}}║\n")
+
+		return "".join(rows)
+
+	def _wrap_help_words(self, text, width):
+		"""Word-wrap help text while keeping box-row alignment stable."""
+		s = str(text or "").strip()
+		if not s:
+			return [""]
+
+		words = s.split()
+		if not words:
+			return [""]
+
+		lines = []
+		cur = ""
+		for word in words:
+			# Split extremely long tokens so they never force truncation.
+			while len(word) > width:
+				if cur:
+					lines.append(cur)
+					cur = ""
+				lines.append(word[:width])
+				word = word[width:]
+
+			if not cur:
+				cur = word
+			elif len(cur) + 1 + len(word) <= width:
+				cur = f"{cur} {word}"
+			else:
+				lines.append(cur)
+				cur = word
+
+		if cur:
+			lines.append(cur)
+
+		return lines
+
+	def _wrap_box_body_line(self, body, max_width):
+		"""Wrap a boxed row body without losing alignment or truncating content."""
+		raw = str(body or "")
+		if len(raw) <= max_width:
+			return [raw]
+
+		trimmed = raw.rstrip()
+		if not trimmed:
+			return [""]
+
+		# Prefer wrapping after the 'command - description' separator when present.
+		sep = trimmed.find(" - ")
+		if sep != -1:
+			left = trimmed[:sep].rstrip()
+			right = trimmed[sep + 3:].strip()
+			prefix = f"{left} - "
+			if len(prefix) < max_width - 4:
+				wrapped_desc = self._wrap_help_words(right, max(8, max_width - len(prefix)))
+				rows = [f"{prefix}{wrapped_desc[0]}"]
+				cont_prefix = " " * len(prefix)
+				for part in wrapped_desc[1:]:
+					rows.append(f"{cont_prefix}{part}")
+				return rows
+
+		# Generic wrap while preserving leading indentation.
+		lead_spaces = len(trimmed) - len(trimmed.lstrip(" "))
+		prefix = " " * lead_spaces
+		content = trimmed.lstrip(" ")
+		wrapped = self._wrap_help_words(content, max(8, max_width - lead_spaces))
+		return [f"{prefix}{part}" for part in wrapped]
 
 	def _render_metadata_help_section(self, title, commands):
 		"""Render a boxed help section from canonical metadata."""
-		lines = f"║  [{title.upper()}]"
-		lines = lines + " " * max(0, 62 - len(f"  [{title.upper()}]")) + "║\n"
-		lines += "║ ---------------------------------------------------------------║\n"
+		inner_width = 78
+		header = f"  [{title.upper()}]"
+		lines = f"║{header:<{inner_width}}║\n"
+		lines += "║ " + ("-" * (inner_width - 1)) + "║\n"
 		for command in commands:
 			meta = self.command_metadata.get(command, {})
 			usage = meta.get("usage", command)
 			desc = meta.get("description", "")
 			lines += self._format_help_row(usage, desc)
-		lines += "║                                                                ║\n"
+		lines += "║" + (" " * inner_width) + "║\n"
 		return lines
+
+	def _normalize_boxed_help_output(self, text):
+		"""Normalize box rows to one fixed width so borders stay perfectly aligned."""
+		if not text:
+			return text
+
+		lines = text.splitlines()
+		box_prefixes = ("╔", "╠", "╚", "║")
+		box_lines = [ln for ln in lines if ln.startswith(box_prefixes)]
+		if not box_lines:
+			return text
+
+		target_width = max(len(ln) for ln in box_lines)
+		normalized = []
+
+		for line in lines:
+			if not line.startswith(box_prefixes):
+				normalized.append(line)
+				continue
+
+			first = line[0]
+			last = line[-1] if line else ""
+
+			if first in ("╔", "╠", "╚") and last in ("╗", "╣", "╝"):
+				normalized.append(first + ("═" * max(0, target_width - 2)) + last)
+				continue
+
+			if first == "║":
+				body = line[1:-1] if line.endswith("║") else line[1:]
+				if body.strip(" -") == "" and "-" in body:
+					normalized.append("║ " + ("-" * max(0, target_width - 3)) + "║")
+					continue
+
+				for wrapped_body in self._wrap_box_body_line(body, target_width - 2):
+					if len(wrapped_body) > (target_width - 2):
+						wrapped_body = wrapped_body[:target_width - 2]
+					normalized.append("║" + wrapped_body.ljust(target_width - 2) + "║")
+				continue
+
+			normalized.append(line)
+
+		out = "\n".join(normalized)
+		if text.endswith("\n"):
+			out += "\n"
+		return out
 
 	def _show_commands(self):
 		"""Display comprehensive command list with context awareness."""
@@ -7215,6 +7338,8 @@ Do you wish to enter? (yes/no)
 ║                                                                 ║
 ╚═════════════════════════════════════════════════════════════════╝
 """
+
+		result = self._normalize_boxed_help_output(result)
 
 		if feel == "high":
 			result += "\n[HIGH INTENSITY] Pro tip: chain momentum in combat and push quest turn-ins between fights for constant power spikes.\n"

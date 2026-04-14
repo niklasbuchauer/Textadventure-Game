@@ -139,6 +139,7 @@ _ORDERED_PANEL_ICON_FALLBACKS = sorted(
 
 _PANEL_UNSUPPORTED_GLYPHS = set()
 _PANEL_FALLBACK_READY = False
+_BOX_LAYOUT_GLYPHS = set("║╗╣╠╔╝╚┌┐└┘─│━┃┏┓┗┛├┤┬┴┼╔╗╚╝╠╣╦╩╬═")
 
 # Nature-medieval forest palette
 DARK = {
@@ -172,10 +173,37 @@ def hex_lerp(a, b, t):
         int(ab + (bb - ab) * t),
     )
 
-def escape_html(text):
+def escape_html(text, preserve_spacing=False):
     """Escape HTML special chars then convert newlines to <br>."""
-    s = html_module.escape(str(text))
+    s = html_module.escape(str(text)).replace("\t", "    ")
+    if preserve_spacing:
+        lines = [line.replace(" ", "&nbsp;") for line in s.split("\n")]
+        return "<br>".join(lines)
     return s.replace("\n", "<br>")
+
+
+def _is_box_layout_message(text):
+    """Detect output lines that depend on fixed-width spacing for visual boxes."""
+    s = str(text)
+    if not s:
+        return False
+
+    raw_lines = [ln for ln in s.splitlines() if ln]
+    has_box_glyphs = any(ch in s for ch in _BOX_LAYOUT_GLYPHS)
+    if has_box_glyphs:
+        if len(raw_lines) >= 2:
+            return True
+        if "  " in s and any(ch in s for ch in "╔╗╚╝╠╣║═┌┐└┘├┤│─"):
+            return True
+
+    lines = [ln for ln in s.splitlines() if ln.strip()]
+    border_like = 0
+    for line in lines:
+        if line.count("+") >= 2 and ("=" in line or "-" in line):
+            border_like += 1
+        elif line.startswith("|") and line.endswith("|"):
+            border_like += 1
+    return border_like >= 2
 
 
 def _font_can_render(font, glyph):
@@ -202,7 +230,7 @@ def configure_panel_glyph_fallback(font_profile=None):
     _PANEL_FALLBACK_READY = False
 
     try:
-        probe_font = load_font(font_profile or {}, 16)
+        probe_font = load_font(font_profile or {}, 16, mono=True)
     except Exception:
         return
 
@@ -236,7 +264,12 @@ def _style_inline_combat_tags(text):
 
 def _format_panel_message(text, colour, detail_colour):
     """Convert a panel message into HTML with inline combat emphasis."""
-    html_text = escape_html(normalize_panel_text_icons(text))
+    raw_text = str(text)
+    normalized = normalize_panel_text_icons(raw_text)
+    html_text = escape_html(
+        normalized,
+        preserve_spacing=_is_box_layout_message(raw_text),
+    )
     html_text = _style_inline_combat_tags(html_text)
 
     lines = html_text.split("<br>")
