@@ -394,6 +394,22 @@ def test_persistent_dummy_can_be_reengaged():
     assert "village_training_grounds" in manager.visible_enemies
 
 
+def test_reconcile_restores_missing_training_dummy():
+    engine = MockEngine()
+    combat_accept = _advance_to_combat_drill(engine)
+    assert "Training target deployed" in combat_accept
+
+    manager = engine.encounter_manager
+    manager.visible_enemies.clear()
+
+    spawned = engine.quest_manager.reconcile_scripted_visible_enemies()
+    restored = manager.visible_enemies.get("village_training_grounds")
+
+    assert spawned == 1
+    assert restored is not None
+    assert restored.get("enemy_id") == "training_dummy"
+
+
 def test_flee_spam_has_cooldown_penalty():
     class CombatPlayer:
         def __init__(self):
@@ -453,6 +469,7 @@ if __name__ == "__main__":
         test_combat_drill_turn_in_requires_all_tactical_commands,
         test_journal_text_shows_tutorial_tracker_when_active,
         test_persistent_dummy_can_be_reengaged,
+        test_reconcile_restores_missing_training_dummy,
         test_flee_spam_has_cooldown_penalty,
         test_tutorial_final_turn_in_completes_tutorial,
     ]

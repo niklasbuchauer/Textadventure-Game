@@ -6,6 +6,7 @@ then an "Anchor Dropped" frame, before auto-dismissing.
 """
 
 import pygame
+from font_support import load_font
 
 BG   = (0x0a, 0x0a, 0x14)
 CYAN = (0x00, 0xcc, 0xff)
@@ -41,12 +42,13 @@ class TravelOverlay:
     the travel result text to be appended by the caller.
     """
 
-    def __init__(self, width, height, island_name, deferred_text):
+    def __init__(self, width, height, island_name, deferred_text, font_profile=None):
         self.width  = width
         self.height = height
         self.island_name   = island_name
         self.deferred_text = deferred_text
         self.done   = False
+        self._font_profile = font_profile or {}
 
         # Build frames
         self._frames = []
@@ -81,9 +83,9 @@ class TravelOverlay:
         self._hold      = 1.4        # 1.4 s on arrival
 
         # Fonts
-        self._font_hdr    = pygame.font.SysFont("Consolas", 13, bold=True)
-        self._font_body   = pygame.font.SysFont("Consolas", 11)
-        self._font_status = pygame.font.SysFont("Consolas", 10)
+        self._font_hdr    = load_font(self._font_profile, 13, bold=True, mono=True)
+        self._font_body   = load_font(self._font_profile, 11, mono=True)
+        self._font_status = load_font(self._font_profile, 10, mono=True)
 
     def update(self, dt):
         if self.done:

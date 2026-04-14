@@ -12,6 +12,7 @@
 import pygame
 import math
 import random
+from font_support import load_font
 
 from ui_animation import UI_CLOSE_DUR, UI_CONTENT_DUR, UI_OPEN_DUR, ease_out_cubic
 
@@ -75,13 +76,8 @@ def _wrap_text(text, font, max_w):
         lines.append(cur)
     return lines or [str(text)]
 
-def _font_pick(size, bold=False):
-    for name in ("Palatino Linotype", "Book Antiqua", "Georgia",
-                 "Times New Roman", "serif"):
-        f = pygame.font.SysFont(name, size, bold=bold)
-        if f is not None:
-            return f
-    return pygame.font.Font(None, size)
+def _font_pick(size, bold=False, font_profile=None):
+    return load_font(font_profile or {}, size, bold=bold)
 
 
 # ── Data helpers ────────────────────────────────────────────────────
@@ -102,6 +98,16 @@ def _build_bestiary():
         for eid, data in ENEMY_DATABASE.items():
             d = dict(data); d["id"] = eid; d["tier"] = "normal"
             d["category"] = _dungeon_to_cat(d.get("dungeon", "any"))
+            registry[eid] = d
+    except Exception:
+        pass
+    try:
+        from overworld_encounters import OVERWORLD_ENEMIES
+        for eid, data in OVERWORLD_ENEMIES.items():
+            if eid in registry:
+                continue
+            d = dict(data); d["id"] = eid; d["tier"] = "normal"
+            d["category"] = "OVERWORLD"
             registry[eid] = d
     except Exception:
         pass
@@ -141,6 +147,7 @@ class BestiaryOverlay:
 
     def __init__(self, gui):
         self.gui = gui
+        self._font_profile = getattr(gui, "font_profile", {}) or {}
         self._alive   = True
         self._closing = False
         self._anim    = 0.0
@@ -182,7 +189,7 @@ class BestiaryOverlay:
     def _f(self, size, bold=False):
         key = (size, bold)
         if key not in self._fcache:
-            self._fcache[key] = _font_pick(size, bold)
+            self._fcache[key] = _font_pick(size, bold, self._font_profile)
         return self._fcache[key]
 
     # ── Data ───────────────────────────────────────────────────────────────────

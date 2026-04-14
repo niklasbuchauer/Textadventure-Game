@@ -4,6 +4,7 @@ import math
 import random
 
 import pygame
+from font_support import load_font
 
 from ui_animation import clamp01, ease_in_out_cubic
 
@@ -19,10 +20,11 @@ def _hex(h):
 class QuitOutroOverlay:
     """Full-screen outro that mirrors title style and blocks until done."""
 
-    def __init__(self, width, height, duration=1.5):
+    def __init__(self, width, height, duration=1.5, font_profile=None):
         self.width = int(width)
         self.height = int(height)
         self.duration = max(0.8, float(duration))
+        self._font_profile = font_profile or {}
 
         self.done = False
         self.elapsed = 0.0
@@ -33,12 +35,12 @@ class QuitOutroOverlay:
         self._bar_progress = 0.0
         self._post_save_timer = 0.0
 
-        self._font_title = pygame.font.SysFont("Georgia", 58, bold=True)
-        self._font_sub = pygame.font.SysFont("Georgia", 24, italic=True)
-        self._font_sep = pygame.font.SysFont("Courier New", 11)
-        self._font_tag = pygame.font.SysFont("Courier New", 12)
-        self._font_status = pygame.font.SysFont("Courier New", 12, bold=True)
-        self._font_pct = pygame.font.SysFont("Courier New", 10)
+        self._font_title = load_font(self._font_profile, 58, bold=True)
+        self._font_sub = load_font(self._font_profile, 24, italic=True)
+        self._font_sep = load_font(self._font_profile, 11, mono=True)
+        self._font_tag = load_font(self._font_profile, 12, mono=True)
+        self._font_status = load_font(self._font_profile, 12, bold=True, mono=True)
+        self._font_pct = load_font(self._font_profile, 10, mono=True)
 
         self._bg_surf = None
         self._rebuild_bg()

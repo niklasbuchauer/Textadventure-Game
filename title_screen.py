@@ -8,6 +8,7 @@ motes, staggered text fade-in, and a "Press Any Key" prompt.
 import pygame
 import math
 import random
+from font_support import load_font
 
 # ── Colour palette ─────────────────────────────────────────────────────────
 BG       = (0x08, 0x0a, 0x08)
@@ -29,16 +30,17 @@ class TitleScreen:
         self.width  = app.width
         self.height = app.height
         self.active = True
+        self._font_profile = getattr(app, "font_profile", {}) or {}
 
         # Preload fonts (needed before _rebuild_bg)
-        self._font_title  = pygame.font.SysFont("Georgia", 64, bold=True)
-        self._font_sub    = pygame.font.SysFont("Georgia", 26, italic=True)
-        self._font_sep    = pygame.font.SysFont("Courier New", 11)
-        self._font_tag    = pygame.font.SysFont("Courier New", 12)
-        self._font_prompt = pygame.font.SysFont("Courier New", 13, bold=True)
-        self._font_ver    = pygame.font.SysFont("Courier New", 9)
-        self._font_rune   = pygame.font.SysFont("Courier New", 16, bold=True)
-        self._font_rune2  = pygame.font.SysFont("Courier New", 22)
+        self._font_title  = load_font(self._font_profile, 64, bold=True)
+        self._font_sub    = load_font(self._font_profile, 26, italic=True)
+        self._font_sep    = load_font(self._font_profile, 11, mono=True)
+        self._font_tag    = load_font(self._font_profile, 12, mono=True)
+        self._font_prompt = load_font(self._font_profile, 13, bold=True, mono=True)
+        self._font_ver    = load_font(self._font_profile, 9, mono=True)
+        self._font_rune   = load_font(self._font_profile, 16, bold=True, mono=True)
+        self._font_rune2  = load_font(self._font_profile, 22, mono=True)
 
         # Pre-render the static background once
         self._bg_surf = None

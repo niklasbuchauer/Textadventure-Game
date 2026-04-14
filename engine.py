@@ -389,7 +389,7 @@ CONFIG_DEFAULTS = {
         },
         "bg_color":    "#0d0d0a",
         "fg_color":    "#d8d0a0",
-        "font_family": "Georgia",
+				"font_family": "Segoe UI Symbol",
 		"font_size":   10,
     },
     "gameplay": {
@@ -1002,8 +1002,8 @@ class CommandHandler:
 				"usage": "debug <subcommand>",
 				"aliases": [],
 				"description": "Developer tools for testing progression, loot, cosmetics, and tutorial flow.",
-				"subcommands": ["debug commands", "debug loot ...", "debug set ...", "debug cosmetics ...", "debug home ...", "debug tutorial ..."],
-				"examples": ["debug commands", "debug tutorial status", "debug tutorial start", "debug set grant dragon", "debug cosmetics list"],
+				"subcommands": ["debug commands", "debug level up [count]", "debug loot ...", "debug set ...", "debug cosmetics ...", "debug home ...", "debug tutorial ..."],
+				"examples": ["debug commands", "debug level up 1", "debug tutorial status", "debug tutorial start", "debug set grant dragon", "debug cosmetics list"],
 			},
 			"board": {"category": "Travel", "usage": "board [destination]", "aliases": []},
 			"rooms": {
@@ -7034,10 +7034,10 @@ Do you wish to enter? (yes/no)
 			return "\n".join(lines) + "\n"
 		
 		result = """
-╔════════════════════════════════════════════════════════════════╗
-║                     AVAILABLE COMMANDS                         ║
-╠════════════════════════════════════════════════════════════════╣
-║                                                                ║
+╔═════════════════════════════════════════════════════════════════╗
+║                     AVAILABLE COMMANDS                          ║
+╠═════════════════════════════════════════════════════════════════╣
+║                                                                 ║
 """
 		result += self._render_metadata_help_section(
 			"Movement", ["go", "enter", "outside", "leave"]
@@ -7051,35 +7051,35 @@ Do you wish to enter? (yes/no)
 			"Inventory", ["inventory", "collect", "drop", "sell", "use"]
 		)
 		if HOME_AVAILABLE and self.engine.player and self.engine.player.state.get("home_owned"):
-			result += """║  [HOME]                                                        ║
-║ ---------------------------------------------------------------║
-║    home                 - Teleport to your pocket dimension    ║
-║    home edit            - Open the interactive home editor     ║
-║    home use             - List usable placed home objects      ║
-║    home bonus           - Show active room utility bonus       ║
-║    hearthstone          - Travel home with your Hearthstone    ║
-║    leave / exit home    - Return from home to village          ║
-║    place <item>         - Place an item from inventory         ║
-║    place <item> at x y  - Place an item at coordinates         ║
-║    remove <item>        - Pick up a placed home item           ║
-║    home inventory       - Show placed objects                  ║
-║    home upgrades        - Show unlocked home rooms             ║
-║    home rooms           - List all home rooms and status       ║
-║    home room <id>       - Switch active home room              ║
-║    home unlock <id>     - Unlock a new home room               ║
-║    home containers      - Show room storage containers         ║
-║    home store/take      - Move items to/from room storage      ║
-║    home spawn <id>      - Set default room on home entry       ║
-║    home garden/plant    - Manage garden room plots             ║
-║    home harvest         - Harvest all ready crops              ║
-║    rename home <name>   - Rename your home                     ║
-║                                                                ║
+			result += """║  [HOME]                                                         ║
+║ ----------------------------------------------------------------║
+║    home                 - Teleport to your pocket dimension     ║
+║    home edit            - Open the interactive home editor      ║
+║    home use             - List usable placed home objects       ║
+║    home bonus           - Show active room utility bonus        ║
+║    hearthstone          - Travel home with your Hearthstone     ║
+║    leave / exit home    - Return from home to village           ║
+║    place <item>         - Place an item from inventory          ║
+║    place <item> at x y  - Place an item at coordinates          ║
+║    remove <item>        - Pick up a placed home item            ║
+║    home inventory       - Show placed objects                   ║
+║    home upgrades        - Show unlocked home rooms              ║
+║    home rooms           - List all home rooms and status        ║
+║    home room <id>       - Switch active home room               ║
+║    home unlock <id>     - Unlock a new home room                ║
+║    home containers      - Show room storage containers          ║
+║    home store/take      - Move items to/from room storage       ║
+║    home spawn <id>      - Set default room on home entry        ║
+║    home garden/plant    - Manage garden room plots              ║
+║    home harvest         - Harvest all ready crops               ║
+║    rename home <name>   - Rename your home                      ║
+║                                                                 ║
 """
 		elif HOME_AVAILABLE:
-			result += """║  [HOME]                                                        ║
-║ ---------------------------------------------------------------║
-║    buy home deed        - Purchase a home deed for 800 gold    ║
-║                                                                ║
+			result += """║  [HOME]                                                         ║
+║ ----------------------------------------------------------------║
+║    buy home deed        - Purchase a home deed for 800 gold     ║
+║                                                                 ║
 """
 
 		# Ship travel commands (show when dock has boat exits)
@@ -7087,24 +7087,24 @@ Do you wish to enter? (yes/no)
 		_help_exits = _room_for_help.exits if hasattr(_room_for_help, 'exits') else (_room_for_help.get('exits', {}) if isinstance(_room_for_help, dict) else {})
 		_has_boat = any(isinstance(v, dict) and v.get('type') == 'boat_travel' for v in _help_exits.values())
 		if _has_boat:
-			result += """║  [SHIP TRAVEL]                                                 ║
-║ ---------------------------------------------------------------║
-║    board                - List all ships at this dock          ║
-║    board mainland       - Return to Grand Harbor               ║
-║    board <island>       - Sail to a discovered island          ║
-║                                                                ║
+			result += """║  [SHIP TRAVEL]                                                  ║
+║ ----------------------------------------------------------------║
+║    board                - List all ships at this dock           ║
+║    board mainland       - Return to Grand Harbor                ║
+║    board <island>       - Sail to a discovered island           ║
+║                                                                 ║
 """
 
 		# Fishing commands (show near water)
 		if FISHING_AVAILABLE:
 			from fishing_system import WATER_ROOMS as FISH_WATER_ROOMS
 			if self.engine.player.current_room in FISH_WATER_ROOMS:
-				result += """║  [FISHING]                                                     ║
-║ ---------------------------------------------------------------║
-║    fish                 - Cast your line (no bait)             ║
-║    fish <bait>          - Fish with specific bait              ║
-║    bait                 - View your bait inventory             ║
-║                                                                ║
+				result += """║  [FISHING]                                                      ║
+║ ----------------------------------------------------------------║
+║    fish                 - Cast your line (no bait)              ║
+║    fish <bait>          - Fish with specific bait               ║
+║    bait                 - View your bait inventory              ║
+║                                                                 ║
 """
 		
 		# NPC commands (show when NPCs are present)
@@ -7112,37 +7112,37 @@ Do you wish to enter? (yes/no)
 			room_obj = self.engine.get_room_data(self.engine.player.current_room)
 			has_npcs = hasattr(room_obj, 'npcs') and room_obj.npcs
 			if has_npcs:
-				result += """║  [NPC INTERACTION]                                             ║
-║ ---------------------------------------------------------------║
-║    talk to <name>       - Start conversation with an NPC       ║
-║    gift <npc> <item>    - Give an item as a gift to an NPC     ║
-║    reputation / rep     - View NPC relationship standings      ║
-║    rep <npc_name>       - View specific NPC relationship       ║
-║                                                                ║
+				result += """║  [NPC INTERACTION]                                              ║
+║ ----------------------------------------------------------------║
+║    talk to <name>       - Start conversation with an NPC        ║
+║    gift <npc> <item>    - Give an item as a gift to an NPC      ║
+║    reputation / rep     - View NPC relationship standings       ║
+║    rep <npc_name>       - View specific NPC relationship        ║
+║                                                                 ║
 """
 		
 		# Context-specific commands
 		if in_dungeon:
-			result += """║  [DUNGEON ACTIONS]                                            ║
-║ ---------------------------------------------------------------║
-║    open chest           - Open a treasure chest                ║
-║    disarm / disarm trap - Attempt to disarm a trap             ║
-║    go secret            - Enter secret passage (if discovered) ║
-║    craft / forge        - Use crafting altar (if present)      ║
-║    experiment           - Experiment with items to discover    ║
-║    use altar            - Same as craft                        ║
-║                                                                ║
+			result += """║  [DUNGEON ACTIONS]                                             ║
+║ ----------------------------------------------------------------║
+║    open chest           - Open a treasure chest                 ║
+║    disarm / disarm trap - Attempt to disarm a trap              ║
+║    go secret            - Enter secret passage (if discovered)  ║
+║    craft / forge        - Use crafting altar (if present)       ║
+║    experiment           - Experiment with items to discover     ║
+║    use altar            - Same as craft                         ║
+║                                                                 ║
 """
 		
 		if SHOP_AVAILABLE and in_shop:
-			result += """║  [SHOP COMMANDS]                                              ║
-║ ---------------------------------------------------------------║
-║    shop browse          - View items for sale                  ║
-║    shop buy <item>      - Purchase an item                     ║
-║    shop sell <item> <price> - Sell item to merchant            ║
-║    shop info            - Trading tips and pricing guide       ║
-║    shop talk            - Chat with merchant                   ║
-║                                                                ║
+			result += """║  [SHOP COMMANDS]                                               ║
+║ ----------------------------------------------------------------║
+║    shop browse          - View items for sale                   ║
+║    shop buy <item>      - Purchase an item                      ║
+║    shop sell <item> <price> - Sell item to merchant             ║
+║    shop info            - Trading tips and pricing guide        ║
+║    shop talk            - Chat with merchant                    ║
+║                                                                 ║
 """
 		
 		result += self._render_metadata_help_section(
@@ -7151,69 +7151,69 @@ Do you wish to enter? (yes/no)
 		
 		# Progression commands
 		if PROGRESSION_AVAILABLE:
-			result += """║  [PROGRESSION]                                                 ║
-║ ---------------------------------------------------------------║
-║    stats / level        - View stats, level, and XP            ║
-║    skills / skilltree   - Open graphical skill tree            ║
-║    abilities / ab       - List your active abilities           ║
-║    ability <name>       - Use an active ability                ║
-║    prestige / ascend    - Ascend at max level for meta bonuses ║
-║    prestige status      - View ascension progress              ║
+			result += """║  [PROGRESSION]                                                  ║
+║ ----------------------------------------------------------------║
+║    stats / level        - View stats, level, and XP             ║
+║    skills / skilltree   - Open graphical skill tree             ║
+║    abilities / ab       - List your active abilities            ║
+║    ability <name>       - Use an active ability                 ║
+║    prestige / ascend    - Ascend at max level for meta bonuses  ║
+║    prestige status      - View ascension progress               ║
 ║    artifact             - Show equipped artifact and owned list ║
-║    artifact status      - Show artifact details                ║
+║    artifact status      - Show artifact details                 ║
 ║    artifact equip <id>  - Equip artifact from inventory         ║
-║    artifact unequip     - Remove equipped artifact             ║
+║    artifact unequip     - Remove equipped artifact              ║
 ║    faction              - Show faction status                   ║
 ║    faction join <id>    - Join a faction                        ║
 ║    faction leave        - Leave current faction                 ║
-║    faction window       - Open party/faction management window ║
+║    faction window       - Open party/faction management window  ║
 ║    pet                  - Show pet companions                   ║
 ║    pet inspect <id>     - Show pet stats and ability roadmap    ║
-║    pet adopt <id>       - Adopt a companion (costs gold)       ║
-║    pet activate <id>    - Set active companion                 ║
-║    pet feed             - Feed active companion (gold + cooldown) ║
-║    pet window           - Open party/faction management window ║
-║                                                                ║
+║    pet adopt <id>       - Adopt a companion (costs gold)        ║
+║    pet activate <id>    - Set active companion                  ║
+║    pet feed             - Feed active companion (costs)         ║
+║    pet window           - Open party/faction management window  ║
+║                                                                 ║
 """
 		
 		# Equipment commands
 		if EQUIPMENT_AVAILABLE:
-			result += """║  [EQUIPMENT]                                                   ║
-║ ---------------------------------------------------------------║
-║    equip <item>         - Equip a weapon/armor/accessory       ║
-║    unequip <slot/item>  - Remove equipment (e.g. weapon)       ║
-║    equipment            - View current equipment               ║
+			result += """║  [EQUIPMENT]                                                    ║
+║ ----------------------------------------------------------------║
+║    equip <item>         - Equip a weapon/armor/accessory        ║
+║    unequip <slot/item>  - Remove equipment (e.g. weapon)        ║
+║    equipment            - View current equipment                ║
 ║    transmog <target> <skin> - Apply cosmetic skin override      ║
 ║    cosmetics            - View unlocked cosmetic skins          ║
-║    enchant              - Enchant equipment at an altar        ║
-║                                                                ║
+║    enchant              - Enchant equipment at an altar         ║
+║                                                                 ║
 """
 		
 		# Combat commands (show when in combat or in dungeon)
 		if COMBAT_AVAILABLE and (in_dungeon or getattr(self.engine, 'pending_combat', None)):
-			result += """║  [COMBAT]                                                      ║
-║ ---------------------------------------------------------------║
-║    attack               - Attack the enemy                     ║
-║    defend               - Reduce incoming damage this turn     ║
-║    flee                 - Attempt to escape (can't flee boss)  ║
+			result += """║  [COMBAT]                                                       ║
+║ ----------------------------------------------------------------║
+║    attack               - Attack the enemy                      ║
+║    defend               - Reduce incoming damage this turn      ║
+║    flee                 - Attempt to escape (can't flee boss)   ║
 ║    analyze              - Reveal weakness + threat profile      ║
 ║    reposition           - Improve evasion vs next enemy turns   ║
 ║    guard break          - Break enemy defense and stagger       ║
 ║    interrupt            - Prepare to cancel next enemy ability  ║
 ║    charge               - Power up next basic attack            ║
-║                                                                ║
+║                                                                 ║
 """
 		
-		result += """╠════════════════════════════════════════════════════════════════╣
-║                                                                ║
-║  [TIPS]                                                        ║
-║    • Commands are not case-sensitive                           ║
-║    • Use 'look' often to get your bearings                     ║
-║    • 'inspect wall' in boss rooms may reveal secrets!          ║
-║    • 'search' can find hidden traps before they trigger        ║
-║    • Keep the map open to track your progress                  ║
-║                                                                ║
-╚════════════════════════════════════════════════════════════════╝
+		result += """╠═════════════════════════════════════════════════════════════════╣
+║                                                                 ║
+║  [TIPS]                                                         ║
+║    • Commands are not case-sensitive                            ║
+║    • Use 'look' often to get your bearings                      ║
+║    • 'inspect wall' in boss rooms may reveal secrets!           ║
+║    • 'search' can find hidden traps before they trigger         ║
+║    • Keep the map open to track your progress                   ║
+║                                                                 ║
+╚═════════════════════════════════════════════════════════════════╝
 """
 
 		if feel == "high":
@@ -8874,6 +8874,13 @@ class GameEngine:
 		if OVERWORLD_AVAILABLE and self.encounter_manager:
 			enc_data = state.get("overworld_encounters", {})
 			self.encounter_manager.load_from_dict(enc_data)
+
+		# Reconcile quest-scripted visible enemies (e.g. training dummy) after load.
+		if QUEST_AVAILABLE and self.quest_manager and OVERWORLD_AVAILABLE and self.encounter_manager:
+			try:
+				self.quest_manager.reconcile_scripted_visible_enemies()
+			except Exception:
+				pass
 
 		# Restore fishing stats from save
 		if FISHING_AVAILABLE and self.fishing_system:

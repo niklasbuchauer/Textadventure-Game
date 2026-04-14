@@ -27,6 +27,7 @@ import html as html_module
 import time
 import difflib
 from ui_animation import clamp01, ease_in_out_sine, ease_out_cubic
+from font_support import load_font, setup_ui_font_profile
 
 # ---------------------------------------------------------------------------
 #  Constants
@@ -102,7 +103,42 @@ PANEL_ICON_FALLBACKS = {
     "🌟": "[STAR]",
     "📖": "[BOOK]",
     "📚": "[ARCHIVE]",
+    "╔": "+",
+    "╗": "+",
+    "╚": "+",
+    "╝": "+",
+    "╠": "|",
+    "╣": "|",
+    "║": "|",
+    "═": "=",
+    "┌": "+",
+    "┐": "+",
+    "└": "+",
+    "┘": "+",
+    "├": "|",
+    "┤": "|",
+    "│": "|",
+    "─": "-",
+    "┏": "+",
+    "┓": "+",
+    "┗": "+",
+    "┛": "+",
+    "┃": "|",
+    "━": "-",
 }
+
+_PANEL_ICON_MAP = {}
+for _icon, _fallback in PANEL_ICON_FALLBACKS.items():
+    _PANEL_ICON_MAP[_icon.replace("\uFE0F", "")] = _fallback
+
+_ORDERED_PANEL_ICON_FALLBACKS = sorted(
+    _PANEL_ICON_MAP.items(),
+    key=lambda item: len(item[0]),
+    reverse=True,
+)
+
+_PANEL_UNSUPPORTED_GLYPHS = set()
+_PANEL_FALLBACK_READY = False
 
 # Nature-medieval forest palette
 DARK = {
@@ -142,11 +178,54 @@ def escape_html(text):
     return s.replace("\n", "<br>")
 
 
+def _font_can_render(font, glyph):
+    if not glyph:
+        return True
+    try:
+        metrics = font.metrics(glyph)
+        if metrics and metrics[0] is not None:
+            return True
+    except Exception:
+        pass
+    try:
+        surf = font.render(glyph, True, (255, 255, 255))
+        return surf.get_width() > 0 and surf.get_height() > 0
+    except Exception:
+        return False
+
+
+def configure_panel_glyph_fallback(font_profile=None):
+    """Detect unsupported glyphs once and only fallback those glyphs in panel text."""
+    global _PANEL_UNSUPPORTED_GLYPHS, _PANEL_FALLBACK_READY
+
+    _PANEL_UNSUPPORTED_GLYPHS = set()
+    _PANEL_FALLBACK_READY = False
+
+    try:
+        probe_font = load_font(font_profile or {}, 16)
+    except Exception:
+        return
+
+    unsupported = set()
+    for glyph, _fallback in _ORDERED_PANEL_ICON_FALLBACKS:
+        if glyph and not _font_can_render(probe_font, glyph):
+            unsupported.add(glyph)
+
+    _PANEL_UNSUPPORTED_GLYPHS = unsupported
+    _PANEL_FALLBACK_READY = True
+
+
 def normalize_panel_text_icons(text):
-    """Replace high-risk unicode symbols with ASCII-safe labels for text panels."""
+    """Replace only unsupported symbols with ASCII-safe labels for text panels."""
     normalized = str(text).replace("\uFE0F", "")
-    for icon, fallback in PANEL_ICON_FALLBACKS.items():
+
+    for icon, fallback in _ORDERED_PANEL_ICON_FALLBACKS:
+        if not icon:
+            continue
+        if _PANEL_FALLBACK_READY and icon not in _PANEL_UNSUPPORTED_GLYPHS:
+            continue
         normalized = normalized.replace(icon, fallback)
+
     return normalized
 
 
@@ -428,6 +507,11 @@ class GameApp:
         self.manager = pygame_gui.UIManager(
             (self.width, self.height), theme)
 
+        try:
+            self.font_profile = setup_ui_font_profile(self.manager, BASE_DIR)
+        except Exception:
+            self.font_profile = {}
+
         self.clock   = pygame.time.Clock()
         self.running  = True
         self.dt       = 0.0
@@ -606,7 +690,12 @@ class GameApp:
 
         try:
             from outro_animation import QuitOutroOverlay
-            self._shutdown_overlay = QuitOutroOverlay(self.width, self.height, duration=1.5)
+            self._shutdown_overlay = QuitOutroOverlay(
+                self.width,
+                self.height,
+                duration=1.5,
+                font_profile=self.font_profile,
+            )
         except Exception:
             self._shutdown_overlay = None
             self._finalize_shutdown()
@@ -696,6 +785,7 @@ class PygameAdventureGUI:
         re.IGNORECASE,
     )
     _QUEST_COMPLETE_RE = re.compile(r"QUEST\s+COMPLETE:\s*([^\n\r]+)", re.IGNORECASE)
+    _LEVEL_UP_RE = re.compile(r"LEVEL\s+UP:\s*LEVEL\s+(\d+)", re.IGNORECASE)
     _EQUIP_RE = re.compile(r"EQUIPPED:\s*([^\n\r]+)", re.IGNORECASE)
     _STATUS_EFFECT_RE = re.compile(r"(poison|bleed|burn|frost|arcane)\s+damage", re.IGNORECASE)
 
@@ -707,6 +797,8 @@ class PygameAdventureGUI:
 
         # ── Load config ──────────────────────────────────────────────────
         self.config = self._load_config()
+        self.font_profile = getattr(app, "font_profile", {}) or {}
+        configure_panel_glyph_fallback(self.font_profile)
         self._hint_color = (90, 90, 110)
         self._command_helper_enabled = bool(
             self.config.get("ui", {}).get("command_helper", True)
@@ -763,6 +855,8 @@ class PygameAdventureGUI:
         self._pending_combat_pops = []
         self._pending_quest_pops = []  # Queued reward popups for quest completion
         self._quest_completion_data = None  # Active quest completion animation
+        self._level_up_data = None  # Active level-up celebration animation
+        self._pending_level_up_fanfares = []  # Queued level-up celebrations
         self._confetti_particles = []  # Confetti particles for quest completion
         self._crit_flash_t = 0.0
         self._equip_flash_t = 0.0  # Equipment equip white flash effect
@@ -1463,14 +1557,14 @@ class PygameAdventureGUI:
         # Drawn when the entry box is empty so the user knows what it's for.
         if self.entry and not self.entry.get_text():
             if self._hint_font is None:
-                self._hint_font = pygame.font.SysFont("Georgia", 14)
+                self._hint_font = load_font(self.font_profile, 14)
             r = self.entry.get_abs_rect()
             hint_surf = self._hint_font.render(
                 "Type a command...", True, self._hint_color)
             surface.blit(hint_surf, (r.x + 8, r.y + (r.height - hint_surf.get_height()) // 2))
         elif self.entry and self._autocomplete_hint:
             if self._hint_font is None:
-                self._hint_font = pygame.font.SysFont("Georgia", 14)
+                self._hint_font = load_font(self.font_profile, 14)
             r = self.entry.get_abs_rect()
             hint = self._hint_font.render(
                 f"Tab: {self._autocomplete_hint}", True, (150, 136, 104))
@@ -1564,9 +1658,9 @@ class PygameAdventureGUI:
 
     def _ensure_feedback_fonts(self):
         if self._feedback_font_small is None:
-            self._feedback_font_small = pygame.font.SysFont("Georgia", 18, bold=True)
+            self._feedback_font_small = load_font(self.font_profile, 18, bold=True)
         if self._feedback_font_big is None:
-            self._feedback_font_big = pygame.font.SysFont("Georgia", 22, bold=True)
+            self._feedback_font_big = load_font(self.font_profile, 22, bold=True)
 
     def _spawn_feedback_pop(self, text, color=(241, 214, 129), *, x=None, y=None,
                             duration=1.0, rise=46, size="large", kind="generic",
@@ -1671,6 +1765,27 @@ class PygameAdventureGUI:
         # Spawn initial confetti burst
         self._spawn_confetti_burst()
 
+    def _queue_level_up_fanfare(self, level_num):
+        """Queue a level-up celebration animation."""
+        try:
+            level_value = int(level_num)
+        except Exception:
+            return
+
+        payload = {
+            "level": level_value,
+            "t": 0.0,
+            "duration": 2.8,
+        }
+
+        if self._level_up_data is None:
+            self._level_up_data = payload
+        else:
+            self._pending_level_up_fanfares.append(payload)
+
+        # Keep the celebration visible but lighter than quest completion.
+        self._spawn_confetti_burst()
+
     def _spawn_confetti_burst(self):
         """Spawn confetti particles for quest completion celebration."""
         import random
@@ -1736,6 +1851,9 @@ class PygameAdventureGUI:
             if quest_title:
                 self._queue_quest_fanfare(quest_title)
 
+        for level_num in self._LEVEL_UP_RE.findall(text_s):
+            self._queue_level_up_fanfare(level_num)
+
         # Equipment equip flash effect
         equip_match = self._EQUIP_RE.search(text_s)
         if equip_match:
@@ -1789,6 +1907,15 @@ class PygameAdventureGUI:
             self._quest_completion_data["t"] += dt
             if self._quest_completion_data["t"] >= self._quest_completion_data["duration"]:
                 self._quest_completion_data = None
+
+        # Level-up celebration animation
+        if self._level_up_data is not None:
+            self._level_up_data["t"] += dt
+            if self._level_up_data["t"] >= self._level_up_data["duration"]:
+                if self._pending_level_up_fanfares:
+                    self._level_up_data = self._pending_level_up_fanfares.pop(0)
+                else:
+                    self._level_up_data = None
         
         # Update confetti particles
         alive_confetti = []
@@ -1996,7 +2123,7 @@ class PygameAdventureGUI:
                 surface.blit(glow_surf, (0, 0))
             
             # Draw quest name in large text
-            quest_font = pygame.font.SysFont("Georgia", 44, bold=True)
+            quest_font = load_font(self.font_profile, 44, bold=True)
             # Use decorative text without emoji
             quest_display = f"< < {qc['quest_name']} > >"
             quest_text = quest_font.render(quest_display, True, (236, 206, 124))
@@ -2016,11 +2143,48 @@ class PygameAdventureGUI:
             # Draw "QUEST COMPLETE" subtitle
             if p < 0.6:
                 subtitle_alpha = int(255 * ease_out_cubic(clamp01(p / 0.3)))
-                subtitle_font = pygame.font.SysFont("Georgia", 20, italic=True)
+                subtitle_font = load_font(self.font_profile, 20, italic=True)
                 subtitle = subtitle_font.render("QUEST COMPLETE", True, (200, 220, 100))
                 subtitle = subtitle.convert_alpha()
                 subtitle.set_alpha(subtitle_alpha)
                 subtitle_rect = subtitle.get_rect(center=(self.width // 2, self.height // 3 + 60))
+                surface.blit(subtitle, subtitle_rect)
+
+        # Level-up animation
+        if self._level_up_data is not None:
+            lu = self._level_up_data
+            p = clamp01(lu["t"] / lu["duration"])
+
+            glow_alpha = int(96 * (1.0 - p))
+            if glow_alpha > 0:
+                glow_surf = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+                center_x, center_y = self.width // 2, self.height // 2
+                for radius in range(160, 40, 18):
+                    alpha = int(glow_alpha * (1.0 - (radius - 40) / 120.0))
+                    pygame.draw.circle(glow_surf, (142, 198, 255, alpha), (center_x, center_y), radius)
+                surface.blit(glow_surf, (0, 0))
+
+            title_font = load_font(self.font_profile, 46, bold=True)
+            subtitle_font = load_font(self.font_profile, 20, italic=True)
+
+            level_display = f"LEVEL {lu['level']}"
+            title = title_font.render(level_display, True, (166, 214, 255))
+            title = title.convert_alpha()
+            shadow = title_font.render(level_display, True, (30, 38, 56))
+            shadow = shadow.convert_alpha()
+            shadow.set_alpha(120)
+
+            title_rect = title.get_rect(center=(self.width // 2, self.height // 3))
+            shadow_rect = shadow.get_rect(center=(self.width // 2 + 3, self.height // 3 + 3))
+            surface.blit(shadow, shadow_rect)
+            surface.blit(title, title_rect)
+
+            if p < 0.7:
+                subtitle_alpha = int(255 * ease_out_cubic(clamp01(p / 0.35)))
+                subtitle = subtitle_font.render("LEVEL UP", True, (210, 235, 255))
+                subtitle = subtitle.convert_alpha()
+                subtitle.set_alpha(subtitle_alpha)
+                subtitle_rect = subtitle.get_rect(center=(self.width // 2, self.height // 3 + 56))
                 surface.blit(subtitle, subtitle_rect)
 
         # Floating XP/feedback text
@@ -2411,7 +2575,7 @@ class PygameAdventureGUI:
     def _start_death_screen(self, respawn_text):
         from death_screen import DeathOverlay
         self._death_overlay = DeathOverlay(
-            self.app.width, self.app.height, respawn_text)
+            self.app.width, self.app.height, respawn_text, self.font_profile)
 
     # ------------------------------------------------------------------
     #  TRAVEL ANIMATION
@@ -2420,7 +2584,7 @@ class PygameAdventureGUI:
     def _start_travel_animation(self, island_name, deferred_text):
         from travel_animation import TravelOverlay
         self._travel_overlay = TravelOverlay(
-            self.app.width, self.app.height, island_name, deferred_text)
+            self.app.width, self.app.height, island_name, deferred_text, self.font_profile)
 
     # ------------------------------------------------------------------
     #  HOTBAR

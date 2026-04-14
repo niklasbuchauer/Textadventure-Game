@@ -50,6 +50,8 @@ def test_xp_and_leveling():
     msg = award_xp(p, 60, "test2")
     assert p.stats["level"] == 2, f"Should be level 2, got {p.stats['level']}"
     assert p.stats["skill_points"] > 0, "Should have skill points"
+    assert "LEVEL UP: Level" in msg, "Expected text level-up marker"
+    assert "╔" not in msg and "╚" not in msg, "Level-up output should not use box art"
     print(f"  After 110 XP: Level={p.stats['level']}, XP={p.stats['xp']}/{p.stats['xp_to_next']}, SP={p.stats['skill_points']}")
     print(f"  Level-up message contains banner: {'LEVEL UP' in msg}")
     print("  PASSED\n")

@@ -13,6 +13,7 @@ Animation frame sequences are stored in ANIMATION_FRAMES.
 """
 
 import pygame
+from font_support import load_font
 
 # ──────────────────────────────────────────────────────────────────────────────
 #  MINIGAME DIFFICULTY SYSTEM
@@ -1349,9 +1350,9 @@ def _ensure_fonts():
     global _MONO_FONT, _SMALL_FONT, _TITLE_FONT
     if _MONO_FONT is None:
         pygame.font.init()
-        _MONO_FONT  = pygame.font.SysFont("Courier New", 14)
-        _SMALL_FONT = pygame.font.SysFont("Courier New", 11)
-        _TITLE_FONT = pygame.font.SysFont("Courier New", 17, bold=True)
+        _MONO_FONT  = load_font({}, 14, mono=True)
+        _SMALL_FONT = load_font({}, 11, mono=True)
+        _TITLE_FONT = load_font({}, 17, mono=True, bold=True)
 
 
 def render_ascii_block(surface, lines, x, y,

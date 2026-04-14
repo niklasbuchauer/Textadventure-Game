@@ -13,6 +13,7 @@
 import pygame
 import math
 import random
+from font_support import load_font
 
 # ── Colour palette ────────────────────────────────────────────────────────────
 
@@ -86,14 +87,9 @@ def _fit_text(text: str, font: pygame.font.Font, max_w: int) -> str:
             hi = mid - 1
     return best or ellipsis
 
-def _font_pick(size: int, bold: bool = False) -> pygame.font.Font:
-    """Load the best available serif/antiqua font."""
-    for name in ("Palatino Linotype", "Book Antiqua", "Georgia",
-                 "Times New Roman", "serif"):
-        f = pygame.font.SysFont(name, size, bold=bold)
-        if f is not None:
-            return f
-    return pygame.font.Font(None, size)
+def _font_pick(size: int, bold: bool = False, font_profile=None) -> pygame.font.Font:
+    """Load a glyph-safe UI font using the shared runtime profile."""
+    return load_font(font_profile or {}, size, bold=bold)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -113,6 +109,7 @@ class JournalWindow:
 
     def __init__(self, gui):
         self.gui = gui
+        self._font_profile = getattr(gui, "font_profile", {}) or {}
 
         # State
         self._alive    = True
@@ -158,7 +155,7 @@ class JournalWindow:
     def _f(self, size: int, bold: bool = False) -> pygame.font.Font:
         key = (size, bold)
         if key not in self._fcache:
-            self._fcache[key] = _font_pick(size, bold)
+            self._fcache[key] = _font_pick(size, bold, self._font_profile)
         return self._fcache[key]
 
     # ── Data ───────────────────────────────────────────────────────────────────

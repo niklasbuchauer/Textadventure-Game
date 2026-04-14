@@ -710,6 +710,7 @@ import pygame_gui
 from pygame_gui.elements import (
     UIButton, UILabel, UIWindow, UIImage, UITextEntryLine,
 )
+from font_support import load_font
 
 NODE_R = 11
 RING_GAP = 110
@@ -736,13 +737,9 @@ def _hex_to_rgb(h):
     return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
 
 
-def _st_font(size: int, bold: bool = False) -> "pygame.font.Font":
-    """Load the best available medieval serif font, falling back gracefully."""
-    for name in ("Palatino Linotype", "Georgia", "Times New Roman"):
-        path = pygame.font.match_font(name)
-        if path:
-            return pygame.font.SysFont(name, size, bold=bold)
-    return pygame.font.Font(None, max(8, size + 4))
+def _st_font(size: int, bold: bool = False, font_profile=None) -> "pygame.font.Font":
+    """Load a glyph-safe font using the shared runtime profile."""
+    return load_font(font_profile or {}, max(8, size), bold=bold)
 
 
 class SkillTreeWindow:
@@ -752,6 +749,7 @@ class SkillTreeWindow:
     def __init__(self, app, player, engine=None):
         self.app = app
         self.manager = app.manager
+        self._font_profile = getattr(app, "font_profile", {}) or {}
         self.player = player
         self.engine = engine
         self.window = None
@@ -791,11 +789,11 @@ class SkillTreeWindow:
         if self._fonts:
             return
         self._fonts = {
-            "title":  _st_font(12),
-            "bold":   _st_font(10, bold=True),
-            "normal": _st_font(9),
-            "small":  _st_font(8),
-            "tiny":   _st_font(7),
+            "title":  _st_font(12, font_profile=self._font_profile),
+            "bold":   _st_font(10, bold=True, font_profile=self._font_profile),
+            "normal": _st_font(9, font_profile=self._font_profile),
+            "small":  _st_font(8, font_profile=self._font_profile),
+            "tiny":   _st_font(7, font_profile=self._font_profile),
         }
 
     def is_open(self):

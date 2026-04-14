@@ -19,7 +19,7 @@
             "text_shadow": "#000000"
         },
         "font": {
-            "name": "Georgia",
+            "name": "Segoe UI Symbol",
             "size": "14"
         }
     },
@@ -36,7 +36,7 @@
             "disabled_text": "#6d645a"
         },
         "font": {
-            "name": "Georgia",
+            "name": "Segoe UI Symbol",
             "size": "14"
         },
         "misc": {
@@ -191,7 +191,7 @@
             "normal_bg": "#1a1815"
         },
         "font": {
-            "name": "Georgia",
+            "name": "Segoe UI Symbol",
             "size": "12",
             "bold": "1"
         }
@@ -224,7 +224,7 @@
             "hovered_border": "#5d5444"
         },
         "font": {
-            "name": "Georgia",
+            "name": "Segoe UI Symbol",
             "size": "14"
         },
         "misc": {
@@ -244,7 +244,7 @@
             "normal_border": "#2d2a25"
         },
         "font": {
-            "name": "Georgia",
+            "name": "Segoe UI Symbol",
             "size": "14"
         },
         "misc": {
@@ -261,7 +261,7 @@
             "normal_border": "#4a4338"
         },
         "font": {
-            "name": "Georgia",
+            "name": "Segoe UI Symbol",
             "size": "14"
         },
         "misc": {
@@ -279,7 +279,7 @@
             "hovered_text": "#ddd0a8"
         },
         "font": {
-            "name": "Georgia",
+            "name": "Segoe UI Symbol",
             "size": "13"
         },
         "misc": {
@@ -299,7 +299,7 @@
             "normal_border": "#3d3a2f"
         },
         "font": {
-            "name": "Georgia",
+            "name": "Segoe UI Symbol",
             "size": "13"
         },
         "misc": {
@@ -314,7 +314,7 @@
             "normal_text": "#d8d0a0"
         },
         "font": {
-            "name": "Georgia",
+            "name": "Segoe UI Symbol",
             "size": "14"
         },
         "misc": {
@@ -328,7 +328,7 @@
             "normal_bg": "#00000000"
         },
         "font": {
-            "name": "Georgia",
+            "name": "Segoe UI Symbol",
             "size": "12"
         }
     },
@@ -339,7 +339,7 @@
             "normal_bg": "#00000000"
         },
         "font": {
-            "name": "Georgia",
+            "name": "Segoe UI Symbol",
             "size": "13",
             "bold": "1"
         }
@@ -351,7 +351,7 @@
             "normal_bg": "#00000000"
         },
         "font": {
-            "name": "Georgia",
+            "name": "Segoe UI Symbol",
             "size": "13",
             "bold": "1"
         }
@@ -363,7 +363,7 @@
             "normal_bg": "#00000000"
         },
         "font": {
-            "name": "Georgia",
+            "name": "Segoe UI Symbol",
             "size": "12",
             "bold": "1"
         }
@@ -389,7 +389,7 @@
             "normal_border": "#4a4338"
         },
         "font": {
-            "name": "Georgia",
+            "name": "Segoe UI Symbol",
             "size": "14"
         }
     },
@@ -447,3 +447,5 @@
         }
     }
 }
+
+

@@ -351,43 +351,17 @@ def award_xp(player, amount, source="unknown"):
             class_id2 = stats.get("class", "warrior")
             mg = {"warrior": 5, "rogue": 6, "mage": 10}.get(class_id2, 5)
 
-            if feel == "low":
-                result += "\n\n"
-                result += f"  LEVEL UP! You reached Level {new_level}.\n"
-                result += f"  +{sp} Skill Point{'s' if sp > 1 else ''} | HP/MP fully restored.\n"
-                result += f"  Max HP: {stats.get('health_max', 100)} | Max MP: {stats.get('max_mana', 0)} (+{mg})\n"
-                result += f"  Total Skill Points: {stats.get('skill_points', 0)}\n"
-            elif feel == "high":
-                result += "\n\n"
-                result += "╔" + "═" * 53 + "╗\n"
-                result += "║              ✨✨ LEVEL ASCENSION! ✨✨               ║\n"
-                result += "╠" + "═" * 53 + "╣\n"
-                result += f"║  You have reached Level {new_level:<2}!{' ' * 28}║\n"
-                result += f"║  +{sp} Skill Point{'s' if sp > 1 else ''} earned!{' ' * 29}║\n"
-                result += f"║  Max Health increased to {stats.get('health_max', 100):<3}{' ' * 24}║\n"
-                result += "║  Health fully restored!                              ║\n"
-                result += f"║  Max Mana increased to {stats.get('max_mana', 0):<3} (+{mg}){' ' * 19}║\n"
-                result += "║  Mana fully restored!                                ║\n"
-                result += "╠" + "═" * 53 + "╣\n"
-                result += f"║  Total Skill Points: {stats.get('skill_points', 0):<3}{' ' * 27}║\n"
-                result += "║  Power hums through your veins. Press onward.        ║\n"
-                result += "║  Tip: use 'skills' to open your skill tree.         ║\n"
-                result += "╚" + "═" * 53 + "╝\n"
-            else:
-                result += "\n\n"
-                result += "╔" + "═" * 53 + "╗\n"
-                result += "║                 ✨ LEVEL ASCENSION ✨                 ║\n"
-                result += "╠" + "═" * 53 + "╣\n"
-                result += f"║  You have reached Level {new_level:<2}!{' ' * 28}║\n"
-                result += f"║  +{sp} Skill Point{'s' if sp > 1 else ''} earned!{' ' * 29}║\n"
-                result += f"║  Max Health increased to {stats.get('health_max', 100):<3}{' ' * 24}║\n"
-                result += "║  Health fully restored!                              ║\n"
-                result += f"║  Max Mana increased to {stats.get('max_mana', 0):<3} (+{mg}){' ' * 19}║\n"
-                result += "║  Mana fully restored!                                ║\n"
-                result += "╠" + "═" * 53 + "╣\n"
-                result += f"║  Total Skill Points: {stats.get('skill_points', 0):<3}{' ' * 27}║\n"
-                result += "║  Tip: use 'skills' to open your skill tree.         ║\n"
-                result += "╚" + "═" * 53 + "╝\n"
+            result += "\n\n"
+            result += f"LEVEL UP: Level {new_level}\n"
+            result += f"  +{sp} Skill Point{'s' if sp > 1 else ''} earned\n"
+            result += f"  Max HP: {stats.get('health_max', 100)}\n"
+            result += f"  Max MP: {stats.get('max_mana', 0)} (+{mg})\n"
+            result += "  Health and mana fully restored\n"
+            result += f"  Total Skill Points: {stats.get('skill_points', 0)}\n"
+            if feel == "high":
+                result += "  Power hums through your veins. Press onward.\n"
+            if feel != "low":
+                result += "  Tip: use 'skills' to open your skill tree.\n"
     else:
         # Show progress to next level
         xp_to_next = stats.get("xp_to_next", 0)

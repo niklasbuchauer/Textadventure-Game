@@ -6,6 +6,7 @@ before auto-dismissing and showing the respawn text.
 """
 
 import pygame
+from font_support import load_font
 
 BG = (0x0a, 0x0a, 0x0a)
 RED = (0xcc, 0x00, 0x00)
@@ -31,20 +32,21 @@ class DeathOverlay:
     When done, the caller reads ``self.respawn_text`` and appends it.
     """
 
-    def __init__(self, width, height, respawn_text):
+    def __init__(self, width, height, respawn_text, font_profile=None):
         self.width  = width
         self.height = height
         self.respawn_text = respawn_text
         self.done   = False
+        self._font_profile = font_profile or {}
 
         self._timer     = 0.0
         self._remaining = 5
 
         # Pre-render fonts
-        self._font_skull = pygame.font.SysFont("Courier New", 13)
-        self._font_title = pygame.font.SysFont("Courier New", 28, bold=True)
-        self._font_sub   = pygame.font.SysFont("Courier New", 13, italic=True)
-        self._font_cd    = pygame.font.SysFont("Courier New", 11)
+        self._font_skull = load_font(self._font_profile, 13, mono=True)
+        self._font_title = load_font(self._font_profile, 28, bold=True, mono=True)
+        self._font_sub   = load_font(self._font_profile, 13, italic=True, mono=True)
+        self._font_cd    = load_font(self._font_profile, 11, mono=True)
 
     def update(self, dt):
         if self.done:

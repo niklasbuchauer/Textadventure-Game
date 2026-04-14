@@ -3,6 +3,7 @@ Interactive party/faction overlay window for pygame UI.
 """
 
 import pygame
+from font_support import load_font
 
 from faction_system import FACTIONS, get_faction_rank_visual_data
 from pet_system import (
@@ -32,10 +33,11 @@ class PartyFactionOverlay:
         self._faction_tab_rect = pygame.Rect(0, 0, 0, 0)
         self._party_tab_rect = pygame.Rect(0, 0, 0, 0)
 
-        self._font_title = pygame.font.SysFont("Consolas", 30, bold=True)
-        self._font_header = pygame.font.SysFont("Consolas", 22, bold=True)
-        self._font_body = pygame.font.SysFont("Consolas", 18)
-        self._font_small = pygame.font.SysFont("Consolas", 16)
+        font_profile = getattr(gui, "font_profile", {}) or {}
+        self._font_title = load_font(font_profile, 30, bold=True)
+        self._font_header = load_font(font_profile, 22, bold=True)
+        self._font_body = load_font(font_profile, 18)
+        self._font_small = load_font(font_profile, 16)
 
     def is_open(self):
         return self._alive

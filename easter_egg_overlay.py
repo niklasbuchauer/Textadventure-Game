@@ -1,6 +1,7 @@
 """Interactive overlay for easter egg rooms."""
 
 import pygame
+from font_support import load_font
 
 
 def _wrap_lines(text, font, width):
@@ -52,11 +53,12 @@ class EasterEggRoomOverlay:
         self._tile_legend.setdefault("~", {"color": (27, 58, 86)})
         self._tile_legend.setdefault("*", {"color": (99, 77, 34)})
 
-        self._font_title = pygame.font.SysFont("Georgia", 28, bold=True)
-        self._font_sub = pygame.font.SysFont("Georgia", 18)
-        self._font_body = pygame.font.SysFont("Georgia", 18)
-        self._font_hint = pygame.font.SysFont("Georgia", 16, bold=True)
-        self._font_map = pygame.font.SysFont("Consolas", 12, bold=True)
+        font_profile = getattr(gui, "font_profile", {}) or {}
+        self._font_title = load_font(font_profile, 28, bold=True)
+        self._font_sub = load_font(font_profile, 18)
+        self._font_body = load_font(font_profile, 18)
+        self._font_hint = load_font(font_profile, 16, bold=True)
+        self._font_map = load_font(font_profile, 12, bold=True, mono=True)
 
     def is_open(self):
         return not self.done

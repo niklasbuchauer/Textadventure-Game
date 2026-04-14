@@ -57,8 +57,16 @@ def handle_debug_commands(engine, args):
         return "Usage: debug skill points <amount>"
     elif subcommand == "level":
         if len(args) > 1:
+            if args[1].lower() == "up":
+                if len(args) > 2:
+                    return _debug_level_up(engine, args[2])
+                return _debug_level_up(engine, 1)
             return _debug_set_level(engine, args[1])
-        return "Usage: debug level <level_number>"
+        return "Usage: debug level <level_number> | debug level up [count]"
+    elif subcommand in ("levelup", "lvlup"):
+        if len(args) > 1:
+            return _debug_level_up(engine, args[1])
+        return _debug_level_up(engine, 1)
     elif subcommand == "items":
         if len(args) > 1:
             sub = args[1].lower()
@@ -234,7 +242,9 @@ Dungeons:
 
 Skills & Stats:
   debug skill points <amount>   - Set skill points
-  debug level <level_number>    - Set player level
+    debug level <level_number>    - Set player level directly
+    debug level up [count]        - Gain levels via XP (triggers fanfare)
+    debug levelup [count]         - Alias for "debug level up"
   debug stats                   - Show player stats
 
 Debug Modes:
@@ -276,6 +286,7 @@ Examples:
   debug spawn enemy crystal_beetle
   debug spawn enemy crystal_beetle 10
   debug spawn item iron_sword
+    debug level up 1
     debug loot sim boss crystal_titan 100
     debug set grant crystal titan regalia equip
     debug cosmetics unlock all
@@ -1152,6 +1163,69 @@ def _debug_set_level(engine, level):
         return f"Invalid level: {level}"
 
 
+def _debug_level_up(engine, levels=1):
+    """Level up by awarding XP so normal level-up feedback/animation triggers."""
+    player = getattr(engine, "player", None)
+    if not player:
+        return "No player found"
+
+    try:
+        levels = int(levels)
+    except (TypeError, ValueError):
+        return f"Invalid level count: {levels}"
+
+    if levels <= 0:
+        return "Level count must be at least 1"
+
+    try:
+        from progression_system import award_xp, MAX_LEVEL, get_xp_for_next_level
+    except Exception as exc:
+        return f"Progression system not available: {exc}"
+
+    stats = getattr(player, "stats", None)
+    if not isinstance(stats, dict):
+        return "Player stats unavailable"
+
+    start_level = int(stats.get("level", 1) or 1)
+    if start_level >= MAX_LEVEL:
+        return f"Already at max level ({MAX_LEVEL})."
+
+    messages = []
+    for _ in range(levels):
+        current_level = int(stats.get("level", 1) or 1)
+        if current_level >= MAX_LEVEL:
+            break
+
+        try:
+            xp_to_next = int(stats.get("xp_to_next", 0) or 0)
+        except Exception:
+            xp_to_next = 0
+
+        if xp_to_next <= 0:
+            next_threshold = get_xp_for_next_level(current_level)
+            if next_threshold is None:
+                break
+            total_xp = int(stats.get("xp", 0) or 0)
+            xp_to_next = max(1, next_threshold - total_xp)
+
+        msg = award_xp(player, max(1, xp_to_next), "debug level up")
+        if msg:
+            messages.append(msg.strip())
+
+        if int(stats.get("level", 1) or 1) <= current_level:
+            break
+
+    end_level = int(stats.get("level", 1) or 1)
+    gained = end_level - start_level
+    if gained <= 0:
+        return "No level gained. Check progression state and try again."
+
+    header = f"Level advanced: {start_level} -> {end_level} (+{gained})"
+    if messages:
+        return header + "\n\n" + "\n\n".join(messages)
+    return header
+
+
 def _debug_home_usage():
     return "Usage: debug home free | debug home items | debug home reset"
 
@@ -1552,148 +1626,213 @@ def _debug_toggle_free_disarm(engine):
 
 
 def _debug_list_all_enemies():
-	"""List all enemies from the combat system database."""
-	try:
-		from combat_system import ENEMY_DATABASE, BOSS_DATABASE, MINI_BOSS_DATABASE
-	except ImportError:
-		return "Combat system not available."
-	
-	result = "\n"
-	result += "╔═══════════════════════════════════════════════════════════════════════════════╗\n"
-	result += "║                          ALL ENEMIES DATABASE                                 ║\n"
-	result += "╚═══════════════════════════════════════════════════════════════════════════════╝\n\n"
-	
-	# Regular enemies
-	result += "┌─ REGULAR ENEMIES ─────────────────────────────────────────────────────────────┐\n\n"
-	for enemy_id in sorted(ENEMY_DATABASE.keys()):
-		enemy = ENEMY_DATABASE[enemy_id]
-		result += f"  {enemy_id:35s} - {enemy['name']}\n"
-	
-	# Mini-bosses
-	result += "\n┌─ MINI-BOSSES ─────────────────────────────────────────────────────────────────┐\n\n"
-	for mb_id in sorted(MINI_BOSS_DATABASE.keys()):
-		mb = MINI_BOSS_DATABASE[mb_id]
-		result += f"  {mb_id:35s} - {mb['name']}\n"
-	
-	# Bosses
-	result += "\n┌─ BOSSES ──────────────────────────────────────────────────────────────────────┐\n\n"
-	for boss_id in sorted(BOSS_DATABASE.keys()):
-		boss = BOSS_DATABASE[boss_id]
-		result += f"  {boss_id:35s} - {boss['name']}\n"
-	
-	result += f"\n{'─' * 79}\n"
-	result += f"Total: {len(ENEMY_DATABASE)} regular enemies, {len(MINI_BOSS_DATABASE)} mini-bosses, {len(BOSS_DATABASE)} bosses\n"
-	result += "Usage: debug spawn enemy <id> [level]\n"
-	result += "Example: debug spawn enemy crystal_beetle 10\n"
-	
-	return result
+    """List all enemies from the combat system database."""
+    try:
+        from combat_system import ENEMY_DATABASE, BOSS_DATABASE, MINI_BOSS_DATABASE
+    except ImportError:
+        return "Combat system not available."
+    try:
+        from overworld_encounters import OVERWORLD_ENEMIES
+    except ImportError:
+        OVERWORLD_ENEMIES = {}
+
+    result = "\n"
+    result += "╔═══════════════════════════════════════════════════════════════════════════════╗\n"
+    result += "║                          ALL ENEMIES DATABASE                                 ║\n"
+    result += "╚═══════════════════════════════════════════════════════════════════════════════╝\n\n"
+
+    # Regular enemies
+    result += "┌─ REGULAR ENEMIES ─────────────────────────────────────────────────────────────┐\n\n"
+    for enemy_id in sorted(ENEMY_DATABASE.keys()):
+        enemy = ENEMY_DATABASE[enemy_id]
+        result += f"  {enemy_id:35s} - {enemy['name']}\n"
+
+    # Overworld enemies
+    result += "\n┌─ OVERWORLD ENEMIES ───────────────────────────────────────────────────────────┐\n\n"
+    for enemy_id in sorted(OVERWORLD_ENEMIES.keys()):
+        enemy = OVERWORLD_ENEMIES[enemy_id]
+        result += f"  {enemy_id:35s} - {enemy.get('name', enemy_id)}\n"
+
+    # Mini-bosses
+    result += "\n┌─ MINI-BOSSES ─────────────────────────────────────────────────────────────────┐\n\n"
+    for mb_id in sorted(MINI_BOSS_DATABASE.keys()):
+        mb = MINI_BOSS_DATABASE[mb_id]
+        result += f"  {mb_id:35s} - {mb['name']}\n"
+
+    # Bosses
+    result += "\n┌─ BOSSES ──────────────────────────────────────────────────────────────────────┐\n\n"
+    for boss_id in sorted(BOSS_DATABASE.keys()):
+        boss = BOSS_DATABASE[boss_id]
+        result += f"  {boss_id:35s} - {boss['name']}\n"
+
+    result += f"\n{'─' * 79}\n"
+    result += (
+        f"Total: {len(ENEMY_DATABASE)} regular enemies, "
+        f"{len(OVERWORLD_ENEMIES)} overworld enemies, "
+        f"{len(MINI_BOSS_DATABASE)} mini-bosses, {len(BOSS_DATABASE)} bosses\n"
+    )
+    result += "Usage: debug spawn enemy <id> [level]\n"
+    result += "Example: debug spawn enemy crystal_beetle 10\n"
+
+    return result
 
 
 def _debug_spawn_enemy(engine, enemy_id, level=None):
-	"""Spawn an enemy and start combat."""
-	try:
-		from combat_system import (ENEMY_DATABASE, BOSS_DATABASE, MINI_BOSS_DATABASE,
-		                           create_enemy_instance, create_boss_instance, 
-		                           create_mini_boss_instance, get_combat_status)
-	except ImportError:
-		return "Combat system not available."
-	
-	# Check if already in combat
-	if hasattr(engine, 'pending_combat') and engine.pending_combat:
-		return "You're already in combat! Finish the current fight first."
-	
-	# Try to create the enemy
-	combat = None
-	if enemy_id in ENEMY_DATABASE:
-		combat = create_enemy_instance(enemy_id, level=level)
-		is_boss = False
-	elif enemy_id in MINI_BOSS_DATABASE:
-		# Create mini-boss by dungeon (we'll use the ID directly)
-		for dungeon, mb_id in [("crystal_caverns", "crystal_matriarch"),
-		                       ("iron_halls", "iron_warden"),
-		                       ("shadow_depths", "void_weaver"),
-		                       ("sunken_catacombs", "bone_colossus")]:
-			if mb_id == enemy_id:
-				if level is None:
-					combat = create_mini_boss_instance(dungeon)
-				else:
-					combat = create_mini_boss_instance(dungeon, floor_num=1)
-					# Override the level with the specified value
-					combat.level = level
-					from combat_system import scale_enemy_stats
-					# Re-scale the stats with the new level
-					mb_data_for_dungeon = {}
-					for d, id in [("crystal_caverns", "crystal_matriarch"),
-					              ("iron_halls", "iron_warden"),
-					              ("shadow_depths", "void_weaver"),
-					              ("sunken_catacombs", "bone_colossus")]:
-						if id == enemy_id:
-							from combat_system import get_mini_boss_for_dungeon
-							template = get_mini_boss_for_dungeon(d)
-							if template:
-								scaled = scale_enemy_stats(template, level, "mini_boss")
-								combat.max_hp = scaled["hp"]
-								combat.hp = scaled["hp"]
-								combat.attack = scaled["attack"]
-								combat.defense = scaled["defense"]
-								combat.xp_reward = scaled["xp_reward"]
-								combat.gold_reward = scaled["gold_reward"]
-							break
-				break
-		is_boss = False
-	elif enemy_id in BOSS_DATABASE:
-		# Create boss by dungeon
-		for dungeon, boss_id in [("crystal_caverns", "crystal_titan"),
-		                         ("iron_halls", "iron_forgemaster"),
-		                         ("shadow_depths", "shadow_sovereign"),
-		                         ("sunken_catacombs", "lich_king")]:
-			if boss_id == enemy_id:
-				if level is None:
-					combat = create_boss_instance(dungeon)
-				else:
-					combat = create_boss_instance(dungeon, floor_num=1)
-					# Override the level with the specified value
-					combat.level = level
-					from combat_system import scale_enemy_stats, get_boss_for_dungeon
-					# Re-scale the stats with the new level
-					template = get_boss_for_dungeon(dungeon)
-					if template:
-						scaled = scale_enemy_stats(template, level, "boss")
-						combat.max_hp = scaled["hp"]
-						combat.hp = scaled["hp"]
-						combat.attack = scaled["attack"]
-						combat.defense = scaled["defense"]
-						combat.xp_reward = scaled["xp_reward"]
-						combat.gold_reward = scaled["gold_reward"]
-				break
-		is_boss = True
-	else:
-		return f"Enemy '{enemy_id}' not found.\nUse 'debug enemies' to see all available enemies."
-	
-	if not combat:
-		return f"Failed to create enemy '{enemy_id}'."
-	
-	# Set up combat
-	engine.pending_combat = combat
-	
-	# Build result message
-	result = "\n" + "═" * 79 + "\n"
-	if combat.is_boss:
-		result += f"⚔️  BOSS SPAWNED: {combat.enemy_name} [Lv.{combat.level}]\n"
-	elif combat.is_mini_boss:
-		result += f"⚔️  MINI-BOSS SPAWNED: {combat.enemy_name} [Lv.{combat.level}]\n"
-	else:
-		result += f"⚔️  ENEMY SPAWNED: {combat.enemy_name} [Lv.{combat.level}]\n"
-	result += "═" * 79 + "\n"
-	result += f"{combat.enemy_description}\n"
-	result += f"HP: {combat.hp} | Attack: {combat.attack} | Defense: {combat.defense}\n"
-	
-	if combat.intro_text:
-		result += combat.intro_text + "\n"
-	
-	result += get_combat_status(engine.player, combat)
-	
-	return result
+    """Spawn an enemy and start combat."""
+    try:
+        from combat_system import (
+            ENEMY_DATABASE,
+            BOSS_DATABASE,
+            MINI_BOSS_DATABASE,
+            CombatState,
+            create_enemy_instance,
+            create_boss_instance,
+            create_mini_boss_instance,
+            get_combat_status,
+        )
+    except ImportError:
+        return "Combat system not available."
+    try:
+        from overworld_encounters import OVERWORLD_ENEMIES
+    except ImportError:
+        OVERWORLD_ENEMIES = {}
+
+    # Check if already in combat
+    if hasattr(engine, 'pending_combat') and engine.pending_combat:
+        return "You're already in combat! Finish the current fight first."
+
+    # Try to create the enemy
+    combat = None
+    if enemy_id in ENEMY_DATABASE:
+        combat = create_enemy_instance(enemy_id, level=level)
+        is_boss = False
+    elif enemy_id in OVERWORLD_ENEMIES:
+        player_level = 1
+        if hasattr(engine, 'player') and engine.player:
+            try:
+                player_level = int(engine.player.stats.get("level", 1) or 1)
+            except Exception:
+                player_level = 1
+        if level is not None:
+            try:
+                player_level = max(1, int(level))
+            except Exception:
+                pass
+
+        enemy_data = None
+        manager = getattr(engine, "encounter_manager", None)
+        if manager and hasattr(manager, "scale_enemy"):
+            try:
+                enemy_data = manager.scale_enemy(enemy_id, player_level)
+            except Exception:
+                enemy_data = None
+
+        if not enemy_data:
+            template = OVERWORLD_ENEMIES.get(enemy_id)
+            if template:
+                enemy_data = dict(template)
+                enemy_data["id"] = enemy_id
+
+        if enemy_data:
+            enemy_data = dict(enemy_data)
+            enemy_data["id"] = enemy_data.get("id", enemy_id)
+            combat = CombatState(enemy_data, is_boss=False, level=player_level)
+        is_boss = False
+    elif enemy_id in MINI_BOSS_DATABASE:
+        # Create mini-boss by dungeon (we'll use the ID directly)
+        for dungeon, mb_id in [
+            ("crystal_caverns", "crystal_matriarch"),
+            ("iron_halls", "iron_warden"),
+            ("shadow_depths", "void_weaver"),
+            ("sunken_catacombs", "bone_colossus"),
+        ]:
+            if mb_id == enemy_id:
+                if level is None:
+                    combat = create_mini_boss_instance(dungeon)
+                else:
+                    combat = create_mini_boss_instance(dungeon, floor_num=1)
+                    # Override the level with the specified value
+                    combat.level = level
+                    from combat_system import scale_enemy_stats
+
+                    # Re-scale the stats with the new level
+                    for d, id in [
+                        ("crystal_caverns", "crystal_matriarch"),
+                        ("iron_halls", "iron_warden"),
+                        ("shadow_depths", "void_weaver"),
+                        ("sunken_catacombs", "bone_colossus"),
+                    ]:
+                        if id == enemy_id:
+                            from combat_system import get_mini_boss_for_dungeon
+
+                            template = get_mini_boss_for_dungeon(d)
+                            if template:
+                                scaled = scale_enemy_stats(template, level, "mini_boss")
+                                combat.max_hp = scaled["hp"]
+                                combat.hp = scaled["hp"]
+                                combat.attack = scaled["attack"]
+                                combat.defense = scaled["defense"]
+                                combat.xp_reward = scaled["xp_reward"]
+                                combat.gold_reward = scaled["gold_reward"]
+                            break
+                break
+        is_boss = False
+    elif enemy_id in BOSS_DATABASE:
+        # Create boss by dungeon
+        for dungeon, boss_id in [
+            ("crystal_caverns", "crystal_titan"),
+            ("iron_halls", "iron_forgemaster"),
+            ("shadow_depths", "shadow_sovereign"),
+            ("sunken_catacombs", "lich_king"),
+        ]:
+            if boss_id == enemy_id:
+                if level is None:
+                    combat = create_boss_instance(dungeon)
+                else:
+                    combat = create_boss_instance(dungeon, floor_num=1)
+                    # Override the level with the specified value
+                    combat.level = level
+                    from combat_system import scale_enemy_stats, get_boss_for_dungeon
+
+                    # Re-scale the stats with the new level
+                    template = get_boss_for_dungeon(dungeon)
+                    if template:
+                        scaled = scale_enemy_stats(template, level, "boss")
+                        combat.max_hp = scaled["hp"]
+                        combat.hp = scaled["hp"]
+                        combat.attack = scaled["attack"]
+                        combat.defense = scaled["defense"]
+                        combat.xp_reward = scaled["xp_reward"]
+                        combat.gold_reward = scaled["gold_reward"]
+                break
+        is_boss = True
+    else:
+        return f"Enemy '{enemy_id}' not found.\nUse 'debug enemies' to see all available enemies."
+
+    if not combat:
+        return f"Failed to create enemy '{enemy_id}'."
+
+    # Set up combat
+    engine.pending_combat = combat
+
+    # Build result message
+    result = "\n" + "═" * 79 + "\n"
+    if combat.is_boss:
+        result += f"⚔️  BOSS SPAWNED: {combat.enemy_name} [Lv.{combat.level}]\n"
+    elif combat.is_mini_boss:
+        result += f"⚔️  MINI-BOSS SPAWNED: {combat.enemy_name} [Lv.{combat.level}]\n"
+    else:
+        result += f"⚔️  ENEMY SPAWNED: {combat.enemy_name} [Lv.{combat.level}]\n"
+    result += "═" * 79 + "\n"
+    result += f"{combat.enemy_description}\n"
+    result += f"HP: {combat.hp} | Attack: {combat.attack} | Defense: {combat.defense}\n"
+
+    if combat.intro_text:
+        result += combat.intro_text + "\n"
+
+    result += get_combat_status(engine.player, combat)
+
+    return result
 
 
 def _debug_open_items_window(engine):
@@ -2205,6 +2344,7 @@ General:
 Debug:
   debug <command>               - Access debug menu
   debug commands                - Show all debug commands
+        debug level up [count]       - Gain levels via XP and trigger level-up fanfare
     debug easter list             - List easter egg rooms to test
     debug easter cycle            - Open next easter egg room
     debug easter go <room_id>     - Open a specific easter egg room

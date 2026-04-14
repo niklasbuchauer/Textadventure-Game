@@ -14,6 +14,7 @@ import pygame_gui
 from pygame_gui.elements import (
     UIButton, UILabel, UIWindow, UIImage,
 )
+from font_support import load_font
 
 from ui_animation import UI_OPEN_DUR, ease_out_cubic
 
@@ -127,6 +128,7 @@ class LiveMapWindow:
         """
         self.app = app
         self.manager = app.manager
+        self._font_profile = getattr(app, "font_profile", {}) or {}
         self.rooms_data = rooms_data
         self.game_engine = game_engine
 
@@ -199,16 +201,8 @@ class LiveMapWindow:
     def _init_fonts(self):
         if self._font_label is not None:
             return
-        # Try medieval-feeling faces first, fall back to generic serif
         def _best(size):
-            for name in ("palatino linotype", "palatino", "georgia",
-                         "times new roman", "serif"):
-                try:
-                    f = pygame.font.SysFont(name, size)
-                    return f
-                except Exception:
-                    pass
-            return pygame.font.SysFont(None, size)
+            return load_font(self._font_profile, size)
         self._font_label  = _best(9)
         self._font_icon   = _best(14)
         self._font_legend = _best(8)
@@ -729,15 +723,7 @@ class LiveMapWindow:
         """Return a cached medieval-style font at *size*."""
         f = self._font_cache.get(size)
         if f is None:
-            for name in ("palatino linotype", "palatino", "georgia",
-                         "times new roman", "serif"):
-                try:
-                    f = pygame.font.SysFont(name, size)
-                    break
-                except Exception:
-                    pass
-            if f is None:
-                f = pygame.font.SysFont(None, size)
+            f = load_font(self._font_profile, size)
             self._font_cache[size] = f
         return f
 

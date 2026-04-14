@@ -112,6 +112,13 @@
 - `debug home items` = Add one copy of every home item
 - `debug home reset` = Full home wipe (ownership/layout/upgrades/bonuses)
 
+## Debug Progression Commands
+
+- `debug level <level_number>` = Set player level directly (stat override)
+- `debug level up [count]` = Gain one or more levels via XP awards (triggers level-up fanfare)
+- `debug levelup [count]` = Alias for `debug level up`
+- `debug skill points <amount>` = Set available skill points
+
 ## Debug Tutorial Commands
 
 - `debug tutorial` = Show current tutorial state

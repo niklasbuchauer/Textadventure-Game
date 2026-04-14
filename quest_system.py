@@ -1293,6 +1293,31 @@ class QuestManager:
 			return f"Training target deployed: {enemy_name}. Head to the Training Grounds and type 'fight'."
 		return f"A quest target has appeared in {room_id}: {enemy_name}."
 
+	def reconcile_scripted_visible_enemies(self):
+		"""Ensure scripted quest targets still exist after load/resume state drift."""
+		encounter_manager = getattr(self.engine, "encounter_manager", None)
+		visible = getattr(encounter_manager, "visible_enemies", None) if encounter_manager else None
+		if not isinstance(visible, dict):
+			return 0
+
+		spawned = 0
+		for qid, qs in self.quests.items():
+			if qs.status not in (QuestState.STATUS_ACTIVE, QuestState.STATUS_COMPLETE):
+				continue
+			qdef = QUEST_DATABASE.get(qid)
+			if not qdef:
+				continue
+			spawn_cfg = qdef.get("spawn_visible_enemy") if isinstance(qdef, dict) else None
+			if not isinstance(spawn_cfg, dict):
+				continue
+			room_id = str(spawn_cfg.get("room") or "").strip()
+			if not room_id or room_id in visible:
+				continue
+			if self._spawn_visible_enemy_for_quest(qdef):
+				spawned += 1
+
+		return spawned
+
 	def _check_all_objectives(self, quest_id):
 		"""Re-check all objectives for a quest (useful for collect/visit on accept)."""
 		qdef = QUEST_DATABASE.get(quest_id)
