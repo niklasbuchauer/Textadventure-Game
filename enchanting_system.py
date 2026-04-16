@@ -666,9 +666,17 @@ class RuneInscriptionOverlay:
 
         if self._font is None:
             import pygame
-            self._font  = pygame.font.SysFont("Courier New", 14, bold=True)
-            self._small = pygame.font.SysFont("Courier New", 11)
-            self._title = pygame.font.SysFont("Courier New", 18, bold=True)
+            from font_support import load_font, wrap_font_with_symbol_fallback
+
+            self._font = wrap_font_with_symbol_fallback(
+                load_font({}, 14, mono=True, bold=True)
+            )
+            self._small = wrap_font_with_symbol_fallback(
+                load_font({}, 11, mono=True)
+            )
+            self._title = wrap_font_with_symbol_fallback(
+                load_font({}, 18, mono=True, bold=True)
+            )
 
         sw, sh = surface.get_size()
         pw, ph = 460, 320

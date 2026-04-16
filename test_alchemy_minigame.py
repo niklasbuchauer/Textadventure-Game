@@ -4,8 +4,13 @@ sys.path.insert(0, '.')
 
 # Mock pygame
 class MockSurface:
-    def get_size(self): return (1000, 800)
+    def __init__(self, size=(1000, 800), flags=0):
+        self.width, self.height = size
+    def get_size(self): return (self.width, self.height)
+    def get_width(self): return self.width
+    def get_height(self): return self.height
     def blit(self, *args, **kwargs): pass
+    def fill(self, *args, **kwargs): pass
 
 class MockClock:
     def get_ticks(self): return 0
@@ -14,29 +19,62 @@ class MockEvent:
     KEYDOWN = 1
     K_SPACE = 32
 
+
+class MockFont:
+    def metrics(self, text):
+        text = str(text)
+        return [(0, 0, 8, 8, 8) for _ in text] or [(0, 0, 8, 8, 8)]
+
+    def render(self, text, aa, color, background=None):
+        width = max(1, len(str(text)) * 8)
+        return MockSurface((width, 16))
+
+
+class MockFontModule:
+    @staticmethod
+    def init():
+        pass
+
+    @staticmethod
+    def SysFont(name, size, bold=False, italic=False):
+        return MockFont()
+
+    @staticmethod
+    def Font(name, size):
+        return MockFont()
+
+
+class MockDraw:
+    @staticmethod
+    def rect(*args, **kwargs):
+        pass
+
+    @staticmethod
+    def ellipse(*args, **kwargs):
+        pass
+
+    @staticmethod
+    def circle(*args, **kwargs):
+        pass
+
 class MockModule:
     SRCALPHA = 65536
     KEYDOWN = 1
     K_SPACE = 32
     K_RETURN = 13
+    font = MockFontModule
+    draw = MockDraw
+    Surface = MockSurface
     
     class time:
         @staticmethod
         def get_ticks():
             return 0
     
-    class Surface:
-        def __init__(self, size, flags=0):
-            self.width, self.height = size
-        def blit(self, src, dest): pass
-    
-    @staticmethod
-    def draw(*args, **kwargs):
-        pass
-
 sys.modules['pygame'] = MockModule()
-sys.modules['pygame.draw'] = MockModule
+sys.modules['pygame.draw'] = MockDraw
 sys.modules['pygame.time'] = MockModule.time
+sys.modules['pygame.font'] = MockFontModule
 
 # Mock ascii_art
 class MockAscii:

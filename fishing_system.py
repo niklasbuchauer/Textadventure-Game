@@ -718,8 +718,13 @@ class FishingTimingOverlay:
 	def _ensure_fonts(self):
 		if self._font is None:
 			import pygame
-			self._font       = pygame.font.SysFont("Courier New", 15, bold=True)
-			self._small_font = pygame.font.SysFont("Courier New", 11)
+			from font_support import load_font, wrap_font_with_symbol_fallback
+			self._font = wrap_font_with_symbol_fallback(
+				load_font({}, 15, mono=True, bold=True)
+			)
+			self._small_font = wrap_font_with_symbol_fallback(
+				load_font({}, 11, mono=True)
+			)
 		# store extra fields if not present
 		if not hasattr(self, '_anim_frame'):
 			self._anim_frame = 0

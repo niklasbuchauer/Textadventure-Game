@@ -705,8 +705,16 @@ class RitualOverlay:
     def _ensure_fonts(self):
         if self._font is None:
             import pygame
+            from font_support import load_font, wrap_font_with_symbol_fallback
+
             pygame.font.init()
-            self._font       = pygame.font.SysFont("Courier New", 13)
-            self._small_font = pygame.font.SysFont("Courier New", 11)
-            self._title_font = pygame.font.SysFont("Courier New", 20, bold=True)
+            self._font = wrap_font_with_symbol_fallback(
+                load_font({}, 13, mono=True)
+            )
+            self._small_font = wrap_font_with_symbol_fallback(
+                load_font({}, 11, mono=True)
+            )
+            self._title_font = wrap_font_with_symbol_fallback(
+                load_font({}, 20, mono=True, bold=True)
+            )
         _ensure_fonts()

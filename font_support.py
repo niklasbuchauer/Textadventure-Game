@@ -12,7 +12,7 @@ MONO_FONT_ALIAS = "EstoriaMono"
 
 # Prioritize box drawing support while still checking common game symbols.
 _REQUIRED_BOX_GLYPHS = "║╗╣╠╔╝╚┌┐└┘─│━┃"
-_REQUIRED_SYMBOL_GLYPHS = "⚔🛡🏆✅◻★☠🔥❄⚗💰🔰⛑🥾🧤💍📿✨💀👑💎"
+_REQUIRED_SYMBOL_GLYPHS = "⚔🛡🏆✅◻★☠🔥❄⚗💰🔰⛑🥾🧤💍📿✨💀👑💎⭐✦✓✗→←↑↓▶◀▲▼●○◆◇⚙"
 
 _UI_SYSTEM_CANDIDATES = [
     "Segoe UI Symbol",
@@ -61,6 +61,88 @@ _MONO_BUNDLED_FILES = [
 ]
 
 _SCORE_CACHE: Dict[str, Tuple[int, int, int]] = {}
+_GLYPH_SUPPORT_CACHE: Dict[Tuple[int, str], bool] = {}
+
+# Global fallback map for symbols frequently used throughout in-game UI text.
+SYMBOL_FALLBACKS: Dict[str, str] = {
+    "⚔️": "[SWORDS]",
+    "⚔": "[SWORDS]",
+    "🛡️": "[SHIELD]",
+    "🛡": "[SHIELD]",
+    "🔰": "[CREST]",
+    "⛑️": "[HELM]",
+    "⛑": "[HELM]",
+    "🥾": "[BOOTS]",
+    "🧤": "[GLOVES]",
+    "💍": "[RING]",
+    "📿": "[CHARM]",
+    "✨": "[RARE]",
+    "💀": "[SKULL]",
+    "☠": "[SKULL]",
+    "👑": "[CROWN]",
+    "🏆": "[TROPHY]",
+    "💎": "[GEM]",
+    "💰": "[GOLD]",
+    "🗡️": "[BLADE]",
+    "🗡": "[BLADE]",
+    "🌟": "*",
+    "⭐": "*",
+    "★": "*",
+    "☆": "*",
+    "✦": "*",
+    "✶": "*",
+    "⚙": "[SET]",
+    "🔓": "[OPEN]",
+    "🔒": "[LOCK]",
+    "→": "->",
+    "←": "<-",
+    "↑": "^",
+    "↓": "v",
+    "▶": ">",
+    "◀": "<",
+    "►": ">",
+    "◄": "<",
+    "▲": "^",
+    "▼": "v",
+    "●": "o",
+    "○": "o",
+    "◆": "<>",
+    "◇": "<>",
+    "•": "-",
+    "✓": "v",
+    "✗": "x",
+    "✅": "[OK]",
+    "❌": "[X]",
+    "◻️": "[ ]",
+    "◻": "[ ]",
+    "♥": "<3",
+    "♡": "<3",
+    "—": "-",
+    "×": "x",
+    "·": ".",
+}
+
+
+def _normalize_symbol_text(text: str) -> str:
+    return str(text).replace("\uFE0F", "")
+
+
+_NORMALIZED_SYMBOL_FALLBACKS: Dict[str, str] = {}
+for _symbol, _fallback in SYMBOL_FALLBACKS.items():
+    _NORMALIZED_SYMBOL_FALLBACKS[_normalize_symbol_text(_symbol)] = _fallback
+
+_ORDERED_SYMBOL_FALLBACKS = sorted(
+    _NORMALIZED_SYMBOL_FALLBACKS.items(),
+    key=lambda item: len(item[0]),
+    reverse=True,
+)
+
+
+def _prepare_fallback_items(fallback_map: Dict[str, str]) -> List[Tuple[str, str]]:
+    normalized: Dict[str, str] = {}
+    for symbol, fallback in fallback_map.items():
+        normalized[_normalize_symbol_text(symbol)] = fallback
+    return sorted(normalized.items(), key=lambda item: len(item[0]), reverse=True)
 
 
 def _font_supports_char(font: pygame.font.Font, ch: str) -> bool:
@@ -69,14 +151,122 @@ def _font_supports_char(font: pygame.font.Font, ch: str) -> bool:
     try:
         metrics = font.metrics(ch)
         if metrics and metrics[0] is not None:
-            return True
+            pass
     except Exception:
         pass
+
     try:
         rendered = font.render(ch, True, (255, 255, 255))
-        return rendered.get_width() > 0 and rendered.get_height() > 0
+        if rendered.get_width() <= 0 or rendered.get_height() <= 0:
+            return False
+
+        # Some fonts render unsupported characters as an identical placeholder box.
+        # Compare against common placeholder glyphs and treat exact matches as unsupported.
+        if len(ch) == 1 and not ch.isspace():
+            try:
+                rendered_bytes = pygame.image.tostring(rendered, "RGBA")
+                for placeholder in ("\ufffd", "\u25a1", "?"):
+                    if ch == placeholder:
+                        continue
+                    try:
+                        placeholder_surface = font.render(placeholder, True, (255, 255, 255))
+                    except Exception:
+                        continue
+                    if placeholder_surface.get_size() != rendered.get_size():
+                        continue
+                    if pygame.image.tostring(placeholder_surface, "RGBA") == rendered_bytes:
+                        return False
+            except Exception:
+                pass
+
+        return True
     except Exception:
         return False
+
+
+def font_supports_text(font: pygame.font.Font, text: str) -> bool:
+    """Return True if *font* supports all non-whitespace glyphs in *text*."""
+    sample = _normalize_symbol_text(text)
+    if not sample:
+        return True
+
+    for ch in sample:
+        if ch.isspace():
+            continue
+        cache_key = (id(font), ch)
+        hit = _GLYPH_SUPPORT_CACHE.get(cache_key)
+        if hit is None:
+            hit = _font_supports_char(font, ch)
+            _GLYPH_SUPPORT_CACHE[cache_key] = hit
+        if not hit:
+            return False
+    return True
+
+
+def normalize_text_for_font(
+    text: str,
+    font: Optional[pygame.font.Font],
+    fallback_map: Optional[Dict[str, str]] = None,
+) -> str:
+    """Replace unsupported symbols in *text* with readable ASCII-like fallbacks."""
+    normalized = _normalize_symbol_text(text)
+    if not normalized:
+        return normalized
+
+    items = (
+        _ORDERED_SYMBOL_FALLBACKS
+        if fallback_map is None
+        else _prepare_fallback_items(fallback_map)
+    )
+
+    for symbol, fallback in items:
+        if not symbol or symbol not in normalized:
+            continue
+        if font is not None and font_supports_text(font, symbol):
+            continue
+        normalized = normalized.replace(symbol, fallback)
+
+    return normalized
+
+
+class _SymbolSafeFont:
+    """Proxy wrapper that normalizes unsupported symbols before rendering text."""
+
+    def __init__(
+        self,
+        base_font: pygame.font.Font,
+        fallback_map: Optional[Dict[str, str]] = None,
+    ):
+        self._base_font = base_font
+        self._fallback_map = fallback_map
+
+    def _safe_text(self, text: str) -> str:
+        return normalize_text_for_font(text, self._base_font, self._fallback_map)
+
+    def render(self, text, antialias, color, background=None):
+        safe_text = self._safe_text(text)
+        if background is None:
+            return self._base_font.render(safe_text, antialias, color)
+        return self._base_font.render(safe_text, antialias, color, background)
+
+    def size(self, text):
+        return self._base_font.size(self._safe_text(text))
+
+    def metrics(self, text):
+        return self._base_font.metrics(self._safe_text(text))
+
+    def __getattr__(self, name):
+        return getattr(self._base_font, name)
+
+
+def wrap_font_with_symbol_fallback(
+    font: pygame.font.Font,
+    fallback_map: Optional[Dict[str, str]] = None,
+):
+    """Return a font-like object that auto-falls back unsupported symbols."""
+    if isinstance(font, _SymbolSafeFont):
+        return font
+    return _SymbolSafeFont(font, fallback_map=fallback_map)
 
 
 def _score_font_path(path: str) -> Tuple[int, int, int]:

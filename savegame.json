@@ -260,13 +260,13 @@
       "crit_chance_bonus": 0.6500000000000001
     },
     "visited_rooms": [
-      "village_east_end",
-      "village_north_gate",
       "tutorial_spawn",
       "farmland_west",
-      "village_square",
       "village_training_grounds",
-      "stables"
+      "stables",
+      "village_east_end",
+      "village_north_gate",
+      "village_square"
     ],
     "unlocked_islands": []
   },

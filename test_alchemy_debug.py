@@ -6,16 +6,20 @@ sys.path.insert(0, '.')
 
 # More complete pygame mock
 class MockFont:
+    def metrics(self, text):
+        text = str(text)
+        return [(0, 0, 8, 8, 8) for _ in text] or [(0, 0, 8, 8, 8)]
+
     def render(self, text, aa, color):
-        surface = MockSurface()
-        return surface, surface.get_rect()
+        width = max(1, len(str(text)) * 8)
+        return MockSurface((width, 16))
 
 class MockFontModule:
     @staticmethod
     def Font(name, size):
         return MockFont()
     @staticmethod
-    def SysFont(name, size):
+    def SysFont(name, size, bold=False, italic=False):
         return MockFont()
     @staticmethod
     def init():
@@ -30,6 +34,12 @@ class MockSurface:
     
     def get_size(self):
         return (self.width, self.height)
+
+    def get_width(self):
+        return self.width
+
+    def get_height(self):
+        return self.height
     
     def get_rect(self):
         class Rect:

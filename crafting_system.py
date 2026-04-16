@@ -1410,7 +1410,11 @@ class CraftingOverlay:
         except ImportError:
             return
         if self._font is None:
-            self._font = pygame.font.SysFont("Courier New", 14)
+			from font_support import load_font, wrap_font_with_symbol_fallback
+
+			self._font = wrap_font_with_symbol_fallback(
+				load_font({}, 14, mono=True)
+			)
         sw, sh = surface.get_size()
         pw, ph = 440, 320
         px = (sw - pw) // 2
@@ -1615,7 +1619,11 @@ class CookingOverlay:
         except ImportError:
             return
         if self._font is None:
-            self._font = pygame.font.SysFont("Courier New", 14)
+			from font_support import load_font, wrap_font_with_symbol_fallback
+
+			self._font = wrap_font_with_symbol_fallback(
+				load_font({}, 14, mono=True)
+			)
         sw, sh = surface.get_size()
         pw, ph = 460, 340
         px = (sw - pw) // 2

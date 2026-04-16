@@ -690,6 +690,10 @@ class AlchemyOverlay:
     def _ensure_fonts(self):
         if self._font is None:
             import pygame
+            from font_support import load_font, wrap_font_with_symbol_fallback
+
             pygame.font.init()
-            self._font = pygame.font.SysFont("Courier New", 14)
+            self._font = wrap_font_with_symbol_fallback(
+                load_font({}, 14, mono=True)
+            )
         _ensure_fonts()

@@ -21,8 +21,10 @@ def test_panel_fallback_replaces_only_unsupported_glyphs():
 
     original_ready = pui._PANEL_FALLBACK_READY
     original_unsupported = set(pui._PANEL_UNSUPPORTED_GLYPHS)
+    original_probe_fonts = list(pui._PANEL_PROBE_FONTS)
     try:
         pui._PANEL_FALLBACK_READY = True
+        pui._PANEL_PROBE_FONTS = []
         pui._PANEL_UNSUPPORTED_GLYPHS = {"╔", "═", "╗", "⚔", "💰"}
         replaced = pui.normalize_panel_text_icons(sample)
         assert replaced == "+=+ [SWORDS] [GOLD]"
@@ -33,11 +35,53 @@ def test_panel_fallback_replaces_only_unsupported_glyphs():
     finally:
         pui._PANEL_FALLBACK_READY = original_ready
         pui._PANEL_UNSUPPORTED_GLYPHS = original_unsupported
+        pui._PANEL_PROBE_FONTS = original_probe_fonts
 
 
 def test_configure_panel_glyph_fallback_marks_ready():
     pui.configure_panel_glyph_fallback({})
     assert pui._PANEL_FALLBACK_READY is True
+
+
+def test_panel_fallback_handles_star_and_arrow_symbols():
+    sample = "★ READY → GO ✦"
+
+    original_ready = pui._PANEL_FALLBACK_READY
+    original_unsupported = set(pui._PANEL_UNSUPPORTED_GLYPHS)
+    original_probe_fonts = list(pui._PANEL_PROBE_FONTS)
+    try:
+        pui._PANEL_FALLBACK_READY = True
+        pui._PANEL_PROBE_FONTS = []
+        pui._PANEL_UNSUPPORTED_GLYPHS = {"★", "→", "✦"}
+        replaced = pui.normalize_panel_text_icons(sample)
+        assert replaced == "* READY -> GO *"
+
+        pui._PANEL_UNSUPPORTED_GLYPHS = set()
+        preserved = pui.normalize_panel_text_icons(sample)
+        assert preserved == "★ READY → GO ✦"
+    finally:
+        pui._PANEL_FALLBACK_READY = original_ready
+        pui._PANEL_UNSUPPORTED_GLYPHS = original_unsupported
+        pui._PANEL_PROBE_FONTS = original_probe_fonts
+
+
+def test_ui_widget_fallback_replaces_only_unsupported_glyphs():
+    sample = "★ Skills ►"
+
+    original_ready = pui._UI_FALLBACK_READY
+    original_unsupported = set(pui._UI_UNSUPPORTED_GLYPHS)
+    try:
+        pui._UI_FALLBACK_READY = True
+        pui._UI_UNSUPPORTED_GLYPHS = {"★", "►"}
+        replaced = pui.normalize_ui_widget_text(sample)
+        assert replaced == "* Skills >"
+
+        pui._UI_UNSUPPORTED_GLYPHS = set()
+        preserved = pui.normalize_ui_widget_text(sample)
+        assert preserved == "★ Skills ►"
+    finally:
+        pui._UI_FALLBACK_READY = original_ready
+        pui._UI_UNSUPPORTED_GLYPHS = original_unsupported
 
 
 def test_panel_format_preserves_spacing_for_box_layout():
@@ -68,6 +112,8 @@ if __name__ == "__main__":
         test_load_font_renders_box_chars,
         test_panel_fallback_replaces_only_unsupported_glyphs,
         test_configure_panel_glyph_fallback_marks_ready,
+        test_panel_fallback_handles_star_and_arrow_symbols,
+        test_ui_widget_fallback_replaces_only_unsupported_glyphs,
         test_panel_format_preserves_spacing_for_box_layout,
         test_panel_format_keeps_normal_text_without_nbsp,
         test_box_layout_detector_recognizes_ascii_fallback_boxes,

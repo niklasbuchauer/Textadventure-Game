@@ -14,7 +14,7 @@ import pygame_gui
 from pygame_gui.elements import (
     UIButton, UILabel, UIWindow, UIImage,
 )
-from font_support import load_font
+from font_support import load_font, wrap_font_with_symbol_fallback
 
 from ui_animation import UI_OPEN_DUR, ease_out_cubic
 
@@ -202,7 +202,9 @@ class LiveMapWindow:
         if self._font_label is not None:
             return
         def _best(size):
-            return load_font(self._font_profile, size)
+            return wrap_font_with_symbol_fallback(
+                load_font(self._font_profile, size)
+            )
         self._font_label  = _best(9)
         self._font_icon   = _best(14)
         self._font_legend = _best(8)
@@ -719,11 +721,27 @@ class LiveMapWindow:
         """Return cached RGB tuple for named colour."""
         return self._rgb_colors[key]
 
+    @staticmethod
+    def _safe_xy(value, default=(0.0, 0.0)):
+        """Return a numeric (x, y) tuple from potentially malformed coordinate data."""
+        if isinstance(value, (list, tuple)) and len(value) >= 2:
+            try:
+                return (float(value[0]), float(value[1]))
+            except Exception:
+                return default
+        return default
+
+    def _normalize_coordinates(self, value):
+        x, y = self._safe_xy(value)
+        return [x, y]
+
     def _get_font(self, size: int) -> pygame.font.Font:
         """Return a cached medieval-style font at *size*."""
         f = self._font_cache.get(size)
         if f is None:
-            f = load_font(self._font_profile, size)
+            f = wrap_font_with_symbol_fallback(
+                load_font(self._font_profile, size)
+            )
             self._font_cache[size] = f
         return f
 
@@ -1008,7 +1026,7 @@ class LiveMapWindow:
             for rid in positions:
                 if rid in rooms:
                     c = rooms[rid].get("coordinates", [0, 0])
-                    world_pos[rid] = (float(c[0]), float(c[1]))
+                    world_pos[rid] = self._safe_xy(c)
         world_pos = world_pos if len(world_pos) == len(positions) else None
         components = self._find_island_components(positions, world_pos)
         if not components:
@@ -1734,7 +1752,7 @@ class LiveMapWindow:
             for rid in positions:
                 if rid in rooms:
                     c = rooms[rid].get("coordinates", [0, 0])
-                    world_pos[rid] = (float(c[0]), float(c[1]))
+                    world_pos[rid] = self._safe_xy(c)
         world_pos = world_pos if len(world_pos) == len(positions) else None
 
         # Build per-island exclusion ellipses from the same spatial clusters
@@ -1902,8 +1920,9 @@ class LiveMapWindow:
 
         coord_map = {}
         for rid, rdata in rooms.items():
-            c = rdata.get("coordinates", [0, 0])
-            coord_map[(c[0], c[1])] = rid
+            c = rdata.get("coordinates", [0, 0]) if isinstance(rdata, dict) else [0, 0]
+            x, y = self._safe_xy(c)
+            coord_map[(x, y)] = rid
 
         positions, spacing = self._compute_layout(coord_map, sw, sh)
 
@@ -1940,15 +1959,24 @@ class LiveMapWindow:
                 continue
             if self._is_home_room_id(rid, room_obj):
                 continue
+
+            raw_coords = getattr(room_obj, "coordinates", None)
+            if raw_coords is None and isinstance(room_obj, dict):
+                raw_coords = room_obj.get("coordinates", [0, 0])
+
+            raw_exits = getattr(room_obj, "exits", None)
+            if raw_exits is None and isinstance(room_obj, dict):
+                raw_exits = room_obj.get("exits", {})
+            if not isinstance(raw_exits, dict):
+                raw_exits = {}
+
             rooms[rid] = {
                 "name": getattr(room_obj, "name", None)
                         or (room_obj.get("name", "???") if isinstance(room_obj, dict) else "???"),
-                "coordinates": getattr(room_obj, "coordinates", None)
-                               or (room_obj.get("coordinates", [0, 0]) if isinstance(room_obj, dict) else [0, 0]),
+                "coordinates": self._normalize_coordinates(raw_coords),
                 "location_type": getattr(room_obj, "location_type", None)
                                  or (room_obj.get("location_type", "wilderness") if isinstance(room_obj, dict) else "wilderness"),
-                "exits": getattr(room_obj, "exits", None)
-                         or (room_obj.get("exits", {}) if isinstance(room_obj, dict) else {}),
+                "exits": raw_exits,
             }
         self._cached_overworld_rooms = rooms
         self._cached_room_count = cur_count
@@ -1976,8 +2004,8 @@ class LiveMapWindow:
 
         coord_map = {}
         for rid, rdata in rooms.items():
-            c = rdata["coordinates"]
-            coord_map[(c[0], c[1])] = rid
+            x, y = self._safe_xy(rdata.get("coordinates", [0, 0]))
+            coord_map[(x, y)] = rid
 
         # ── Background: ocean, grid, island, waves (drawn directly every frame) ──
         # A surface-bake cache was tried but always crashes or clips at high zoom
@@ -2093,6 +2121,8 @@ class LiveMapWindow:
         label_font = self._get_font(10)
 
         for placed in placed_items:
+            if not isinstance(placed, dict):
+                continue
             item_id = placed.get("item_id", "")
             x = int(placed.get("x", 0))
             y = int(placed.get("y", 0))
@@ -2101,6 +2131,8 @@ class LiveMapWindow:
             sx = origin_x + (x - min_x) * tile_size
             sy = origin_y + (y - min_y) * tile_size
             item_def = get_home_item(item_id) or {} if HOME_MAP_AVAILABLE else {}
+            if not isinstance(item_def, dict):
+                item_def = {}
             item_color = (225, 201, 150)
             if HOME_MAP_AVAILABLE:
                 hex_col = item_def.get("map_color", "#d4b07a").lstrip("#")
@@ -2161,9 +2193,10 @@ class LiveMapWindow:
             return True
         if self.game_engine and self.game_engine.current_dungeon_instance:
             di = self.game_engine.current_dungeon_instance
-            if di.dungeon_data:
-                for _fnum, fdata in di.dungeon_data.get("floors", {}).items():
-                    if self.current_location in fdata.get("rooms", {}):
+            dungeon_data = getattr(di, "dungeon_data", None)
+            if isinstance(dungeon_data, dict):
+                for _fnum, fdata in dungeon_data.get("floors", {}).items():
+                    if self.current_location in (fdata.get("rooms", {}) if isinstance(fdata, dict) else {}):
                         return True
         return False
 
@@ -2184,10 +2217,11 @@ class LiveMapWindow:
     def _get_dungeon_floor_rooms(self, floor_num: int) -> dict:
         if self.game_engine and self.game_engine.current_dungeon_instance:
             di = self.game_engine.current_dungeon_instance
-            if di.dungeon_data:
-                floor_data = (di.dungeon_data.get("floors", {}).get(floor_num, {})
-                              or di.dungeon_data.get("floors", {}).get(str(floor_num), {}))
-                rooms = floor_data.get("rooms", {})
+            dungeon_data = getattr(di, "dungeon_data", None)
+            if isinstance(dungeon_data, dict):
+                floor_data = (dungeon_data.get("floors", {}).get(floor_num, {})
+                              or dungeon_data.get("floors", {}).get(str(floor_num), {}))
+                rooms = floor_data.get("rooms", {}) if isinstance(floor_data, dict) else {}
                 if rooms:
                     return rooms
 
@@ -2195,11 +2229,19 @@ class LiveMapWindow:
         floor_tag = f"_floor{floor_num}_"
         for rid, room_obj in self.rooms_data.items():
             if rid.startswith("dungeon_") and floor_tag in rid:
+                raw_coords = getattr(room_obj, "coordinates", None)
+                if raw_coords is None and isinstance(room_obj, dict):
+                    raw_coords = room_obj.get("coordinates", [0, 0])
+                raw_exits = getattr(room_obj, "exits", None)
+                if raw_exits is None and isinstance(room_obj, dict):
+                    raw_exits = room_obj.get("exits", {})
+                if not isinstance(raw_exits, dict):
+                    raw_exits = {}
                 result[rid] = {
                     "name": getattr(room_obj, "name", "???"),
                     "description": getattr(room_obj, "description", ""),
-                    "exits": getattr(room_obj, "exits", {}),
-                    "coordinates": getattr(room_obj, "coordinates", [0, 0]),
+                    "exits": raw_exits,
+                    "coordinates": self._normalize_coordinates(raw_coords),
                     "location_type": getattr(room_obj, "location_type", "dungeon"),
                 }
         return result
@@ -2207,8 +2249,12 @@ class LiveMapWindow:
     def _get_dungeon_total_floors(self) -> int:
         if self.game_engine and self.game_engine.current_dungeon_instance:
             di = self.game_engine.current_dungeon_instance
-            if di.dungeon_data:
-                return di.dungeon_data.get("num_floors", 1)
+            dungeon_data = getattr(di, "dungeon_data", None)
+            if isinstance(dungeon_data, dict):
+                try:
+                    return int(dungeon_data.get("num_floors", 1))
+                except Exception:
+                    return 1
         return 1
 
     @staticmethod

@@ -26,8 +26,9 @@ import importlib
 import html as html_module
 import time
 import difflib
+import traceback
 from ui_animation import clamp01, ease_in_out_sine, ease_out_cubic
-from font_support import load_font, setup_ui_font_profile
+from font_support import load_font, normalize_text_for_font, setup_ui_font_profile, wrap_font_with_symbol_fallback
 
 # ---------------------------------------------------------------------------
 #  Constants
@@ -101,6 +102,46 @@ PANEL_ICON_FALLBACKS = {
     "🗡️": "[BLADE]",
     "🗡": "[BLADE]",
     "🌟": "[STAR]",
+    "⭐": "*",
+    "★": "*",
+    "☆": "*",
+    "✦": "*",
+    "✶": "*",
+    "✓": "v",
+    "✗": "x",
+    "✅": "[OK]",
+    "❌": "[X]",
+    "⚠": "[WARN]",
+    "⚡": "[BOLT]",
+    "☠": "[SKULL]",
+    "🔥": "[FIRE]",
+    "❄": "[FROST]",
+    "🎯": "[HIT]",
+    "💥": "[IMPACT]",
+    "❤️": "<3",
+    "❤": "<3",
+    "♥": "<3",
+    "♡": "<3",
+    "◻️": "[ ]",
+    "◻": "[ ]",
+    "→": "->",
+    "←": "<-",
+    "↑": "^",
+    "↓": "v",
+    "▶": ">",
+    "◀": "<",
+    "►": ">",
+    "◄": "<",
+    "▲": "^",
+    "▼": "v",
+    "●": "o",
+    "○": "o",
+    "◆": "<>",
+    "◇": "<>",
+    "•": "-",
+    "—": "-",
+    "×": "x",
+    "·": ".",
     "📖": "[BOOK]",
     "📚": "[ARCHIVE]",
     "╔": "+",
@@ -127,6 +168,20 @@ PANEL_ICON_FALLBACKS = {
     "━": "-",
 }
 
+UI_WIDGET_ICON_FALLBACKS = {
+    "■": "[I]",
+    "▲": "^",
+    "●": "o",
+    "★": "*",
+    "○": "o",
+    "►": ">",
+    "▶": ">",
+    "◀": "<",
+    "⚙": "[SET]",
+    "🔓": "[OPEN]",
+    "🔒": "[LOCK]",
+}
+
 _PANEL_ICON_MAP = {}
 for _icon, _fallback in PANEL_ICON_FALLBACKS.items():
     _PANEL_ICON_MAP[_icon.replace("\uFE0F", "")] = _fallback
@@ -137,8 +192,21 @@ _ORDERED_PANEL_ICON_FALLBACKS = sorted(
     reverse=True,
 )
 
+_UI_ICON_MAP = {}
+for _icon, _fallback in UI_WIDGET_ICON_FALLBACKS.items():
+    _UI_ICON_MAP[_icon.replace("\uFE0F", "")] = _fallback
+
+_ORDERED_UI_ICON_FALLBACKS = sorted(
+    _UI_ICON_MAP.items(),
+    key=lambda item: len(item[0]),
+    reverse=True,
+)
+
 _PANEL_UNSUPPORTED_GLYPHS = set()
 _PANEL_FALLBACK_READY = False
+_PANEL_PROBE_FONTS = []
+_UI_UNSUPPORTED_GLYPHS = set()
+_UI_FALLBACK_READY = False
 _BOX_LAYOUT_GLYPHS = set("║╗╣╠╔╝╚┌┐└┘─│━┃┏┓┗┛├┤┬┴┼╔╗╚╝╠╣╦╩╬═")
 
 # Nature-medieval forest palette
@@ -212,12 +280,32 @@ def _font_can_render(font, glyph):
     try:
         metrics = font.metrics(glyph)
         if metrics and metrics[0] is not None:
-            return True
+            pass
     except Exception:
         pass
     try:
         surf = font.render(glyph, True, (255, 255, 255))
-        return surf.get_width() > 0 and surf.get_height() > 0
+        if surf.get_width() <= 0 or surf.get_height() <= 0:
+            return False
+
+        if len(glyph) == 1 and not glyph.isspace():
+            try:
+                surf_bytes = pygame.image.tostring(surf, "RGBA")
+                for placeholder in ("\ufffd", "\u25a1", "?"):
+                    if glyph == placeholder:
+                        continue
+                    try:
+                        ph = font.render(placeholder, True, (255, 255, 255))
+                    except Exception:
+                        continue
+                    if ph.get_size() != surf.get_size():
+                        continue
+                    if pygame.image.tostring(ph, "RGBA") == surf_bytes:
+                        return False
+            except Exception:
+                pass
+
+        return True
     except Exception:
         return False
 
@@ -225,32 +313,93 @@ def _font_can_render(font, glyph):
 def configure_panel_glyph_fallback(font_profile=None):
     """Detect unsupported glyphs once and only fallback those glyphs in panel text."""
     global _PANEL_UNSUPPORTED_GLYPHS, _PANEL_FALLBACK_READY
+    global _PANEL_PROBE_FONTS
+    global _UI_UNSUPPORTED_GLYPHS, _UI_FALLBACK_READY
 
     _PANEL_UNSUPPORTED_GLYPHS = set()
     _PANEL_FALLBACK_READY = False
+    _PANEL_PROBE_FONTS = []
+    _UI_UNSUPPORTED_GLYPHS = set()
+    _UI_FALLBACK_READY = False
 
     try:
-        probe_font = load_font(font_profile or {}, 16, mono=True)
+        probe_panel_font = load_font(font_profile or {}, 16, mono=True)
     except Exception:
-        return
+        probe_panel_font = None
 
-    unsupported = set()
-    for glyph, _fallback in _ORDERED_PANEL_ICON_FALLBACKS:
-        if glyph and not _font_can_render(probe_font, glyph):
-            unsupported.add(glyph)
+    try:
+        probe_ui_font = load_font(font_profile or {}, 14, mono=False)
+    except Exception:
+        probe_ui_font = None
 
-    _PANEL_UNSUPPORTED_GLYPHS = unsupported
-    _PANEL_FALLBACK_READY = True
+    _PANEL_PROBE_FONTS = [
+        f for f in (probe_panel_font, probe_ui_font)
+        if f is not None
+    ]
+
+    if _PANEL_PROBE_FONTS:
+        unsupported = set()
+        for glyph, _fallback in _ORDERED_PANEL_ICON_FALLBACKS:
+            if not glyph:
+                continue
+            # Preserve glyph only when every practical panel font can render it.
+            if any(not _font_can_render(probe_font, glyph) for probe_font in _PANEL_PROBE_FONTS):
+                unsupported.add(glyph)
+
+        _PANEL_UNSUPPORTED_GLYPHS = unsupported
+        _PANEL_FALLBACK_READY = True
+
+    if probe_ui_font is not None:
+        ui_unsupported = set()
+        for glyph, _fallback in _ORDERED_UI_ICON_FALLBACKS:
+            if glyph and not _font_can_render(probe_ui_font, glyph):
+                ui_unsupported.add(glyph)
+
+        _UI_UNSUPPORTED_GLYPHS = ui_unsupported
+        _UI_FALLBACK_READY = True
+
+
+def normalize_ui_widget_text(text):
+    """Replace unsupported glyphs in short widget labels (buttons/labels/icons)."""
+    normalized = str(text).replace("\uFE0F", "")
+
+    for icon, fallback in _ORDERED_UI_ICON_FALLBACKS:
+        if not icon:
+            continue
+        if _UI_FALLBACK_READY and icon not in _UI_UNSUPPORTED_GLYPHS:
+            continue
+        normalized = normalized.replace(icon, fallback)
+
+    return normalized
 
 
 def normalize_panel_text_icons(text):
     """Replace only unsupported symbols with ASCII-safe labels for text panels."""
     normalized = str(text).replace("\uFE0F", "")
 
+    if _PANEL_FALLBACK_READY:
+        normalized = normalize_text_for_font(normalized, None, {
+            icon: fallback
+            for icon, fallback in _ORDERED_PANEL_ICON_FALLBACKS
+            if icon in _PANEL_UNSUPPORTED_GLYPHS
+        })
+
+        # Final guard: any remaining unsupported non-ASCII glyph becomes plain '?'.
+        if _PANEL_PROBE_FONTS:
+            repaired = []
+            for ch in normalized:
+                if ch.isspace() or ord(ch) < 128:
+                    repaired.append(ch)
+                    continue
+                if any(not _font_can_render(probe_font, ch) for probe_font in _PANEL_PROBE_FONTS):
+                    repaired.append("?")
+                else:
+                    repaired.append(ch)
+            normalized = "".join(repaired)
+        return normalized
+
     for icon, fallback in _ORDERED_PANEL_ICON_FALLBACKS:
         if not icon:
-            continue
-        if _PANEL_FALLBACK_READY and icon not in _PANEL_UNSUPPORTED_GLYPHS:
             continue
         normalized = normalized.replace(icon, fallback)
 
@@ -348,7 +497,7 @@ class PygamePanelWidget:
 
         self.lock_btn = UIButton(
             relative_rect=pygame.Rect(self.rect.w - 38, 1, 32, th),
-            text="\U0001F513",      # 🔓
+            text=normalize_ui_widget_text("\U0001F513"),      # 🔓
             manager=manager,
             container=self.panel,
             object_id=ObjectID("#panel_lock_button", "button"),
@@ -380,7 +529,10 @@ class PygamePanelWidget:
     def toggle_lock(self):
         self._scroll_locked = not self._scroll_locked
         self.lock_btn.set_text(
-            "\U0001F512" if self._scroll_locked else "\U0001F513")
+            normalize_ui_widget_text(
+                "\U0001F512" if self._scroll_locked else "\U0001F513"
+            )
+        )
 
     # ── Message insertion ────────────────────────────────────────────────
 
@@ -897,6 +1049,8 @@ class PygameAdventureGUI:
         self._combat_shake_strength = 0.0
         self._feedback_font_small = None
         self._feedback_font_big = None
+        self._map_runtime_error_count = 0
+        self._last_map_error_notice_ts = 0.0
 
         # ── Hotbar ───────────────────────────────────────────────────────
         self._hotbar_buttons  = []    # (UIButton, ability_dict)
@@ -1039,38 +1193,38 @@ class PygameAdventureGUI:
 
         self.inv_btn = UIButton(
             relative_rect=pygame.Rect(bx, btn_y, btn_w, btn_h),
-            text="■ Inventory", manager=m,
+            text=normalize_ui_widget_text("■ Inventory"), manager=m,
             container=self.toolbar_panel, object_id=oid)
         bx += btn_w + 4
 
         self.stats_btn = UIButton(
             relative_rect=pygame.Rect(bx, btn_y, 80, btn_h),
-            text="▲ Stats", manager=m,
+            text=normalize_ui_widget_text("▲ Stats"), manager=m,
             container=self.toolbar_panel, object_id=oid)
         bx += 84
 
         self.debug_btn = UIButton(
             relative_rect=pygame.Rect(bx, btn_y, 80, btn_h),
-            text="● Debug", manager=m,
+            text=normalize_ui_widget_text("● Debug"), manager=m,
             container=self.toolbar_panel, object_id=oid)
         bx += 84
 
         # Conditional buttons (always created; hidden if system unavailable)
         self.skills_btn = UIButton(
             relative_rect=pygame.Rect(bx, btn_y, 80, btn_h),
-            text="★ Skills", manager=m,
+            text=normalize_ui_widget_text("★ Skills"), manager=m,
             container=self.toolbar_panel, object_id=oid)
         bx += 84
 
         self.journal_btn = UIButton(
             relative_rect=pygame.Rect(bx, btn_y, 90, btn_h),
-            text="○ Journal", manager=m,
+            text=normalize_ui_widget_text("○ Journal"), manager=m,
             container=self.toolbar_panel, object_id=oid)
         bx += 94
 
         self.commands_btn = UIButton(
             relative_rect=pygame.Rect(bx, btn_y, 106, btn_h),
-            text="► Commands", manager=m,
+            text=normalize_ui_widget_text("► Commands"), manager=m,
             container=self.toolbar_panel, object_id=oid)
         bx += 110
 
@@ -1101,7 +1255,7 @@ class PygameAdventureGUI:
         # Settings button (far right)
         self.settings_btn = UIButton(
             relative_rect=pygame.Rect(W - 44, btn_y, 36, btn_h),
-            text="⚙", manager=m,
+            text=normalize_ui_widget_text("⚙"), manager=m,
             container=self.toolbar_panel,
             object_id=ObjectID("#settings_button", "button"),
         )
@@ -1348,6 +1502,45 @@ class PygameAdventureGUI:
     #  EVENT HANDLING
     # ------------------------------------------------------------------
 
+    def _handle_map_runtime_error(self, phase: str, exc: Exception):
+        """Fail-safe map error handling so map faults do not crash the game loop."""
+        self._map_runtime_error_count += 1
+
+        details = "".join(
+            traceback.format_exception(type(exc), exc, exc.__traceback__)
+        )
+        stamp = time.strftime("%Y-%m-%d %H:%M:%S")
+
+        try:
+            err_path = os.path.join(BASE_DIR, "err.txt")
+            with open(err_path, "a", encoding="utf-8") as f:
+                f.write(
+                    f"[{stamp}] MAP_RUNTIME_ERROR #{self._map_runtime_error_count} "
+                    f"phase={phase}\n"
+                )
+                f.write(details)
+                f.write("\n")
+        except Exception:
+            pass
+
+        try:
+            mw = getattr(self.engine, "map_window", None)
+            if mw and hasattr(mw, "is_open") and mw.is_open():
+                mw.close_window()
+            if self.engine is not None:
+                self.engine.map_window = None
+        except Exception:
+            pass
+
+        now = time.time()
+        if now - self._last_map_error_notice_ts >= 1.5:
+            self._last_map_error_notice_ts = now
+            self.append(
+                "[Map] The map window hit an error and was closed to keep the game running. "
+                "Details were logged to err.txt.",
+                "warning",
+            )
+
     def handle_event(self, event):
         # ── Dungeon entrance overlay (highest priority) ─────────────────
         if self._dungeon_entrance_overlay and not self._dungeon_entrance_overlay.is_done():
@@ -1385,8 +1578,12 @@ class PygameAdventureGUI:
 
         # ── Forward to live map window ────────────────────────────────────
         _mw = getattr(self.engine, 'map_window', None)
-        if _mw and _mw.is_open():
-            _mw.handle_event(event)
+        if _mw:
+            try:
+                if _mw.is_open():
+                    _mw.handle_event(event)
+            except Exception as e:
+                self._handle_map_runtime_error("handle_event", e)
 
         # ── pygame_gui button presses ────────────────────────────────────
         if event.type == pygame_gui.UI_BUTTON_PRESSED:
@@ -1576,8 +1773,12 @@ class PygameAdventureGUI:
 
         # Live map — tick once per frame (deferred redraws)
         _mw = getattr(self.engine, 'map_window', None)
-        if _mw and _mw.is_open():
-            _mw.tick()
+        if _mw:
+            try:
+                if _mw.is_open():
+                    _mw.tick()
+            except Exception as e:
+                self._handle_map_runtime_error("update_tick", e)
 
         self._update_feedback_fx(dt)
 
@@ -1620,8 +1821,12 @@ class PygameAdventureGUI:
                 _ov.render(surface)
         # Live map — single direct blit bypassing pygame_gui compositing
         _mw = getattr(self.engine, 'map_window', None)
-        if _mw and _mw.is_open():
-            _mw.render_direct(surface)
+        if _mw:
+            try:
+                if _mw.is_open():
+                    _mw.render_direct(surface)
+            except Exception as e:
+                self._handle_map_runtime_error("render_overlay", e)
         # Book overlays drawn last (always on top)
         for _bov in (self.journal_win, self.inventory_win,
                      self.stats_win, self.debug_win, self.skills_book_win,
@@ -1691,9 +1896,13 @@ class PygameAdventureGUI:
 
     def _ensure_feedback_fonts(self):
         if self._feedback_font_small is None:
-            self._feedback_font_small = load_font(self.font_profile, 18, bold=True)
+            self._feedback_font_small = wrap_font_with_symbol_fallback(
+                load_font(self.font_profile, 18, bold=True)
+            )
         if self._feedback_font_big is None:
-            self._feedback_font_big = load_font(self.font_profile, 22, bold=True)
+            self._feedback_font_big = wrap_font_with_symbol_fallback(
+                load_font(self.font_profile, 22, bold=True)
+            )
 
     def _spawn_feedback_pop(self, text, color=(241, 214, 129), *, x=None, y=None,
                             duration=1.0, rise=46, size="large", kind="generic",
@@ -2536,13 +2745,16 @@ class PygameAdventureGUI:
                 self._combat_player_mp_frac = None
 
             neutral = "#D8D0A0"
-            p_name = escape_html(name)
-            p_html = f'<font color="{neutral}">\u25b6 {p_name}  HP {hp}/{mhp}  MP {mp}/{mmp}</font>'
+            p_name = escape_html(normalize_panel_text_icons(name))
+            player_marker = escape_html(normalize_ui_widget_text("\u25b6"))
+            p_html = f'<font color="{neutral}">{player_marker} {p_name}  HP {hp}/{mhp}  MP {mp}/{mmp}</font>'
 
             combat_obj = getattr(self.engine, "pending_combat", None) if self.engine else None
             pet_state = getattr(combat_obj, "pet_combatant", None)
             if pet_state:
-                pet_name = escape_html(str(pet_state.get("pet_name", "Companion")))
+                pet_name = escape_html(
+                    normalize_panel_text_icons(str(pet_state.get("pet_name", "Companion")))
+                )
                 pet_hp = int(pet_state.get("hp", 0))
                 pet_max = max(1, int(pet_state.get("max_hp", 1)))
                 pet_status = "KO" if bool(getattr(combat_obj, "pet_knocked", False)) else "Ready"
@@ -2561,24 +2773,26 @@ class PygameAdventureGUI:
                 except Exception:
                     self._combat_enemy_hp_frac = None
                 neutral = "#D8D0A0"
-                e_name = escape_html(ename)
+                e_name = escape_html(normalize_panel_text_icons(ename))
+                enemy_marker = escape_html(normalize_ui_widget_text("\u25c0"))
 
                 if emp is not None and emmp:
                     try:
                         self._combat_enemy_mp_frac = int(emp) / max(int(emmp), 1)
                     except Exception:
                         self._combat_enemy_mp_frac = None
-                    e_html = f'<font color="{neutral}">{e_name}  HP {ehp}/{emhp}  MP {emp}/{emmp} \u25c0</font>'
+                    e_html = f'<font color="{neutral}">{e_name}  HP {ehp}/{emhp}  MP {emp}/{emmp} {enemy_marker}</font>'
                 else:
                     self._combat_enemy_mp_frac = None
-                    e_html = f'<font color="{neutral}">{e_name}  HP {ehp}/{emhp} \u25c0</font>'
+                    e_html = f'<font color="{neutral}">{e_name}  HP {ehp}/{emhp} {enemy_marker}</font>'
                 self._combat_enemy_lbl.set_text(e_html)
             else:
                 self._combat_enemy_hp_frac = None
                 self._combat_enemy_mp_frac = None
                 neutral = "#D8D0A0"
-                e_name = escape_html(ename)
-                self._combat_enemy_lbl.set_text(f'<font color="{neutral}">Enemy: {e_name} \u25c0</font>')
+                e_name = escape_html(normalize_panel_text_icons(ename))
+                enemy_marker = escape_html(normalize_ui_widget_text("\u25c0"))
+                self._combat_enemy_lbl.set_text(f'<font color="{neutral}">Enemy: {e_name} {enemy_marker}</font>')
         else:
             self._combat_enemy_hp_frac = None
             self._combat_enemy_mp_frac = None

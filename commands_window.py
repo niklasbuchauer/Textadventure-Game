@@ -13,7 +13,7 @@
 import pygame
 import math
 import random
-from font_support import load_font
+from font_support import load_font, wrap_font_with_symbol_fallback
 
 from ui_animation import (
     UI_CLOSE_DUR,
@@ -258,7 +258,9 @@ DEBUG_COMMANDS = [
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def _font_pick(size: int, bold: bool = False) -> "pygame.font.Font":
-    return load_font({}, max(8, size), bold=bold)
+    return wrap_font_with_symbol_fallback(
+        load_font({}, max(8, size), bold=bold)
+    )
 
 
 def _blend(c1, c2, t):
@@ -340,7 +342,9 @@ class CommandsOverlay:
     def _f(self, size, bold=False):
         key = (size, bold)
         if key not in self._fcache:
-            self._fcache[key] = load_font(self._font_profile, max(8, size), bold=bold)
+            self._fcache[key] = wrap_font_with_symbol_fallback(
+                load_font(self._font_profile, max(8, size), bold=bold)
+            )
         return self._fcache[key]
 
     # ── Data ───────────────────────────────────────────────────────────────────

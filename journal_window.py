@@ -13,7 +13,7 @@
 import pygame
 import math
 import random
-from font_support import load_font
+from font_support import load_font, wrap_font_with_symbol_fallback
 
 # ── Colour palette ────────────────────────────────────────────────────────────
 
@@ -89,7 +89,9 @@ def _fit_text(text: str, font: pygame.font.Font, max_w: int) -> str:
 
 def _font_pick(size: int, bold: bool = False, font_profile=None) -> pygame.font.Font:
     """Load a glyph-safe UI font using the shared runtime profile."""
-    return load_font(font_profile or {}, size, bold=bold)
+    return wrap_font_with_symbol_fallback(
+        load_font(font_profile or {}, size, bold=bold)
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

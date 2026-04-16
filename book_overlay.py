@@ -13,6 +13,7 @@
 import pygame
 import math
 import random
+from font_support import load_font, wrap_font_with_symbol_fallback
 
 from ui_animation import (
     UI_CLOSE_DUR,
@@ -74,8 +75,9 @@ def _font(size, bold=False):
     for name in ("Palatino Linotype", "Book Antiqua", "Georgia",
                  "Times New Roman", "serif"):
         f = pygame.font.SysFont(name, size, bold=bold)
-        if f: return f
-    return pygame.font.Font(None, size)
+        if f:
+            return wrap_font_with_symbol_fallback(f)
+    return wrap_font_with_symbol_fallback(load_font({}, size, bold=bold))
 
 
 # ═══════════════════════════════════════════════════════════════════════════
