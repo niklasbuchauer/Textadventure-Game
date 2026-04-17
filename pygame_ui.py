@@ -27,6 +27,7 @@ import html as html_module
 import time
 import difflib
 import traceback
+from collections import deque
 from ui_animation import clamp01, ease_in_out_sine, ease_out_cubic
 from font_support import load_font, normalize_text_for_font, setup_ui_font_profile, wrap_font_with_symbol_fallback
 
@@ -459,6 +460,9 @@ class PygamePanelWidget:
     """
 
     TITLE_H = 26
+    MIN_MAX_MESSAGES = 10
+    MAX_MAX_MESSAGES = 150
+    DEFAULT_MAX_MESSAGES = 50
 
     def __init__(self, manager, container, title, msg_type, rect,
                  colors=None):
@@ -471,11 +475,11 @@ class PygamePanelWidget:
         self.visible   = True
 
         self._scroll_locked = False
-        self._messages  = []        # [(text, colour_hex, timestamp)]
-        self._html_parts = []       # parallel HTML fragments
+        self._messages  = deque(maxlen=self.DEFAULT_MAX_MESSAGES)   # [(text, colour_hex, timestamp)]
+        self._html_parts = deque(maxlen=self.DEFAULT_MAX_MESSAGES)  # parallel HTML fragments
         self._last_msg  = ""
         self._last_count = 1
-        self._max_msgs  = 50
+        self._max_msgs  = self.DEFAULT_MAX_MESSAGES
         self._need_scroll = False
 
         # ── Build widgets ────────────────────────────────────────────────
@@ -536,9 +540,34 @@ class PygamePanelWidget:
 
     # ── Message insertion ────────────────────────────────────────────────
 
+    @classmethod
+    def _clamp_max_messages(cls, max_messages):
+        try:
+            value = int(max_messages)
+        except Exception:
+            value = cls.DEFAULT_MAX_MESSAGES
+        return max(cls.MIN_MAX_MESSAGES, min(cls.MAX_MAX_MESSAGES, value))
+
+    def _set_max_messages(self, max_messages):
+        """Update deque bounds; returns True if history had to be truncated."""
+        clamped = self._clamp_max_messages(max_messages)
+        if (
+            clamped == self._max_msgs
+            and self._messages.maxlen == clamped
+            and self._html_parts.maxlen == clamped
+        ):
+            return False
+
+        old_msg_len = len(self._messages)
+        old_html_len = len(self._html_parts)
+        self._messages = deque(self._messages, maxlen=clamped)
+        self._html_parts = deque(self._html_parts, maxlen=clamped)
+        self._max_msgs = clamped
+        return (len(self._messages) < old_msg_len) or (len(self._html_parts) < old_html_len)
+
     def insert_message(self, text, tag="default", timestamp="",
                        max_messages=50):
-        self._max_msgs = max_messages
+        resized_trim = self._set_max_messages(max_messages)
         colour = self.colors.get(tag, self.colors.get("default", "#DCDCDC"))
         detail_colour = self.colors.get("detail", "#C7BC92")
 
@@ -567,22 +596,17 @@ class PygamePanelWidget:
         prefix = f"[{timestamp}] " if timestamp else ""
         full   = f"{prefix}{text}"
 
+        will_trim = len(self._messages) >= self._max_msgs
         self._messages.append((full, colour, timestamp))
 
         ts_col = self.colors.get("timestamp", "#AAAAAA")
         ts_html = (f'<font color="{ts_col}">[{timestamp}] </font>'
                    if timestamp else "")
         frag = f'{ts_html}{_format_panel_message(text, colour, detail_colour)}<br><br>'
+
         self._html_parts.append(frag)
 
-        # ── Trim ─────────────────────────────────────────────────────────
-        trimmed = False
-        while len(self._messages) > max_messages:
-            self._messages.pop(0)
-            self._html_parts.pop(0)
-            trimmed = True
-
-        if trimmed:
+        if resized_trim or will_trim:
             self._full_rebuild()
         else:
             # Fast path: append only
@@ -608,9 +632,9 @@ class PygamePanelWidget:
                 sb = self.text_box.scroll_bar
                 if sb is not None:
                     sb.set_scroll_from_start_percentage(1.0)
+                    self._need_scroll = False
             except Exception:
                 pass
-            self._need_scroll = False
 
     # ── Colour / appearance ──────────────────────────────────────────────
 
@@ -634,18 +658,12 @@ class PygamePanelWidget:
             rebuilt_messages.append((full_text, default_colour, timestamp))
             rebuilt_html_parts.append(frag)
 
-        self._messages = rebuilt_messages
-        self._html_parts = rebuilt_html_parts
+        self._messages = deque(rebuilt_messages, maxlen=self._max_msgs)
+        self._html_parts = deque(rebuilt_html_parts, maxlen=self._max_msgs)
         self._full_rebuild()
 
     def apply_max_messages(self, max_messages: int):
-        self._max_msgs = max(10, int(max_messages))
-        trimmed = False
-        while len(self._messages) > self._max_msgs:
-            self._messages.pop(0)
-            if self._html_parts:
-                self._html_parts.pop(0)
-            trimmed = True
+        trimmed = self._set_max_messages(max_messages)
         if trimmed:
             self._full_rebuild()
 
@@ -687,6 +705,7 @@ class GameApp:
         self.fullscreen = True
         self.surface = pygame.display.set_mode(
             (self.width, self.height), pygame.FULLSCREEN)
+        self._shake_buffer = pygame.Surface((self.width, self.height)).convert()
 
         theme = THEME_FILE if os.path.exists(THEME_FILE) else None
         self.manager = pygame_gui.UIManager(
@@ -744,12 +763,14 @@ class GameApp:
                         self.height = info.current_h
                         self.surface = pygame.display.set_mode(
                             (self.width, self.height), pygame.FULLSCREEN)
+                        self._shake_buffer = pygame.Surface((self.width, self.height)).convert()
                     else:
                         # Use a reasonable windowed size
                         self.width = max(MIN_WIDTH, min(info.current_w - 80, 1600))
                         self.height = max(MIN_HEIGHT, min(info.current_h - 80, 900))
                         self.surface = pygame.display.set_mode(
                             (self.width, self.height), pygame.RESIZABLE)
+                        self._shake_buffer = pygame.Surface((self.width, self.height)).convert()
                     self.manager.set_window_resolution((self.width, self.height))
                     if self._shutdown_overlay:
                         self._shutdown_overlay.on_resize(self.width, self.height)
@@ -764,6 +785,7 @@ class GameApp:
                     self.height = max(MIN_HEIGHT, event.h)
                     self.surface = pygame.display.set_mode(
                         (self.width, self.height), pygame.RESIZABLE)
+                    self._shake_buffer = pygame.Surface((self.width, self.height)).convert()
                     self.manager.set_window_resolution(
                         (self.width, self.height))
                     if self._shutdown_overlay:
@@ -839,10 +861,8 @@ class GameApp:
             if self.scene == "game" and self.gui and hasattr(self.gui, "get_screen_shake_offset"):
                 shake_x, shake_y = self.gui.get_screen_shake_offset()
                 if shake_x or shake_y:
-                    frame = self.surface.copy()
-                    self.surface.fill((0, 0, 0))
-                    draw_arcane_atmosphere(self.surface)
-                    self.surface.blit(frame, (shake_x, shake_y))
+                    self._shake_buffer.blit(self.surface, (0, 0))
+                    self.surface.blit(self._shake_buffer, (shake_x, shake_y))
 
             pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
             pygame.display.flip()
@@ -973,6 +993,12 @@ class PygameAdventureGUI:
     _LEVEL_UP_RE = re.compile(r"LEVEL\s+UP:\s*LEVEL\s+(\d+)", re.IGNORECASE)
     _EQUIP_RE = re.compile(r"EQUIPPED:\s*([^\n\r]+)", re.IGNORECASE)
     _STATUS_EFFECT_RE = re.compile(r"(poison|bleed|burn|frost|arcane)\s+damage", re.IGNORECASE)
+    _MAX_PENDING_ITEM_POPS = 24
+    _MAX_PENDING_COMBAT_POPS = 36
+    _MAX_COMBAT_POPS_PER_FRAME = 8
+    _MAX_ITEM_POPS_PER_FRAME = 6
+    _MAX_CONFETTI_PARTICLES = 180
+    _MAX_CONFETTI_BURST = 24
 
     def __init__(self, app: GameApp):
         self.app     = app
@@ -1127,10 +1153,16 @@ class PygameAdventureGUI:
         self._hint_color = (128, 114, 88)
 
         ui_cfg = self.config.get("ui", {})
+        if not isinstance(ui_cfg, dict):
+            ui_cfg = {}
+            self.config["ui"] = ui_cfg
         self._command_helper_enabled = bool(ui_cfg.get("command_helper", True))
         layout = ui_cfg.get("layout", "side_by_side")
         panel_flags = ui_cfg.get("panels", {})
-        max_msgs = ui_cfg.get("max_messages", 50)
+        max_msgs = PygamePanelWidget._clamp_max_messages(
+            ui_cfg.get("max_messages", PygamePanelWidget.DEFAULT_MAX_MESSAGES)
+        )
+        ui_cfg["max_messages"] = max_msgs
 
         for pw in self._panels.values():
             pw.apply_colors(colors)
@@ -1869,7 +1901,9 @@ class PygameAdventureGUI:
             from datetime import datetime
             ts = datetime.now().strftime("%H:%M")
 
-        max_msgs = self.config.get("ui", {}).get("max_messages", 50)
+        max_msgs = PygamePanelWidget._clamp_max_messages(
+            self.config.get("ui", {}).get("max_messages", PygamePanelWidget.DEFAULT_MAX_MESSAGES)
+        )
 
         panel_map = {
             "combat": "combat", "item": "items",
@@ -1955,12 +1989,16 @@ class PygameAdventureGUI:
         label = str(item_text).strip()
         if not label:
             return
+        if len(self._pending_item_pops) >= self._MAX_PENDING_ITEM_POPS:
+            self._pending_item_pops = self._pending_item_pops[-(self._MAX_PENDING_ITEM_POPS - 1):]
         self._pending_item_pops.append({"label": label, "count": count})
 
     def _queue_combat_pop(self, text, *, crit=False):
         label = str(text).strip()
         if not label:
             return
+        if len(self._pending_combat_pops) >= self._MAX_PENDING_COMBAT_POPS:
+            self._pending_combat_pops = self._pending_combat_pops[-(self._MAX_PENDING_COMBAT_POPS - 1):]
         self._pending_combat_pops.append({"label": label, "crit": bool(crit)})
 
     def _queue_achievement_toast(self, title):
@@ -2030,7 +2068,6 @@ class PygameAdventureGUI:
 
     def _spawn_confetti_burst(self):
         """Spawn confetti particles for quest completion celebration."""
-        import random
         colors = [
             (236, 206, 124),  # Gold
             (100, 200, 255),  # Light blue
@@ -2038,9 +2075,14 @@ class PygameAdventureGUI:
             (100, 255, 150),  # Green
             (255, 180, 100),  # Orange
         ]
-        
-        # Spawn 20-30 confetti pieces
-        for _ in range(random.randint(20, 30)):
+
+        available = self._MAX_CONFETTI_PARTICLES - len(self._confetti_particles)
+        if available <= 0:
+            return
+        spawn_count = min(random.randint(20, 30), self._MAX_CONFETTI_BURST, available)
+
+        # Spawn a bounded burst so celebrations do not stall frame-time.
+        for _ in range(spawn_count):
             self._confetti_particles.append({
                 "x": random.randint(0, self.width),
                 "y": -10,  # Start above screen
@@ -2199,7 +2241,9 @@ class PygameAdventureGUI:
             else:
                 base_x = max(120, min(self.width - 120, panel_rect.right - 88))
                 base_y = max(24, panel_rect.top - 22)
-            for idx, entry in enumerate(self._pending_combat_pops):
+
+            pending = self._pending_combat_pops[-self._MAX_COMBAT_POPS_PER_FRAME:]
+            for idx, entry in enumerate(pending):
                 self._spawn_feedback_pop(
                     entry["label"],
                     (236, 206, 124) if entry.get("crit") else (196, 144, 110),
@@ -2254,7 +2298,8 @@ class PygameAdventureGUI:
                 target_y = max(26, status_rect.y + status_rect.height // 2)
 
             existing_items = sum(1 for pop in self._feedback_pops if pop.get("kind") == "item" and pop.get("t", 0.0) < 0.9)
-            for idx, entry in enumerate(self._pending_item_pops):
+            pending = self._pending_item_pops[-self._MAX_ITEM_POPS_PER_FRAME:]
+            for idx, entry in enumerate(pending):
                 label = entry.get("label", "item")
                 count = max(1, int(entry.get("count", 1)))
                 lane = min(existing_items + idx, 4)

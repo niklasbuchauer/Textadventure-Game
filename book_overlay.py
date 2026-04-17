@@ -2186,7 +2186,7 @@ _CFG_DEFAULTS = {
                       "difficulty_modifier": 1.0},
     "accessibility": {"high_contrast": False, "text_size": 13},
     "ui":            {"layout": "side_by_side", "timestamps": False,
-                      "command_helper": True, "max_messages": 200},
+                      "command_helper": True, "max_messages": 50},
 }
 
 _COMBAT_SPEEDS = ["slow", "normal", "fast"]
@@ -2312,9 +2312,9 @@ class SettingsOverlay(BookOverlay):
             "hc_toggle":           lambda: self._wset("accessibility","high_contrast",
                                        not self._w("accessibility","high_contrast",default=False)),
             "maxmsg_dec":          lambda: self._wset("ui","max_messages",
-                                       max(10, self._w("ui","max_messages",default=200)-10)),
+                                       max(10, self._w("ui","max_messages",default=50)-10)),
             "maxmsg_inc":          lambda: self._wset("ui","max_messages",
-                                       min(500,self._w("ui","max_messages",default=200)+10)),
+                                       min(150,self._w("ui","max_messages",default=50)+10)),
             "save":  self._save,
             "reset": self._reset,
         }
@@ -2499,7 +2499,7 @@ class SettingsOverlay(BookOverlay):
               "single":"Single"}.get(lv, lv.replace("_"," ").title())
         y  = self._row_stepper(surf, frame, y, "Panel Layout", ll,
                                 "layout_prev", "layout_next", cf, right=True)
-        mm = self._w("ui", "max_messages", default=200)
+        mm = self._w("ui", "max_messages", default=50)
         y  = self._row_stepper(surf, frame, y, "Max Messages", str(mm),
                                 "maxmsg_dec", "maxmsg_inc", cf, right=True)
 
