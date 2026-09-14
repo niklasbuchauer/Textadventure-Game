@@ -1094,6 +1094,8 @@ class PygameAdventureGUI:
         self._combat_player_mp_frac = None
         self._combat_enemy_hp_frac = None
         self._combat_enemy_mp_frac = None
+        self._combat_action_buttons = []
+        self._structured_events_enabled = False
 
         # ── Build all widgets ────────────────────────────────────────────
         self._panels = {}
@@ -1198,7 +1200,7 @@ class PygameAdventureGUI:
     _TOOLBAR_H = 40
     _HOTBAR_H  = 32
     _INPUT_H   = 34
-    _COMBAT_H  = 40
+    _COMBAT_H  = 76
     _MARGIN    = 4
 
     def _build_ui(self):
@@ -1324,7 +1326,7 @@ class PygameAdventureGUI:
 
         self._combat_player_lbl = UITextBox(
             html_text="",
-            relative_rect=pygame.Rect(8, 1, W // 2 - 16, self._COMBAT_H - 12),
+            relative_rect=pygame.Rect(8, 1, W // 2 - 16, 34),
             manager=m,
             container=self._combat_panel,
             object_id=ObjectID("#combat_player_label", "text_box"),
@@ -1332,11 +1334,24 @@ class PygameAdventureGUI:
         self._combat_enemy_lbl = UITextBox(
             html_text="",
             relative_rect=pygame.Rect(
-                W // 2, 1, W // 2 - 16, self._COMBAT_H - 12),
+                W // 2, 1, W // 2 - 16, 34),
             manager=m,
             container=self._combat_panel,
             object_id=ObjectID("#combat_enemy_label", "text_box"),
         )
+
+        # Combat is deliberately button-first.  Text commands remain a
+        # fallback outside combat, not the required way to take a turn.
+        action_y = 38
+        action_w = max(96, (W - 48) // 4)
+        for index, label in enumerate(("1 Attack", "2 Defend", "3 Analyze", "4 Flee")):
+            button = UIButton(
+                relative_rect=pygame.Rect(8 + index * (action_w + 8), action_y,
+                                          action_w, 30),
+                text=label, manager=m, container=self._combat_panel,
+                object_id=ObjectID("#combat_action_button", "button"),
+            )
+            self._combat_action_buttons.append(button)
 
         # ── Multi-panel area ─────────────────────────────────────────────
         self._build_panels()
@@ -1523,9 +1538,13 @@ class PygameAdventureGUI:
         csy = h - IH - MG - self._COMBAT_H - 2
         self._combat_panel.set_relative_position((0, csy))
         self._combat_panel.set_dimensions((w, self._COMBAT_H))
-        self._combat_player_lbl.set_dimensions((w // 2 - 16, self._COMBAT_H - 12))
+        self._combat_player_lbl.set_dimensions((w // 2 - 16, 34))
         self._combat_enemy_lbl.set_relative_position((w // 2, 1))
-        self._combat_enemy_lbl.set_dimensions((w // 2 - 16, self._COMBAT_H - 12))
+        self._combat_enemy_lbl.set_dimensions((w // 2 - 16, 34))
+        action_w = max(96, (w - 48) // 4)
+        for index, button in enumerate(self._combat_action_buttons):
+            button.set_relative_position((8 + index * (action_w + 8), 38))
+            button.set_dimensions((action_w, 30))
 
         # Panels
         self._relayout_panels()
@@ -1637,6 +1656,10 @@ class PygameAdventureGUI:
             elif ui == self.settings_btn:
                 self._open_settings()
             else:
+                for index, button in enumerate(self._combat_action_buttons):
+                    if ui == button:
+                        self._combat_action_from_slot(index + 1)
+                        return
                 # Check panel lock buttons
                 for pw in self._panels.values():
                     if ui == pw.lock_btn:
@@ -1664,6 +1687,16 @@ class PygameAdventureGUI:
         # ── Keyboard shortcuts ───────────────────────────────────────────
         if event.type == pygame.KEYDOWN:
             mods = pygame.key.get_mods()
+            if self._combat_visible:
+                if event.key in (pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4):
+                    self._combat_action_from_slot(event.key - pygame.K_1 + 1)
+                    return
+                if event.key == pygame.K_SPACE:
+                    self._combat_action_from_slot(1)
+                    return
+                if event.key == pygame.K_ESCAPE:
+                    self._combat_action_from_slot(4)
+                    return
             if event.key == pygame.K_UP:
                 if self._history_browse(-1):
                     return
@@ -2112,7 +2145,9 @@ class PygameAdventureGUI:
             if item:
                 self._queue_item_pop(item, qty)
 
-        if msg_type == "combat":
+        # Legacy narrative emits stay available for older systems; new combat
+        # feedback comes from EventManager and must not duplicate VFX.
+        if msg_type == "combat" and not self._structured_events_enabled:
             damage_matches = self._COMBAT_DAMAGE_RE.findall(text_s)
             for dmg in damage_matches:
                 self._queue_combat_pop(f"-{dmg}", crit=("CRIT" in upper or "CRITICAL" in upper))
@@ -2686,6 +2721,74 @@ class PygameAdventureGUI:
     #  COMBAT STATUS BAR
     # ------------------------------------------------------------------
 
+    def _combat_action_from_slot(self, slot):
+        """Execute a contextual combat action without routing through input."""
+        if not self.engine or not getattr(self.engine, "pending_combat", None):
+            return
+        combat = self.engine.pending_combat
+        intent = str(getattr(combat, "enemy_intent", "")).lower()
+        commands = {
+            1: "attack",
+            2: "defend",
+            # Interrupt is the meaningful counter to visible casts/heavies;
+            # Analyze is the safe default when there is nothing to interrupt.
+            3: "interrupt" if any(word in intent for word in ("attack", "heavy", "special")) else "analyze",
+            4: "flee",
+        }
+        command = commands.get(slot)
+        if not command:
+            return
+        response = self.engine.process_command(command)
+        if response:
+            self.append(response, self._detect_type(response))
+        self._update_combat_status_from_engine()
+        self.refresh_inventory_display()
+        self._refresh_hotbar()
+
+    def _refresh_tactical_actions(self):
+        if not self._combat_action_buttons:
+            return
+        combat = getattr(self.engine, "pending_combat", None) if self.engine else None
+        if not combat:
+            for button in self._combat_action_buttons:
+                button.hide()
+            self.entry.show()
+            return
+
+        intent = str(getattr(combat, "enemy_intent", "")).lower()
+        third = "3 Interrupt" if any(word in intent for word in ("attack", "heavy", "special")) else "3 Analyze"
+        labels = ("1 Attack [Space]", "2 Defend", third, "4 Flee [Esc]")
+        for button, label in zip(self._combat_action_buttons, labels):
+            button.set_text(label)
+            button.show()
+        # The combat action bar owns the turn.  This prevents accidental
+        # parser commands from competing with the player-facing controls.
+        self.entry.hide()
+
+    def _handle_game_event(self, event):
+        """Translate structured gameplay facts into immediate presentation."""
+        payload = event.payload
+        if event.name == "damage":
+            amount = int(payload.get("amount", 0) or 0)
+            if amount:
+                self._queue_combat_pop(
+                    f"-{amount}", crit=bool(payload.get("critical", False))
+                )
+        elif event.name == "screen_shake":
+            self._combat_shake_t = max(self._combat_shake_t, float(payload.get("duration", 0.10)))
+            self._combat_shake_strength = max(self._combat_shake_strength, float(payload.get("strength", 4)))
+        elif event.name == "item_found":
+            self._queue_item_pop(str(payload.get("item", "Item")), payload.get("quantity", 1))
+        elif event.name == "intent_revealed":
+            self._update_combat_status_from_engine()
+
+    def _bind_game_events(self):
+        if not self.engine or not getattr(self.engine, "events", None):
+            return
+        for name in ("damage", "intent_revealed", "item_found", "screen_shake"):
+            self.engine.events.subscribe(name, self._handle_game_event)
+        self._structured_events_enabled = True
+
     def _draw_combat_resource_bars(self, surface):
         if not self._combat_visible or not self._combat_panel:
             return
@@ -2755,6 +2858,7 @@ class PygameAdventureGUI:
             self._combat_player_mp_frac = None
             self._combat_enemy_hp_frac = None
             self._combat_enemy_mp_frac = None
+            self._refresh_tactical_actions()
             return
 
         if not self._combat_visible:
@@ -2830,6 +2934,9 @@ class PygameAdventureGUI:
                 else:
                     self._combat_enemy_mp_frac = None
                     e_html = f'<font color="{neutral}">{e_name}  HP {ehp}/{emhp} {enemy_marker}</font>'
+                intent = escape_html(str(getattr(enemy, "enemy_intent", "") or ""))
+                if intent:
+                    e_html += f'<br><font color="#E6BF6F">Intent: {intent}</font>'
                 self._combat_enemy_lbl.set_text(e_html)
             else:
                 self._combat_enemy_hp_frac = None
@@ -2842,6 +2949,7 @@ class PygameAdventureGUI:
             self._combat_enemy_hp_frac = None
             self._combat_enemy_mp_frac = None
             self._combat_enemy_lbl.set_text("")
+        self._refresh_tactical_actions()
 
     def _update_combat_status_from_engine(self):
         if not self.engine or not self.engine.player:
@@ -2856,6 +2964,14 @@ class PygameAdventureGUI:
             ep.max_hp = pending.get("max_hp", ep.hp)
             self.update_combat_status(self.engine.player, ep)
         elif pending:
+            if getattr(pending, "event_manager", None) is None:
+                pending.event_manager = getattr(self.engine, "events", None)
+            if getattr(pending, "planned_enemy_roll", None) is None:
+                try:
+                    from combat_system import prepare_enemy_intent
+                    prepare_enemy_intent(self.engine.player, pending)
+                except Exception:
+                    pass
             self.update_combat_status(self.engine.player, pending)
         else:
             self.update_combat_status()
@@ -3499,6 +3615,7 @@ class PygameAdventureGUI:
         try:
             from engine import GameEngine, SAVE_FILE
             self.engine = GameEngine(gui=self)
+            self._bind_game_events()
         except Exception as e:
             self.append(f"FATAL: {e}", "warning")
             return

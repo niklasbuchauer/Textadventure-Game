@@ -126,7 +126,12 @@
         "w_wm_finesse"
       ],
       "cooldowns": {},
-      "active_effects": {},
+      "active_effects": {
+        "attack_boost": {
+          "value": 6,
+          "duration": 4
+        }
+      },
       "equipment": {
         "weapon": null,
         "armor": null,
@@ -241,13 +246,13 @@
       "xp_to_next": 507,
       "skill_points": 0,
       "class": "warrior",
-      "strength": 36,
+      "strength": 49,
       "defense": 40,
       "dexterity": 19,
       "perception": 13,
       "charisma": 16,
       "constitution": 20,
-      "mana": 183,
+      "mana": 133,
       "max_mana": 195,
       "mana_regen_bonus": 0.0,
       "prestige_xp_multiplier": 1.0,
@@ -256,14 +261,14 @@
     },
     "visited_rooms": [
       "stables",
+      "northern_road",
       "farmland_west",
-      "mountain_foothills",
-      "village_east_end",
       "village_square",
-      "village_training_grounds",
       "tutorial_spawn",
+      "village_east_end",
+      "mountain_foothills",
       "village_north_gate",
-      "northern_road"
+      "village_training_grounds"
     ],
     "unlocked_islands": []
   },
@@ -7228,8 +7233,8 @@
     ],
     "visible_enemies": {},
     "rooms_rolled": [
-      "mountain_foothills",
       "northern_road",
+      "mountain_foothills",
       "farmland_west"
     ]
   },

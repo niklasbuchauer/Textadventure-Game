@@ -3,6 +3,7 @@ import os
 import sys
 
 import tutorial_system
+from event_manager import EventManager
 
 
 # =====================================================================
@@ -252,6 +253,7 @@ try:
 		ENEMY_SPAWN_CHANCE, DUNGEON_BOSS_MAP, DUNGEON_MINI_BOSS_MAP,
 		BOSS_LOOT_TABLES, MINI_BOSS_LOOT_TABLES,
 		_apply_status,
+		prepare_enemy_intent,
 	)
 	COMBAT_AVAILABLE = True
 except Exception as e:
@@ -2734,6 +2736,8 @@ class CommandHandler:
 			if not combat:
 				return ""
 			self.engine.pending_combat = combat
+			combat.event_manager = self.engine.events
+			prepare_enemy_intent(self.engine.player, combat)
 			if combat.intro_text:
 				intro = combat.intro_text
 			elif feel_intensity == "high":
@@ -2749,6 +2753,8 @@ class CommandHandler:
 			if not combat:
 				return ""
 			self.engine.pending_combat = combat
+			combat.event_manager = self.engine.events
+			prepare_enemy_intent(self.engine.player, combat)
 			if feel_intensity == "high":
 				result = f"\n⚔️ A hostile {combat.enemy_name} lunges from the shadows!\n"
 			elif feel_intensity == "low":
@@ -7579,6 +7585,8 @@ class GameEngine:
 		self.pending_enchant = None
 		# Track pending combat encounter
 		self.pending_combat = None
+		# Single source of gameplay facts for UI, VFX and future audio.
+		self.events = EventManager()
 		
 		# Track pending class selection (progression system)
 		self.pending_class_selection = False

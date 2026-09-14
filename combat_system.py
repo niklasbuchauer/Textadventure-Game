@@ -1042,7 +1042,7 @@ ENEMY_SPAWN_CHANCE = {
 class CombatState:
     """Tracks the state of an active combat encounter."""
 
-    def __init__(self, enemy_data, is_boss=False, is_mini_boss=False, level=1, feel_intensity="normal"):
+    def __init__(self, enemy_data, is_boss=False, is_mini_boss=False, level=1, feel_intensity="normal", event_manager=None):
         self.enemy_id = enemy_data.get("id", "unknown")
         self.enemy_name = enemy_data["name"]
         self.enemy_description = enemy_data["description"]
@@ -1098,6 +1098,9 @@ class CombatState:
         self.flee_fail_streak = 0
         self.pet_combatant = None
         self.pet_knocked = False
+        # Presentation is optional: combat remains usable in headless tests.
+        self.event_manager = event_manager
+        self.planned_enemy_roll = None
 
     def _roll_enemy_affinities(self):
         """Pick one vulnerability and one resistance to create tactical variety."""
@@ -1208,7 +1211,62 @@ class CombatState:
         cs.flee_fail_streak = int(data.get("flee_fail_streak", 0) or 0)
         cs.pet_combatant = dict(data.get("pet_combatant", {}) or {}) if data.get("pet_combatant") else None
         cs.pet_knocked = bool(data.get("pet_knocked", False))
+        cs.event_manager = None
+        cs.planned_enemy_roll = None
         return cs
+
+
+def _emit(combat, name, **payload):
+    """Publish a structured combat fact when the owning game has a bus."""
+    manager = getattr(combat, "event_manager", None)
+    if manager is not None:
+        manager.emit(name, **payload)
+
+
+def prepare_enemy_intent(player, combat):
+    """Commit the next enemy decision before the player chooses an action.
+
+    The stored roll is consumed by ``_enemy_turn``.  This makes the HUD's
+    telegraph truthful rather than a cosmetic prediction.
+    """
+    roll = random.random()
+    combat.planned_enemy_roll = roll
+    boss = bool(combat.is_boss or combat.is_mini_boss)
+    phase = getattr(combat, "boss_phase", 1)
+    if boss:
+        basic, ability, heavy = ((0.20, 0.70, 0.95) if phase >= 3 else
+                                 (0.25, 0.70, 0.90) if phase >= 2 else
+                                 (0.35, 0.75, 0.90))
+        if combat.level - player.stats.get("level", 1) >= 2:
+            basic = max(0.15, basic - 0.05)
+            ability = min(0.88, ability + 0.05)
+            heavy = min(0.97, heavy + 0.03)
+    else:
+        basic, ability, heavy = 0.40, 0.70, 0.90
+        if combat.level - player.stats.get("level", 1) >= 2:
+            basic, ability, heavy = 0.30, 0.75, 0.98
+        elif combat.level - player.stats.get("level", 1) < 0:
+            basic, ability, heavy = 0.45, 0.72, 0.90
+
+    if roll < basic:
+        label, kind = "Attack", "attack"
+        damage = max(1, int(combat.attack * 1.0))
+    elif roll < ability and combat.abilities:
+        # Ability choice can include randomized effects; only telegraph the
+        # committed action class until individual abilities gain deterministic
+        # target previews.
+        label, kind, damage = "Special Attack", "ability", 0
+    elif roll < heavy:
+        label, kind = "Heavy Attack", "heavy"
+        damage = max(1, int(combat.attack * 1.55))
+    else:
+        label, kind, damage = "Defending", "defend", 0
+
+    combat.enemy_intent = f"{label}: {damage} DMG" if damage else label
+    combat.enemy_intent_tags = [kind.upper()]
+    _emit(combat, "intent_revealed", enemy=combat.enemy_name, label=label,
+          kind=kind, damage=damage)
+    return combat.enemy_intent
 
 
 def _advance_tactical_state(combat):
@@ -1745,8 +1803,12 @@ def _enemy_turn(player, combat):
         if se.get("type") == "dot" and status.get("dmg", 0) > 0:
             combat.hp -= status["dmg"]
 
-    # AI decision
-    roll = random.random()
+    # AI decision.  This roll was committed and displayed before the player
+    # acted; only legacy/saved combats without an intent roll randomly choose.
+    roll = getattr(combat, "planned_enemy_roll", None)
+    if roll is None:
+        roll = random.random()
+    combat.planned_enemy_roll = None
 
     if combat.is_boss or combat.is_mini_boss:
         # Adjust AI based on boss phase (more aggressive in later phases)
@@ -1930,6 +1992,9 @@ def _enemy_turn(player, combat):
 
     combat.reposition_turns = max(0, getattr(combat, "reposition_turns", 0) - 1)
     combat.analyze_turns = max(0, getattr(combat, "analyze_turns", 0) - 1)
+    # Telegraph the following turn after all state changes (phase, buffs,
+    # status effects) have resolved.
+    prepare_enemy_intent(player, combat)
     return result
 
 
@@ -2048,10 +2113,16 @@ def _enemy_pressure_pet(player, combat):
 
 
 def _enemy_and_pet_turn(player, combat):
+    hp_before = int(player.stats.get("health", 0))
     result = _enemy_turn(player, combat)
     result += _enemy_pressure_pet(player, combat)
     if combat.hp > 0:
         result += _pet_turn(player, combat)
+    damage_taken = max(0, hp_before - int(player.stats.get("health", 0)))
+    if damage_taken:
+        _emit(combat, "damage", target="player", amount=damage_taken,
+              source=combat.enemy_name, critical=False)
+        _emit(combat, "screen_shake", strength=3, duration=0.10)
     return result
 
 
@@ -2113,6 +2184,10 @@ def process_player_attack(player, combat):
         detail_parts = []
     combat.charge_bonus = 0.0
     combat.hp -= player_dmg
+    _emit(combat, "damage", target="enemy", amount=player_dmg,
+          source="player", critical=is_crit)
+    _emit(combat, "screen_shake", strength=7 if is_crit else 4,
+          duration=0.16 if is_crit else 0.10)
 
     if combat.last_damage_note:
         detail_parts.append(combat.last_damage_note)
