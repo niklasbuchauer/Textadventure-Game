@@ -43,6 +43,11 @@ DRAG_FPS = 120
 
 # Tag -> hex colour (matches CONFIG_DEFAULTS in engine.py)
 TAG_COLORS = {
+    # Text markup palette
+    "location":    "#EAB308",
+    "npc":         "#38BDF8",
+    "description": "#9CA3AF",
+    "exits":       "#22C55E",
     "combat":      "#BE978A",
     "item":        "#8AC07A",
     "dialogue":    "#50C8A0",
@@ -50,14 +55,14 @@ TAG_COLORS = {
     "warning":     "#B5A86A",
     "system":      "#8AC07A",
     "command":     "#9A8B68",
-    "default":     "#D8D0A0",
+    "default":     "#E2E8F0",
     "detail":      "#C7BC92",
     "timestamp":   "#A8A08A",
     "title_gold":  "#C4B896",
     "title_cyan":  "#50C8A0",
     "title_green": "#8AC07A",
     "title_purple":"#7A7858",
-    "normal":      "#D8D0A0",
+    "normal":      "#E2E8F0",
 }
 
 INLINE_COMBAT_TAG_COLORS = {
@@ -212,14 +217,23 @@ _BOX_LAYOUT_GLYPHS = set("║╗╣╠╔╝╚┌┐└┘─│━┃┏┓┗
 
 # Nature-medieval forest palette
 DARK = {
-    "bg":           (0x0D, 0x0D, 0x0A),
-    "dark_bg":      (0x08, 0x0A, 0x08),
-    "entry_bg":     (0x16, 0x14, 0x0F),
-    "hotbar_bg":    (0x14, 0x12, 0x10),
-    "panel_hdr":    (0x1A, 0x18, 0x15),
-    "fg":           (0xD8, 0xD0, 0xA0),
-    "gold":         (0xC4, 0xB8, 0x96),
-    "sash":         (0x05, 0x06, 0x04),
+    "bg":           (0x18, 0x19, 0x20),
+    "dark_bg":      (0x11, 0x13, 0x1A),
+    "entry_bg":     (0x20, 0x22, 0x2B),
+    "hotbar_bg":    (0x1C, 0x1E, 0x27),
+    "panel_hdr":    (0x24, 0x26, 0x30),
+    "fg":           (0xE2, 0xE8, 0xF0),
+    "gold":         (0xEA, 0xB3, 0x08),
+    "sash":         (0x0D, 0x0F, 0x15),
+}
+
+PANEL_PADDING = 14
+TEXT_LINE_SPACING = 1.45
+MARKUP_PREFIX_COLORS = {
+    "location": TAG_COLORS["location"],
+    "npc": TAG_COLORS["npc"],
+    "description": TAG_COLORS["description"],
+    "exits": TAG_COLORS["exits"],
 }
 
 # ---------------------------------------------------------------------------
@@ -412,7 +426,7 @@ def _style_inline_combat_tags(text):
     return text
 
 
-def _format_panel_message(text, colour, detail_colour):
+def _format_panel_message(text, colour, detail_colour, markup_colors=None):
     """Convert a panel message into HTML with inline combat emphasis."""
     raw_text = str(text)
     normalized = normalize_panel_text_icons(raw_text)
@@ -424,12 +438,24 @@ def _format_panel_message(text, colour, detail_colour):
 
     lines = html_text.split("<br>")
     formatted = []
+    markup_colors = markup_colors or MARKUP_PREFIX_COLORS
     for line in lines:
         stripped = line.lstrip()
         if stripped.startswith("↳"):
             formatted.append(f'<font color="{detail_colour}"><i>{line}</i></font>')
-        else:
-            formatted.append(line)
+            continue
+        markup_match = re.match(
+            r"(?P<prefix>Location|NPCs?|Description|Exits):",
+            stripped,
+            re.IGNORECASE,
+        )
+        if markup_match:
+            markup_key = markup_match.group("prefix").lower()
+            markup_key = "npc" if markup_key in ("npc", "npcs") else markup_key
+            markup_colour = markup_colors.get(markup_key, colour)
+            formatted.append(f'<font color="{markup_colour}">{line}</font>')
+            continue
+        formatted.append(line)
     return f'<font color="{colour}">' + "<br>".join(formatted) + "</font>"
 
 
@@ -459,7 +485,7 @@ class PygamePanelWidget:
     and a scrollable UITextBox that renders coloured messages via HTML.
     """
 
-    TITLE_H = 26
+    TITLE_H = 30
     MIN_MAX_MESSAGES = 10
     MAX_MAX_MESSAGES = 150
     DEFAULT_MAX_MESSAGES = 50
@@ -492,7 +518,8 @@ class PygamePanelWidget:
         )
 
         self.title_label = UILabel(
-            relative_rect=pygame.Rect(4, 1, self.rect.w - 40, th),
+            relative_rect=pygame.Rect(
+                PANEL_PADDING, 1, self.rect.w - PANEL_PADDING - 40, th),
             text=f"  {title}",
             manager=manager,
             container=self.panel,
@@ -510,10 +537,17 @@ class PygamePanelWidget:
         self.text_box = UITextBox(
             html_text="",
             relative_rect=pygame.Rect(
-                2, th + 2, self.rect.w - 4, self.rect.h - th - 4),
+                2, th + 2,
+                max(1, self.rect.w - 4),
+                max(1, self.rect.h - th - 4)),
             manager=manager,
             container=self.panel,
         )
+        # Keep text away from panel borders and make the spacing explicit
+        # instead of relying on pygame_gui theme defaults.
+        self.text_box.padding = (PANEL_PADDING, PANEL_PADDING)
+        self.text_box.line_spacing = TEXT_LINE_SPACING
+        self.text_box.allow_split_dashes = True
 
     # ── Resize / reposition ──────────────────────────────────────────────
 
@@ -522,11 +556,14 @@ class PygamePanelWidget:
         th = self.TITLE_H
         self.panel.set_relative_position((rect.x, rect.y))
         self.panel.set_dimensions((rect.w, rect.h))
-        self.title_label.set_relative_position((4, 1))
-        self.title_label.set_dimensions((rect.w - 40, th))
+        self.title_label.set_relative_position((PANEL_PADDING, 1))
+        self.title_label.set_dimensions((rect.w - PANEL_PADDING - 40, th))
         self.lock_btn.set_relative_position((rect.w - 38, 1))
         self.text_box.set_relative_position((2, th + 2))
-        self.text_box.set_dimensions((rect.w - 4, rect.h - th - 4))
+        self.text_box.set_dimensions((
+            max(1, rect.w - 4),
+            max(1, rect.h - th - 4),
+        ))
 
     # ── Lock toggle ──────────────────────────────────────────────────────
 
@@ -582,7 +619,8 @@ class PygamePanelWidget:
                 # Rebuild HTML for that entry
                 ts_col = self.colors.get("timestamp", "#AAAAAA")
                 pre = f'<font color="{ts_col}">[{old_ts}] </font>' if old_ts else ""
-                body = _format_panel_message(new, old_col, detail_colour)
+                body = _format_panel_message(
+                    new, old_col, detail_colour, self.colors)
                 self._html_parts[-1] = (
                     f'{pre}{body}<br><br>'
                 )
@@ -602,7 +640,10 @@ class PygamePanelWidget:
         ts_col = self.colors.get("timestamp", "#AAAAAA")
         ts_html = (f'<font color="{ts_col}">[{timestamp}] </font>'
                    if timestamp else "")
-        frag = f'{ts_html}{_format_panel_message(text, colour, detail_colour)}<br><br>'
+        frag = (
+            f'{ts_html}{_format_panel_message(text, colour, detail_colour, self.colors)}'
+            "<br><br>"
+        )
 
         self._html_parts.append(frag)
 
@@ -654,7 +695,10 @@ class PygamePanelWidget:
                     body = body[len(prefix):]
             ts_html = (f'<font color="{ts_col}">[{timestamp}] </font>'
                        if timestamp else "")
-            frag = f'{ts_html}{_format_panel_message(body, default_colour, detail_colour)}<br><br>'
+            frag = (
+                f'{ts_html}{_format_panel_message(body, default_colour, detail_colour, self.colors)}'
+                "<br><br>"
+            )
             rebuilt_messages.append((full_text, default_colour, timestamp))
             rebuilt_html_parts.append(frag)
 
@@ -1145,9 +1189,7 @@ class PygameAdventureGUI:
         if "default" not in colors:
             colors["default"] = "#D8D0A0"
 
-        neutral = colors.get("default", "#D8D0A0")
-        for key in ("combat", "item", "dialogue", "status", "warning", "system", "command", "detail"):
-            colors[key] = neutral
+        colors.setdefault("detail", "#9CA3AF")
 
         if "timestamp" not in colors:
             colors["timestamp"] = "#9A8B6A"
@@ -1326,7 +1368,7 @@ class PygameAdventureGUI:
 
         self._combat_player_lbl = UITextBox(
             html_text="",
-            relative_rect=pygame.Rect(8, 1, W // 2 - 16, 34),
+            relative_rect=pygame.Rect(12, 4, max(1, W // 2 - 24), 30),
             manager=m,
             container=self._combat_panel,
             object_id=ObjectID("#combat_player_label", "text_box"),
@@ -1334,7 +1376,7 @@ class PygameAdventureGUI:
         self._combat_enemy_lbl = UITextBox(
             html_text="",
             relative_rect=pygame.Rect(
-                W // 2, 1, W // 2 - 16, 34),
+                W // 2 + 12, 4, max(1, W // 2 - 24), 30),
             manager=m,
             container=self._combat_panel,
             object_id=ObjectID("#combat_enemy_label", "text_box"),
@@ -1382,11 +1424,9 @@ class PygameAdventureGUI:
             colors["default"] = "#FFFFFF"
 
         if "default" not in colors:
-            colors["default"] = "#D8D0A0"
+            colors["default"] = "#E2E8F0"
 
-        neutral = colors.get("default", "#D8D0A0")
-        for key in ("combat", "item", "dialogue", "status", "warning", "system", "command", "detail"):
-            colors[key] = neutral
+        colors.setdefault("detail", "#9CA3AF")
 
         pr = self._panels_rect()
 
@@ -1538,9 +1578,10 @@ class PygameAdventureGUI:
         csy = h - IH - MG - self._COMBAT_H - 2
         self._combat_panel.set_relative_position((0, csy))
         self._combat_panel.set_dimensions((w, self._COMBAT_H))
-        self._combat_player_lbl.set_dimensions((w // 2 - 16, 34))
-        self._combat_enemy_lbl.set_relative_position((w // 2, 1))
-        self._combat_enemy_lbl.set_dimensions((w // 2 - 16, 34))
+        self._combat_player_lbl.set_relative_position((12, 4))
+        self._combat_player_lbl.set_dimensions((max(1, w // 2 - 24), 30))
+        self._combat_enemy_lbl.set_relative_position((w // 2 + 12, 4))
+        self._combat_enemy_lbl.set_dimensions((max(1, w // 2 - 24), 30))
         action_w = max(96, (w - 48) // 4)
         for index, button in enumerate(self._combat_action_buttons):
             button.set_relative_position((8 + index * (action_w + 8), 38))
