@@ -236,21 +236,23 @@
     },
     "text_box": {
         "colours": {
-            "dark_bg": "#0d0d0a",
-            "normal_bg": "#0d0d0a",
-            "normal_text": "#d8d0a0",
-            "link_text": "#50c8a0",
-            "link_hover": "#6ed8b0",
-            "normal_border": "#2d2a25"
+            "dark_bg": "#181920",
+            "normal_bg": "#181920",
+            "normal_text": "#E2E8F0",
+            "link_text": "#38BDF8",
+            "link_hover": "#7DD3FC",
+            "normal_border": "#303541"
         },
         "font": {
-            "name": "Consolas",
+            "name": "EstoriaMono",
             "size": "14"
         },
         "misc": {
             "border_width": "0",
             "shadow_width": "0",
-            "shape": "rectangle"
+            "shape": "rectangle",
+            "padding": "14, 14",
+            "line_spacing": "1.45"
         }
     },
     "window": {
@@ -447,5 +449,3 @@
         }
     }
 }
-
-

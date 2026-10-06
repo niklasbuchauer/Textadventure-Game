@@ -1,18 +1,22 @@
 {
     "visual": {
         "colors": {
-            "combat": "#E0826D",
+            "location": "#EAB308",
+            "npc": "#38BDF8",
+            "description": "#9CA3AF",
+            "exits": "#22C55E",
+            "combat": "#BE978A",
             "item": "#8AC07A",
             "dialogue": "#50C8A0",
             "status": "#8B7D9A",
             "warning": "#B5A86A",
             "system": "#8AC07A",
             "command": "#9A8B68",
-            "default": "#D8D0A0"
+            "default": "#E2E8F0"
         },
-        "bg_color": "#0d0d0a",
-        "fg_color": "#d8d0a0",
-        "font_family": "Segoe UI Symbol",
+        "bg_color": "#181920",
+        "fg_color": "#E2E8F0",
+        "font_family": "Consolas",
         "font_size": 11
     },
     "gameplay": {
@@ -23,7 +27,7 @@
         "game_feel_intensity": "normal"
     },
     "accessibility": {
-        "high_contrast": true,
+        "high_contrast": false,
         "text_size": 10
     },
     "ui": {
